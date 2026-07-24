@@ -22,6 +22,7 @@
             <a href="#">Courts</a>
             <a href="#">Customers</a>
             <a href="#">Reports</a>
+            <a href="#">Logs</a>
         </nav>
 
         <div class="sidebar-profile">
