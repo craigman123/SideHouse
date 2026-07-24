@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\CourtController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -18,4 +19,10 @@ Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
 Route::middleware('auth')->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'mainDashboard'])->name('main_dashboard');
+
+    // Courts CRUD
+    Route::get('/courts', [CourtController::class, 'index'])->name('courts.index');
+    Route::post('/courts', [CourtController::class, 'store'])->name('courts.store');
+    Route::put('/courts/{court}', [CourtController::class, 'update'])->name('courts.update');
+    Route::delete('/courts/{court}', [CourtController::class, 'destroy'])->name('courts.destroy');
 });

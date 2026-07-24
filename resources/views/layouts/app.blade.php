@@ -17,9 +17,9 @@
         </div>
 
         <nav class="sidebar-nav">
-            <a class="{{ request()->routeIs('main_dashboard') ? 'active' : '' }}">Overview</a>
+            <a href="{{ route('main_dashboard') }}" class="{{ request()->routeIs('main_dashboard') ? 'active' : '' }}">Overview</a>
             <a href="#">Bookings</a>
-            <a href="#">Courts</a>
+            <a href="{{ route('courts.index') }}" class="{{ request()->routeIs('courts.*') ? 'active' : '' }}">Courts</a>
             <a href="#">Customers</a>
             <a href="#">Reports</a>
             <a href="#">Logs</a>
@@ -53,6 +53,8 @@
             @yield('content')
         </main>
     </div>
+
+    @stack('scripts')
 
 </body>
 </html>
