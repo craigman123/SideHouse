@@ -1,9 +1,15 @@
 <?php
 
 use App\Http\Controllers\AuthController;
-use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\BookingController;
 use App\Http\Controllers\CourtController;
+use App\Http\Controllers\DashboardController;
 use Illuminate\Support\Facades\Route;
+
+Route::middleware('auth')->group(function () {
+    Route::get('/dashboard', [DashboardController::class, 'mainDashboard'])->name('main_dashboard');
+    Route::get('/bookings', [BookingController::class, 'index'])->name('bookings.index');
+});
 
 Route::get('/', function () {
     return redirect()->route('login');

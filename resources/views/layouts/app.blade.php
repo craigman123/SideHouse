@@ -6,6 +6,7 @@
     <meta http-equiv="Expires" content="0">
     <title>@yield('title', 'Court Booking System')</title>
     <link rel="stylesheet" href="{{ asset('css/app.css') }}">
+    <link rel="icon" type="image/png" href="{{ asset('images/logo.png') }}">
     <script src="{{ asset('js/app.js') }}" defer></script>
     @stack('styles')
 </head>

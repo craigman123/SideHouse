@@ -2,27 +2,24 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Booking;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 
 class DashboardController extends Controller
 {
     public function mainDashboard()
     {
-        // TODO: Replace with real queries once your Booking model/migration exists
-        // Example once you have a `bookings` table with columns like:
-        // court_id, customer_name, date, start_time, end_time, amount, status
+        $totalIncome = Booking::where('status', 'paid')->sum('amount');
 
-        $totalIncome = DB::table('bookings')->where('status', 'paid')->sum('amount') ?? 0;
-        $todayIncome = DB::table('bookings')
+        $todayIncome = Booking::where('status', 'paid')
             ->whereDate('created_at', today())
-            ->where('status', 'paid')
-            ->sum('amount') ?? 0;
+            ->sum('amount');
 
-        $totalBookings = DB::table('bookings')->count();
-        $todayBookings = DB::table('bookings')->whereDate('date', today())->count();
-        $upcomingBookings = DB::table('bookings')
-            ->where('date', '>=', today())
+        $totalBookings = Booking::count();
+
+        $todayBookings = Booking::whereDate('date', today())->count();
+
+        $upcomingBookings = Booking::where('date', '>=', today())
             ->orderBy('date')
             ->orderBy('start_time')
             ->limit(5)
