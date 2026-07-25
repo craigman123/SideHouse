@@ -19,7 +19,7 @@
 
         <nav class="sidebar-nav">
             <a href="{{ route('main_dashboard') }}" class="{{ request()->routeIs('main_dashboard') ? 'active' : '' }}">Overview</a>
-            <a href="#">Bookings</a>
+            <a href="{{ route('bookings.index') }}" class="{{ request()->routeIs('bookings.*') ? 'active' : '' }}">Bookings</a>
             <a href="{{ route('courts.index') }}" class="{{ request()->routeIs('courts.*') ? 'active' : '' }}">Courts</a>
             <a href="#">Customers</a>
             <a href="#">Reports</a>
