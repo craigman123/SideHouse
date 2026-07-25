@@ -1,11 +1,11 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Auth;
 
+use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Validator;
 use App\Models\User;
 
 class AuthController extends Controller
@@ -24,7 +24,12 @@ class AuthController extends Controller
 
         if (Auth::attempt($credentials)) {
             $request->session()->regenerate();
-            return redirect()->route('main_dashboard');
+
+            if (auth()->user()->isAdmin()) {
+                return redirect()->route('admin.dashboard')->with('success', 'Logged in successfully!');
+            }
+
+            return redirect()->route('user.dashboard')->with('success', 'Logged in successfully!');
         }
 
         return back()->withErrors(['username' => 'Invalid username or password.'])->onlyInput('username');
@@ -39,7 +44,7 @@ class AuthController extends Controller
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'username' => 'required|string|unique:users,username',
+            'username' => 'required|string|max:255|unique:users,username',
             'email' => 'required|string|email|max:255|unique:users,email',
             'password' => 'required|min:6|confirmed',
         ]);
@@ -49,11 +54,12 @@ class AuthController extends Controller
             'username' => $validated['username'],
             'email' => $validated['email'],
             'password' => Hash::make($validated['password']),
+            'role' => 'user',
         ]);
 
         Auth::login($user);
 
-        return redirect()->route('main_dashboard');
+        return redirect()->route('user.dashboard')->with('success', 'Account created! Welcome to Side House.');
     }
 
     public function logout(Request $request)
@@ -62,6 +68,6 @@ class AuthController extends Controller
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 
-        return redirect()->route('login.auth');
+        return redirect()->route('login')->with('success', 'Logged out successfully.');
     }
 }

@@ -1,8 +1,9 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Admin;
 
 use App\Models\Court;
+use App\Http\Controllers\Controller;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -16,7 +17,7 @@ class CourtController extends Controller
     {
         $courts = Court::orderBy('name')->get();
 
-        return view('courts.index', compact('courts'));
+        return view('admin.courts.index', compact('courts'));
     }
 
     /**

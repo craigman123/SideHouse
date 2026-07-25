@@ -1,7 +1,8 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Admin;
 
+use App\Http\Controllers\Controller;
 use App\Models\Booking;
 use Illuminate\Http\Request;
 
@@ -18,6 +19,6 @@ class BookingController extends Controller
             ->paginate(15)
             ->withQueryString();
 
-        return view('bookings.index', compact('bookings'));
+        return view('admin.bookings.index', compact('bookings'));
     }
 }

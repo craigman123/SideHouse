@@ -1,0 +1,314 @@
+/* User Dashboard Page Styles
+   Loads alongside app.css (shell/layout) and dashboard.css (cards, panel,
+   table, status pills) — same pattern as courts.css / bookings.css. */
+
+.app-layout {
+    display: flex;
+    width: 100%;
+}
+
+.logo-text {
+    font-size: 20px;
+    font-weight: 800;
+    color: #3fb950;
+    letter-spacing: 0.3px;
+    padding: 18px 0;
+}
+
+/* ---------- Hero: next game + countdown + court graphic ---------- */
+
+.hero-next-game {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 32px;
+    background-color: #161b22;
+    border: 1px solid #30363d;
+    border-top: 3px solid #3fb950;
+    border-radius: 12px;
+    padding: 28px 32px;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+}
+
+.hero-eyebrow {
+    display: inline-block;
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    color: #3fb950;
+    margin-bottom: 6px;
+}
+
+.hero-info h2 {
+    font-size: 24px;
+    font-weight: 800;
+    color: #f0f6fc;
+    margin-bottom: 4px;
+}
+
+.hero-meta {
+    font-size: 14px;
+    font-weight: 600;
+    color: #8b949e;
+    margin-bottom: 20px;
+}
+
+.countdown {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 22px;
+}
+
+.countdown-unit {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background-color: #0d1117;
+    border: 1.5px solid #30363d;
+    border-radius: 8px;
+    padding: 10px 16px;
+    min-width: 64px;
+}
+
+.countdown-unit span {
+    font-size: 26px;
+    font-weight: 800;
+    color: #f0f6fc;
+    font-variant-numeric: tabular-nums;
+}
+
+.countdown-unit label {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    color: #6e7681;
+    margin-top: 2px;
+}
+
+.btn-hero-cta {
+    display: inline-block;
+    padding: 12px 24px;
+    background-color: #238636;
+    color: #fff;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 700;
+    text-decoration: none;
+    border: 1px solid rgba(240, 246, 252, 0.1);
+}
+
+.btn-hero-cta:hover {
+    background-color: #2ea043;
+}
+
+.hero-court {
+    flex-shrink: 0;
+    width: 150px;
+}
+
+.hero-court svg {
+    width: 100%;
+    height: auto;
+    display: block;
+}
+
+.court-surface {
+    fill: #0d2818;
+    stroke: #30363d;
+    stroke-width: 1;
+}
+
+.court-boundary,
+.court-line {
+    fill: none;
+    stroke: #3fb950;
+    stroke-width: 2;
+    opacity: 0.55;
+}
+
+.net-line {
+    stroke: #f0f6fc;
+    stroke-width: 3;
+    opacity: 0.8;
+}
+
+.court-ball {
+    fill: #d29922;
+    animation: bounceBall 2.4s ease-in-out infinite;
+    transform-origin: center;
+}
+
+@keyframes bounceBall {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(230px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .court-ball {
+        animation: none;
+    }
+}
+
+/* ---------- Buttons + row actions (mirrors courts.css) ---------- */
+
+.btn {
+    padding: 10px 18px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    border: 1px solid transparent;
+    letter-spacing: 0.2px;
+}
+
+.btn-secondary {
+    background-color: transparent;
+    color: #c9d1d9;
+    border: 1px solid #30363d;
+}
+
+.btn-secondary:hover {
+    background-color: #21262d;
+}
+
+.btn-danger {
+    background-color: #da3633;
+    color: #fff;
+    border: 1px solid rgba(240, 246, 252, 0.1);
+}
+
+.btn-danger:hover {
+    background-color: #f85149;
+}
+
+.btn-icon {
+    padding: 5px 12px;
+    font-size: 12px;
+    font-weight: 700;
+    border-radius: 6px;
+    cursor: pointer;
+    border: 1px solid #30363d;
+    background-color: transparent;
+    color: #c9d1d9;
+}
+
+.btn-delete:hover {
+    border-color: #f85149;
+    color: #f85149;
+}
+
+/* ---------- Cancel booking modal ---------- */
+
+.modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background-color: rgba(1, 4, 9, 0.75);
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    padding: 20px;
+}
+
+.modal-overlay.open {
+    display: flex;
+}
+
+.modal-box {
+    background-color: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 12px;
+    width: 100%;
+    max-width: 480px;
+    padding: 24px;
+    box-shadow: 0 12px 32px rgba(1, 4, 9, 0.7);
+}
+
+.modal-box-sm {
+    max-width: 400px;
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.modal-header h3 {
+    font-size: 18px;
+    font-weight: 700;
+    color: #f0f6fc;
+}
+
+.modal-close {
+    background: none;
+    border: none;
+    color: #8b949e;
+    font-size: 22px;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0;
+}
+
+.modal-close:hover {
+    color: #f0f6fc;
+}
+
+.modal-text {
+    font-size: 14px;
+    color: #c9d1d9;
+    line-height: 1.5;
+    margin-bottom: 20px;
+}
+
+.modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 20px;
+}
+
+/* Row fading out when cancelled */
+tr.row-removing {
+    opacity: 0;
+    transition: opacity 0.25s ease;
+}
+
+/* ---------- Responsive ---------- */
+
+@media (max-width: 900px) {
+    .app-layout {
+        flex-direction: column;
+    }
+
+    .sidebar {
+        width: 100%;
+        min-height: auto;
+        flex-direction: row;
+        align-items: center;
+        overflow-x: auto;
+    }
+
+    .sidebar-nav {
+        display: flex;
+        gap: 4px;
+    }
+
+    .hero-next-game {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .hero-court {
+        width: 110px;
+        align-self: center;
+    }
+
+    .countdown {
+        flex-wrap: wrap;
+    }
+}

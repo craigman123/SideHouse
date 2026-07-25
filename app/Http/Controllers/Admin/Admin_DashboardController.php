@@ -1,13 +1,13 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Admin;
 
+use App\Http\Controllers\Controller;
 use App\Models\Booking;
-use Illuminate\Http\Request;
 
-class DashboardController extends Controller
+class Admin_DashboardController extends Controller
 {
-    public function mainDashboard()
+    public function index()
     {
         $totalIncome = Booking::where('status', 'paid')->sum('amount');
 
@@ -25,7 +25,7 @@ class DashboardController extends Controller
             ->limit(5)
             ->get();
 
-        return view('main_dashboard', compact(
+        return view('admin.admin_dashboard', compact(
             'totalIncome',
             'todayIncome',
             'totalBookings',
