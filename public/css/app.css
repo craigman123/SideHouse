@@ -118,7 +118,7 @@ body {
     border: 1px solid #30363d;
     width: 100%;
     max-width: 380px;
-    padding: 32px;
+    padding: 0 32px 32px 32px;
     border-radius: 12px;
 }
 
