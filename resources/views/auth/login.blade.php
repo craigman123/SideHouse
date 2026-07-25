@@ -48,8 +48,7 @@
             </form>
 
             <div class="auth-footer">
-                Admin Only. Please contact the system administrator for access.
-                {{-- <br>Don't have an account? <a href="{{ route('register') }}">Register</a> --}}
+                <br>Don't have an account? <a href="{{ route('register') }}">Register</a>
             </div>
         </div>
     </div>
