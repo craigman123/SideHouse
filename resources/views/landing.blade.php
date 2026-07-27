@@ -21,7 +21,7 @@
         <div class="bg-particle"></div>
 
         <nav class="landing-nav">
-            <img src="{{ asset('images/logo.png') }}" alt="Side House" class="nav-logo">
+            <img src="{{ asset('images/tab_icon.png') }}" alt="Side House" class="nav-logo">
             <div class="nav-links">
                 <a href="{{ route('login') }}" class="nav-btn-ghost">Log In</a>
                 <a href="{{ route('register') }}" class="nav-btn-solid">Register</a>

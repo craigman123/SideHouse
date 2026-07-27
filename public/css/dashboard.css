@@ -110,3 +110,42 @@ table tr:hover td {
     color: #6e7681;
     padding: 20px;
 }
+
+/* ---------- Responsive ---------- */
+
+@media (max-width: 1200px) {
+    .panel {
+        padding: 16px;
+    }
+
+    /* Tables shrink to fit the panel width instead of scrolling */
+    .panel table {
+        table-layout: fixed;
+        width: 100%;
+        font-size: 12px;
+    }
+
+    .panel th,
+    .panel td {
+        padding: 6px 4px;
+        white-space: normal;
+        word-break: break-word;
+        overflow-wrap: break-word;
+    }
+}
+
+@media (max-width: 480px) {
+    .panel table {
+        font-size: 11px;
+    }
+
+    .panel th,
+    .panel td {
+        padding: 5px 3px;
+        text-align: center;
+    }
+
+    .panel th {
+        font-size: 2.4vw;
+    }
+}
