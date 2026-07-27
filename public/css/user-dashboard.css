@@ -19,6 +19,11 @@
     flex-wrap: wrap;
 }
 
+.hero-info {
+    flex: 1 1 0;
+    min-width: 240px;
+}
+
 .hero-eyebrow {
     display: inline-block;
     font-size: 12px;
@@ -45,35 +50,90 @@
 
 .countdown {
     display: flex;
-    gap: 16px;
-    margin-bottom: 22px;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    margin-bottom: 26px;
+}
+
+.flip-colon {
+    font-size: 34px;
+    font-weight: 800;
+    color: #3fb950;
+    align-self: flex-start;
+    margin-top: 18px;
 }
 
 .countdown-unit {
     display: flex;
     flex-direction: column;
     align-items: center;
+    gap: 10px;
+}
+
+.countdown-unit label {
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #6e7681;
+}
+
+.flip-group {
+    display: flex;
+    gap: 4px;
+}
+
+/* ---------- Flip clock digit ---------- */
+
+.flip-digit {
+    width: 46px;
+    height: 68px;
+    perspective: 300px;
+}
+
+.flip-card {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    transform-style: preserve-3d;
+    transition: transform 0.55s cubic-bezier(0.45, 0, 0.55, 1);
+}
+
+.flip-digit.is-flipping .flip-card {
+    transform: rotateX(-180deg);
+}
+
+.flip-card-face {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    backface-visibility: hidden;
     background-color: #0d1117;
     border: 1.5px solid #30363d;
     border-radius: 8px;
-    padding: 10px 16px;
-    min-width: 64px;
-}
-
-.countdown-unit span {
-    font-size: 26px;
+    font-size: 34px;
     font-weight: 800;
     color: #f0f6fc;
     font-variant-numeric: tabular-nums;
 }
 
-.countdown-unit label {
-    font-size: 11px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.4px;
-    color: #6e7681;
-    margin-top: 2px;
+/* center seam, like a real split-flap card */
+.flip-card-face::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 50%;
+    height: 1px;
+    background-color: #010409;
+    opacity: 0.6;
+}
+
+.flip-card-back {
+    transform: rotateX(180deg);
 }
 
 .btn-hero-cta {
@@ -409,13 +469,18 @@ tr.row-removing {
         font-size: 20px;
     }
 
-    .countdown-unit {
-        min-width: 56px;
-        padding: 8px 12px;
+    .flip-digit {
+        width: 36px;
+        height: 54px;
     }
 
-    .countdown-unit span {
-        font-size: 22px;
+    .flip-card-face {
+        font-size: 26px;
+    }
+
+    .flip-colon {
+        font-size: 26px;
+        margin-top: 12px;
     }
 
     .court-grid {

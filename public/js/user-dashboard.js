@@ -8,26 +8,68 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  /* ---------- Live countdown to next booking ---------- */
+  /* ---------- Live countdown to next booking (flip clock) ---------- */
   const countdownEl = document.getElementById('countdown');
   const nextIso = countdownEl ? countdownEl.dataset.next : '';
   const nextGameAt = nextIso ? new Date(nextIso) : null;
-
-  const cdHours = document.getElementById('cdHours');
-  const cdMinutes = document.getElementById('cdMinutes');
-  const cdSeconds = document.getElementById('cdSeconds');
 
   function pad(n) {
     return String(n).padStart(2, '0');
   }
 
+  // Build a lookup of { tens: <flip-digit el>, ones: <flip-digit el> } per unit
+  const flipUnits = {};
+  if (countdownEl) {
+    countdownEl.querySelectorAll('.flip-group').forEach((group) => {
+      const unit = group.dataset.unit;
+      flipUnits[unit] = {
+        tens: group.querySelector('[data-digit="tens"]'),
+        ones: group.querySelector('[data-digit="ones"]'),
+      };
+    });
+  }
+
+  function setDigit(digitEl, newValue) {
+    if (!digitEl) return;
+    const front = digitEl.querySelector('.flip-card-front');
+    const back = digitEl.querySelector('.flip-card-back');
+    const current = front.textContent;
+
+    if (current === newValue) return; // nothing changed, don't animate
+
+    back.textContent = newValue;
+    digitEl.classList.add('is-flipping');
+
+    const card = digitEl.querySelector('.flip-card');
+    const onDone = () => {
+      card.removeEventListener('transitionend', onDone);
+      front.textContent = newValue;
+      // Snap back to 0deg instantly (no transition) so the swap is invisible,
+      // then restore the transition for the next flip.
+      card.style.transition = 'none';
+      digitEl.classList.remove('is-flipping');
+      // eslint-disable-next-line no-unused-expressions
+      card.offsetHeight; // force reflow
+      card.style.transition = '';
+    };
+    card.addEventListener('transitionend', onDone);
+  }
+
+  function updateUnit(unit, value) {
+    const digits = flipUnits[unit];
+    if (!digits) return;
+    const str = pad(value);
+    setDigit(digits.tens, str[0]);
+    setDigit(digits.ones, str[1]);
+  }
+
   function updateCountdown() {
-    const diff = nextGameAt - new Date();
+    const diff = nextGameAt ? nextGameAt - new Date() : -1;
 
     if (!nextGameAt || diff <= 0) {
-      cdHours.textContent = '00';
-      cdMinutes.textContent = '00';
-      cdSeconds.textContent = '00';
+      updateUnit('hours', 0);
+      updateUnit('minutes', 0);
+      updateUnit('seconds', 0);
       return;
     }
 
@@ -35,12 +77,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
     const seconds = Math.floor((diff % (1000 * 60)) / 1000);
 
-    cdHours.textContent = pad(hours);
-    cdMinutes.textContent = pad(minutes);
-    cdSeconds.textContent = pad(seconds);
+    updateUnit('hours', hours);
+    updateUnit('minutes', minutes);
+    updateUnit('seconds', seconds);
   }
 
-  if (cdHours && cdMinutes && cdSeconds) {
+  if (countdownEl) {
     updateCountdown();
     setInterval(updateCountdown, 1000);
   }

@@ -25,22 +25,87 @@
                 <p class="hero-meta">Book a court to see it here.</p>
             @endif
 
-            <div class="countdown" id="countdown" aria-live="polite" data-next="{{ $nextBooking ? \Carbon\Carbon::parse($nextBooking->date . ' ' . $nextBooking->start_time)->toIso8601String() : '' }}">
+            <div class="countdown flip-clock" id="countdown" aria-live="polite" data-next="{{ $nextBooking ? \Carbon\Carbon::parse($nextBooking->date . ' ' . $nextBooking->start_time)->toIso8601String() : '' }}">
                 <div class="countdown-unit">
-                    <span id="cdHours">00</span>
+                    <div class="flip-group" data-unit="hours">
+                        <div class="flip-digit" data-digit="tens">
+                            <div class="flip-card">
+                                <div class="flip-card-face flip-card-front">0</div>
+                                <div class="flip-card-face flip-card-back">0</div>
+                            </div>
+                        </div>
+                        <div class="flip-digit" data-digit="ones">
+                            <div class="flip-card">
+                                <div class="flip-card-face flip-card-front">0</div>
+                                <div class="flip-card-face flip-card-back">0</div>
+                            </div>
+                        </div>
+                    </div>
                     <label>Hours</label>
                 </div>
+
+                <span class="flip-colon">:</span>
+
                 <div class="countdown-unit">
-                    <span id="cdMinutes">00</span>
+                    <div class="flip-group" data-unit="minutes">
+                        <div class="flip-digit" data-digit="tens">
+                            <div class="flip-card">
+                                <div class="flip-card-face flip-card-front">0</div>
+                                <div class="flip-card-face flip-card-back">0</div>
+                            </div>
+                        </div>
+                        <div class="flip-digit" data-digit="ones">
+                            <div class="flip-card">
+                                <div class="flip-card-face flip-card-front">0</div>
+                                <div class="flip-card-face flip-card-back">0</div>
+                            </div>
+                        </div>
+                    </div>
                     <label>Minutes</label>
                 </div>
+
+                <span class="flip-colon">:</span>
+
                 <div class="countdown-unit">
-                    <span id="cdSeconds">00</span>
+                    <div class="flip-group" data-unit="seconds">
+                        <div class="flip-digit" data-digit="tens">
+                            <div class="flip-card">
+                                <div class="flip-card-face flip-card-front">0</div>
+                                <div class="flip-card-face flip-card-back">0</div>
+                            </div>
+                        </div>
+                        <div class="flip-digit" data-digit="ones">
+                            <div class="flip-card">
+                                <div class="flip-card-face flip-card-front">0</div>
+                                <div class="flip-card-face flip-card-back">0</div>
+                            </div>
+                        </div>
+                    </div>
                     <label>Seconds</label>
+                </div>
+
+                <span class="flip-colon">.</span>
+
+                <div class="countdown-unit">
+                    <div class="flip-group">
+                        <div class="flip-digit" data-digit="tens">
+                            <div class="flip-card">
+                                <div class="flip-card-face">0</div>
+                                <div class="flip-card-face">0</div>
+                            </div>
+                        </div>
+                        <div class="flip-digit" data-digit="ones">
+                            <div class="flip-card">
+                                <div class="flip-card-face">0</div>
+                                <div class="flip-card-face">0</div>
+                            </div>
+                        </div>
+                    </div>
+                    <label>Miliseconds</label>
                 </div>
             </div>
 
-            <a href="/book" class="btn-hero-cta">Book another court</a>
+            <a href="/book" class="btn-hero-cta">Book a court</a>
         </div>
 
         <div class="hero-court" aria-hidden="true">
