@@ -5,7 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Register | Court Booking</title>
     <link rel="stylesheet" href="{{ asset('css/app.css') }}">
-    <link rel="icon" type="image/png" href="{{ asset('images/logo.png') }}">
+    <link rel="icon" type="image/png" href="{{ asset('images/tab_icon.png') }}">
+    <script src="{{ asset('js/app.js') }}" defer></script>
 </head>
 <body>
     <div class="auth-wrapper">
@@ -21,10 +22,6 @@
         <div class="auth-box">
             <img src="{{ asset('images/logo.png') }}" alt="Side House" style="width: 100%; max-width: 260px; display: block; margin: 0 auto 10px;">
             <p class="subtitle">Create an account to manage bookings</p>
-
-            @if ($errors->any())
-                <div class="error-text">{{ $errors->first() }}</div>
-            @endif
 
             <form method="POST" action="{{ route('register.submit') }}">
                 @csrf

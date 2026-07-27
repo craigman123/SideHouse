@@ -9,11 +9,9 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   /* ---------- Live countdown to next booking ---------- */
-  // Swap this for the real booking datetime from your backend,
-  // e.g. new Date("{{ $nextBooking->starts_at }}")
-  const nextGameAt = new Date();
-  nextGameAt.setDate(nextGameAt.getDate() + 1);
-  nextGameAt.setHours(18, 0, 0, 0);
+  const countdownEl = document.getElementById('countdown');
+  const nextIso = countdownEl ? countdownEl.dataset.next : '';
+  const nextGameAt = nextIso ? new Date(nextIso) : null;
 
   const cdHours = document.getElementById('cdHours');
   const cdMinutes = document.getElementById('cdMinutes');
@@ -26,7 +24,7 @@ document.addEventListener('DOMContentLoaded', () => {
   function updateCountdown() {
     const diff = nextGameAt - new Date();
 
-    if (diff <= 0) {
+    if (!nextGameAt || diff <= 0) {
       cdHours.textContent = '00';
       cdMinutes.textContent = '00';
       cdSeconds.textContent = '00';

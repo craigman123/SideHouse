@@ -1,0 +1,291 @@
+/* User Layout Shell (sidebar/navbar + topbar + content frame)
+   Dedicated to layouts/user.blade.php — kept separate from app.css so
+   admin's sidebar can evolve independently. Loaded after app.css so these
+   rules take precedence for user pages. */
+
+html, body {
+    height: 100%;
+    overflow: hidden; /* only .content below scrolls, not the whole page */
+}
+
+/* ---------- Sidebar / navbar ---------- */
+
+.sidebar {
+    width: 240px;
+    height: 100vh;
+    background-color: #010409;
+    color: #c9d1d9;
+    display: flex;
+    flex-direction: column;
+    border-right: 1px solid #30363d;
+    flex-shrink: 0;
+    overflow-y: auto; /* only kicks in if nav content overflows a short viewport */
+}
+
+.sidebar-logo {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 20px 0;
+    border-bottom: 1px solid #21262d;
+}
+
+.logo-img {
+    width: 100%;
+    max-width: 180px;
+    height: auto;
+    display: block;
+}
+
+.sidebar-nav {
+    flex: 1;
+    padding: 12px;
+}
+
+.sidebar-nav a {
+    display: block;
+    padding: 10px 14px;
+    margin-bottom: 4px;
+    color: #d6d6d6;
+    text-decoration: none;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 650;
+}
+
+.sidebar-nav a:hover {
+    background-color: #161b22;
+    color: #c9d1d9;
+}
+
+.sidebar-nav a.active {
+    background-color: #0d2818;
+    color: #3fb950;
+    font-weight: 700;
+}
+
+.sidebar-footer {
+    padding: 16px 20px;
+    font-size: 13px;
+    color: #6e7681;
+    border-top: 1px solid #21262d;
+}
+
+/* Profile block — green accent to match the rest of the user theme
+   (admin's app.css uses a red accent here; this is the user-side version) */
+.sidebar-profile {
+    position: relative;
+    padding: 12px 20px;
+    border-top: 1px solid #21262d;
+}
+
+.profile-trigger {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    width: 100%;
+    padding: 8px 6px;
+    border-radius: 6px;
+}
+
+.profile-trigger:hover {
+    background-color: #161b22;
+}
+
+.profile-avatar {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background-color: #0d2818;
+    color: #3fb950;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 800;
+    font-size: 13px;
+    flex-shrink: 0;
+    border: 1px solid rgba(63, 185, 80, 0.35);
+}
+
+.profile-name {
+    font-weight: 700;
+    font-size: 14px;
+    color: #f0f6fc;
+}
+
+.profile-dropdown {
+    display: none;
+    position: absolute;
+    bottom: 100%;
+    left: 12px;
+    right: 12px;
+    margin-bottom: 8px;
+    background-color: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 8px 24px rgba(1, 4, 9, 0.6);
+    z-index: 20;
+}
+
+.profile-dropdown.open {
+    display: block;
+}
+
+.profile-dropdown button {
+    width: 100%;
+    text-align: left;
+    padding: 10px 14px;
+    background: none;
+    border: none;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    color: #c9d1d9;
+}
+
+.profile-dropdown button:hover {
+    background-color: #1c2128;
+}
+
+.profile-dropdown .dropdown-logout {
+    color: #f85149;
+}
+
+.profile-dropdown .dropdown-cancel {
+    border-top: 1px solid #21262d;
+    color: #8b949e;
+}
+
+/* ---------- Main / topbar / content frame ---------- */
+
+.main {
+    flex: 1;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    overflow: hidden;
+}
+
+.topbar {
+    background-color: #161b22;
+    padding: 16px 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #30363d;
+    flex-shrink: 0;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.topbar h1 {
+    font-size: 18px;
+    color: #c9d1d9;
+}
+
+.topbar .date {
+    font-size: 14px;
+    color: #8b949e;
+}
+
+.content {
+    padding: 24px;
+    flex: 1;
+    min-width: 0;
+    min-height: 0;
+    overflow-y: auto; /* the only scrollable area on the page */
+}
+
+/* ---------- Responsive ---------- */
+
+@media (max-width: 900px) {
+    body {
+        flex-direction: column;
+    }
+
+    .main {
+        height: auto;
+        flex: 1;
+        min-height: 0;
+    }
+
+    .sidebar {
+        width: 100%;
+        height: auto;
+        flex-direction: row;
+        align-items: center;
+        border-right: none;
+        border-bottom: 1px solid #30363d;
+        overflow-x: auto;
+        overflow-y: visible;
+    }
+
+    .sidebar-logo {
+        padding: 10px 16px;
+        border-bottom: none;
+        border-right: 1px solid #21262d;
+        flex-shrink: 0;
+    }
+
+    .logo-img {
+        max-width: 100px;
+    }
+
+    .sidebar-nav {
+        display: flex;
+        gap: 4px;
+        padding: 8px;
+        flex: 0 0 auto;
+        white-space: nowrap;
+    }
+
+    .sidebar-nav a {
+        padding: 8px 12px;
+        font-size: 13px;
+        margin-bottom: 0;
+    }
+
+    .sidebar-footer {
+        display: none;
+    }
+
+    .sidebar-profile {
+        border-top: none;
+        border-left: 1px solid #21262d;
+        padding: 8px 14px;
+        flex-shrink: 0;
+    }
+
+    .profile-name {
+        display: none; /* just show the avatar to save space */
+    }
+
+    .profile-dropdown {
+        left: auto;
+        right: 8px;
+        width: 180px;
+    }
+
+    .topbar {
+        padding: 14px 16px;
+    }
+
+    .content {
+        padding: 16px;
+    }
+}
+
+@media (max-width: 480px) {
+    .topbar h1 {
+        font-size: 16px;
+    }
+
+    .topbar .date {
+        font-size: 12px;
+    }
+}
