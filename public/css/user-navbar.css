@@ -203,7 +203,7 @@ html, body {
 
 /* ---------- Responsive ---------- */
 
-@media (max-width: 900px) {
+@media (max-width: 1100px) {
     body {
         flex-direction: column;
     }
@@ -220,34 +220,40 @@ html, body {
         flex-direction: row;
         align-items: center;
         border-right: none;
-        min-height: 0;
         border-bottom: 1px solid #30363d;
+        min-height: 0;
         overflow-x: auto;
         overflow-y: visible;
+        scrollbar-width: none; /* Firefox */
+        -ms-overflow-style: none; /* IE/Edge */
+    }
+
+    .sidebar::-webkit-scrollbar {
+        display: none; /* Chrome/Safari */
     }
 
     .sidebar-logo {
-        padding: 10px 16px;
+        padding: 8px 10px;
         border-bottom: none;
         border-right: 1px solid #21262d;
         flex-shrink: 0;
     }
 
     .logo-img {
-        max-width: 100px;
+        max-width: 60px;
     }
 
     .sidebar-nav {
         display: flex;
-        gap: 4px;
-        padding: 8px;
+        gap: 2px;
+        padding: 6px;
         flex: 0 0 auto;
         white-space: nowrap;
     }
 
     .sidebar-nav a {
-        padding: 8px 12px;
-        font-size: 13px;
+        padding: 6px 8px;
+        font-size: 11px;
         margin-bottom: 0;
     }
 
@@ -258,8 +264,14 @@ html, body {
     .sidebar-profile {
         border-top: none;
         border-left: 1px solid #21262d;
-        padding: 8px 14px;
+        padding: 6px 10px;
         flex-shrink: 0;
+    }
+
+    .profile-avatar {
+        width: 24px;
+        height: 24px;
+        font-size: 11px;
     }
 
     .profile-name {

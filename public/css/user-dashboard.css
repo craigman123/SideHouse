@@ -451,12 +451,19 @@ tr.row-removing {
         padding: 16px;
     }
 
-    /* Tables get wide on small screens — let them scroll horizontally
-       instead of squeezing/wrapping columns unreadably */
+    /* Tables now shrink to fit the panel width instead of scrolling */
     .panel table {
-        display: block;
-        overflow-x: auto;
-        white-space: nowrap;
+        table-layout: fixed;
+        width: 100%;
+        font-size: 12px;
+    }
+
+    .panel th,
+    .panel td {
+        padding: 6px 4px;
+        white-space: normal;
+        word-break: break-word;
+        overflow-wrap: break-word;
     }
 }
 
@@ -490,5 +497,14 @@ tr.row-removing {
 
     .modal-box {
         padding: 18px;
+    }
+
+    .panel table {
+        font-size: 11px;
+    }
+
+    .panel th,
+    .panel td {
+        padding: 5px 3px;
     }
 }
