@@ -11,27 +11,28 @@ class UserDashboardController extends Controller
 {
     public function index()
     {
-        $user = Auth::user();
+        $userInfo = Auth::user();
 
-        $upcomingBookings = Booking::where('user_id', $user->user_id)
+        $upcomingBookings = Booking::where('user_id', $userInfo->user_id)
             ->where('date', '>=', today())
             ->orderBy('date')
             ->orderBy('start_time')
             ->get();
 
-        $recentBookings = Booking::where('user_id', $user->user_id)
+        $recentBookings = Booking::where('user_id', $userInfo->user_id)
             ->orderByDesc('date')
             ->limit(10)
             ->get();
 
         $nextBooking = $upcomingBookings->first();
+        $userName = $userInfo->name;
 
         // Adjust the column names below (name/type/price/length/width) to match
         // your actual courts table if they're named differently.
         $courts = Court::orderBy('name')->get();
 
         return view('user.user-dashboard', compact(
-            'user',
+            'userName',
             'upcomingBookings',
             'recentBookings',
             'nextBooking',

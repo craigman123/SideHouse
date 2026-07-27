@@ -136,6 +136,28 @@
     transform: rotateX(180deg);
 }
 
+/* ---------- Milliseconds: plain counter, no flip animation ---------- */
+
+.ms-group {
+    display: flex;
+    gap: 4px;
+}
+
+.ms-digit {
+    width: 46px;
+    height: 68px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #0d1117;
+    border: 1.5px solid #30363d;
+    border-radius: 8px;
+    font-size: 34px;
+    font-weight: 800;
+    color: #f0f6fc;
+    font-variant-numeric: tabular-nums;
+}
+
 .btn-hero-cta {
     display: inline-block;
     padding: 12px 24px;
@@ -476,12 +498,14 @@ tr.row-removing {
         font-size: 20px;
     }
 
-    .flip-digit {
+    .flip-digit,
+    .ms-digit {
         width: 36px;
         height: 54px;
     }
 
-    .flip-card-face {
+    .flip-card-face,
+    .ms-digit {
         font-size: 26px;
     }
 

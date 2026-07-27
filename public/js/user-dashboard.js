@@ -87,6 +87,24 @@ document.addEventListener('DOMContentLoaded', () => {
     setInterval(updateCountdown, 1000);
   }
 
+  /* ---------- Milliseconds: plain counter (no flip animation) ---------- */
+  const msTensEl = countdownEl ? countdownEl.querySelector('[data-unit="ms"] [data-digit="tens"]') : null;
+  const msOnesEl = countdownEl ? countdownEl.querySelector('[data-unit="ms"] [data-digit="ones"]') : null;
+
+  function updateMs() {
+    const diff = nextGameAt ? nextGameAt - new Date() : -1;
+    // Two digits, so this shows centiseconds (00–99) rather than full 0–999ms
+    const centis = (!nextGameAt || diff <= 0) ? 0 : Math.floor((diff % 1000) / 10);
+    const str = pad(centis);
+    if (msTensEl) msTensEl.textContent = str[0];
+    if (msOnesEl) msOnesEl.textContent = str[1];
+  }
+
+  if (msTensEl || msOnesEl) {
+    updateMs();
+    setInterval(updateMs, 30);
+  }
+
   /* ---------- Profile dropdown ---------- */
   const profileTrigger = document.getElementById('profileTrigger');
   const profileDropdown = document.getElementById('profileDropdown');

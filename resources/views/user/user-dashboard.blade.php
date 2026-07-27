@@ -1,7 +1,7 @@
 @extends('layouts.user')
 
 @section('title', 'Dashboard | Side House')
-@section('page-title', 'Good afternoon, ' . explode(' ', $user->name)[0])
+@section('page-title', 'Good Day, ' . ucfirst(explode(' ', $userName)[0]))
 
 @push('styles')
     <link rel="stylesheet" href="{{ asset('css/dashboard.css') }}">
@@ -87,21 +87,11 @@
                 <span class="flip-colon">.</span>
 
                 <div class="countdown-unit">
-                    <div class="flip-group">
-                        <div class="flip-digit" data-digit="tens">
-                            <div class="flip-card">
-                                <div class="flip-card-face">0</div>
-                                <div class="flip-card-face">0</div>
-                            </div>
-                        </div>
-                        <div class="flip-digit" data-digit="ones">
-                            <div class="flip-card">
-                                <div class="flip-card-face">0</div>
-                                <div class="flip-card-face">0</div>
-                            </div>
-                        </div>
+                    <div class="ms-group" data-unit="ms">
+                        <div class="ms-digit" data-digit="tens">0</div>
+                        <div class="ms-digit" data-digit="ones">0</div>
                     </div>
-                    <label>Miliseconds</label>
+                    <label>Milliseconds</label>
                 </div>
             </div>
 
@@ -139,7 +129,7 @@
     </div>
 
     <div class="panel">
-        <h2>Available Courts</h2>
+        <h2>Available Courts</h2><span class="count-badge">{{ $courts->count() }} Court(s) Available</span>
         <div class="court-grid">
             @forelse ($courts as $court)
                 <div class="court-card">

@@ -219,6 +219,7 @@ html, body {
         height: auto;
         flex-direction: row;
         align-items: center;
+        justify-content: space-between;
         border-right: none;
         border-bottom: 1px solid #30363d;
         min-height: 0;

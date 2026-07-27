@@ -29,8 +29,8 @@
 
         <div class="sidebar-profile">
             <button type="button" class="profile-trigger" onclick="toggleProfileDropdown()">
-                <span class="profile-avatar">{{ strtoupper(substr(auth()->user()->name ?? 'U', 0, 1)) }}</span>
-                <span class="profile-name">{{ auth()->user()->name ?? 'User' }}</span>
+                <span class="profile-avatar">{{ strtoupper(substr($userName, 0, 1)) }}</span>
+                <span class="profile-name">{{ ucfirst(explode(' ', $userName)[0]) }}</span>
             </button>
 
             <div class="profile-dropdown" id="profile-dropdown">
