@@ -10,11 +10,35 @@ document.addEventListener('DOMContentLoaded', () => {
 
   /* ---------- Live countdown to next booking (flip clock) ---------- */
   const countdownEl = document.getElementById('countdown');
+  const countdownTextEl = document.getElementById('countdownText');
   const nextIso = countdownEl ? countdownEl.dataset.next : '';
+  const endIso = countdownEl ? countdownEl.dataset.end : '';
   const nextGameAt = nextIso ? new Date(nextIso) : null;
+  const gameEndsAt = endIso ? new Date(endIso) : null;
 
   function pad(n) {
     return String(n).padStart(2, '0');
+  }
+
+  // "3 days, 4 hours" / "23 minutes" / "less than a minute" — used for the
+  // plain-language text while we're still waiting for the booking to start.
+  function formatDuration(ms) {
+    const totalMinutes = Math.max(0, Math.floor(ms / 60000));
+    const days = Math.floor(totalMinutes / (60 * 24));
+    const hours = Math.floor((totalMinutes % (60 * 24)) / 60);
+    const minutes = totalMinutes % 60;
+
+    const parts = [];
+    if (days > 0) parts.push(`${days} day${days === 1 ? '' : 's'}`);
+    if (hours > 0) parts.push(`${hours} hour${hours === 1 ? '' : 's'}`);
+    // Only show minutes once we're within the final hour, so the text
+    // doesn't jitter every minute for far-off bookings.
+    if (days === 0 && (hours > 0 || minutes > 0)) {
+      parts.push(`${minutes} minute${minutes === 1 ? '' : 's'}`);
+    }
+    if (parts.length === 0) parts.push('less than a minute');
+
+    return parts.join(', ');
   }
 
   // Build a lookup of { tens: <flip-digit el>, ones: <flip-digit el> } per unit
@@ -63,23 +87,51 @@ document.addEventListener('DOMContentLoaded', () => {
     setDigit(digits.ones, str[1]);
   }
 
+  // Three phases:
+  //  - upcoming: booking hasn't started — show text only, flip-clock hidden
+  //  - active: booking is happening right now — flip-clock takes over,
+  //    counting down time left on the court
+  //  - over: booking's end time has passed — hide everything
   function updateCountdown() {
-    const diff = nextGameAt ? nextGameAt - new Date() : -1;
+    if (!countdownEl) return;
 
-    if (!nextGameAt || diff <= 0) {
-      updateUnit('hours', 0);
-      updateUnit('minutes', 0);
-      updateUnit('seconds', 0);
+    if (!nextGameAt) {
+      countdownEl.style.display = 'none';
+      if (countdownTextEl) countdownTextEl.textContent = '';
       return;
     }
 
-    const hours = Math.floor(diff / (1000 * 60 * 60));
-    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-    const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+    const now = new Date();
+    const untilStart = nextGameAt - now;
 
-    updateUnit('hours', hours);
-    updateUnit('minutes', minutes);
-    updateUnit('seconds', seconds);
+    if (untilStart > 0) {
+      countdownEl.style.display = 'none';
+      if (countdownTextEl) {
+        countdownTextEl.textContent = `Your turn starts in ${formatDuration(untilStart)}`;
+      }
+      return;
+    }
+
+    const untilEnd = gameEndsAt ? gameEndsAt - now : -1;
+
+    if (gameEndsAt && untilEnd > 0) {
+      countdownEl.style.display = '';
+      if (countdownTextEl) {
+        countdownTextEl.textContent = "It's your turn — enjoy the game!";
+      }
+
+      const hours = Math.floor(untilEnd / (1000 * 60 * 60));
+      const minutes = Math.floor((untilEnd % (1000 * 60 * 60)) / (1000 * 60));
+      const seconds = Math.floor((untilEnd % (1000 * 60)) / 1000);
+
+      updateUnit('hours', hours);
+      updateUnit('minutes', minutes);
+      updateUnit('seconds', seconds);
+      return;
+    }
+
+    countdownEl.style.display = 'none';
+    if (countdownTextEl) countdownTextEl.textContent = 'Your session has ended.';
   }
 
   if (countdownEl) {
@@ -92,9 +144,13 @@ document.addEventListener('DOMContentLoaded', () => {
   const msOnesEl = countdownEl ? countdownEl.querySelector('[data-unit="ms"] [data-digit="ones"]') : null;
 
   function updateMs() {
-    const diff = nextGameAt ? nextGameAt - new Date() : -1;
+    // Only ticking during the active phase (flip-clock visible) — no point
+    // animating centiseconds while we're just showing plain-language text.
+    if (!countdownEl || countdownEl.style.display === 'none' || !gameEndsAt) return;
+
+    const diff = gameEndsAt - new Date();
     // Two digits, so this shows centiseconds (00–99) rather than full 0–999ms
-    const centis = (!nextGameAt || diff <= 0) ? 0 : Math.floor((diff % 1000) / 10);
+    const centis = diff <= 0 ? 0 : Math.floor((diff % 1000) / 10);
     const str = pad(centis);
     if (msTensEl) msTensEl.textContent = str[0];
     if (msOnesEl) msOnesEl.textContent = str[1];

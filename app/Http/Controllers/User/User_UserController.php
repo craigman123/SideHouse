@@ -12,9 +12,6 @@ class User_UserController extends Controller
 {
     private const OPEN_HOUR = 16;  
     private const CLOSE_HOUR = 7;
-
-    // Booking granularity: both start times and durations are offered in
-    // 15-minute increments, from a 1hr minimum up to a 3hr maximum booking.
     private const BOOKING_STEP_MINUTES = 15;
     private const MIN_DURATION_HOURS = 1;
     private const MAX_DURATION_HOURS = 3;

@@ -4,7 +4,29 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const availabilityUrl = grid.dataset.availabilityUrl;
     const storeUrl = grid.dataset.storeUrl;
-    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+
+    // Prefer the <meta name="csrf-token"> tag if the layout has one, but
+    // fall back to Laravel's XSRF-TOKEN cookie (set automatically on every
+    // response by the VerifyCsrfToken middleware, no template changes
+    // needed) so a missing/stale meta tag can't cause a 419 mismatch.
+    function getCookie(name) {
+        const match = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)'));
+        return match ? decodeURIComponent(match[1]) : null;
+    }
+
+    function csrfHeaders() {
+        const metaToken = document.querySelector('meta[name="csrf-token"]')?.content;
+        if (metaToken) {
+            return { 'X-CSRF-TOKEN': metaToken };
+        }
+
+        const cookieToken = getCookie('XSRF-TOKEN');
+        if (cookieToken) {
+            return { 'X-XSRF-TOKEN': cookieToken };
+        }
+
+        return {};
+    }
 
     // Operating hours now come from the server (see #courtGrid data attributes,
     // set from User_UserController::OPEN_HOUR / CLOSE_HOUR) so the frontend
@@ -25,6 +47,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const infoModal = document.getElementById('courtInfoModal');
     const bookingModal = document.getElementById('courtBookingModal');
+    const paymentModal = document.getElementById('courtPaymentModal');
 
     const modalCourtName = document.getElementById('modalCourtName');
     const modalCourtNameBooking = document.getElementById('modalCourtNameBooking');
@@ -41,7 +64,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const timeSlotGrid = document.getElementById('timeSlotGrid');
     const durationSection = document.getElementById('durationSection');
     const durationGrid = document.getElementById('durationGrid');
-    const paymentSection = document.getElementById('paymentSection');
+    const continueToPaymentBtn = document.getElementById('continueToPayment');
     const paymentGrid = document.getElementById('paymentGrid');
     const bookingSummary = document.getElementById('bookingSummary');
     const summaryDate = document.getElementById('summaryDate');
@@ -95,6 +118,23 @@ document.addEventListener('DOMContentLoaded', () => {
         bookingModal.classList.remove('open');
     }
 
+    function reopenBookingModal() {
+        // Used when returning from the payment modal — keeps whatever
+        // date/time/duration was already picked instead of wiping it.
+        bookingModal.classList.add('open');
+    }
+
+    function openPaymentModal() {
+        selectedPayment = null;
+        paymentGrid.querySelectorAll('.payment-btn').forEach((el) => el.classList.remove('selected'));
+        updateSummary();
+        paymentModal.classList.add('open');
+    }
+
+    function closePaymentModal() {
+        paymentModal.classList.remove('open');
+    }
+
     function resetBookingState() {
         selectedDate = null;
         selectedStart = null;
@@ -104,8 +144,6 @@ document.addEventListener('DOMContentLoaded', () => {
         calendarCursor = new Date();
         timeSection.hidden = true;
         durationSection.hidden = true;
-        paymentSection.hidden = true;
-        bookingSummary.hidden = true;
     }
 
     // ---------- Duration button setup (15-minute increments) ----------
@@ -162,6 +200,11 @@ document.addEventListener('DOMContentLoaded', () => {
         if (e.target === bookingModal) closeBookingModal();
     });
 
+    document.getElementById('courtPaymentModalClose').addEventListener('click', closePaymentModal);
+    paymentModal.addEventListener('click', (e) => {
+        if (e.target === paymentModal) closePaymentModal();
+    });
+
     document.getElementById('goToBooking').addEventListener('click', () => {
         closeInfoModal();
         openBookingModal();
@@ -174,6 +217,26 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('backToInfo2').addEventListener('click', () => {
         closeBookingModal();
         openInfoModal(selectedCourt);
+    });
+
+    continueToPaymentBtn.addEventListener('click', () => {
+        const missing = getMissingBookingRequirements();
+        if (missing.length > 0) {
+            showToast(`Please select ${formatList(missing)} to continue.`, 'error');
+            return;
+        }
+
+        closeBookingModal();
+        openPaymentModal();
+    });
+
+    document.getElementById('backToBooking').addEventListener('click', () => {
+        closePaymentModal();
+        reopenBookingModal();
+    });
+    document.getElementById('backToBooking2').addEventListener('click', () => {
+        closePaymentModal();
+        reopenBookingModal();
     });
 
     // ---------- Calendar ----------
@@ -232,10 +295,7 @@ document.addEventListener('DOMContentLoaded', () => {
         selectedDate = dateStr;
         selectedStart = null;
         selectedDuration = null;
-        selectedPayment = null;
         durationSection.hidden = true;
-        paymentSection.hidden = true;
-        bookingSummary.hidden = true;
 
         calendarGrid.querySelectorAll('.calendar-day').forEach((el) => el.classList.remove('selected'));
         btn.classList.add('selected');
@@ -291,11 +351,18 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function isSlotBooked(slotSinceOpen) {
+        // Reject the slot if the *shortest possible* booking starting here
+        // (DURATION_MIN hours) would overlap an existing booking — not just
+        // if this exact instant falls inside one. Otherwise a start time
+        // could be "available" while every valid duration from it is
+        // actually blocked (e.g. picking 6:45 PM next to a 7:00 PM booking).
+        const slotEnd = slotSinceOpen + DURATION_MIN * 60;
+
         return bookedRanges.some((r) => {
             const rangeStart = minutesSinceOpen(r.start);
             let rangeEnd = minutesSinceOpen(r.end);
             if (rangeEnd <= rangeStart) rangeEnd += 1440; // range wraps past midnight
-            return slotSinceOpen >= rangeStart && slotSinceOpen < rangeEnd;
+            return slotSinceOpen < rangeEnd && slotEnd > rangeStart;
         });
     }
 
@@ -317,6 +384,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (isSlotBooked(offset)) {
                 btn.disabled = true;
+                btn.dataset.tooltip = 'Reserved — already booked by another player';
             } else {
                 btn.addEventListener('click', () => selectStart(timeStr, btn));
             }
@@ -330,9 +398,6 @@ document.addEventListener('DOMContentLoaded', () => {
     function selectStart(timeStr, btn) {
         selectedStart = timeStr;
         selectedDuration = null;
-        selectedPayment = null;
-        paymentSection.hidden = true;
-        bookingSummary.hidden = true;
 
         timeSlotGrid.querySelectorAll('.time-slot-btn').forEach((el) => el.classList.remove('selected'));
         btn.classList.add('selected');
@@ -369,18 +434,13 @@ document.addEventListener('DOMContentLoaded', () => {
         selectedDuration = parseFloat(btn.dataset.hours);
         durationGrid.querySelectorAll('.duration-btn').forEach((el) => el.classList.remove('selected'));
         btn.classList.add('selected');
-
-        selectedPayment = null;
-        paymentGrid.querySelectorAll('.payment-btn').forEach((el) => el.classList.remove('selected'));
-        bookingSummary.hidden = true;
-        paymentSection.hidden = false;
     });
 
     // ---------- Payment method ----------
 
     paymentGrid.addEventListener('click', (e) => {
         const btn = e.target.closest('.payment-btn');
-        if (!btn) return;
+        if (!btn || btn.disabled) return;
 
         selectedPayment = btn.dataset.method;
         paymentGrid.querySelectorAll('.payment-btn').forEach((el) => el.classList.remove('selected'));
@@ -413,20 +473,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
         summaryDate.textContent = formatDate(selectedDate);
         summaryTime.textContent = `${formatTime(selectedStart)} – ${formatTime(endTimeStr)}`;
-        summaryPayment.textContent = PAYMENT_LABELS[selectedPayment] || '';
+        summaryPayment.textContent = selectedPayment ? PAYMENT_LABELS[selectedPayment] : '—';
         summaryTotal.textContent = `₱${(selectedCourt.price * selectedDuration).toLocaleString()}`;
-
-        bookingSummary.hidden = false;
     }
 
     // ---------- Requirements validation + confirm ----------
 
-    function getMissingRequirements() {
+    function getMissingBookingRequirements() {
         const missing = [];
         if (!selectedDate) missing.push('a date');
         if (!selectedStart) missing.push('a start time');
         if (!selectedDuration) missing.push('a duration');
-        if (!selectedPayment) missing.push('a payment method');
         return missing;
     }
 
@@ -437,13 +494,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     confirmBtn.addEventListener('click', async () => {
-        const missing = getMissingRequirements();
-        if (missing.length > 0) {
-            showToast(`Please select ${formatList(missing)} to continue.`, 'error');
+        if (!selectedPayment) {
+            showToast('Please select a payment method to continue.', 'error');
             return;
         }
 
-        if (!selectedCourt) return;
+        if (!selectedCourt || !selectedDate || !selectedStart || !selectedDuration) return;
 
         confirmBtn.disabled = true;
         const originalLabel = confirmBtn.textContent;
@@ -455,7 +511,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 headers: {
                     'Content-Type': 'application/json',
                     Accept: 'application/json',
-                    'X-CSRF-TOKEN': csrfToken,
+                    ...csrfHeaders(),
                 },
                 body: JSON.stringify({
                     court_id: selectedCourt.id,
@@ -468,23 +524,32 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const data = await res.json();
 
+            if (res.status === 419) {
+                showToast('Your session expired. Reloading the page…', 'error');
+                setTimeout(() => window.location.reload(), 1200);
+                return;
+            }
+
             if (!res.ok) {
                 showToast(data.message || 'That slot is no longer available.', 'error');
-                bookedRanges = await fetchAvailability(selectedDate);
-                renderTimeSlots();
-                durationSection.hidden = true;
-                paymentSection.hidden = true;
-                bookingSummary.hidden = true;
+
                 selectedStart = null;
                 selectedDuration = null;
                 selectedPayment = null;
+                durationSection.hidden = true;
+
+                closePaymentModal();
+                bookedRanges = await fetchAvailability(selectedDate);
+                renderTimeSlots();
+                reopenBookingModal();
+
                 confirmBtn.disabled = false;
                 confirmBtn.textContent = originalLabel;
                 return;
             }
 
             showToast(data.message || 'Booking confirmed!', 'success');
-            closeBookingModal();
+            closePaymentModal();
             setTimeout(() => window.location.reload(), 900);
         } catch (err) {
             console.error(err);

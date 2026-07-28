@@ -6,6 +6,14 @@
 @push('styles')
     <link rel="stylesheet" href="{{ asset('css/dashboard.css') }}">
     <link rel="stylesheet" href="{{ asset('css/user-dashboard.css') }}">
+    <style>
+        .countdown-text {
+            font-size: 14px;
+            font-weight: 600;
+            color: #3fb950;
+            margin: 4px 0 14px;
+        }
+    </style>
 @endpush
 
 @section('content')
@@ -25,7 +33,9 @@
                 <p class="hero-meta">Book a court to see it here.</p>
             @endif
 
-            <div class="countdown flip-clock" id="countdown" aria-live="polite" data-next="{{ $nextBooking ? \Carbon\Carbon::parse($nextBooking->date . ' ' . $nextBooking->start_time)->toIso8601String() : '' }}">
+            <p class="countdown-text" id="countdownText" aria-live="polite"></p>
+
+            <div class="countdown flip-clock" id="countdown" aria-live="polite" data-next="{{ $nextBookingIso ?? '' }}" data-end="{{ $nextBookingEndIso ?? '' }}">
                 <div class="countdown-unit">
                     <div class="flip-group" data-unit="hours">
                         <div class="flip-digit" data-digit="tens">

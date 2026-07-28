@@ -10,12 +10,14 @@ class Booking extends Model
     use HasFactory;
 
     protected $fillable = [
+        'user_id',
         'customer_name',
         'court_id',
         'date',
         'start_time',
         'end_time',
         'amount',
+        'payment_method',
         'status',
     ];
 
@@ -23,6 +25,16 @@ class Booking extends Model
         'date' => 'date',
         'amount' => 'decimal:2',
     ];
+
+    public function user()
+    {
+        return $this->belongsTo(User::class, 'user_id', 'user_id');
+    }
+
+    public function court()
+    {
+        return $this->belongsTo(Court::class);
+    }
 
     public function scopeStatus($query, $status)
     {

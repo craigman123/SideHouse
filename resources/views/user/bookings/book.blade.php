@@ -90,7 +90,7 @@
         </div>
     </div>
 
-    {{-- Modal 2: calendar → time → duration → confirm --}}
+    {{-- Modal 2: calendar → time → duration --}}
     <div class="modal-overlay" id="courtBookingModal">
         <div class="modal-box modal-box-lg modal-box-scrollable">
             <div class="modal-header">
@@ -125,30 +125,49 @@
                     <p class="booking-section-label">3. How long?</p>
                     <div class="duration-grid" id="durationGrid"></div>
                 </div>
+            </div>
 
-                <div class="booking-section" id="paymentSection" hidden>
-                    <p class="booking-section-label">4. How will you pay?</p>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-secondary" id="backToInfo2">Back</button>
+                <button type="button" class="btn btn-primary" id="continueToPayment">Continue to Payment</button>
+            </div>
+        </div>
+    </div>
+
+    {{-- Modal 3: payment method → confirm --}}
+    <div class="modal-overlay" id="courtPaymentModal">
+        <div class="modal-box modal-box-lg modal-box-scrollable">
+            <div class="modal-header">
+                <h3>Payment</h3>
+                <button type="button" class="modal-close" id="courtPaymentModalClose" aria-label="Close">&times;</button>
+            </div>
+
+            <button type="button" class="modal-back" id="backToBooking">&larr; Back to date &amp; time</button>
+
+            <div class="modal-scroll-body">
+                <div class="booking-section">
+                    <p class="booking-section-label">How will you pay?</p>
                     <div class="payment-grid" id="paymentGrid">
                         <button type="button" class="payment-btn" data-method="arrival">
                             <span class="payment-btn-title">Pay on Arrival</span>
                             <span class="payment-btn-sub">Settle cash at the counter</span>
                         </button>
-                        <button type="button" class="payment-btn" data-method="ewallet">
+                        <button type="button" class="payment-btn" data-method="ewallet" disabled>
                             <span class="payment-btn-title">E-Wallet</span>
-                            <span class="payment-btn-sub">GCash, Maya, and similar</span>
+                            <span class="payment-btn-sub">Coming soon</span>
                         </button>
                     </div>
                 </div>
 
-                <div class="booking-summary" id="bookingSummary" hidden>
+                <div class="booking-summary" id="bookingSummary">
                     <p><span id="summaryDate"></span> &middot; <span id="summaryTime"></span></p>
-                    <p>Payment: <strong id="summaryPayment"></strong></p>
+                    <p>Payment: <strong id="summaryPayment">&mdash;</strong></p>
                     <p class="booking-summary-total">Total: <strong id="summaryTotal"></strong></p>
                 </div>
             </div>
 
             <div class="modal-actions">
-                <button type="button" class="btn btn-secondary" id="backToInfo2">Back</button>
+                <button type="button" class="btn btn-secondary" id="backToBooking2">Back</button>
                 <button type="button" class="btn btn-primary" id="confirmBooking">Confirm Booking</button>
             </div>
         </div>

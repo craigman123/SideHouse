@@ -86,7 +86,8 @@
 }
 
 #courtInfoModal,
-#courtBookingModal {
+#courtBookingModal,
+#courtPaymentModal {
     display: flex;
     opacity: 0;
     visibility: hidden;
@@ -95,20 +96,23 @@
 }
 
 #courtInfoModal.open,
-#courtBookingModal.open {
+#courtBookingModal.open,
+#courtPaymentModal.open {
     opacity: 1;
     visibility: visible;
     pointer-events: auto;
 }
 
 #courtInfoModal .modal-box,
-#courtBookingModal .modal-box {
+#courtBookingModal .modal-box,
+#courtPaymentModal .modal-box {
     transform: translateY(16px) scale(0.97);
     transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 #courtInfoModal.open .modal-box,
-#courtBookingModal.open .modal-box {
+#courtBookingModal.open .modal-box,
+#courtPaymentModal.open .modal-box {
     transform: translateY(0) scale(1);
 }
 
@@ -366,7 +370,53 @@
     font-size: 12px;
     font-weight: 700;
     cursor: pointer;
+    position: relative;
     transition: transform 0.15s ease, border-color 0.15s ease, background-color 0.15s ease, color 0.15s ease;
+}
+
+.time-slot-btn[data-tooltip]:hover::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    margin-bottom: 8px;
+    background-color: #21262d;
+    color: #f0f6fc;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 6px 10px;
+    border-radius: 6px;
+    white-space: nowrap;
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
+    pointer-events: none;
+    z-index: 10;
+    animation: tooltipFade 0.15s ease both;
+}
+
+.time-slot-btn[data-tooltip]:hover::before {
+    content: '';
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    margin-bottom: 3px;
+    border: 5px solid transparent;
+    border-top-color: #21262d;
+    pointer-events: none;
+    z-index: 10;
+    animation: tooltipFade 0.15s ease both;
+}
+
+@keyframes tooltipFade {
+    from {
+        opacity: 0;
+        transform: translate(-50%, 4px);
+    }
+    to {
+        opacity: 1;
+        transform: translate(-50%, 0);
+    }
 }
 
 .time-slot-btn:hover:not(:disabled) {
@@ -481,6 +531,21 @@
 
 .payment-btn.selected .payment-btn-sub {
     color: rgba(255, 255, 255, 0.85);
+}
+
+.payment-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.payment-btn:disabled:hover {
+    border-color: #21262d;
+    color: #c9d1d9;
+}
+
+.payment-btn:disabled:hover .payment-btn-sub {
+    color: #8b949e;
 }
 
 /* Summary */
