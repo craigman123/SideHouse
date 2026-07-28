@@ -21,10 +21,16 @@
         </div>
 
         <nav class="sidebar-nav">
+            <label class="nav-label">Main</label>
             <a href="{{ route('user.dashboard') }}" class="{{ request()->routeIs('user.dashboard') ? 'active' : '' }}">Overview</a>
+
+            <label class="nav-label">Bookings</label>
             <a href="/book" class="{{ request()->is('book') ? 'active' : '' }}">Book a Court</a>
             <a href="/my-bookings" class="{{ request()->is('my-bookings') ? 'active' : '' }}">My Bookings</a>
+
+            <label class="nav-label">Personal</label>
             <a href="/profile" class="{{ request()->is('profile') ? 'active' : '' }}">Profile</a>
+            <a href="notifications" class="{{ request()->is('notifications') ? 'active' : '' }}">Notifications</a>
         </nav>
 
         <div class="sidebar-profile">

@@ -27,9 +27,11 @@ class UserDashboardController extends Controller
         $nextBooking = $upcomingBookings->first();
         $userName = $userInfo->name;
 
-        // Adjust the column names below (name/type/price/length/width) to match
-        // your actual courts table if they're named differently.
-        $courts = Court::orderBy('name')->get();
+        // Only active courts should show up here — maintenance/inactive
+        // courts are excluded until an admin flips their status back.
+        $courts = Court::where('status', 'active')
+            ->orderBy('name')
+            ->get();
 
         return view('user.user-dashboard', compact(
             'userName',

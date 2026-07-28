@@ -1,0 +1,394 @@
+/* Book a Court Page Styles
+   Loads alongside app.css + user-navbar.css (shell), dashboard.css
+   (panel/court-grid/court-card), and user-dashboard.css (modal-overlay,
+   modal-box, btn, etc). Only page-specific booking-flow styles live here. */
+
+.panel-subtext {
+    font-size: 13px;
+    color: #8b949e;
+    margin-top: 4px;
+    margin-bottom: 16px;
+}
+
+/* ---------- Court cards as buttons ---------- */
+
+.court-card-clickable {
+    cursor: pointer;
+    text-align: left;
+    font: inherit;
+    color: inherit;
+    padding: 0;
+    width: 100%;
+    display: block;
+}
+
+.court-card-clickable:focus-visible {
+    outline: 2px solid #3fb950;
+    outline-offset: 2px;
+}
+
+/* ---------- Motion polish ---------- */
+
+@keyframes courtCardIn {
+    from {
+        opacity: 0;
+        transform: translateY(14px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+#courtGrid .court-card-clickable {
+    border-top: 3px solid #3fb950;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+    animation: courtCardIn 0.4s ease both;
+}
+
+#courtGrid .court-card-clickable:nth-child(1) { animation-delay: 0.02s; }
+#courtGrid .court-card-clickable:nth-child(2) { animation-delay: 0.08s; }
+#courtGrid .court-card-clickable:nth-child(3) { animation-delay: 0.14s; }
+#courtGrid .court-card-clickable:nth-child(4) { animation-delay: 0.2s; }
+#courtGrid .court-card-clickable:nth-child(5) { animation-delay: 0.26s; }
+#courtGrid .court-card-clickable:nth-child(n+6) { animation-delay: 0.3s; }
+
+#courtGrid .court-card-clickable:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 26px rgba(0, 0, 0, 0.35);
+    border-color: #56d364;
+}
+
+#courtGrid .court-card-clickable:active {
+    transform: translateY(-2px);
+}
+
+#courtGrid .court-card-graphic svg {
+    transition: transform 0.3s ease;
+}
+
+#courtGrid .court-card-clickable:hover .court-card-graphic svg {
+    transform: scale(1.05);
+}
+
+#courtGrid .court-price {
+    transition: color 0.2s ease;
+}
+
+#courtGrid .court-card-clickable:hover .court-price {
+    color: #56d364;
+}
+
+/* ---------- Larger modal variant for the booking flow ---------- */
+
+.modal-box-lg {
+    max-width: 560px;
+}
+
+#courtModal {
+    display: flex;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity 0.2s ease, visibility 0.2s ease;
+}
+
+#courtModal.open {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+}
+
+#courtModal .modal-box {
+    transform: translateY(16px) scale(0.97);
+    transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+#courtModal.open .modal-box {
+    transform: translateY(0) scale(1);
+}
+
+.modal-step {
+    display: block;
+}
+
+.modal-back {
+    background: none;
+    border: none;
+    color: #8b949e;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    padding: 0;
+    margin-bottom: 16px;
+}
+
+.modal-back:hover {
+    color: #3fb950;
+}
+
+/* ---------- Step 1: court info ---------- */
+
+.court-modal-graphic {
+    width: 100px;
+    margin: 0 auto 16px;
+}
+
+.court-modal-graphic svg {
+    width: 100%;
+    height: auto;
+    display: block;
+}
+
+.court-modal-details {
+    margin-bottom: 20px;
+}
+
+.court-modal-details .court-type-badge {
+    display: block;
+    width: fit-content;
+    margin: 0 auto 14px;
+}
+
+.court-modal-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 14px;
+    padding: 8px 0;
+    border-bottom: 1px solid #21262d;
+    color: #8b949e;
+}
+
+.court-modal-row strong {
+    color: #f0f6fc;
+    font-weight: 700;
+}
+
+/* ---------- Step 2: booking sections ---------- */
+
+.booking-section {
+    margin-bottom: 20px;
+}
+
+.booking-section:not([hidden]) {
+    animation: courtCardIn 0.3s ease both;
+}
+
+.booking-section-label {
+    font-size: 13px;
+    font-weight: 700;
+    color: #f0f6fc;
+    margin-bottom: 10px;
+}
+
+.loading-text {
+    color: #6e7681;
+    font-size: 13px;
+}
+
+/* Calendar */
+
+.calendar-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+}
+
+.calendar-header span {
+    font-weight: 700;
+    color: #f0f6fc;
+    font-size: 14px;
+}
+
+.calendar-nav {
+    background: none;
+    border: 1px solid #30363d;
+    border-radius: 6px;
+    color: #c9d1d9;
+    width: 28px;
+    height: 28px;
+    cursor: pointer;
+    font-size: 16px;
+    line-height: 1;
+}
+
+.calendar-nav:hover {
+    border-color: #3fb950;
+    color: #3fb950;
+}
+
+.calendar-weekdays {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    text-align: center;
+    font-size: 11px;
+    font-weight: 700;
+    color: #6e7681;
+    margin-bottom: 6px;
+}
+
+.calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 4px;
+}
+
+.calendar-day {
+    aspect-ratio: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #0d1117;
+    border: 1px solid #21262d;
+    border-radius: 6px;
+    color: #c9d1d9;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.15s ease, border-color 0.15s ease, background-color 0.15s ease, color 0.15s ease;
+}
+
+.calendar-day:hover:not(:disabled) {
+    border-color: #3fb950;
+    color: #3fb950;
+    transform: translateY(-2px);
+}
+
+.calendar-day.calendar-day-today {
+    border-color: #3fb950;
+}
+
+.calendar-day.selected {
+    background-color: #238636;
+    border-color: #238636;
+    color: #fff;
+    transform: scale(1.05);
+}
+
+.calendar-day:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+}
+
+.calendar-day-empty {
+    visibility: hidden;
+    pointer-events: none;
+}
+
+/* Time slots */
+
+.time-slot-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
+    gap: 8px;
+}
+
+.time-slot-btn {
+    padding: 8px 6px;
+    background-color: #0d1117;
+    border: 1px solid #21262d;
+    border-radius: 6px;
+    color: #c9d1d9;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: transform 0.15s ease, border-color 0.15s ease, background-color 0.15s ease, color 0.15s ease;
+}
+
+.time-slot-btn:hover:not(:disabled) {
+    border-color: #3fb950;
+    color: #3fb950;
+    transform: translateY(-2px);
+}
+
+.time-slot-btn.selected {
+    background-color: #238636;
+    border-color: #238636;
+    color: #fff;
+    transform: scale(1.05);
+}
+
+.time-slot-btn:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+    text-decoration: line-through;
+}
+
+/* Duration */
+
+.duration-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.duration-btn {
+    padding: 10px 16px;
+    background-color: #0d1117;
+    border: 1px solid #21262d;
+    border-radius: 8px;
+    color: #c9d1d9;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: transform 0.15s ease, border-color 0.15s ease, background-color 0.15s ease, color 0.15s ease;
+}
+
+.duration-btn:hover:not(:disabled) {
+    border-color: #3fb950;
+    color: #3fb950;
+    transform: translateY(-2px);
+}
+
+.duration-btn.selected {
+    background-color: #238636;
+    border-color: #238636;
+    color: #fff;
+    transform: scale(1.05);
+}
+
+.duration-btn:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+}
+
+/* Summary */
+
+.booking-summary {
+    background-color: #0d1117;
+    border: 1px solid #30363d;
+    border-radius: 8px;
+    padding: 14px 16px;
+    margin-bottom: 4px;
+    font-size: 13px;
+    color: #c9d1d9;
+}
+
+.booking-summary:not([hidden]) {
+    animation: courtCardIn 0.3s ease both;
+}
+
+.booking-summary-total {
+    margin-top: 6px;
+    font-size: 15px;
+    font-weight: 800;
+    color: #3fb950;
+}
+
+/* ---------- Responsive ---------- */
+
+@media (max-width: 480px) {
+    .time-slot-grid {
+        grid-template-columns: repeat(auto-fill, minmax(70px, 1fr));
+    }
+
+    .calendar-day {
+        font-size: 11px;
+    }
+
+    .duration-btn {
+        padding: 8px 12px;
+        font-size: 12px;
+    }
+}

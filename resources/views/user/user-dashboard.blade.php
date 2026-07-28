@@ -145,9 +145,9 @@
                     </div>
                     <div class="court-card-body">
                         <h3>{{ $court->name }}</h3>
-                        <span class="court-type-badge">{{ $court->type }}</span>
+                        <span class="court-type-badge">{{ $court->surface_type ?? 'Court' }}</span>
                         <p class="court-dimensions">{{ $court->length }}m &times; {{ $court->width }}m</p>
-                        <p class="court-price">&#8369;{{ number_format($court->price, 0) }} <span>/ hour</span></p>
+                        <p class="court-price">&#8369;{{ number_format($court->hourly_rate, 0) }} <span>/ hour</span></p>
                     </div>
                 </div>
             @empty

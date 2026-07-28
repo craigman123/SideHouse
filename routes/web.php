@@ -6,6 +6,7 @@ use App\Http\Controllers\Admin\CourtController;
 use App\Http\Controllers\Admin\Admin_DashboardController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\User\UserDashboardController;
+use App\Http\Controllers\User\User_UserController;
 
 Route::get('/', function () {
     return view('landing');
@@ -32,4 +33,9 @@ Route::middleware('auth')->group(function () {
 
 Route::middleware('auth')->group(function () {
     Route::get('/my-dashboard', [UserDashboardController::class, 'index'])->name('user.dashboard');
+
+    // Book a court
+    Route::get('/book', [User_UserController::class, 'createBooking'])->name('book.index');
+    Route::get('/book/availability', [User_UserController::class, 'availability'])->name('book.availability');
+    Route::post('/book', [User_UserController::class, 'storeBooking'])->name('book.store');
 });
