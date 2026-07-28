@@ -20,6 +20,11 @@
             id="courtGrid"
             data-availability-url="{{ route('book.availability') }}"
             data-store-url="{{ route('book.store') }}"
+            data-open-hour="{{ $openHour }}"
+            data-close-hour="{{ $closeHour }}"
+            data-min-duration="{{ $minDuration }}"
+            data-max-duration="{{ $maxDuration }}"
+            data-step-minutes="{{ $stepMinutes }}"
         >
             @forelse ($courts as $court)
                 <button
@@ -55,40 +60,47 @@
         </div>
     </div>
 
-    <div class="modal-overlay" id="courtModal">
+    {{-- Modal 1: court info --}}
+    <div class="modal-overlay" id="courtInfoModal">
         <div class="modal-box modal-box-lg">
             <div class="modal-header">
                 <h3 id="modalCourtName">Court</h3>
-                <button type="button" class="modal-close" id="courtModalClose" aria-label="Close">&times;</button>
+                <button type="button" class="modal-close" id="courtInfoModalClose" aria-label="Close">&times;</button>
             </div>
 
-            {{-- Step 1: court details --}}
-            <div class="modal-step" id="stepInfo">
-                <div class="court-modal-graphic" aria-hidden="true">
-                    <svg viewBox="0 0 120 160" xmlns="http://www.w3.org/2000/svg">
-                        <rect x="2" y="2" width="116" height="156" rx="6" class="court-mini-surface" />
-                        <rect x="12" y="12" width="96" height="136" class="court-mini-boundary" />
-                        <line x1="12" y1="80" x2="108" y2="80" class="court-mini-line court-mini-net" />
-                        <line x1="12" y1="48" x2="108" y2="48" class="court-mini-line" />
-                        <line x1="12" y1="112" x2="108" y2="112" class="court-mini-line" />
-                        <line x1="60" y1="12" x2="60" y2="148" class="court-mini-line" />
-                    </svg>
-                </div>
-                <div class="court-modal-details">
-                    <span class="court-type-badge" id="modalCourtType"></span>
-                    <p class="court-modal-row"><span>Dimensions</span><strong id="modalCourtDim"></strong></p>
-                    <p class="court-modal-row"><span>Rate</span><strong id="modalCourtPrice"></strong></p>
-                </div>
-                <div class="modal-actions">
-                    <button type="button" class="btn btn-secondary" id="stepInfoClose">Close</button>
-                    <button type="button" class="btn btn-primary" id="goToBooking">Book This Court</button>
-                </div>
+            <div class="court-modal-graphic" aria-hidden="true">
+                <svg viewBox="0 0 120 160" xmlns="http://www.w3.org/2000/svg">
+                    <rect x="2" y="2" width="116" height="156" rx="6" class="court-mini-surface" />
+                    <rect x="12" y="12" width="96" height="136" class="court-mini-boundary" />
+                    <line x1="12" y1="80" x2="108" y2="80" class="court-mini-line court-mini-net" />
+                    <line x1="12" y1="48" x2="108" y2="48" class="court-mini-line" />
+                    <line x1="12" y1="112" x2="108" y2="112" class="court-mini-line" />
+                    <line x1="60" y1="12" x2="60" y2="148" class="court-mini-line" />
+                </svg>
+            </div>
+            <div class="court-modal-details">
+                <span class="court-type-badge" id="modalCourtType"></span>
+                <p class="court-modal-row"><span>Dimensions</span><strong id="modalCourtDim"></strong></p>
+                <p class="court-modal-row"><span>Rate</span><strong id="modalCourtPrice"></strong></p>
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-secondary" id="stepInfoClose">Close</button>
+                <button type="button" class="btn btn-primary" id="goToBooking">Book This Court</button>
+            </div>
+        </div>
+    </div>
+
+    {{-- Modal 2: calendar → time → duration → confirm --}}
+    <div class="modal-overlay" id="courtBookingModal">
+        <div class="modal-box modal-box-lg modal-box-scrollable">
+            <div class="modal-header">
+                <h3 id="modalCourtNameBooking">Book a Court</h3>
+                <button type="button" class="modal-close" id="courtBookingModalClose" aria-label="Close">&times;</button>
             </div>
 
-            {{-- Step 2: calendar → time → duration → confirm --}}
-            <div class="modal-step" id="stepBooking" hidden>
-                <button type="button" class="modal-back" id="backToInfo">&larr; Back to details</button>
+            <button type="button" class="modal-back" id="backToInfo">&larr; Back to details</button>
 
+            <div class="modal-scroll-body">
                 <div class="booking-section">
                     <p class="booking-section-label">1. Pick a date</p>
                     <div class="calendar">
@@ -111,23 +123,33 @@
 
                 <div class="booking-section" id="durationSection" hidden>
                     <p class="booking-section-label">3. How long?</p>
-                    <div class="duration-grid" id="durationGrid">
-                        <button type="button" class="duration-btn" data-hours="1">1 hr</button>
-                        <button type="button" class="duration-btn" data-hours="1.5">1.5 hrs</button>
-                        <button type="button" class="duration-btn" data-hours="2">2 hrs</button>
-                        <button type="button" class="duration-btn" data-hours="3">3 hrs</button>
+                    <div class="duration-grid" id="durationGrid"></div>
+                </div>
+
+                <div class="booking-section" id="paymentSection" hidden>
+                    <p class="booking-section-label">4. How will you pay?</p>
+                    <div class="payment-grid" id="paymentGrid">
+                        <button type="button" class="payment-btn" data-method="arrival">
+                            <span class="payment-btn-title">Pay on Arrival</span>
+                            <span class="payment-btn-sub">Settle cash at the counter</span>
+                        </button>
+                        <button type="button" class="payment-btn" data-method="ewallet">
+                            <span class="payment-btn-title">E-Wallet</span>
+                            <span class="payment-btn-sub">GCash, Maya, and similar</span>
+                        </button>
                     </div>
                 </div>
 
                 <div class="booking-summary" id="bookingSummary" hidden>
                     <p><span id="summaryDate"></span> &middot; <span id="summaryTime"></span></p>
+                    <p>Payment: <strong id="summaryPayment"></strong></p>
                     <p class="booking-summary-total">Total: <strong id="summaryTotal"></strong></p>
                 </div>
+            </div>
 
-                <div class="modal-actions">
-                    <button type="button" class="btn btn-secondary" id="backToInfo2">Back</button>
-                    <button type="button" class="btn btn-primary" id="confirmBooking" disabled>Confirm Booking</button>
-                </div>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-secondary" id="backToInfo2">Back</button>
+                <button type="button" class="btn btn-primary" id="confirmBooking">Confirm Booking</button>
             </div>
         </div>
     </div>

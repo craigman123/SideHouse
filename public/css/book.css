@@ -85,7 +85,8 @@
     max-width: 560px;
 }
 
-#courtModal {
+#courtInfoModal,
+#courtBookingModal {
     display: flex;
     opacity: 0;
     visibility: hidden;
@@ -93,23 +94,72 @@
     transition: opacity 0.2s ease, visibility 0.2s ease;
 }
 
-#courtModal.open {
+#courtInfoModal.open,
+#courtBookingModal.open {
     opacity: 1;
     visibility: visible;
     pointer-events: auto;
 }
 
-#courtModal .modal-box {
+#courtInfoModal .modal-box,
+#courtBookingModal .modal-box {
     transform: translateY(16px) scale(0.97);
     transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
-#courtModal.open .modal-box {
+#courtInfoModal.open .modal-box,
+#courtBookingModal.open .modal-box {
     transform: translateY(0) scale(1);
 }
 
-.modal-step {
-    display: block;
+/* The booking modal can get tall (calendar + times + durations + summary),
+   so its box is a fixed-height flex column: header and back-link stay put,
+   only .modal-scroll-body scrolls, and the action buttons stay pinned as a
+   real footer — nothing can spill out from underneath them. */
+
+.modal-box-scrollable {
+    display: flex;
+    flex-direction: column;
+    max-height: 88vh;
+    overflow: hidden;
+}
+
+.modal-box-scrollable .modal-header,
+.modal-box-scrollable .modal-back {
+    flex-shrink: 0;
+}
+
+.modal-scroll-body {
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    flex: 1 1 auto;
+    min-height: 0;
+    margin: 0 -8px;
+    padding: 0 8px;
+}
+
+.modal-scroll-body::-webkit-scrollbar {
+    width: 8px;
+}
+
+.modal-scroll-body::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.modal-scroll-body::-webkit-scrollbar-thumb {
+    background-color: #30363d;
+    border-radius: 8px;
+}
+
+.modal-scroll-body::-webkit-scrollbar-thumb:hover {
+    background-color: #3fb950;
+}
+
+.modal-box-scrollable .modal-actions {
+    flex-shrink: 0;
+    border-top: 1px solid #21262d;
+    padding-top: 16px;
+    margin-top: 16px;
 }
 
 .modal-back {
@@ -184,6 +234,29 @@
 .loading-text {
     color: #6e7681;
     font-size: 13px;
+}
+
+/* Skeleton loading state for time slots */
+
+@keyframes skeletonShimmer {
+    0% { background-position: -120px 0; }
+    100% { background-position: 120px 0; }
+}
+
+.time-slot-skeleton {
+    height: 34px;
+    border-radius: 6px;
+    background-color: #0d1117;
+    background-image: linear-gradient(
+        90deg,
+        #0d1117 0%,
+        #21262d 40%,
+        #21262d 60%,
+        #0d1117 100%
+    );
+    background-size: 240px 100%;
+    background-repeat: no-repeat;
+    animation: skeletonShimmer 1.2s ease-in-out infinite;
 }
 
 /* Calendar */
@@ -351,6 +424,63 @@
 .duration-btn:disabled {
     opacity: 0.3;
     cursor: not-allowed;
+}
+
+/* Payment method */
+
+.payment-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.payment-btn {
+    flex: 1 1 160px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+    padding: 12px 14px;
+    background-color: #0d1117;
+    border: 1px solid #21262d;
+    border-radius: 8px;
+    color: #c9d1d9;
+    text-align: left;
+    cursor: pointer;
+    transition: transform 0.15s ease, border-color 0.15s ease, background-color 0.15s ease, color 0.15s ease;
+}
+
+.payment-btn-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: inherit;
+}
+
+.payment-btn-sub {
+    font-size: 11px;
+    color: #8b949e;
+    transition: color 0.15s ease;
+}
+
+.payment-btn:hover {
+    border-color: #3fb950;
+    color: #3fb950;
+    transform: translateY(-2px);
+}
+
+.payment-btn:hover .payment-btn-sub {
+    color: #3fb950;
+}
+
+.payment-btn.selected {
+    background-color: #238636;
+    border-color: #238636;
+    color: #fff;
+    transform: scale(1.02);
+}
+
+.payment-btn.selected .payment-btn-sub {
+    color: rgba(255, 255, 255, 0.85);
 }
 
 /* Summary */

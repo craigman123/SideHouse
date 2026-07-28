@@ -6,15 +6,28 @@ document.addEventListener('DOMContentLoaded', () => {
     const storeUrl = grid.dataset.storeUrl;
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
 
-    // Must match BookCourtController::OPEN_HOUR / CLOSE_HOUR on the backend.
-    const OPEN_HOUR = 6;
-    const CLOSE_HOUR = 22;
+    // Operating hours now come from the server (see #courtGrid data attributes,
+    // set from User_UserController::OPEN_HOUR / CLOSE_HOUR) so the frontend
+    // can't drift out of sync with the backend's actual rules.
+    const OPEN_HOUR = parseInt(grid.dataset.openHour, 10);
+    const CLOSE_HOUR = parseInt(grid.dataset.closeHour, 10);
+    const TIME_STEP_MINUTES = parseInt(grid.dataset.stepMinutes, 10);
 
-    const modal = document.getElementById('courtModal');
-    const stepInfo = document.getElementById('stepInfo');
-    const stepBooking = document.getElementById('stepBooking');
+    // Total minutes the court is open, expressed as a span starting at
+    // OPEN_HOUR (e.g. open 16:00–close 07:00 next day = 15 hours = 900 min).
+    const OPEN_SPAN_MINUTES = ((CLOSE_HOUR - OPEN_HOUR + 24) % 24 || 24) * 60;
+
+    // Duration options, in hours, from min to max in server-driven steps.
+    // Must match User_UserController::MIN_DURATION_HOURS / MAX_DURATION_HOURS.
+    const DURATION_MIN = parseFloat(grid.dataset.minDuration);
+    const DURATION_MAX = parseFloat(grid.dataset.maxDuration);
+    const DURATION_STEP = TIME_STEP_MINUTES / 60;
+
+    const infoModal = document.getElementById('courtInfoModal');
+    const bookingModal = document.getElementById('courtBookingModal');
 
     const modalCourtName = document.getElementById('modalCourtName');
+    const modalCourtNameBooking = document.getElementById('modalCourtNameBooking');
     const modalCourtType = document.getElementById('modalCourtType');
     const modalCourtDim = document.getElementById('modalCourtDim');
     const modalCourtPrice = document.getElementById('modalCourtPrice');
@@ -28,9 +41,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const timeSlotGrid = document.getElementById('timeSlotGrid');
     const durationSection = document.getElementById('durationSection');
     const durationGrid = document.getElementById('durationGrid');
+    const paymentSection = document.getElementById('paymentSection');
+    const paymentGrid = document.getElementById('paymentGrid');
     const bookingSummary = document.getElementById('bookingSummary');
     const summaryDate = document.getElementById('summaryDate');
     const summaryTime = document.getElementById('summaryTime');
+    const summaryPayment = document.getElementById('summaryPayment');
     const summaryTotal = document.getElementById('summaryTotal');
     const confirmBtn = document.getElementById('confirmBooking');
 
@@ -39,51 +55,93 @@ document.addEventListener('DOMContentLoaded', () => {
     let selectedDate = null;     // 'YYYY-MM-DD'
     let selectedStart = null;    // 'HH:MM'
     let selectedDuration = null; // hours, e.g. 1.5
+    let selectedPayment = null;  // 'arrival' | 'ewallet'
     let bookedRanges = [];       // [{ start: 'HH:MM', end: 'HH:MM' }]
+
+    const PAYMENT_LABELS = {
+        arrival: 'Pay on Arrival',
+        ewallet: 'E-Wallet',
+    };
 
     const pad = (n) => n.toString().padStart(2, '0');
     const todayStr = () => new Date().toISOString().slice(0, 10);
 
     // ---------- Modal open/close ----------
 
-    function openModal(court) {
+    function openInfoModal(court) {
         selectedCourt = court;
         modalCourtName.textContent = court.name;
         modalCourtType.textContent = court.type;
         modalCourtDim.textContent = `${court.length}m × ${court.width}m`;
         modalCourtPrice.textContent = `₱${Number(court.price).toLocaleString()} / hour`;
 
-        showStep('info');
-        modal.classList.add('open');
+        infoModal.classList.add('open');
     }
 
-    function closeModal() {
-        modal.classList.remove('open');
+    function closeInfoModal() {
+        infoModal.classList.remove('open');
+    }
+
+    function openBookingModal() {
+        if (modalCourtNameBooking && selectedCourt) {
+            modalCourtNameBooking.textContent = selectedCourt.name;
+        }
         resetBookingState();
+        bookingModal.classList.add('open');
+        renderCalendar();
     }
 
-    function showStep(step) {
-        stepInfo.hidden = step !== 'info';
-        stepBooking.hidden = step !== 'booking';
+    function closeBookingModal() {
+        bookingModal.classList.remove('open');
     }
 
     function resetBookingState() {
         selectedDate = null;
         selectedStart = null;
         selectedDuration = null;
+        selectedPayment = null;
         bookedRanges = [];
         calendarCursor = new Date();
         timeSection.hidden = true;
         durationSection.hidden = true;
+        paymentSection.hidden = true;
         bookingSummary.hidden = true;
-        confirmBtn.disabled = true;
     }
+
+    // ---------- Duration button setup (15-minute increments) ----------
+
+    function formatDuration(hours) {
+        const wholeHours = Math.floor(hours);
+        const minutes = Math.round((hours - wholeHours) * 60);
+
+        const parts = [];
+        if (wholeHours > 0) parts.push(`${wholeHours} hr${wholeHours > 1 ? 's' : ''}`);
+        if (minutes > 0) parts.push(`${minutes} min`);
+
+        return parts.join(' ');
+    }
+
+    function buildDurationButtons() {
+        durationGrid.innerHTML = '';
+
+        for (let hours = DURATION_MIN; hours <= DURATION_MAX + 1e-9; hours += DURATION_STEP) {
+            const rounded = Math.round(hours * 100) / 100;
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'duration-btn';
+            btn.dataset.hours = rounded;
+            btn.textContent = formatDuration(rounded);
+            durationGrid.appendChild(btn);
+        }
+    }
+
+    buildDurationButtons();
 
     grid.addEventListener('click', (e) => {
         const card = e.target.closest('.court-card-clickable');
         if (!card) return;
 
-        openModal({
+        openInfoModal({
             id: card.dataset.id,
             name: card.dataset.name,
             type: card.dataset.type,
@@ -93,20 +151,30 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    document.getElementById('courtModalClose').addEventListener('click', closeModal);
-    document.getElementById('stepInfoClose').addEventListener('click', closeModal);
-    modal.addEventListener('click', (e) => {
-        if (e.target === modal) closeModal();
+    document.getElementById('courtInfoModalClose').addEventListener('click', closeInfoModal);
+    document.getElementById('stepInfoClose').addEventListener('click', closeInfoModal);
+    infoModal.addEventListener('click', (e) => {
+        if (e.target === infoModal) closeInfoModal();
+    });
+
+    document.getElementById('courtBookingModalClose').addEventListener('click', closeBookingModal);
+    bookingModal.addEventListener('click', (e) => {
+        if (e.target === bookingModal) closeBookingModal();
     });
 
     document.getElementById('goToBooking').addEventListener('click', () => {
-        resetBookingState();
-        showStep('booking');
-        renderCalendar();
+        closeInfoModal();
+        openBookingModal();
     });
 
-    document.getElementById('backToInfo').addEventListener('click', () => showStep('info'));
-    document.getElementById('backToInfo2').addEventListener('click', () => showStep('info'));
+    document.getElementById('backToInfo').addEventListener('click', () => {
+        closeBookingModal();
+        openInfoModal(selectedCourt);
+    });
+    document.getElementById('backToInfo2').addEventListener('click', () => {
+        closeBookingModal();
+        openInfoModal(selectedCourt);
+    });
 
     // ---------- Calendar ----------
 
@@ -164,18 +232,32 @@ document.addEventListener('DOMContentLoaded', () => {
         selectedDate = dateStr;
         selectedStart = null;
         selectedDuration = null;
+        selectedPayment = null;
         durationSection.hidden = true;
+        paymentSection.hidden = true;
         bookingSummary.hidden = true;
-        confirmBtn.disabled = true;
 
         calendarGrid.querySelectorAll('.calendar-day').forEach((el) => el.classList.remove('selected'));
         btn.classList.add('selected');
 
         timeSection.hidden = false;
-        timeSlotGrid.innerHTML = '<p class="loading-text">Loading available times…</p>';
+        renderTimeSlotSkeleton();
 
         bookedRanges = await fetchAvailability(dateStr);
         renderTimeSlots();
+    }
+
+    function renderTimeSlotSkeleton() {
+        timeSlotGrid.innerHTML = '';
+        const lastUsableOffset = OPEN_SPAN_MINUTES - DURATION_MIN * 60;
+        const slotCount = Math.floor(lastUsableOffset / TIME_STEP_MINUTES) + 1;
+
+        for (let i = 0; i < slotCount; i++) {
+            const skeleton = document.createElement('div');
+            skeleton.className = 'time-slot-skeleton';
+            skeleton.style.animationDelay = `${(i % 8) * 0.05}s`;
+            timeSlotGrid.appendChild(skeleton);
+        }
     }
 
     async function fetchAvailability(dateStr) {
@@ -200,23 +282,40 @@ document.addEventListener('DOMContentLoaded', () => {
         return h * 60 + m;
     }
 
-    function isSlotBooked(startMin) {
-        return bookedRanges.some(
-            (r) => startMin >= timeToMinutes(r.start) && startMin < timeToMinutes(r.end)
-        );
+    // Maps a clock time (e.g. "02:00" when the court opens at 16:00) onto a
+    // 0..1439 scale measured from OPEN_HOUR, so overnight-wrapping courts
+    // can be compared with simple arithmetic instead of date math.
+    function minutesSinceOpen(timeStr) {
+        const raw = timeToMinutes(timeStr) - OPEN_HOUR * 60;
+        return ((raw % 1440) + 1440) % 1440;
+    }
+
+    function isSlotBooked(slotSinceOpen) {
+        return bookedRanges.some((r) => {
+            const rangeStart = minutesSinceOpen(r.start);
+            let rangeEnd = minutesSinceOpen(r.end);
+            if (rangeEnd <= rangeStart) rangeEnd += 1440; // range wraps past midnight
+            return slotSinceOpen >= rangeStart && slotSinceOpen < rangeEnd;
+        });
     }
 
     function renderTimeSlots() {
         timeSlotGrid.innerHTML = '';
 
-        for (let h = OPEN_HOUR; h < CLOSE_HOUR; h++) {
-            const timeStr = `${pad(h)}:00`;
+        // Don't offer a start time that can't fit at least the shortest
+        // booking (DURATION_MIN) before closing — e.g. if the court closes
+        // at 7:00, the last offered slot is 6:00, not 6:15/6:30/6:45.
+        const lastUsableOffset = OPEN_SPAN_MINUTES - DURATION_MIN * 60;
+
+        for (let offset = 0; offset <= lastUsableOffset; offset += TIME_STEP_MINUTES) {
+            const minuteOfDay = (OPEN_HOUR * 60 + offset) % 1440;
+            const timeStr = `${pad(Math.floor(minuteOfDay / 60))}:${pad(minuteOfDay % 60)}`;
             const btn = document.createElement('button');
             btn.type = 'button';
             btn.className = 'time-slot-btn';
             btn.textContent = formatTime(timeStr);
 
-            if (isSlotBooked(timeToMinutes(timeStr))) {
+            if (isSlotBooked(offset)) {
                 btn.disabled = true;
             } else {
                 btn.addEventListener('click', () => selectStart(timeStr, btn));
@@ -231,8 +330,9 @@ document.addEventListener('DOMContentLoaded', () => {
     function selectStart(timeStr, btn) {
         selectedStart = timeStr;
         selectedDuration = null;
+        selectedPayment = null;
+        paymentSection.hidden = true;
         bookingSummary.hidden = true;
-        confirmBtn.disabled = true;
 
         timeSlotGrid.querySelectorAll('.time-slot-btn').forEach((el) => el.classList.remove('selected'));
         btn.classList.add('selected');
@@ -244,15 +344,18 @@ document.addEventListener('DOMContentLoaded', () => {
     // ---------- Duration ----------
 
     function renderDurationOptions() {
-        const startMin = timeToMinutes(selectedStart);
+        const startSinceOpen = minutesSinceOpen(selectedStart);
 
         durationGrid.querySelectorAll('.duration-btn').forEach((btn) => {
             const hours = parseFloat(btn.dataset.hours);
-            const endMin = startMin + hours * 60;
-            const overrunsClose = endMin > CLOSE_HOUR * 60;
-            const overlapsBooking = bookedRanges.some(
-                (r) => startMin < timeToMinutes(r.end) && endMin > timeToMinutes(r.start)
-            );
+            const endSinceOpen = startSinceOpen + hours * 60;
+            const overrunsClose = endSinceOpen > OPEN_SPAN_MINUTES;
+            const overlapsBooking = bookedRanges.some((r) => {
+                const rangeStart = minutesSinceOpen(r.start);
+                let rangeEnd = minutesSinceOpen(r.end);
+                if (rangeEnd <= rangeStart) rangeEnd += 1440;
+                return startSinceOpen < rangeEnd && endSinceOpen > rangeStart;
+            });
 
             btn.disabled = overrunsClose || overlapsBooking;
             btn.classList.toggle('selected', hours === selectedDuration);
@@ -265,6 +368,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
         selectedDuration = parseFloat(btn.dataset.hours);
         durationGrid.querySelectorAll('.duration-btn').forEach((el) => el.classList.remove('selected'));
+        btn.classList.add('selected');
+
+        selectedPayment = null;
+        paymentGrid.querySelectorAll('.payment-btn').forEach((el) => el.classList.remove('selected'));
+        bookingSummary.hidden = true;
+        paymentSection.hidden = false;
+    });
+
+    // ---------- Payment method ----------
+
+    paymentGrid.addEventListener('click', (e) => {
+        const btn = e.target.closest('.payment-btn');
+        if (!btn) return;
+
+        selectedPayment = btn.dataset.method;
+        paymentGrid.querySelectorAll('.payment-btn').forEach((el) => el.classList.remove('selected'));
         btn.classList.add('selected');
 
         updateSummary();
@@ -289,19 +408,42 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function updateSummary() {
         const startMin = timeToMinutes(selectedStart);
-        const endMin = startMin + selectedDuration * 60;
+        const endMin = (startMin + selectedDuration * 60) % 1440;
         const endTimeStr = `${pad(Math.floor(endMin / 60))}:${pad(endMin % 60)}`;
 
         summaryDate.textContent = formatDate(selectedDate);
         summaryTime.textContent = `${formatTime(selectedStart)} – ${formatTime(endTimeStr)}`;
+        summaryPayment.textContent = PAYMENT_LABELS[selectedPayment] || '';
         summaryTotal.textContent = `₱${(selectedCourt.price * selectedDuration).toLocaleString()}`;
 
         bookingSummary.hidden = false;
-        confirmBtn.disabled = false;
+    }
+
+    // ---------- Requirements validation + confirm ----------
+
+    function getMissingRequirements() {
+        const missing = [];
+        if (!selectedDate) missing.push('a date');
+        if (!selectedStart) missing.push('a start time');
+        if (!selectedDuration) missing.push('a duration');
+        if (!selectedPayment) missing.push('a payment method');
+        return missing;
+    }
+
+    function formatList(items) {
+        if (items.length === 1) return items[0];
+        if (items.length === 2) return `${items[0]} and ${items[1]}`;
+        return `${items.slice(0, -1).join(', ')}, and ${items[items.length - 1]}`;
     }
 
     confirmBtn.addEventListener('click', async () => {
-        if (!selectedCourt || !selectedDate || !selectedStart || !selectedDuration) return;
+        const missing = getMissingRequirements();
+        if (missing.length > 0) {
+            showToast(`Please select ${formatList(missing)} to continue.`, 'error');
+            return;
+        }
+
+        if (!selectedCourt) return;
 
         confirmBtn.disabled = true;
         const originalLabel = confirmBtn.textContent;
@@ -320,6 +462,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     date: selectedDate,
                     start_time: selectedStart,
                     duration: selectedDuration,
+                    payment_method: selectedPayment,
                 }),
             });
 
@@ -330,16 +473,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 bookedRanges = await fetchAvailability(selectedDate);
                 renderTimeSlots();
                 durationSection.hidden = true;
+                paymentSection.hidden = true;
                 bookingSummary.hidden = true;
                 selectedStart = null;
                 selectedDuration = null;
-                confirmBtn.disabled = true;
+                selectedPayment = null;
+                confirmBtn.disabled = false;
                 confirmBtn.textContent = originalLabel;
                 return;
             }
 
             showToast(data.message || 'Booking confirmed!', 'success');
-            closeModal();
+            closeBookingModal();
             setTimeout(() => window.location.reload(), 900);
         } catch (err) {
             console.error(err);
