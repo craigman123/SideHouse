@@ -1,0 +1,132 @@
+.profile-page{
+    display:flex;
+    justify-content:center;
+    padding:20px;
+}
+
+.profile-card{
+    width:100%;
+    max-width:900px;
+    background:#161b22;
+    border-radius:18px;
+    padding:35px;
+    box-shadow:0 8px 20px rgba(0,0,0,.08);
+}
+
+.profile-header{
+    display:flex;
+    align-items:center;
+    gap:25px;
+    margin-bottom:35px;
+}
+
+.profile-avatar{
+    width:90px;
+    height:90px;
+    border-radius:50%;
+    background:#0D6EFD;
+    color:#fff;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    font-size:38px;
+    font-weight:bold;
+    flex-shrink:0;
+}
+
+.profile-header h2{
+    margin:0;
+}
+
+.profile-header p{
+    margin-top:5px;
+    color:#777;
+    word-break:break-word;
+}
+
+.profile-grid{
+    display:grid;
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:20px;
+}
+
+.profile-item{
+    display:flex;
+    flex-direction:column;
+}
+
+.profile-item label{
+    margin-bottom:8px;
+    font-weight:600;
+}
+
+.profile-item input{
+    width:100%;
+    padding:12px;
+    border:1px solid #ddd;
+    border-radius:10px;
+    background:#f8f8f8;
+    box-sizing:border-box;
+}
+
+.profile-actions{
+    margin-top:30px;
+    display:flex;
+    justify-content:flex-end;
+}
+
+.btn-primary{
+    background:#2e7d32;
+    color:#fff;
+    border:none;
+    padding:12px 24px;
+    border-radius:10px;
+    cursor:pointer;
+}
+
+/* Tablet */
+@media (max-width: 768px){
+
+    .profile-card{
+        padding:25px;
+    }
+
+    .profile-grid{
+        grid-template-columns:1fr;
+    }
+
+    .profile-actions{
+        justify-content:center;
+    }
+
+    .btn-primary{
+        width:100%;
+    }
+
+}
+
+/* Phone */
+@media (max-width: 480px){
+
+    .profile-header{
+        flex-direction:column;
+        text-align:center;
+        gap:15px;
+    }
+
+    .profile-avatar{
+        width:75px;
+        height:75px;
+        font-size:30px;
+    }
+
+    .profile-card{
+        padding:20px;
+        border-radius:14px;
+    }
+
+    .profile-page{
+        padding:12px;
+    }
+
+}

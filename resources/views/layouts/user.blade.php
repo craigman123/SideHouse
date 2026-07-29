@@ -29,23 +29,18 @@
             <a href="/my-bookings" class="{{ request()->is('my-bookings') ? 'active' : '' }}">My Bookings</a>
 
             <label class="nav-label">Personal</label>
-            <a href="/profile" class="{{ request()->is('profile') ? 'active' : '' }}">Profile</a>
+            <a href="{{ route('user.profile') }}" class="{{ request()->routeIs('user.profile') ? 'active' : '' }}">Profile</a>
             <a href="notifications" class="{{ request()->is('notifications') ? 'active' : '' }}">Notifications</a>
+
+            <label class="nav-label">Improvements</label>
+            <a href="/feedback" class="{{ request()->is('feedback') ? 'active' : '' }}">Feedback and Suggestions</a>
         </nav>
 
         <div class="sidebar-profile">
-            <button type="button" class="profile-trigger" onclick="toggleProfileDropdown()">
+            <a href="/profile" class="profile-trigger {{ request()->is('profile') ? 'active' : '' }}">
                 <span class="profile-avatar">{{ strtoupper(substr($userName, 0, 1)) }}</span>
                 <span class="profile-name">{{ ucfirst(explode(' ', $userName)[0]) }}</span>
-            </button>
-
-            <div class="profile-dropdown" id="profile-dropdown">
-                <form method="POST" action="{{ route('logout') }}">
-                    @csrf
-                    <button type="submit" class="dropdown-logout">Logout</button>
-                </form>
-                <button type="button" class="dropdown-cancel" onclick="closeProfileDropdown()">Cancel</button>
-            </div>
+            </a>
         </div>
 
         <div class="sidebar-footer">&copy; {{ date('Y') }} Side House</div>

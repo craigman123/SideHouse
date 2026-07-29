@@ -583,4 +583,12 @@ document.addEventListener('DOMContentLoaded', () => {
         toast.querySelector('.toast-close').addEventListener('click', remove);
         setTimeout(remove, 4000);
     }
+
+    // ---------- Deep link from the dashboard (?court=ID) ----------
+
+    const preselectId = new URLSearchParams(window.location.search).get('court');
+    if (preselectId) {
+        const card = grid.querySelector(`.court-card-clickable[data-id="${preselectId}"]`);
+        if (card) card.click();
+    }
 });

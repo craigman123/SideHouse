@@ -1,12 +1,12 @@
 <?php
 
-use App\Http\Controllers\Auth\AuthController;
+use App\Http\Controllers\Admin\Admin_DashboardController;
 use App\Http\Controllers\Admin\BookingController;
 use App\Http\Controllers\Admin\CourtController;
-use App\Http\Controllers\Admin\Admin_DashboardController;
-use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\User\UserDashboardController;
+use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\User\User_UserController;
+use App\Http\Controllers\User\UserDashboardController;
+use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
     return view('landing');
@@ -38,4 +38,10 @@ Route::middleware('auth')->group(function () {
     Route::get('/book', [User_UserController::class, 'createBooking'])->name('book.index');
     Route::get('/book/availability', [User_UserController::class, 'availability'])->name('book.availability');
     Route::post('/book', [User_UserController::class, 'storeBooking'])->name('book.store');
+
+    // Booking history
+    Route::get('/my-bookings', [User_UserController::class, 'myBookings'])->name('user.bookings.index');
+    Route::post('/my-bookings/{booking}/cancel', [User_UserController::class, 'cancelBooking'])->name('user.bookings.cancel');
+
+    Route::get('/profile', [User_UserController::class, 'profile'])->name('user.profile');
 });

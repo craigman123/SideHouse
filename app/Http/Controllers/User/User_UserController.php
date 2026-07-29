@@ -47,6 +47,49 @@ class User_UserController extends Controller
     }
 
     /**
+     * Full booking history for the signed-in user: paginated, filterable
+     * by status (all/pending/paid/cancelled) via ?status=.
+     */
+    public function myBookings(Request $request)
+    {
+        $status = $request->query('status', 'all');
+
+        $bookings = Booking::where('user_id', auth()->id())
+            ->status($status)
+            ->orderByDesc('date')
+            ->orderByDesc('start_time')
+            ->paginate(10)
+            ->withQueryString();
+
+        return view('user.bookings.index', [
+            'bookings' => $bookings,
+            'status'   => $status,
+            'userName' => auth()->user()->name,
+        ]);
+    }
+
+    /**
+     * Cancel a booking. Route-model-bound, but we still verify ownership
+     * explicitly rather than relying on the route alone.
+     */
+    public function cancelBooking(Booking $booking)
+    {
+        abort_unless($booking->user_id === auth()->id(), 403);
+
+        if ($booking->status === 'cancelled') {
+            return response()->json([
+                'message' => 'This booking is already cancelled.',
+            ], 422);
+        }
+
+        $booking->update(['status' => 'cancelled']);
+
+        return response()->json([
+            'message' => 'Booking cancelled.',
+        ]);
+    }
+
+    /**
      * Return existing (non-cancelled) bookings for a court on a given date,
      * so the front end can grey out already-taken time slots.
      */
@@ -167,5 +210,13 @@ class User_UserController extends Controller
         }
 
         return back()->withErrors(['start_time' => $message]);
+    }
+
+    public function profile()
+    {
+        return view('user.profile.profile', [
+            'user' => auth()->user(),
+            'userName' => auth()->user()->name,
+        ]);
     }
 }

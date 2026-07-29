@@ -231,6 +231,10 @@
     margin-top: 16px;
 }
 
+.court-grid a {
+    text-decoration: none;
+}
+
 .court-card {
     background-color: #0d1117;
     border: 1px solid #30363d;

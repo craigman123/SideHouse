@@ -142,7 +142,7 @@
         <h2>Available Courts</h2><span class="count-badge">{{ $courts->count() }} Court(s) Available</span>
         <div class="court-grid">
             @forelse ($courts as $court)
-                <div class="court-card">
+                <a href="{{ route('book.index', ['court' => $court->id]) }}" class="court-card court-card-link">
                     <div class="court-card-graphic" aria-hidden="true">
                         <svg viewBox="0 0 120 160" xmlns="http://www.w3.org/2000/svg">
                             <rect x="2" y="2" width="116" height="156" rx="6" class="court-mini-surface" />
@@ -159,7 +159,7 @@
                         <p class="court-dimensions">{{ $court->length }}m &times; {{ $court->width }}m</p>
                         <p class="court-price">&#8369;{{ number_format($court->hourly_rate, 0) }} <span>/ hour</span></p>
                     </div>
-                </div>
+                </a>
             @empty
                 <p class="empty-state">No courts available right now.</p>
             @endforelse
@@ -235,7 +235,7 @@
         </div>
     </div>
 
-    <div class="modal-overlay" id="cancelModal">
+    <div class="modal-overlay" id="cancelModal" data-cancel-url="{{ route('user.bookings.cancel', ':id') }}">
         <div class="modal-box modal-box-sm">
             <div class="modal-header">
                 <h3>Cancel this booking?</h3>

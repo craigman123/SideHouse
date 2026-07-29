@@ -161,31 +161,6 @@ document.addEventListener('DOMContentLoaded', () => {
     setInterval(updateMs, 30);
   }
 
-  /* ---------- Profile dropdown ---------- */
-  const profileTrigger = document.getElementById('profileTrigger');
-  const profileDropdown = document.getElementById('profileDropdown');
-
-  if (profileTrigger && profileDropdown) {
-    profileTrigger.addEventListener('click', (e) => {
-      e.stopPropagation();
-      const isOpen = profileDropdown.classList.toggle('open');
-      profileTrigger.setAttribute('aria-expanded', isOpen);
-    });
-
-    document.addEventListener('click', () => {
-      profileDropdown.classList.remove('open');
-      profileTrigger.setAttribute('aria-expanded', 'false');
-    });
-
-    const cancelBtn = profileDropdown.querySelector('.dropdown-cancel');
-    if (cancelBtn) {
-      cancelBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        profileDropdown.classList.remove('open');
-      });
-    }
-  }
-
   /* ---------- Cancel booking modal ---------- */
   const modal = document.getElementById('cancelModal');
   const modalText = document.getElementById('modalText');

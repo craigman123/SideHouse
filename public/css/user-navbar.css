@@ -71,10 +71,7 @@ html, body {
     border-top: 1px solid #21262d;
 }
 
-/* Profile block — green accent to match the rest of the user theme
-   (admin's app.css uses a red accent here; this is the user-side version) */
 .sidebar-profile {
-    position: relative;
     padding: 12px 20px;
     border-top: 1px solid #21262d;
 }
@@ -89,9 +86,12 @@ html, body {
     width: 100%;
     padding: 8px 6px;
     border-radius: 6px;
+    text-decoration: none;
+    color: inherit;
 }
 
-.profile-trigger:hover {
+.profile-trigger:hover,
+.profile-trigger.active {
     background-color: #161b22;
 }
 
@@ -114,50 +114,6 @@ html, body {
     font-weight: 700;
     font-size: 14px;
     color: #f0f6fc;
-}
-
-.profile-dropdown {
-    display: none;
-    position: absolute;
-    bottom: 100%;
-    left: 12px;
-    right: 12px;
-    margin-bottom: 8px;
-    background-color: #161b22;
-    border: 1px solid #30363d;
-    border-radius: 8px;
-    overflow: hidden;
-    box-shadow: 0 8px 24px rgba(1, 4, 9, 0.6);
-    z-index: 20;
-}
-
-.profile-dropdown.open {
-    display: block;
-}
-
-.profile-dropdown button {
-    width: 100%;
-    text-align: left;
-    padding: 10px 14px;
-    background: none;
-    border: none;
-    font-size: 14px;
-    font-weight: 600;
-    cursor: pointer;
-    color: #c9d1d9;
-}
-
-.profile-dropdown button:hover {
-    background-color: #1c2128;
-}
-
-.profile-dropdown .dropdown-logout {
-    color: #f85149;
-}
-
-.profile-dropdown .dropdown-cancel {
-    border-top: 1px solid #21262d;
-    color: #8b949e;
 }
 
 /* ---------- Main / topbar / content frame ---------- */
@@ -203,7 +159,7 @@ html, body {
 
 /* ---------- Responsive ---------- */
 
-@media (max-width: 1300px) {
+@media (max-width: 1450px) {
     body {
         flex-direction: column;
     }
@@ -223,14 +179,7 @@ html, body {
         border-right: none;
         border-bottom: 1px solid #30363d;
         min-height: 0;
-        overflow-x: auto;
-        overflow-y: visible;
-        scrollbar-width: none; /* Firefox */
-        -ms-overflow-style: none; /* IE/Edge */
-    }
-
-    .sidebar::-webkit-scrollbar {
-        display: none; /* Chrome/Safari */
+        overflow-y: visible; /* the vertical desktop nav can scroll (see base rule); this row never needs to */
     }
 
     .sidebar-logo {
@@ -248,8 +197,16 @@ html, body {
         display: flex;
         gap: 2px;
         padding: 6px;
-        flex: 0 0 auto;
+        flex: 1 1 auto;
+        min-width: 0;
         white-space: nowrap;
+        overflow-x: auto;
+        scrollbar-width: none; /* Firefox */
+        -ms-overflow-style: none; /* IE/Edge */
+    }
+
+    .sidebar-nav::-webkit-scrollbar {
+        display: none; /* Chrome/Safari */
     }
 
     .sidebar-nav label {
@@ -283,12 +240,6 @@ html, body {
         display: none; /* just show the avatar to save space */
     }
 
-    .profile-dropdown {
-        left: auto;
-        right: 8px;
-        width: 180px;
-    }
-
     .topbar {
         padding: 14px 16px;
     }
@@ -301,6 +252,17 @@ html, body {
 @media (max-width: 480px) {
     .topbar h1 {
         font-size: 16px;
+    }
+
+    .sidebar-logo {
+        padding: 6px 8px;
+        width: 50px;
+        height: 50px;
+    }
+
+    .sidebar-nav a {
+        font-size: 6px;
+        padding: 4px 6px;
     }
 
     .topbar .date {

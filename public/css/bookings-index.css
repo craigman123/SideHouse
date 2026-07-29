@@ -1,0 +1,127 @@
+/* My Bookings Page Styles
+   Loads alongside app.css + user-navbar.css (shell) and dashboard.css
+   (panel/table/status pills). Only page-specific styles live here. */
+
+.bookings-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 16px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid #21262d;
+}
+
+.bookings-toolbar-title {
+    font-size: 17px;
+    font-weight: 700;
+    color: #f0f6fc;
+    display: inline;
+    margin-right: 10px;
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+.status-filter-form {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.status-filter-label {
+    font-size: 12px;
+    font-weight: 700;
+    color: #8b949e;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+}
+
+.status-filter-select {
+    background-color: #0d1117;
+    border: 1px solid #30363d;
+    border-radius: 6px;
+    color: #c9d1d9;
+    padding: 7px 10px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: border-color 0.15s ease;
+}
+
+.status-filter-select:hover,
+.status-filter-select:focus {
+    border-color: #3fb950;
+    outline: none;
+}
+
+.cell-muted {
+    color: #8b949e;
+}
+
+.empty-row a {
+    color: #3fb950;
+    font-weight: 700;
+    text-decoration: none;
+}
+
+.empty-row a:hover {
+    text-decoration: underline;
+}
+
+/* ---------- Simple pagination ---------- */
+
+.simple-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    padding-top: 18px;
+}
+
+.page-btn {
+    padding: 7px 16px;
+    border: 1px solid #30363d;
+    border-radius: 6px;
+    color: #c9d1d9;
+    font-size: 13px;
+    font-weight: 700;
+    text-decoration: none;
+    cursor: pointer;
+    transition: border-color 0.15s ease, color 0.15s ease, transform 0.15s ease;
+}
+
+.page-btn:hover {
+    border-color: #3fb950;
+    color: #3fb950;
+    transform: translateY(-1px);
+}
+
+.page-btn-disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+.page-info {
+    font-size: 13px;
+    color: #8b949e;
+    font-weight: 600;
+}
+
+/* ---------- Responsive ---------- */
+
+@media (max-width: 480px) {
+    .bookings-toolbar {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .status-filter-form {
+        width: 100%;
+    }
+
+    .status-filter-select {
+        flex: 1;
+    }
+}
