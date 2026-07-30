@@ -113,3 +113,13 @@
     display: flex;
     justify-content: center;
 }
+
+/* Activity log action keys, e.g. "booking.created" */
+.panel table code {
+    background-color: #21262d;
+    color: #56d364;
+    font-size: 12px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    padding: 2px 6px;
+    border-radius: 4px;
+}

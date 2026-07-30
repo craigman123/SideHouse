@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Models\Court;
 use App\Http\Controllers\Controller;
+use App\Support\ActivityLogger;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -27,7 +28,14 @@ class CourtController extends Controller
     {
         $validated = $this->validateCourt($request);
 
-        Court::create($validated);
+        $court = Court::create($validated);
+
+        ActivityLogger::log(
+            'court.created',
+            auth()->user()->name . " added court \"{$court->name}\".",
+            subject: $court,
+            properties: $validated,
+        );
 
         return redirect()
             ->route('courts.index')
@@ -43,6 +51,13 @@ class CourtController extends Controller
 
         $court->update($validated);
 
+        ActivityLogger::log(
+            'court.updated',
+            auth()->user()->name . " updated court \"{$court->name}\".",
+            subject: $court,
+            properties: ['changed_fields' => array_keys($court->getChanges())],
+        );
+
         return redirect()
             ->route('courts.index')
             ->with('success', 'Court updated successfully.');
@@ -53,7 +68,15 @@ class CourtController extends Controller
      */
     public function destroy(Court $court): RedirectResponse
     {
+        $courtName = $court->name;
+
         $court->delete();
+
+        ActivityLogger::log(
+            'court.deleted',
+            auth()->user()->name . " deleted court \"{$courtName}\".",
+            subject: $court,
+        );
 
         return redirect()
             ->route('courts.index')

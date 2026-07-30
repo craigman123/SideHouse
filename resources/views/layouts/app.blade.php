@@ -19,12 +19,19 @@
         </div>
 
         <nav class="sidebar-nav">
+            <label class="nav-label">Main</label>
             <a href="{{ route('admin.dashboard') }}" class="{{ request()->routeIs('admin.dashboard') ? 'active' : '' }}">Overview</a>
+
+            <label class="nav-label">Management</label>
             <a href="{{ route('bookings.index') }}" class="{{ request()->routeIs('bookings.*') ? 'active' : '' }}">Bookings</a>
             <a href="{{ route('courts.index') }}" class="{{ request()->routeIs('courts.*') ? 'active' : '' }}">Courts</a>
+
+            <label class="nav-label">Users</label>
             <a href="#">Customers</a>
+
+            <label class="nav-label">Audit Logs</label>
             <a href="#">Reports</a>
-            <a href="#">Logs</a>
+            <a href="{{ route('activity_logs.index') }}" class="{{ request()->routeIs('activity_logs.*') ? 'active' : '' }}">Activity Logs</a>
         </nav>
 
         <div class="sidebar-profile">

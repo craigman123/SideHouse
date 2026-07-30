@@ -168,66 +168,70 @@
 
     <div class="panel">
         <h2>Upcoming Bookings</h2>
-        <table>
-            <thead>
-                <tr>
-                    <th>Court</th>
-                    <th>Date</th>
-                    <th>Time</th>
-                    <th>Status</th>
-                    <th>Actions</th>
-                </tr>
-            </thead>
-            <tbody id="upcomingBody">
-                @forelse ($upcomingBookings as $booking)
-                    <tr data-booking-id="{{ $booking->id }}" data-booking="Court {{ $booking->court_id }} · {{ \Carbon\Carbon::parse($booking->date)->format('D j M') }}, {{ \Carbon\Carbon::parse($booking->start_time)->format('g:i A') }}">
-                        <td class="cell-name">Court {{ $booking->court_id }}</td>
-                        <td>{{ \Carbon\Carbon::parse($booking->date)->format('d M Y') }}</td>
-                        <td>{{ \Carbon\Carbon::parse($booking->start_time)->format('g:i A') }} &ndash; {{ \Carbon\Carbon::parse($booking->end_time)->format('g:i A') }}</td>
-                        <td>
-                            <span class="status status-{{ $booking->status === 'confirmed' ? 'paid' : ($booking->status === 'cancelled' ? 'cancelled' : 'pending') }}">
-                                {{ ucfirst($booking->status) }}
-                            </span>
-                        </td>
-                        <td class="actions-cell">
-                            <button type="button" class="btn-icon btn-delete" data-cancel>Cancel</button>
-                        </td>
+        <div class="table-responsive">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Court</th>
+                        <th>Date</th>
+                        <th>Time</th>
+                        <th>Status</th>
+                        <th>Actions</th>
                     </tr>
-                @empty
-                    <tr><td colspan="5" class="empty-row">No upcoming bookings.</td></tr>
-                @endforelse
-            </tbody>
-        </table>
+                </thead>
+                <tbody id="upcomingBody">
+                    @forelse ($upcomingBookings as $booking)
+                        <tr data-booking-id="{{ $booking->id }}" data-booking="Court {{ $booking->court_id }} · {{ \Carbon\Carbon::parse($booking->date)->format('D j M') }}, {{ \Carbon\Carbon::parse($booking->start_time)->format('g:i A') }}">
+                            <td class="cell-name">Court {{ $booking->court_id }}</td>
+                            <td>{{ \Carbon\Carbon::parse($booking->date)->format('d M Y') }}</td>
+                            <td>{{ \Carbon\Carbon::parse($booking->start_time)->format('g:i A') }} &ndash; {{ \Carbon\Carbon::parse($booking->end_time)->format('g:i A') }}</td>
+                            <td>
+                                <span class="status status-{{ $booking->status === 'confirmed' ? 'paid' : ($booking->status === 'cancelled' ? 'cancelled' : 'pending') }}">
+                                    {{ ucfirst($booking->status) }}
+                                </span>
+                            </td>
+                            <td class="actions-cell">
+                                <button type="button" class="btn-icon btn-delete" data-cancel>Cancel</button>
+                            </td>
+                        </tr>
+                    @empty
+                        <tr><td colspan="5" class="empty-row">No upcoming bookings.</td></tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
     </div>
 
     <div class="panel">
         <h2>Recent Activity</h2>
-        <table>
-            <thead>
-                <tr>
-                    <th>Court</th>
-                    <th>Date</th>
-                    <th>Amount</th>
-                    <th>Status</th>
-                </tr>
-            </thead>
-            <tbody>
-                @forelse ($recentBookings as $booking)
+        <div class="table-responsive">
+            <table>
+                <thead>
                     <tr>
-                        <td class="cell-name">Court {{ $booking->court_id }}</td>
-                        <td>{{ \Carbon\Carbon::parse($booking->date)->format('d M Y') }}</td>
-                        <td>&#8369;{{ number_format($booking->amount, 0) }}</td>
-                        <td>
-                            <span class="status status-{{ $booking->status === 'confirmed' ? 'paid' : ($booking->status === 'cancelled' ? 'cancelled' : 'pending') }}">
-                                {{ ucfirst($booking->status) }}
-                            </span>
-                        </td>
+                        <th>Court</th>
+                        <th>Date</th>
+                        <th>Amount</th>
+                        <th>Status</th>
                     </tr>
-                @empty
-                    <tr><td colspan="4" class="empty-row">No activity yet.</td></tr>
-                @endforelse
-            </tbody>
-        </table>
+                </thead>
+                <tbody>
+                    @forelse ($recentBookings as $booking)
+                        <tr>
+                            <td class="cell-name">Court {{ $booking->court_id }}</td>
+                            <td>{{ \Carbon\Carbon::parse($booking->date)->format('d M Y') }}</td>
+                            <td>&#8369;{{ number_format($booking->amount, 0) }}</td>
+                            <td>
+                                <span class="status status-{{ $booking->status === 'confirmed' ? 'paid' : ($booking->status === 'cancelled' ? 'cancelled' : 'pending') }}">
+                                    {{ ucfirst($booking->status) }}
+                                </span>
+                            </td>
+                        </tr>
+                    @empty
+                        <tr><td colspan="4" class="empty-row">No activity yet.</td></tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
         <div class="pagination-wrapper">
             <nav aria-label="Booking history pages">
                 <span class="count-badge">{{ $recentBookings->count() }} recent bookings</span>

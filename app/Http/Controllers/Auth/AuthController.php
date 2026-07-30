@@ -3,10 +3,11 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Models\User;
+use App\Support\ActivityLogger;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
-use App\Models\User;
 
 class AuthController extends Controller
 {
@@ -26,11 +27,30 @@ class AuthController extends Controller
             $request->session()->regenerate();
 
             if (auth()->user()->isAdmin()) {
+                ActivityLogger::log(
+                    'admin.logged_in',
+                    auth()->user()->name . ' logged in.',
+                    subject: auth()->user(),
+                );
+
                 return redirect()->route('admin.dashboard')->with('success', 'Logged in successfully!');
+
             }
+
+            ActivityLogger::log(
+                'user.logged_in',
+                auth()->user()->name . ' logged in.',
+                subject: auth()->user(),
+            );
 
             return redirect()->route('user.dashboard')->with('success', 'Logged in successfully!');
         }
+
+        ActivityLogger::log(
+            'user.login_failed',
+            $credentials['username'] . ' failed to log in.',
+            subject: auth()->user(),
+        );
 
         return back()->withErrors(['username' => 'Invalid username or password.'])->onlyInput('username');
     }
@@ -59,14 +79,30 @@ class AuthController extends Controller
 
         Auth::login($user);
 
+        ActivityLogger::log(
+            'user.registered',
+            $user->name . ' registered.',
+            subject: $user,
+        );
+
         return redirect()->route('user.dashboard')->with('success', 'Account created! Welcome to Side House.');
     }
 
     public function logout(Request $request)
     {
+        $user = Auth::user();
+
         Auth::logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();
+
+        if ($user) {
+            ActivityLogger::log(
+                'user.logged_out',
+                $user->name . ' logged out.',
+                subject: $user,
+            );
+        }
 
         return redirect()->route('login')->with('success', 'Logged out successfully.');
     }

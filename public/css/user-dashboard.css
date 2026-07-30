@@ -477,20 +477,10 @@ tr.row-removing {
         padding: 16px;
     }
 
-    /* Tables now shrink to fit the panel width instead of scrolling */
-    .panel table {
-        table-layout: fixed;
-        width: 100%;
-        font-size: 12px;
-    }
-
-    .panel th,
-    .panel td {
-        padding: 6px 4px;
-        white-space: normal;
-        word-break: break-word;
-        overflow-wrap: break-word;
-    }
+    /* Table column squeeze/wrap intentionally removed here — dashboard.css's
+       .panel table (nowrap + min-width: 480px) combined with the
+       .table-responsive wrapper around each <table> handles small screens
+       by scrolling horizontally instead of squeezing columns illegibly. */
 }
 
 @media (max-width: 480px) {

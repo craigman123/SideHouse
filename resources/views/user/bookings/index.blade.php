@@ -29,65 +29,67 @@
             </form>
         </div>
 
-        <table>
-            <thead>
-                <tr>
-                    <th>Court</th>
-                    <th>Date</th>
-                    <th>Time</th>
-                    <th>Amount</th>
-                    <th>Payment</th>
-                    <th>Status</th>
-                    <th>Actions</th>
-                </tr>
-            </thead>
-            <tbody>
-                @forelse ($bookings as $booking)
-                    @php
-                        $isCancellable = $booking->status !== 'cancelled'
-                            && $booking->date->copy()->startOfDay()->gte(today());
-                    @endphp
-                    <tr
-                        data-booking-id="{{ $booking->id }}"
-                        data-booking="Court {{ $booking->court_id }} &middot; {{ $booking->date->format('D j M') }}, {{ \Carbon\Carbon::parse($booking->start_time)->format('g:i A') }}"
-                    >
-                        <td class="cell-name">Court {{ $booking->court_id }}</td>
-                        <td>{{ $booking->date->format('d M Y') }}</td>
-                        <td>
-                            {{ \Carbon\Carbon::parse($booking->start_time)->format('g:i A') }}
-                            &ndash;
-                            {{ \Carbon\Carbon::parse($booking->end_time)->format('g:i A') }}
-                        </td>
-                        <td>&#8369;{{ number_format($booking->amount, 0) }}</td>
-                        <td class="cell-muted">
-                            {{ $booking->payment_method === 'ewallet' ? 'E-Wallet' : 'Pay on Arrival' }}
-                        </td>
-                        <td>
-                            <span class="status status-{{ $booking->status === 'paid' ? 'paid' : ($booking->status === 'cancelled' ? 'cancelled' : 'pending') }}">
-                                {{ ucfirst($booking->status) }}
-                            </span>
-                        </td>
-                        <td class="actions-cell">
-                            @if ($isCancellable)
-                                <button type="button" class="btn-icon btn-delete" data-cancel>Cancel</button>
-                            @else
-                                <span class="cell-muted">&mdash;</span>
-                            @endif
-                        </td>
-                    </tr>
-                @empty
+        <div class="table-responsive">
+            <table>
+                <thead>
                     <tr>
-                        <td colspan="7" class="empty-row">
-                            @if ($status !== 'all')
-                                No {{ $status }} bookings found.
-                            @else
-                                No bookings yet — <a href="{{ route('book.index') }}">book a court</a> to get started.
-                            @endif
-                        </td>
+                        <th>Court</th>
+                        <th>Date</th>
+                        <th>Time</th>
+                        <th>Amount</th>
+                        <th>Payment</th>
+                        <th>Status</th>
+                        <th>Actions</th>
                     </tr>
-                @endforelse
-            </tbody>
-        </table>
+                </thead>
+                <tbody>
+                    @forelse ($bookings as $booking)
+                        @php
+                            $isCancellable = $booking->status !== 'cancelled'
+                                && $booking->date->copy()->startOfDay()->gte(today());
+                        @endphp
+                        <tr
+                            data-booking-id="{{ $booking->id }}"
+                            data-booking="Court {{ $booking->court_id }} &middot; {{ $booking->date->format('D j M') }}, {{ \Carbon\Carbon::parse($booking->start_time)->format('g:i A') }}"
+                        >
+                            <td class="cell-name">Court {{ $booking->court_id }}</td>
+                            <td>{{ $booking->date->format('d M Y') }}</td>
+                            <td>
+                                {{ \Carbon\Carbon::parse($booking->start_time)->format('g:i A') }}
+                                &ndash;
+                                {{ \Carbon\Carbon::parse($booking->end_time)->format('g:i A') }}
+                            </td>
+                            <td>&#8369;{{ number_format($booking->amount, 0) }}</td>
+                            <td class="cell-muted">
+                                {{ $booking->payment_method === 'ewallet' ? 'E-Wallet' : 'Pay on Arrival' }}
+                            </td>
+                            <td>
+                                <span class="status status-{{ $booking->status === 'paid' ? 'paid' : ($booking->status === 'cancelled' ? 'cancelled' : 'pending') }}">
+                                    {{ ucfirst($booking->status) }}
+                                </span>
+                            </td>
+                            <td class="actions-cell">
+                                @if ($isCancellable)
+                                    <button type="button" class="btn-icon btn-delete" data-cancel>Cancel</button>
+                                @else
+                                    <span class="cell-muted">&mdash;</span>
+                                @endif
+                            </td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="7" class="empty-row">
+                                @if ($status !== 'all')
+                                    No {{ $status }} bookings found.
+                                @else
+                                    No bookings yet — <a href="{{ route('book.index') }}">book a court</a> to get started.
+                                @endif
+                            </td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
 
         @if ($bookings->hasPages())
             <div class="pagination-wrapper">

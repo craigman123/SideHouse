@@ -5,8 +5,11 @@ namespace App\Http\Controllers\User;
 use App\Http\Controllers\Controller;
 use App\Models\Booking;
 use App\Models\Court;
+use App\Models\Membership;
+use App\Support\ActivityLogger;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class User_UserController extends Controller
 {
@@ -83,6 +86,17 @@ class User_UserController extends Controller
         }
 
         $booking->update(['status' => 'cancelled']);
+
+        ActivityLogger::log(
+            'booking.cancelled',
+            auth()->user()->name . " cancelled a booking for Court {$booking->court_id} on " . Carbon::parse($booking->date)->format('M j, Y') . ".",
+            subject: $booking,
+            properties: [
+                'court_id'   => $booking->court_id,
+                'date'       => (string) $booking->date,
+                'start_time' => $booking->start_time,
+            ],
+        );
 
         return response()->json([
             'message' => 'Booking cancelled.',
@@ -179,6 +193,19 @@ class User_UserController extends Controller
             return $this->bookingFailed($request, 'That slot was just taken. Please pick another time.');
         }
 
+        // Apply the signed-in user's active membership discount, if any.
+        $baseAmount = $court->hourly_rate * $validated['duration'];
+
+        $activeMembership = Membership::with('plan')
+            ->where('user_id', auth()->id())
+            ->where('status', 'active')
+            ->where('expiry_date', '>=', now())
+            ->orderByDesc('expiry_date')
+            ->first();
+
+        $discountPercent = $activeMembership?->plan?->discount_percent ?? 0;
+        $amount = round($baseAmount * (1 - $discountPercent / 100), 2);
+
         $booking = Booking::create([
             'user_id'       => auth()->id(),
             'customer_name' => auth()->user()->name,
@@ -186,10 +213,26 @@ class User_UserController extends Controller
             'date'          => $validated['date'],
             'start_time'    => $start->format('H:i:s'),
             'end_time'      => $end->format('H:i:s'),
-            'amount'        => $court->hourly_rate * $validated['duration'],
+            'amount'        => $amount,
             'payment_method' => $validated['payment_method'],
             'status'        => 'pending',
         ]);
+
+        ActivityLogger::log(
+            'booking.created',
+            auth()->user()->name . " booked {$court->name} on " . $start->format('M j, Y') . ' from ' . $start->format('g:i A') . ' to ' . $end->format('g:i A') . '.',
+            subject: $booking,
+            properties: [
+                'court_id'         => $court->id,
+                'date'             => $validated['date'],
+                'start_time'       => $booking->start_time,
+                'end_time'         => $booking->end_time,
+                'duration_hours'   => $validated['duration'],
+                'amount'           => $amount,
+                'payment_method'   => $validated['payment_method'],
+                'discount_percent' => $discountPercent,
+            ],
+        );
 
         if ($request->wantsJson()) {
             return response()->json([
@@ -215,8 +258,92 @@ class User_UserController extends Controller
     public function profile()
     {
         return view('user.profile.profile', [
-            'user' => auth()->user(),
+            'user'     => auth()->user(),
             'userName' => auth()->user()->name,
         ]);
+    }
+
+    /**
+     * Update the signed-in user's own profile fields. Deliberately does
+     * NOT accept 'role' here — that must stay admin-only, regardless of
+     * what a request tries to send, so it's simply never read from input.
+     */
+    public function updateProfile(Request $request)
+    {
+        $user = auth()->user();
+
+        $validated = $request->validate([
+            'name'     => ['required', 'string', 'max:255'],
+            'username' => [
+                'required', 'string', 'max:255',
+                Rule::unique('users', 'username')->ignore($user->user_id, 'user_id'),
+            ],
+            'email' => [
+                'required', 'email', 'max:255',
+                Rule::unique('users', 'email')->ignore($user->user_id, 'user_id'),
+            ],
+        ]);
+
+        $originalName = $user->name;
+
+        $user->update($validated);
+
+        ActivityLogger::log(
+            'profile.updated',
+            "{$originalName} updated their profile.",
+            subject: $user,
+            properties: ['changed_fields' => array_keys($user->getChanges())],
+        );
+
+        return redirect()
+            ->route('user.profile')
+            ->with('success', 'Profile updated.');
+    }
+
+    /**
+     * Permanently delete the signed-in user's own account. The typed
+     * confirmation phrase is checked here too, not just in the browser —
+     * client-side gating is just UX, this is the actual security check.
+     */
+    public function destroyAccount(Request $request)
+    {
+        $request->validate([
+            'confirmation' => ['required', 'string'],
+        ]);
+
+        if ($request->input('confirmation') !== 'DELETE MY ACCOUNT') {
+            return back()->withErrors([
+                'confirmation' => 'Type "DELETE MY ACCOUNT" exactly to confirm.',
+            ]);
+        }
+
+        $user = auth()->user();
+
+        // Free up this user's upcoming slots so other players can book them.
+        // Past bookings are left as-is — they're historical record, not
+        // something that needs "freeing up".
+        Booking::where('user_id', $user->user_id)
+            ->where('status', '!=', 'cancelled')
+            ->where('date', '>=', today())
+            ->update(['status' => 'cancelled']);
+
+        // Logged before the actual delete/logout below, while $user (and
+        // auth()) still resolves to a real account — the FK is
+        // nullOnDelete, so this row survives the account's removal with
+        // just its user_name snapshot intact.
+        ActivityLogger::log(
+            'account.deleted',
+            "{$user->name} deleted their own account.",
+            actor: $user,
+            subject: $user,
+        );
+
+        auth()->logout();
+        $user->delete();
+
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
+
+        return redirect()->route('landing');
     }
 }
