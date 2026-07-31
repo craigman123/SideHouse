@@ -12,6 +12,7 @@ class Booking extends Model
     protected $fillable = [
         'user_id',
         'customer_name',
+        'contact_number',
         'court_id',
         'date',
         'start_time',
@@ -22,7 +23,7 @@ class Booking extends Model
     ];
 
     protected $casts = [
-        'date' => 'date',
+        'date'   => 'date',
         'amount' => 'decimal:2',
     ];
 
@@ -34,6 +35,11 @@ class Booking extends Model
     public function court()
     {
         return $this->belongsTo(Court::class);
+    }
+
+    public function equipment()
+    {
+        return $this->hasMany(BookingEquipment::class);
     }
 
     public function scopeStatus($query, $status)

@@ -87,6 +87,7 @@
 
 #courtInfoModal,
 #courtBookingModal,
+#equipmentModal,
 #courtPaymentModal {
     display: flex;
     opacity: 0;
@@ -97,6 +98,7 @@
 
 #courtInfoModal.open,
 #courtBookingModal.open,
+#equipmentModal.open,
 #courtPaymentModal.open {
     opacity: 1;
     visibility: visible;
@@ -105,6 +107,7 @@
 
 #courtInfoModal .modal-box,
 #courtBookingModal .modal-box,
+#equipmentModal .modal-box,
 #courtPaymentModal .modal-box {
     transform: translateY(16px) scale(0.97);
     transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
@@ -112,6 +115,7 @@
 
 #courtInfoModal.open .modal-box,
 #courtBookingModal.open .modal-box,
+#equipmentModal.open .modal-box,
 #courtPaymentModal.open .modal-box {
     transform: translateY(0) scale(1);
 }
@@ -585,5 +589,153 @@
     .duration-btn {
         padding: 8px 12px;
         font-size: 12px;
+    }
+}
+
+/* ---------- Equipment rental (guest booking widget) ---------- */
+
+.equipment-category-label {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    color: #6e7681;
+    margin: 16px 0 8px;
+}
+
+.equipment-category-label:first-child {
+    margin-top: 0;
+}
+
+.equipment-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.equipment-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 14px;
+    background-color: #0d1117;
+    border: 1px solid #21262d;
+    border-radius: 8px;
+    transition: border-color 0.15s ease;
+}
+
+.equipment-card.has-qty {
+    border-color: #3fb950;
+}
+
+.equipment-card-name {
+    font-size: 13px;
+    font-weight: 700;
+    color: #f0f6fc;
+}
+
+.equipment-card-meta {
+    font-size: 11px;
+    color: #8b949e;
+    margin-top: 2px;
+}
+
+.equipment-card-meta.equipment-sold-out {
+    color: #f85149;
+    font-weight: 700;
+}
+
+.equipment-qty-stepper {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+}
+
+.qty-btn {
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    border: 1px solid #30363d;
+    background-color: #161b22;
+    color: #c9d1d9;
+    font-size: 16px;
+    font-weight: 700;
+    line-height: 1;
+    cursor: pointer;
+    transition: border-color 0.15s ease, color 0.15s ease;
+}
+
+.qty-btn:hover:not(:disabled) {
+    border-color: #3fb950;
+    color: #3fb950;
+}
+
+.qty-btn:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+}
+
+.qty-value {
+    min-width: 16px;
+    text-align: center;
+    font-size: 14px;
+    font-weight: 700;
+    color: #f0f6fc;
+}
+
+/* ---------- Guest details (name + contact) ---------- */
+
+.guest-info-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+}
+
+.guest-info-item {
+    display: flex;
+    flex-direction: column;
+}
+
+.guest-info-item label {
+    font-size: 12px;
+    font-weight: 700;
+    color: #8b949e;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    margin-bottom: 8px;
+}
+
+.guest-info-item input {
+    padding: 11px 14px;
+    border: 1.5px solid #30363d;
+    border-radius: 8px;
+    background-color: #0d1117;
+    color: #f0f6fc;
+    font-size: 14px;
+    font-weight: 600;
+    box-sizing: border-box;
+}
+
+.guest-info-item input:focus {
+    outline: none;
+    border-color: #3fb950;
+    box-shadow: 0 0 0 3px rgba(63, 185, 80, 0.15);
+}
+
+.guest-info-item input.field-invalid {
+    border-color: #f85149;
+}
+
+@media (max-width: 480px) {
+    .guest-info-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .equipment-card {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
     }
 }

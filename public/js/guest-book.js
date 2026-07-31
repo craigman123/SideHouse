@@ -318,37 +318,10 @@ document.addEventListener('DOMContentLoaded', () => {
         btn.classList.add('selected');
 
         timeSection.hidden = false;
-        renderTimeSlotSkeleton();
+        timeSlotGrid.innerHTML = '<p class="loading-text">Loading available times…</p>';
 
-        // Guarantee the skeleton is visible for at least a beat — on a
-        // fast connection fetchAvailability can resolve before it's even
-        // perceptible. Racing it against a minimum delay avoids that
-        // without adding lag on slower connections.
-        const MIN_SKELETON_MS = 300;
-        const [ranges] = await Promise.all([
-            fetchAvailability(dateStr),
-            new Promise((resolve) => setTimeout(resolve, MIN_SKELETON_MS)),
-        ]);
-
-        bookedRanges = ranges;
+        bookedRanges = await fetchAvailability(dateStr);
         renderTimeSlots();
-    }
-
-    function renderTimeSlotSkeleton() {
-        timeSlotGrid.innerHTML = '';
-
-        // Same slot-count math as renderTimeSlots() below, so the number
-        // of skeleton placeholders matches the real grid that replaces it.
-        const spanMinutes = OVERNIGHT ? (24 - OPEN_HOUR + CLOSE_HOUR) * 60 : (CLOSE_HOUR - OPEN_HOUR) * 60;
-        const lastStart = spanMinutes - MIN_DURATION * 60;
-        const slotCount = Math.floor(lastStart / STEP_MINUTES) + 1;
-
-        for (let i = 0; i < slotCount; i++) {
-            const skeleton = document.createElement('div');
-            skeleton.className = 'time-slot-skeleton';
-            skeleton.style.animationDelay = `${(i % 8) * 0.05}s`;
-            timeSlotGrid.appendChild(skeleton);
-        }
     }
 
     async function fetchAvailability(dateStr) {
@@ -768,3 +741,31 @@ document.addEventListener('DOMContentLoaded', () => {
         setTimeout(remove, 4000);
     }
 });
+
+(function () {
+  const dateSelector = document.getElementById('date');
+  const timeSlots = document.getElementById('timeSlots');
+  const durationOptions = document.getElementById('durationOptions');
+  const continueBtn = document.getElementById('continueBtn');
+
+  function scrollTo(el) {
+    if (!el) return;
+    el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  dateSelector?.addEventListener('change', () => {
+    scrollTo(timeSlots);
+  });
+
+  timeSlots?.addEventListener('change', (e) => {
+    if (e.target.name === 'time') {
+      scrollTo(durationOptions);
+    }
+  });
+
+  durationOptions?.addEventListener('change', (e) => {
+    if (e.target.name === 'duration') {
+      scrollTo(continueBtn);
+    }
+  });
+})();

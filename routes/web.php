@@ -1,17 +1,21 @@
 <?php
 
-use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\Admin\ActivityLogController;
+use App\Http\Controllers\Admin\Admin_DashboardController;
 use App\Http\Controllers\Admin\BookingController;
 use App\Http\Controllers\Admin\CourtController;
-use App\Http\Controllers\Admin\Admin_DashboardController;
-use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\User\UserDashboardController;
+use App\Http\Controllers\Auth\AuthController;
+use App\Http\Controllers\Guest\GuestBookingController;
 use App\Http\Controllers\User\User_UserController;
+use App\Http\Controllers\User\UserDashboardController;
+use Illuminate\Support\Facades\Route;
 
-Route::get('/', function () {
-    return view('landing');
-})->name('landing');
+Route::get('/', [GuestBookingController::class, 'landing'])->name('landing');
+
+// Guest booking (no login required)
+Route::get('/guest-book/availability', [GuestBookingController::class, 'availability'])->name('guest.book.availability');
+Route::get('/guest-book/equipment-availability', [GuestBookingController::class, 'equipmentAvailability'])->name('guest.book.equipment-availability');
+Route::post('/guest-book', [GuestBookingController::class, 'store'])->name('guest.book.store');
 
 Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
 Route::post('/login', [AuthController::class, 'login'])->name('login.submit');
@@ -31,7 +35,6 @@ Route::middleware('auth')->group(function () {
     Route::put('/courts/{court}', [CourtController::class, 'update'])->name('courts.update');
     Route::delete('/courts/{court}', [CourtController::class, 'destroy'])->name('courts.destroy');
 
-    // Activity log audit trail
     Route::get('/activity_logs', [ActivityLogController::class, 'index'])->name('activity_logs.index');
 });
 

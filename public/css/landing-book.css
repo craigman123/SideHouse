@@ -1,0 +1,231 @@
+/* Landing Page — Guest Booking Widget
+   Loads alongside app.css, dashboard.css, user-dashboard.css, book.css
+   (court-card/modal/calendar/etc.), and your existing landing.css.
+   Only the new "Book a Court Right Now" section lives here — doesn't
+   touch anything already defined in landing.css. */
+
+.scroll-cue {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    margin-top: 32px;
+    color: #8b949e;
+    text-decoration: none;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    animation: scrollCueBounce 2s ease-in-out infinite;
+}
+
+.scroll-cue:hover {
+    color: #3fb950;
+}
+
+@keyframes scrollCueBounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(6px); }
+}
+
+.book-now-section {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 60px 24px;
+    position: relative;
+    z-index: 1;
+}
+
+.book-now-intro {
+    text-align: center;
+    margin-bottom: 32px;
+}
+
+.book-now-intro h2 {
+    font-size: 28px;
+    font-weight: 800;
+    color: #f0f6fc;
+    margin-bottom: 8px;
+}
+
+.book-now-intro p {
+    font-size: 15px;
+    color: #8b949e;
+}
+
+.landing-court-grid {
+    /* auto-fit (not auto-fill): auto-fill reserves empty tracks even when
+       unused, so centering the row-as-a-whole doesn't center the one
+       visible card — it just centers a mostly-empty block, leaving the
+       card itself sitting near that block's left edge. auto-fit collapses
+       unused tracks to zero, so with one court there's genuinely only one
+       track left, and centering it centers the card itself. Still wraps
+       and behaves like a normal grid if more courts get added later. */
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    justify-content: center;
+}
+
+.landing-court-grid .empty-state {
+    text-align: center;
+    color: #8b949e;
+    grid-column: 1 / -1;
+}
+
+@media (max-width: 480px) {
+    .book-now-section {
+        padding: 40px 16px;
+    }
+
+    .book-now-intro h2 {
+        font-size: 22px;
+    }
+}
+
+/* ---------- Equipment rental (Modal 3) ---------- */
+
+.equipment-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.equipment-category-label {
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #6e7681;
+    margin-top: 14px;
+}
+
+.equipment-category-label:first-child {
+    margin-top: 0;
+}
+
+.equipment-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    background-color: #0d1117;
+    border: 1px solid #21262d;
+    border-radius: 8px;
+    padding: 12px 14px;
+    transition: border-color 0.15s ease;
+}
+
+.equipment-card.has-qty {
+    border-color: #3fb950;
+}
+
+.equipment-card-name {
+    font-size: 14px;
+    font-weight: 700;
+    color: #f0f6fc;
+    margin-bottom: 2px;
+}
+
+.equipment-card-meta {
+    font-size: 12px;
+    color: #8b949e;
+}
+
+.equipment-card-meta.equipment-sold-out {
+    color: #f85149;
+}
+
+.equipment-qty-stepper {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+}
+
+.qty-btn {
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    border: 1px solid #30363d;
+    background: none;
+    color: #c9d1d9;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    line-height: 1;
+    transition: border-color 0.15s ease, color 0.15s ease;
+}
+
+.qty-btn:hover:not(:disabled) {
+    border-color: #3fb950;
+    color: #3fb950;
+}
+
+.qty-btn:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+}
+
+.qty-value {
+    min-width: 18px;
+    text-align: center;
+    font-size: 14px;
+    font-weight: 700;
+    color: #f0f6fc;
+}
+
+/* ---------- Guest details (Modal 4) ---------- */
+
+.guest-info-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 4px;
+}
+
+.guest-info-item {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.guest-info-item label {
+    font-size: 13px;
+    font-weight: 700;
+    color: #f0f6fc;
+}
+
+.guest-info-item input {
+    padding: 10px 12px;
+    background-color: #0d1117;
+    border: 1.5px solid #30363d;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #f0f6fc;
+}
+
+.guest-info-item input::placeholder {
+    color: #6e7681;
+}
+
+.guest-info-item input:focus {
+    outline: none;
+    border-color: #3fb950;
+    box-shadow: 0 0 0 3px rgba(63, 185, 80, 0.15);
+}
+
+/* Applied directly to the name/contact <input> by guest-book.js when a
+   required guest field is left empty at confirm time. */
+.field-invalid {
+    border-color: #f85149 !important;
+}
+
+.field-invalid:focus {
+    box-shadow: 0 0 0 3px rgba(248, 81, 73, 0.15) !important;
+}
+
+@media (max-width: 480px) {
+    .guest-info-grid {
+        grid-template-columns: 1fr;
+    }
+}
