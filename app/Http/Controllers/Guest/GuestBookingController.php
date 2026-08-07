@@ -37,6 +37,58 @@ class GuestBookingController extends Controller
     }
 
     /**
+     * Hours booked per day for the current month, for the landing page's
+     * "Court Usage This Month" bar chart. Hours are attributed to the
+     * booking's `date` (its start date) even when a slot runs past
+     * midnight, so an overnight booking doesn't get split across two bars.
+     */
+    public function monthlyStats()
+    {
+        $monthStart = Carbon::now()->startOfMonth();
+        $monthEnd   = Carbon::now()->endOfMonth();
+
+        $bookings = Booking::whereBetween('date', [$monthStart->toDateString(), $monthEnd->toDateString()])
+            ->where('status', '!=', 'cancelled')
+            ->get(['date', 'start_time', 'end_time']);
+
+        $hoursByDate = [];
+        $bookingsByDate = [];
+
+        foreach ($bookings as $booking) {
+            $dateStr = Carbon::parse($booking->date)->toDateString();
+
+            $start = Carbon::parse($dateStr . ' ' . $booking->start_time);
+            $end   = Carbon::parse($dateStr . ' ' . $booking->end_time);
+
+            // Overnight booking (e.g. starts 22:00, ends 02:00) — end_time
+            // is earlier than start_time on the same stored date, so push
+            // it to the next calendar day to get the real duration.
+            if ($end->lte($start)) {
+                $end->addDay();
+            }
+
+            $hoursByDate[$dateStr] = ($hoursByDate[$dateStr] ?? 0) + ($start->diffInMinutes($end) / 60);
+            $bookingsByDate[$dateStr] = ($bookingsByDate[$dateStr] ?? 0) + 1;
+        }
+
+        $days = [];
+        for ($date = $monthStart->copy(); $date->lte($monthEnd); $date->addDay()) {
+            $dateStr = $date->toDateString();
+            $days[] = [
+                'day'      => $date->day,
+                'date'     => $dateStr,
+                'hours'    => round($hoursByDate[$dateStr] ?? 0, 2),
+                'bookings' => $bookingsByDate[$dateStr] ?? 0,
+            ];
+        }
+
+        return response()->json([
+            'month_label' => $monthStart->format('F Y'),
+            'days'        => $days,
+        ]);
+    }
+
+    /**
      * Same shape/logic as User_UserController::availability() — booked
      * time ranges for a court on a date, so the widget can grey out slots.
      */

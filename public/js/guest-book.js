@@ -19,6 +19,193 @@ document.addEventListener('DOMContentLoaded', () => {
         fadeEls.forEach((el) => el.classList.add('visible'));
     }
 
+    // ---------- FAQ accordion ----------
+    // Runs independently of the booking widget too — allow only one
+    // answer open at a time within its own .faq-list.
+    document.querySelectorAll('.faq-question').forEach((btn) => {
+        btn.addEventListener('click', () => {
+            const isOpen = btn.getAttribute('aria-expanded') === 'true';
+            const list = btn.closest('.faq-list');
+
+            if (list) {
+                list.querySelectorAll('.faq-question[aria-expanded="true"]').forEach((other) => {
+                    if (other !== btn) other.setAttribute('aria-expanded', 'false');
+                });
+            }
+
+            btn.setAttribute('aria-expanded', isOpen ? 'false' : 'true');
+        });
+    });
+
+    // ---------- Court usage statistics (bar chart) ----------
+    // Independent of the booking widget — runs as long as #courtStats
+    // is on the page, fetching from its own data-stats-url.
+    (function initCourtStats() {
+        const statsSection = document.getElementById('courtStats');
+        if (!statsSection) return;
+
+        const statsUrl = statsSection.dataset.statsUrl;
+        const monthLabel = document.getElementById('statsMonthLabel');
+        const totalHoursEl = document.getElementById('statsTotalHours');
+        const busiestDayEl = document.getElementById('statsBusiestDay');
+        const avgHoursEl = document.getElementById('statsAvgHours');
+        const chartEl = document.getElementById('statsChart');
+        const monthTag = document.getElementById('statsChartMonthLabel');
+        const yAxisEl = document.getElementById('statsYAxisNumbers');
+        const chartScroll = chartEl ? chartEl.closest('.stats-chart-scroll') : null;
+
+        function updateScrollFade() {
+            if (!chartScroll) return;
+            const atEnd = chartScroll.scrollWidth - chartScroll.scrollLeft - chartScroll.clientWidth < 4;
+            chartScroll.classList.toggle('at-end', atEnd);
+        }
+
+        if (chartScroll) {
+            chartScroll.addEventListener('scroll', updateScrollFade, { passive: true });
+            window.addEventListener('resize', updateScrollFade);
+        }
+
+        function formatHours(n) {
+            const rounded = Math.round(n * 10) / 10;
+            return rounded % 1 === 0 ? `${rounded}` : rounded.toFixed(1);
+        }
+
+        // Picks a "nice" axis top and step (1, 2, 5, 10, 20, 50...) for the
+        // y-axis, the same way most charting libraries round the top of the
+        // scale instead of using the raw max value as the last tick.
+        function computeNiceScale(maxValue) {
+            const target = Math.max(maxValue, 1);
+            const rawStep = target / 5;
+            const magnitude = Math.pow(10, Math.floor(Math.log10(rawStep)));
+            const residual = rawStep / magnitude;
+
+            let step;
+            if (residual > 5) step = 10 * magnitude;
+            else if (residual > 2) step = 5 * magnitude;
+            else if (residual > 1) step = 2 * magnitude;
+            else step = magnitude;
+            step = Math.max(1, Math.round(step));
+
+            const axisMax = Math.ceil(target / step) * step;
+            const ticks = [];
+            for (let v = 0; v <= axisMax; v += step) ticks.push(v);
+
+            return { axisMax, ticks };
+        }
+
+        // Numbers on the left ("Number of Bookings" axis) — positioned by
+        // % so each one lines up with its matching gridline in the chart.
+        function renderYAxis(axisMax, ticks) {
+            if (!yAxisEl) return;
+            yAxisEl.innerHTML = '';
+            ticks.forEach((tick) => {
+                const el = document.createElement('span');
+                el.className = 'stats-yaxis-tick';
+                el.style.bottom = `${(tick / axisMax) * 100}%`;
+                el.textContent = tick;
+                yAxisEl.appendChild(el);
+            });
+        }
+
+        // Dashed horizontal guide lines behind the bars, one per tick.
+        function renderGridlines(axisMax, ticks) {
+            ticks.forEach((tick) => {
+                const line = document.createElement('div');
+                line.className = 'stats-gridline';
+                line.style.bottom = `${(tick / axisMax) * 100}%`;
+                chartEl.appendChild(line);
+            });
+        }
+
+        async function loadStats() {
+            if (!statsUrl) {
+                chartEl.innerHTML = '<p class="loading-text">Stats endpoint not configured.</p>';
+                return;
+            }
+
+            try {
+                const res = await fetch(statsUrl, { headers: { Accept: 'application/json' } });
+                if (!res.ok) throw new Error('Failed to load stats');
+                const data = await res.json();
+                renderStats(data);
+            } catch (err) {
+                console.error(err);
+                chartEl.innerHTML = '<p class="loading-text">Couldn\'t load usage stats right now.</p>';
+                monthLabel.textContent = '';
+            }
+        }
+
+        function renderStats(data) {
+            const days = data.days || []; // [{ day, date, hours }]
+            monthLabel.textContent = data.month_label || '';
+
+            if (days.length === 0) {
+                chartEl.innerHTML = '<p class="loading-text">No bookings yet this month.</p>';
+                if (monthTag) monthTag.textContent = data.month_label || '';
+                totalHoursEl.textContent = '0';
+                busiestDayEl.textContent = '—';
+                avgHoursEl.textContent = '0';
+                return;
+            }
+
+            const totalHours = days.reduce((sum, d) => sum + (d.hours || 0), 0);
+            const maxBookings = Math.max(...days.map((d) => d.bookings || 0), 1);
+            const busiest = days.reduce((a, b) => ((b.hours || 0) > (a.hours || 0) ? b : a), days[0]);
+            const todayStr = new Date().toISOString().slice(0, 10);
+
+            totalHoursEl.textContent = formatHours(totalHours);
+            avgHoursEl.textContent = formatHours(totalHours / days.length);
+            busiestDayEl.textContent = (busiest.hours || 0) > 0
+                ? new Date(`${busiest.date}T00:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+                : '—';
+
+            chartEl.innerHTML = '';
+
+            // Title above the chart.
+            if (monthTag) monthTag.textContent = data.month_label || '';
+
+            // "Number of Bookings" axis on the left, sharing its scale
+            // with the dashed gridlines drawn behind the bars.
+            const { axisMax, ticks } = computeNiceScale(maxBookings);
+            renderYAxis(axisMax, ticks);
+            renderGridlines(axisMax, ticks);
+
+            days.forEach((d) => {
+                const hours = d.hours || 0;
+                const bookingsCount = d.bookings || 0;
+                const isToday = d.date === todayStr;
+
+                const col = document.createElement('div');
+                col.className = 'stats-bar-col' + (isToday ? ' stats-bar-today' : '');
+
+                const track = document.createElement('div');
+                track.className = 'stats-bar-track';
+
+                const bar = document.createElement('div');
+                bar.className = 'stats-bar';
+                bar.style.height = `${bookingsCount > 0 ? Math.max((bookingsCount / axisMax) * 100, 3) : 0}%`;
+                bar.title = `${new Date(`${d.date}T00:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}: ${bookingsCount} booking${bookingsCount === 1 ? '' : 's'} · ${formatHours(hours)} hr${hours === 1 ? '' : 's'} booked`;
+
+                track.appendChild(bar);
+                col.appendChild(track);
+
+                // Date of the month — the x-axis label below each bar.
+                const label = document.createElement('span');
+                label.className = 'stats-bar-label';
+                label.textContent = d.day;
+                col.appendChild(label);
+
+                chartEl.appendChild(col);
+            });
+
+            // Run after render so scrollWidth reflects the real bar count —
+            // hides the fade immediately if everything already fits.
+            requestAnimationFrame(updateScrollFade);
+        }
+
+        loadStats();
+    })();
+
     const grid = document.getElementById('bookNow');
     if (!grid) return;
 

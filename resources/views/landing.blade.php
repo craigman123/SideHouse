@@ -119,6 +119,124 @@
             </div>
         </section>
 
+        <section class="stats-section fade-in" id="courtStats" data-stats-url="{{ route('guest.book.monthly-stats') }}">
+            <div class="stats-intro">
+                <h2>Court Usage This Month</h2>
+                <p id="statsMonthLabel">Loading…</p>
+            </div>
+
+            <div class="stats-summary">
+                <div class="stats-summary-item">
+                    <span class="stats-summary-value" id="statsTotalHours">—</span>
+                    <span class="stats-summary-label">Hours Booked</span>
+                </div>
+                <div class="stats-summary-item">
+                    <span class="stats-summary-value" id="statsBusiestDay">—</span>
+                    <span class="stats-summary-label">Busiest Day</span>
+                </div>
+                <div class="stats-summary-item">
+                    <span class="stats-summary-value" id="statsAvgHours">—</span>
+                    <span class="stats-summary-label">Avg Hours / Day</span>
+                </div>
+            </div>
+
+            <div class="stats-chart-wrap">
+                <div class="stats-chart-title" id="statsChartMonthLabel">Loading…</div>
+
+                <div class="stats-chart-frame">
+                    <div class="stats-yaxis">
+                        <span class="stats-yaxis-title">Number of Bookings</span>
+                        <div class="stats-yaxis-numbers" id="statsYAxisNumbers"></div>
+                    </div>
+
+                    <div class="stats-chart-scroll">
+                        <div class="stats-chart" id="statsChart">
+                            <p class="loading-text">Loading chart…</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="stats-xaxis-label">Date</div>
+            </div>
+        </section>
+
+        <section class="faq-section fade-in" id="faq">
+            <div class="faq-intro">
+                <h2>Frequently Asked Questions</h2>
+                <p>Got questions? Here's what you need to know.</p>
+            </div>
+
+            <div class="faq-list">
+                <div class="faq-item">
+                    <button type="button" class="faq-question" aria-expanded="false">
+                        <span>Where is the court located?</span>
+                        <svg class="faq-chevron" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M6 9l6 6 6-6" />
+                        </svg>
+                    </button>
+                    <div class="faq-answer-wrap">
+                        <div class="faq-answer">
+                            <p>We're located in 423 Tabay, Tunghaan Minglanilla Cebu.</p>
+                            <a
+                                href="https://www.google.com/maps/dir/?api=1&destination=10.246043101731798,123.78949399013447"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                class="faq-directions-btn"
+                            >
+                                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" />
+                                    <circle cx="12" cy="9" r="2.5" />
+                                </svg>
+                                Directions
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="faq-item">
+                    <button type="button" class="faq-question" aria-expanded="false">
+                        <span>What equipment can we rent?</span>
+                        <svg class="faq-chevron" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M6 9l6 6 6-6" />
+                        </svg>
+                    </button>
+                    <div class="faq-answer-wrap">
+                        <div class="faq-answer">
+                            <p>We have both padel and pickleball equipment available to rent when you book.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="faq-item">
+                    <button type="button" class="faq-question" aria-expanded="false">
+                        <span>How do we pay?</span>
+                        <svg class="faq-chevron" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M6 9l6 6 6-6" />
+                        </svg>
+                    </button>
+                    <div class="faq-answer-wrap">
+                        <div class="faq-answer">
+                            <p>We currently accept GCash.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="faq-item">
+                    <button type="button" class="faq-question" aria-expanded="false">
+                        <span>How do we cancel a booking?</span>
+                        <svg class="faq-chevron" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M6 9l6 6 6-6" />
+                        </svg>
+                    </button>
+                    <div class="faq-answer-wrap">
+                        <div class="faq-answer">
+                            <p>Call us at <a href="tel:09335191862">0933 519 1863</a> or message us on Facebook Messenger (Side House Paddlers). Drop your GCash number so we can send your refund.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
         <footer class="landing-footer">
             &copy; {{ date('Y') }} Side House Paddlers. All rights reserved.
         </footer>

@@ -12,6 +12,9 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('/', [GuestBookingController::class, 'landing'])->name('landing');
 
+Route::get('/book/monthly-stats', [GuestBookingController::class, 'monthlyStats'])
+    ->name('guest.book.monthly-stats');
+
 // Guest booking (no login required)
 Route::get('/guest-book/availability', [GuestBookingController::class, 'availability'])->name('guest.book.availability');
 Route::get('/guest-book/equipment-availability', [GuestBookingController::class, 'equipmentAvailability'])->name('guest.book.equipment-availability');

@@ -283,3 +283,450 @@ html {
         grid-template-columns: 1fr;
     }
 }
+
+/* ---------- FAQ accordion ---------- */
+
+.faq-section {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 60px 24px;
+}
+
+.faq-intro {
+    text-align: center;
+    margin-bottom: 32px;
+}
+
+.faq-intro h2 {
+    font-size: 28px;
+    font-weight: 800;
+    color: #f0f6fc;
+    margin-bottom: 8px;
+}
+
+.faq-intro p {
+    font-size: 15px;
+    color: #8b949e;
+}
+
+.faq-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.faq-item {
+    background-color: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 10px;
+    overflow: hidden;
+    transition: border-color 0.15s ease;
+}
+
+.faq-item:has(.faq-question[aria-expanded="true"]) {
+    border-color: #3fb950;
+}
+
+.faq-question {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 16px 20px;
+    background: none;
+    border: none;
+    text-align: left;
+    font-size: 15px;
+    font-weight: 700;
+    color: #f0f6fc;
+    cursor: pointer;
+}
+
+.faq-question:hover {
+    color: #3fb950;
+}
+
+.faq-chevron {
+    flex-shrink: 0;
+    color: #6e7681;
+    transition: transform 0.25s ease, color 0.15s ease;
+}
+
+.faq-question[aria-expanded="true"] .faq-chevron {
+    transform: rotate(180deg);
+    color: #3fb950;
+}
+
+/* Animate to auto height via a 0fr -> 1fr grid track instead of a
+   hardcoded max-height, so answers of any length animate cleanly. */
+.faq-answer-wrap {
+    display: grid;
+    grid-template-rows: 0fr;
+    transition: grid-template-rows 0.3s ease;
+}
+
+.faq-question[aria-expanded="true"] + .faq-answer-wrap {
+    grid-template-rows: 1fr;
+}
+
+.faq-answer {
+    overflow: hidden;
+    min-height: 0;
+}
+
+.faq-answer p {
+    padding: 0 20px 18px;
+    font-size: 14px;
+    line-height: 1.6;
+    color: #8b949e;
+}
+
+.faq-directions-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin: 0 20px 18px;
+    padding: 8px 14px;
+    background-color: rgba(63, 185, 80, 0.12);
+    border: 1px solid #3fb950;
+    border-radius: 8px;
+    color: #3fb950;
+    font-size: 13px;
+    font-weight: 700;
+    text-decoration: none;
+    transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.faq-directions-btn:hover {
+    background-color: #3fb950;
+    color: #0d1117;
+}
+
+.faq-answer a {
+    color: #3fb950;
+    font-weight: 700;
+    text-decoration: none;
+}
+
+.faq-answer a:hover {
+    text-decoration: underline;
+}
+
+@media (max-width: 480px) {
+    .faq-section {
+        padding: 40px 16px;
+    }
+
+    .faq-intro h2 {
+        font-size: 22px;
+    }
+
+    .faq-question {
+        padding: 14px 16px;
+        font-size: 14px;
+    }
+}
+
+/* ---------- Court usage statistics (bar chart) ---------- */
+
+.stats-section {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 60px 24px;
+}
+
+.stats-intro {
+    text-align: center;
+    margin-bottom: 24px;
+}
+
+.stats-intro h2 {
+    font-size: 28px;
+    font-weight: 800;
+    color: #f0f6fc;
+    margin-bottom: 8px;
+}
+
+.stats-intro p {
+    font-size: 15px;
+    color: #8b949e;
+}
+
+.stats-summary {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    max-width: 640px;
+    margin: 0 auto 28px;
+}
+
+.stats-summary-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    background-color: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 10px;
+    padding: 16px 12px;
+}
+
+.stats-summary-value {
+    font-size: 22px;
+    font-weight: 800;
+    color: #3fb950;
+}
+
+.stats-summary-label {
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    color: #8b949e;
+}
+
+/* ---------- Chart layout: title on top, "Number of Bookings" axis on
+   the left, dates along the bottom — same anatomy as a standard bar
+   graph (title / y-axis / x-axis). --stats-chart-height is the one
+   number that keeps the y-axis numbers, gridlines, and bar columns
+   all lined up; only it (and its mobile override below) needs to
+   change if the chart's height is ever adjusted. ---------- */
+.stats-chart-wrap {
+    --stats-chart-height: 180px;
+}
+
+.stats-chart-title {
+    text-align: center;
+    margin-bottom: 14px;
+    font-size: 14px;
+    font-weight: 800;
+    letter-spacing: 0.6px;
+    text-transform: uppercase;
+    color: #3fb950;
+}
+
+.stats-chart-frame {
+    display: flex;
+    align-items: flex-end;
+    gap: 10px;
+    background-color: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 12px;
+    padding: 20px 20px 14px;
+}
+
+/* Fixed column, outside the horizontal scroller, so the scale stays
+   put while the bars underneath it scroll. */
+.stats-yaxis {
+    display: flex;
+    align-items: stretch;
+    gap: 6px;
+    flex-shrink: 0;
+    height: var(--stats-chart-height);
+}
+
+.stats-yaxis-title {
+    writing-mode: vertical-rl;
+    transform: rotate(180deg);
+    align-self: center;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #8b949e;
+    white-space: nowrap;
+}
+
+.stats-yaxis-numbers {
+    position: relative;
+    width: 26px;
+    height: 100%;
+    border-right: 1px solid #30363d;
+}
+
+/* Populated by JS — one per gridline, positioned by % so it always
+   lines up with the matching .stats-gridline in the chart. */
+.stats-yaxis-tick {
+    position: absolute;
+    right: 8px;
+    transform: translateY(50%);
+    font-size: 11px;
+    font-weight: 700;
+    color: #8b949e;
+}
+
+.stats-chart-scroll {
+    flex: 1;
+    min-width: 0;
+    overflow-x: auto;
+    position: relative;
+    scroll-snap-type: x proximity;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* Fade hint on the right edge so it's obvious there's more to scroll,
+   instead of the chart just abruptly cutting off. Pinned to the visible
+   edge of the scroll viewport (not the scrolling content) via absolute
+   positioning on a position:relative container. Toggled off near the
+   end of scroll via JS (.at-end class). */
+.stats-chart-scroll::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 28px;
+    height: 100%;
+    pointer-events: none;
+    transition: opacity 0.2s ease;
+}
+
+.stats-chart-scroll.at-end::after {
+    opacity: 0;
+}
+
+.stats-chart {
+    display: flex;
+    align-items: flex-end;
+    gap: 6px;
+    height: var(--stats-chart-height);
+    min-width: min-content;
+    position: relative;
+    border-bottom: 1px solid #30363d;
+}
+
+/* Populated by JS alongside the y-axis numbers — one dashed line per
+   tick, drawn behind the bars. */
+.stats-gridline {
+    position: absolute;
+    left: 0;
+    right: 0;
+    border-top: 1px dashed #21262d;
+    pointer-events: none;
+    z-index: 0;
+}
+
+.stats-xaxis-label {
+    text-align: center;
+    margin-top: 10px;
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #8b949e;
+}
+
+.stats-bar-col {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 6px;
+    width: 22px;
+    flex-shrink: 0;
+    height: var(--stats-chart-height);
+    position: relative;
+    z-index: 1;
+    scroll-snap-align: start;
+}
+
+.stats-bar-track {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: flex-end;
+}
+
+.stats-bar {
+    width: 100%;
+    min-height: 2px;
+    background-color: #2ea043;
+    border-radius: 4px 4px 0 0;
+    transition: background-color 0.15s ease, transform 0.15s ease;
+    cursor: default;
+    position: relative;
+}
+
+.stats-bar-col:hover .stats-bar {
+    background-color: #3fb950;
+    transform: scaleY(1.02);
+}
+
+.stats-bar-col.stats-bar-today .stats-bar {
+    background-color: #3fb950;
+}
+
+.stats-bar-label {
+    font-size: 10px;
+    color: #6e7681;
+    font-weight: 600;
+}
+
+.stats-bar-col.stats-bar-today .stats-bar-label {
+    color: #3fb950;
+}
+
+@media (max-width: 480px) {
+    .stats-section {
+        padding: 40px 16px;
+        max-width: 100%;
+    }
+
+    .stats-intro h2 {
+        font-size: 22px;
+    }
+
+    .stats-summary {
+        grid-template-columns: 1fr;
+        gap: 8px;
+    }
+
+    .stats-summary-value {
+        font-size: 18px;
+    }
+
+    .stats-chart-wrap {
+        --stats-chart-height: 140px;
+    }
+
+    .stats-chart-title {
+        font-size: 12px;
+        margin-bottom: 10px;
+    }
+
+    .stats-chart-frame {
+        gap: 6px;
+        padding: 16px 12px 10px;
+    }
+
+    .stats-yaxis-numbers {
+        width: 20px;
+    }
+
+    .stats-yaxis-tick {
+        font-size: 9px;
+        right: 5px;
+    }
+
+    .stats-yaxis-title {
+        font-size: 9px;
+    }
+
+    .stats-chart {
+        gap: 4px;
+    }
+
+    .stats-xaxis-label {
+        font-size: 10px;
+        margin-top: 8px;
+    }
+
+    .stats-bar-col {
+        width: 14px;
+        gap: 4px;
+    }
+
+    .stats-bar-label {
+        font-size: 9px;
+    }
+}
