@@ -4,6 +4,44 @@
    Only the new "Book a Court Right Now" section lives here — doesn't
    touch anything already defined in landing.css. */
 
+/* ---------- Smooth scroll (anchor links + scrollIntoView calls) ---------- */
+
+html {
+    scroll-behavior: smooth;
+}
+
+/* ---------- Scroll-triggered fade-in ---------- */
+/* Toggled by the IntersectionObserver in guest-book.js. Elements start
+   hidden/offset, then transition to visible once they enter the viewport. */
+
+.fade-in {
+    opacity: 0;
+    transform: translateY(30px);
+    transition: opacity 0.6s ease, transform 0.6s ease;
+}
+
+.fade-in.visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* Staggered reveal for the feature cards row */
+.features .fade-in:nth-child(1) { transition-delay: 0s; }
+.features .fade-in:nth-child(2) { transition-delay: 0.1s; }
+.features .fade-in:nth-child(3) { transition-delay: 0.2s; }
+
+@media (prefers-reduced-motion: reduce) {
+    html {
+        scroll-behavior: auto;
+    }
+
+    .fade-in {
+        opacity: 1;
+        transform: none;
+        transition: none;
+    }
+}
+
 .scroll-cue {
     display: inline-flex;
     flex-direction: column;
@@ -53,22 +91,34 @@
     color: #8b949e;
 }
 
-.landing-court-grid {
-    /* auto-fit (not auto-fill): auto-fill reserves empty tracks even when
-       unused, so centering the row-as-a-whole doesn't center the one
-       visible card — it just centers a mostly-empty block, leaving the
-       card itself sitting near that block's left edge. auto-fit collapses
-       unused tracks to zero, so with one court there's genuinely only one
-       track left, and centering it centers the card itself. Still wraps
-       and behaves like a normal grid if more courts get added later. */
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-    justify-content: center;
-}
-
-.landing-court-grid .empty-state {
+.book-now-section .empty-state {
     text-align: center;
     color: #8b949e;
-    grid-column: 1 / -1;
+}
+
+/* The calendar/time/duration widget, inline on the page now instead of
+   inside a modal — same card treatment as .modal-box so it still reads
+   as a distinct, intentional unit rather than bare page content. */
+.book-now-widget {
+    max-width: 480px;
+    margin: 0 auto;
+    background-color: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 12px;
+    padding: 24px;
+    box-shadow: 0 12px 32px rgba(1, 4, 9, 0.5);
+}
+
+.book-now-widget .booking-section:last-of-type {
+    margin-bottom: 0;
+}
+
+.book-now-widget-actions {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px solid #21262d;
 }
 
 @media (max-width: 480px) {
@@ -78,6 +128,10 @@
 
     .book-now-intro h2 {
         font-size: 22px;
+    }
+
+    .book-now-widget {
+        padding: 18px;
     }
 }
 

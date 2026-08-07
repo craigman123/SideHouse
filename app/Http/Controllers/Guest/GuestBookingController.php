@@ -18,7 +18,7 @@ class GuestBookingController extends Controller
     // If OPEN_HOUR/CLOSE_HOUR/etc. change, update both places.
     private const OPEN_HOUR = 16;
     private const CLOSE_HOUR = 7;
-    private const BOOKING_STEP_MINUTES = 15;
+    private const BOOKING_STEP_MINUTES = 60;
     private const MIN_DURATION_HOURS = 1;
     private const MAX_DURATION_HOURS = 8;
 

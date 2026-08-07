@@ -1,5 +1,25 @@
 document.addEventListener('DOMContentLoaded', () => {
-    const grid = document.getElementById('courtGrid');
+    // ---------- Scroll-triggered fade-in ----------
+    // Runs regardless of whether the booking widget below is present,
+    // so the hero/features/footer still animate in on pages without it.
+    const fadeEls = document.querySelectorAll('.fade-in');
+    if (fadeEls.length > 0 && 'IntersectionObserver' in window) {
+        const fadeObserver = new IntersectionObserver((entries, observer) => {
+            entries.forEach((entry) => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('visible');
+                    observer.unobserve(entry.target);
+                }
+            });
+        }, { root: null, rootMargin: '0px', threshold: 0.15 });
+
+        fadeEls.forEach((el) => fadeObserver.observe(el));
+    } else {
+        // No IntersectionObserver support — just show everything.
+        fadeEls.forEach((el) => el.classList.add('visible'));
+    }
+
+    const grid = document.getElementById('bookNow');
     if (!grid) return;
 
     const availabilityUrl = grid.dataset.availabilityUrl;
@@ -28,16 +48,11 @@ document.addEventListener('DOMContentLoaded', () => {
         return {};
     }
 
-    const infoModal = document.getElementById('courtInfoModal');
-    const bookingModal = document.getElementById('courtBookingModal');
     const equipmentModal = document.getElementById('equipmentModal');
     const paymentModal = document.getElementById('courtPaymentModal');
-
-    const modalCourtName = document.getElementById('modalCourtName');
-    const modalCourtNameBooking = document.getElementById('modalCourtNameBooking');
-    const modalCourtType = document.getElementById('modalCourtType');
-    const modalCourtDim = document.getElementById('modalCourtDim');
-    const modalCourtPrice = document.getElementById('modalCourtPrice');
+    const timePickerModal = document.getElementById('timePickerModal');
+    const timePickerDateLabel = document.getElementById('timePickerDateLabel');
+    const timePickerScrollBody = document.getElementById('timePickerScrollBody');
 
     const calMonthLabel = document.getElementById('calMonthLabel');
     const calendarGrid = document.getElementById('calendarGrid');
@@ -80,37 +95,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const pad = (n) => n.toString().padStart(2, '0');
     const todayStr = () => new Date().toISOString().slice(0, 10);
 
-    // ---------- Modal open/close ----------
-
-    function openInfoModal(court) {
-        selectedCourt = court;
-        modalCourtName.textContent = court.name;
-        modalCourtType.textContent = court.type;
-        modalCourtDim.textContent = `${court.length}m × ${court.width}m`;
-        modalCourtPrice.textContent = `₱${Number(court.price).toLocaleString()} / hour`;
-        infoModal.classList.add('open');
-    }
-
-    function closeInfoModal() {
-        infoModal.classList.remove('open');
-    }
-
-    function openBookingModal() {
-        if (modalCourtNameBooking && selectedCourt) {
-            modalCourtNameBooking.textContent = selectedCourt.name;
-        }
-        resetBookingState();
-        bookingModal.classList.add('open');
-        renderCalendar();
-    }
-
-    function closeBookingModal() {
-        bookingModal.classList.remove('open');
-    }
-
-    function reopenBookingModal() {
-        bookingModal.classList.add('open');
-    }
+    // ---------- Modal open/close (equipment + payment only — the calendar
+    // is inline in the page now, not a modal) ----------
 
     function openEquipmentModal() {
         equipmentModal.classList.add('open');
@@ -119,6 +105,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function closeEquipmentModal() {
         equipmentModal.classList.remove('open');
+    }
+
+    function openTimePickerModal() {
+        timePickerModal.classList.add('open');
+        if (timePickerScrollBody) timePickerScrollBody.scrollTop = 0;
+    }
+
+    function closeTimePickerModal() {
+        timePickerModal.classList.remove('open');
     }
 
     function openPaymentModal() {
@@ -140,91 +135,46 @@ document.addEventListener('DOMContentLoaded', () => {
         bookedRanges = [];
         equipmentSelection = {};
         calendarCursor = new Date();
-        timeSection.hidden = true;
         durationSection.hidden = true;
+        closeTimePickerModal();
     }
 
-    grid.addEventListener('click', (e) => {
-        const card = e.target.closest('.court-card-clickable');
-        if (!card) return;
+    // ---------- Wire up the (only) court from the database ----------
+    // There's only one court, so there's nothing for a guest to pick —
+    // its details come straight from data-court-* on #bookNow, and the
+    // calendar renders immediately since it's inline on the page, not
+    // behind a click or a modal.
+    function initBooking() {
+        if (!grid.dataset.courtId) return; // no active courts — nothing to wire up
 
-        openInfoModal({
-            id: card.dataset.id,
-            name: card.dataset.name,
-            type: card.dataset.type,
-            length: card.dataset.length,
-            width: card.dataset.width,
-            price: card.dataset.price,
-        });
-    });
-
-    // ---------- Default to the first court ----------
-    // Guests don't have to pick a court from the grid themselves — the
-    // hero "Book Now" button and the scroll-cue link both jump straight
-    // into the first available court's info modal. The grid stays
-    // visible for context (and still works if clicked directly), this
-    // just skips that step for the common one-court case.
-    function openFirstCourtModal() {
-        const firstCard = grid.querySelector('.court-card-clickable');
-        if (!firstCard) return;
-
-        // Skip the info-card step entirely and go straight to the
-        // calendar/time/duration modal — with only one court in the
-        // database, there's nothing for a guest to actually choose
-        // between, so just land them on "pick a date" directly.
         selectedCourt = {
-            id: firstCard.dataset.id,
-            name: firstCard.dataset.name,
-            type: firstCard.dataset.type,
-            length: firstCard.dataset.length,
-            width: firstCard.dataset.width,
-            price: firstCard.dataset.price,
+            id: grid.dataset.courtId,
+            name: grid.dataset.courtName,
+            type: grid.dataset.courtType,
+            length: grid.dataset.courtLength,
+            width: grid.dataset.courtWidth,
+            price: grid.dataset.courtPrice,
         };
 
-        openBookingModal();
+        resetBookingState();
+        renderCalendar();
     }
-
-    document.querySelectorAll('a[href="#bookNow"]').forEach((link) => {
-        link.addEventListener('click', () => {
-            // Let the native #bookNow anchor scroll happen first, then
-            // reveal the modal once the section is actually in view.
-            setTimeout(openFirstCourtModal, 400);
-        });
-    });
-
-    document.getElementById('courtInfoModalClose').addEventListener('click', closeInfoModal);
-    document.getElementById('stepInfoClose').addEventListener('click', closeInfoModal);
-    infoModal.addEventListener('click', (e) => {
-        if (e.target === infoModal) closeInfoModal();
-    });
-
-    document.getElementById('courtBookingModalClose').addEventListener('click', closeBookingModal);
-    bookingModal.addEventListener('click', (e) => {
-        if (e.target === bookingModal) closeBookingModal();
-    });
 
     document.getElementById('equipmentModalClose').addEventListener('click', closeEquipmentModal);
     equipmentModal.addEventListener('click', (e) => {
         if (e.target === equipmentModal) closeEquipmentModal();
     });
 
+    document.getElementById('timePickerModalClose').addEventListener('click', closeTimePickerModal);
+    timePickerModal.addEventListener('click', (e) => {
+        if (e.target === timePickerModal) closeTimePickerModal();
+    });
+    document.getElementById('backToCalendar').addEventListener('click', closeTimePickerModal);
+    document.getElementById('backToCalendar2').addEventListener('click', closeTimePickerModal);
+
     document.getElementById('courtPaymentModalClose').addEventListener('click', closePaymentModal);
     paymentModal.addEventListener('click', (e) => {
         if (e.target === paymentModal) closePaymentModal();
-    });
-
-    document.getElementById('goToBooking').addEventListener('click', () => {
-        closeInfoModal();
-        openBookingModal();
-    });
-
-    document.getElementById('backToInfo').addEventListener('click', () => {
-        closeBookingModal();
-        openInfoModal(selectedCourt);
-    });
-    document.getElementById('backToInfo2').addEventListener('click', () => {
-        closeBookingModal();
-        openInfoModal(selectedCourt);
     });
 
     continueToEquipmentBtn.addEventListener('click', () => {
@@ -233,17 +183,15 @@ document.addEventListener('DOMContentLoaded', () => {
             showToast(`Please select ${formatList(missing)} to continue.`, 'error');
             return;
         }
-        closeBookingModal();
+        closeTimePickerModal();
         openEquipmentModal();
     });
 
     document.getElementById('backToBookingFromEquipment').addEventListener('click', () => {
         closeEquipmentModal();
-        reopenBookingModal();
     });
     document.getElementById('backToBookingFromEquipment2').addEventListener('click', () => {
         closeEquipmentModal();
-        reopenBookingModal();
     });
 
     continueToGuestInfoBtn.addEventListener('click', () => {
@@ -317,11 +265,39 @@ document.addEventListener('DOMContentLoaded', () => {
         calendarGrid.querySelectorAll('.calendar-day').forEach((el) => el.classList.remove('selected'));
         btn.classList.add('selected');
 
-        timeSection.hidden = false;
-        timeSlotGrid.innerHTML = '<p class="loading-text">Loading available times…</p>';
+        if (timePickerDateLabel) timePickerDateLabel.textContent = formatDate(dateStr);
+        openTimePickerModal();
+        renderTimeSlotSkeleton();
 
-        bookedRanges = await fetchAvailability(dateStr);
+        // Guarantee the skeleton is visible for at least a beat — on a
+        // fast connection fetchAvailability can resolve before it's even
+        // perceptible. Racing it against a minimum delay avoids that
+        // without adding lag on slower connections.
+        const MIN_SKELETON_MS = 300;
+        const [ranges] = await Promise.all([
+            fetchAvailability(dateStr),
+            new Promise((resolve) => setTimeout(resolve, MIN_SKELETON_MS)),
+        ]);
+
+        bookedRanges = ranges;
         renderTimeSlots();
+    }
+
+    function renderTimeSlotSkeleton() {
+        timeSlotGrid.innerHTML = '';
+
+        // Same slot-count math as renderTimeSlots() below, so the number
+        // of skeleton placeholders matches the real grid that replaces it.
+        const spanMinutes = OVERNIGHT ? (24 - OPEN_HOUR + CLOSE_HOUR) * 60 : (CLOSE_HOUR - OPEN_HOUR) * 60;
+        const lastStart = spanMinutes - MIN_DURATION * 60;
+        const slotCount = Math.floor(lastStart / STEP_MINUTES) + 1;
+
+        for (let i = 0; i < slotCount; i++) {
+            const skeleton = document.createElement('div');
+            skeleton.className = 'time-slot-skeleton';
+            skeleton.style.animationDelay = `${(i % 8) * 0.05}s`;
+            timeSlotGrid.appendChild(skeleton);
+        }
     }
 
     async function fetchAvailability(dateStr) {
@@ -396,6 +372,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
         durationSection.hidden = false;
         renderDurationOptions();
+
+        // Auto-scroll within the modal so the duration options are
+        // immediately visible — no manual scrolling needed on the user's end.
+        durationSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 
     // ---------- Duration ----------
@@ -445,6 +425,10 @@ document.addEventListener('DOMContentLoaded', () => {
         selectedDuration = parseFloat(btn.dataset.hours);
         durationGrid.querySelectorAll('.duration-btn').forEach((el) => el.classList.remove('selected'));
         btn.classList.add('selected');
+
+        // Bring the Continue button into view too, same reasoning as the
+        // auto-scroll to duration — keep the user from having to scroll.
+        continueToEquipmentBtn.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     });
 
     // ---------- Equipment rental ----------
@@ -691,7 +675,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 closePaymentModal();
                 bookedRanges = await fetchAvailability(selectedDate);
                 renderTimeSlots();
-                reopenBookingModal();
+                openTimePickerModal();
 
                 confirmBtn.disabled = false;
                 confirmBtn.textContent = originalLabel;
@@ -707,6 +691,7 @@ document.addEventListener('DOMContentLoaded', () => {
             guestContactInput.value = '';
             equipmentSelection = {};
             resetBookingState();
+            renderCalendar();
         } catch (err) {
             console.error(err);
             showToast('Something went wrong. Please try again.', 'error');
@@ -740,32 +725,8 @@ document.addEventListener('DOMContentLoaded', () => {
         toast.querySelector('.toast-close').addEventListener('click', remove);
         setTimeout(remove, 4000);
     }
+
+    // Render the calendar immediately — it's inline on the page now,
+    // not behind a click or a modal.
+    initBooking();
 });
-
-(function () {
-  const dateSelector = document.getElementById('date');
-  const timeSlots = document.getElementById('timeSlots');
-  const durationOptions = document.getElementById('durationOptions');
-  const continueBtn = document.getElementById('continueBtn');
-
-  function scrollTo(el) {
-    if (!el) return;
-    el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  }
-
-  dateSelector?.addEventListener('change', () => {
-    scrollTo(timeSlots);
-  });
-
-  timeSlots?.addEventListener('change', (e) => {
-    if (e.target.name === 'time') {
-      scrollTo(durationOptions);
-    }
-  });
-
-  durationOptions?.addEventListener('change', (e) => {
-    if (e.target.name === 'duration') {
-      scrollTo(continueBtn);
-    }
-  });
-})();
