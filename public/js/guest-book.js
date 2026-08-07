@@ -212,6 +212,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const availabilityUrl = grid.dataset.availabilityUrl;
     const equipmentUrl = grid.dataset.equipmentUrl;
     const storeUrl = grid.dataset.storeUrl;
+    const statusUrlTemplate = grid.dataset.statusUrlTemplate;
 
     const OPEN_HOUR = parseInt(grid.dataset.openHour, 10);
     const CLOSE_HOUR = parseInt(grid.dataset.closeHour, 10);
@@ -257,7 +258,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const guestNameInput = document.getElementById('guestName');
     const guestContactInput = document.getElementById('guestContact');
+    const googleSignInBtnEl = document.getElementById('googleSignInBtn');
+    const guestEmailConfirmed = document.getElementById('guestEmailConfirmed');
+    const guestEmailConfirmedAddress = document.getElementById('guestEmailConfirmedAddress');
+    const guestEmailChangeBtn = document.getElementById('guestEmailChange');
+    const guestEmailLabel = document.getElementById('guestEmailLabel');
     const paymentGrid = document.getElementById('paymentGrid');
+    const gcashQrPanel = document.getElementById('gcashQrPanel');
+    const gcashRefInput = document.getElementById('gcashRefNumber');
+    const gcashWaitModal = document.getElementById('gcashWaitModal');
+    const gcashWaitAmount = document.getElementById('gcashWaitAmount');
+    const gcashWaitStatus = document.getElementById('gcashWaitStatus');
+    const gcashWaitCountdown = document.getElementById('gcashWaitCountdown');
+    const gcashWaitCancel = document.getElementById('gcashWaitCancel');
     const bookingSummary = document.getElementById('bookingSummary');
     const summaryDate = document.getElementById('summaryDate');
     const summaryTime = document.getElementById('summaryTime');
@@ -267,7 +280,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const summaryTotal = document.getElementById('summaryTotal');
     const confirmBtn = document.getElementById('confirmBooking');
 
-    const PAYMENT_LABELS = { arrival: 'Pay on Arrival', ewallet: 'E-Wallet' };
+    const PAYMENT_LABELS = { gcash: 'GCash' };
 
     let selectedCourt = null;
     let calendarCursor = new Date();
@@ -278,9 +291,121 @@ document.addEventListener('DOMContentLoaded', () => {
     let bookedRanges = [];
     let equipmentCatalog = []; // [{id, name, category, price, available}]
     let equipmentSelection = {}; // { [equipmentId]: quantity }
+    let googleIdToken = null; // raw JWT from Google — sent as-is, verified server-side
+    let googleEmail = ''; // decoded from the token, for display only (never trusted on its own)
 
     const pad = (n) => n.toString().padStart(2, '0');
     const todayStr = () => new Date().toISOString().slice(0, 10);
+
+    // ---------- GCash payment confirmation polling ----------
+
+    const GCASH_POLL_INTERVAL_MS = 4000;
+    let gcashPollTimer = null;
+    let gcashCountdownTimer = null;
+    let gcashActiveCancelUrl = null;
+
+    function stopGcashPolling() {
+        if (gcashPollTimer) clearTimeout(gcashPollTimer);
+        if (gcashCountdownTimer) clearInterval(gcashCountdownTimer);
+        gcashPollTimer = null;
+        gcashCountdownTimer = null;
+    }
+
+    function closeGcashWaitModal() {
+        stopGcashPolling();
+        gcashWaitModal.classList.remove('open');
+    }
+
+    function formatCountdown(msRemaining) {
+        const totalSeconds = Math.max(0, Math.floor(msRemaining / 1000));
+        const mins = Math.floor(totalSeconds / 60);
+        const secs = totalSeconds % 60;
+        return `${mins}:${secs.toString().padStart(2, '0')}`;
+    }
+
+    // Polls GET .../guest/bookings/{id}/status?token=... every few seconds.
+    // Ends in one of three ways: GcashWebhookController confirms it
+    // ('confirmed'), ExpireUnconfirmedGcashBookings times it out
+    // ('cancelled'), or the guest gives up and cancels manually.
+    function watchGcashPayment(bookingId, pollToken, expiresAtIso, amountLabel) {
+        const statusUrl = statusUrlTemplate.replace('__ID__', bookingId) + `?token=${encodeURIComponent(pollToken)}`;
+        const cancelUrl = statusUrlTemplate.replace('__ID__', bookingId).replace('/status', '/cancel') + `?token=${encodeURIComponent(pollToken)}`;
+        gcashActiveCancelUrl = cancelUrl;
+        const expiresAt = new Date(expiresAtIso).getTime();
+
+        gcashWaitAmount.textContent = amountLabel;
+        gcashWaitStatus.textContent = "We'll confirm automatically the moment GCash notifies us — usually within a minute or two.";
+        gcashWaitModal.classList.add('open');
+
+        gcashCountdownTimer = setInterval(() => {
+            const remaining = expiresAt - Date.now();
+            gcashWaitCountdown.textContent = formatCountdown(remaining);
+            if (remaining <= 0) clearInterval(gcashCountdownTimer);
+        }, 1000);
+        gcashWaitCountdown.textContent = formatCountdown(expiresAt - Date.now());
+
+        async function poll() {
+            try {
+                const res = await fetch(statusUrl, { headers: { Accept: 'application/json' } });
+                if (res.ok) {
+                    const data = await res.json();
+
+                    if (data.status === 'confirmed') {
+                        stopGcashPolling();
+                        gcashWaitStatus.textContent = 'Payment confirmed!';
+                        setTimeout(() => {
+                            closeGcashWaitModal();
+                            showToast('Payment confirmed — see you on the court!', 'success');
+                            finishBookingReset();
+                        }, 900);
+                        return;
+                    }
+
+                    if (data.status === 'cancelled') {
+                        stopGcashPolling();
+                        closeGcashWaitModal();
+                        showToast("We didn't receive that payment in time, so the slot was released. Please rebook when you're ready to pay.", 'error');
+                        finishBookingReset();
+                        return;
+                    }
+                }
+            } catch (err) {
+                // Network hiccup — just try again on the next tick rather
+                // than surfacing an error for a transient failure.
+                console.error(err);
+            }
+
+            gcashPollTimer = setTimeout(poll, GCASH_POLL_INTERVAL_MS);
+        }
+
+        poll();
+    }
+
+    if (gcashWaitCancel) {
+        gcashWaitCancel.addEventListener('click', async () => {
+            const cancelUrl = gcashActiveCancelUrl;
+            closeGcashWaitModal();
+            if (cancelUrl) {
+                try {
+                    await fetch(cancelUrl, { method: 'POST', headers: { Accept: 'application/json', ...csrfHeaders() } });
+                } catch (err) {
+                    console.error(err);
+                }
+            }
+            showToast('Booking cancelled.', 'success');
+            finishBookingReset();
+        });
+    }
+
+    function finishBookingReset() {
+        guestNameInput.value = '';
+        guestContactInput.value = '';
+        clearGoogleSignIn();
+        equipmentSelection = {};
+        if (gcashRefInput) gcashRefInput.value = '';
+        resetBookingState();
+        renderCalendar();
+    }
 
     // ---------- Modal open/close (equipment + payment only — the calendar
     // is inline in the page now, not a modal) ----------
@@ -306,6 +431,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function openPaymentModal() {
         selectedPayment = null;
         paymentGrid.querySelectorAll('.payment-btn').forEach((el) => el.classList.remove('selected'));
+        if (gcashQrPanel) gcashQrPanel.classList.remove('open');
         updateSummary();
         paymentModal.classList.add('open');
     }
@@ -313,6 +439,98 @@ document.addEventListener('DOMContentLoaded', () => {
     function closePaymentModal() {
         paymentModal.classList.remove('open');
     }
+
+    // ---------- Google Sign-In (Google confirms the address, not a
+    // typed-twice field or a self-serve yes/no) ----------
+
+    function decodeJwtPayload(jwt) {
+        try {
+            const base64 = jwt.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+            const json = decodeURIComponent(
+                atob(base64)
+                    .split('')
+                    .map((c) => '%' + c.charCodeAt(0).toString(16).padStart(2, '0'))
+                    .join('')
+            );
+            return JSON.parse(json);
+        } catch (err) {
+            return null;
+        }
+    }
+
+    function showSignedInState(email) {
+        guestEmailConfirmedAddress.textContent = email;
+        guestEmailConfirmed.hidden = false;
+        googleSignInBtnEl.hidden = true;
+        if (guestEmailLabel) guestEmailLabel.hidden = true;
+    }
+
+    function showSignedOutState() {
+        guestEmailConfirmed.hidden = true;
+        googleSignInBtnEl.hidden = false;
+        if (guestEmailLabel) guestEmailLabel.hidden = false;
+    }
+
+    function clearGoogleSignIn() {
+        googleIdToken = null;
+        googleEmail = '';
+        showSignedOutState();
+        if (window.google && window.google.accounts && window.google.accounts.id) {
+            window.google.accounts.id.disableAutoSelect();
+        }
+    }
+
+    function handleGoogleCredential(response) {
+        const payload = decodeJwtPayload(response.credential);
+        if (!payload || !payload.email) {
+            showToast("Couldn't verify that Google account. Please try again.", 'error');
+            return;
+        }
+        googleIdToken = response.credential;
+        googleEmail = payload.email;
+        showSignedInState(payload.email);
+        const emailBlock = document.querySelector('.guest-email-block');
+        if (emailBlock) emailBlock.classList.remove('guest-email-block-invalid');
+    }
+
+    (function initGoogleSignIn() {
+        const clientId = grid.dataset.googleClientId;
+        if (!clientId || !googleSignInBtnEl) return;
+
+        function render() {
+            window.google.accounts.id.initialize({
+                client_id: clientId,
+                callback: handleGoogleCredential,
+                auto_select: false,
+            });
+            window.google.accounts.id.renderButton(googleSignInBtnEl, {
+                type: 'standard',
+                theme: 'filled_black',
+                size: 'large',
+                text: 'continue_with',
+                shape: 'pill',
+            });
+        }
+
+        if (window.google && window.google.accounts && window.google.accounts.id) {
+            render();
+        } else {
+            // The GIS script tag is `defer`, so it may not have finished
+            // loading yet — poll briefly instead of assuming order.
+            let attempts = 0;
+            const wait = setInterval(() => {
+                attempts += 1;
+                if (window.google && window.google.accounts && window.google.accounts.id) {
+                    clearInterval(wait);
+                    render();
+                } else if (attempts > 40) {
+                    clearInterval(wait);
+                }
+            }, 250);
+        }
+    })();
+
+    guestEmailChangeBtn.addEventListener('click', clearGoogleSignIn);
 
     function resetBookingState() {
         selectedDate = null;
@@ -323,6 +541,8 @@ document.addEventListener('DOMContentLoaded', () => {
         equipmentSelection = {};
         calendarCursor = new Date();
         durationSection.hidden = true;
+        paymentGrid.querySelectorAll('.payment-btn').forEach((el) => el.classList.remove('selected'));
+        if (gcashQrPanel) gcashQrPanel.classList.remove('open');
         closeTimePickerModal();
     }
 
@@ -741,6 +961,10 @@ document.addEventListener('DOMContentLoaded', () => {
         paymentGrid.querySelectorAll('.payment-btn').forEach((el) => el.classList.remove('selected'));
         btn.classList.add('selected');
 
+        if (gcashQrPanel) {
+            gcashQrPanel.classList.toggle('open', selectedPayment === 'gcash');
+        }
+
         updateSummary();
     });
 
@@ -792,7 +1016,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const missing = [];
         if (!guestNameInput.value.trim()) missing.push('your name');
         if (!guestContactInput.value.trim()) missing.push('a contact number');
+        if (!googleIdToken) missing.push('an email address (sign in with Google)');
         if (!selectedPayment) missing.push('a payment method');
+        if (selectedPayment === 'gcash' && !(gcashRefInput && gcashRefInput.value.trim())) {
+            missing.push('your GCash reference number');
+        }
         return missing;
     }
 
@@ -810,8 +1038,15 @@ document.addEventListener('DOMContentLoaded', () => {
             showToast(`Please provide ${formatList(missing)} to continue.`, 'error');
             guestNameInput.classList.toggle('field-invalid', !guestNameInput.value.trim());
             guestContactInput.classList.toggle('field-invalid', !guestContactInput.value.trim());
+            document.querySelector('.guest-email-block').classList.toggle('guest-email-block-invalid', !googleIdToken);
+            document.querySelector('.gcash-proof-block')?.classList.toggle(
+                'gcash-proof-invalid',
+                selectedPayment === 'gcash' && !(gcashRefInput && gcashRefInput.value.trim())
+            );
             return;
         }
+        document.querySelector('.guest-email-block').classList.remove('guest-email-block-invalid');
+        document.querySelector('.gcash-proof-block')?.classList.remove('gcash-proof-invalid');
 
         if (!selectedCourt || !selectedDate || !selectedStart || !selectedDuration) return;
 
@@ -824,24 +1059,33 @@ document.addEventListener('DOMContentLoaded', () => {
             quantity,
         }));
 
+        const formData = new FormData();
+        formData.append('court_id', selectedCourt.id);
+        formData.append('date', selectedDate);
+        formData.append('start_time', selectedStart);
+        formData.append('duration', selectedDuration);
+        formData.append('payment_method', selectedPayment);
+        formData.append('guest_name', guestNameInput.value.trim());
+        formData.append('guest_contact', guestContactInput.value.trim());
+        formData.append('google_id_token', googleIdToken);
+        if (gcashRefInput && gcashRefInput.value.trim()) {
+            formData.append('gcash_reference', gcashRefInput.value.trim());
+        }
+        equipmentPayload.forEach((item, i) => {
+            formData.append(`equipment[${i}][id]`, item.id);
+            formData.append(`equipment[${i}][quantity]`, item.quantity);
+        });
         try {
+            // No 'Content-Type' header here on purpose — the browser sets
+            // multipart/form-data with the correct boundary itself. Setting
+            // it manually breaks the upload.
             const res = await fetch(storeUrl, {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json',
                     Accept: 'application/json',
                     ...csrfHeaders(),
                 },
-                body: JSON.stringify({
-                    court_id: selectedCourt.id,
-                    date: selectedDate,
-                    start_time: selectedStart,
-                    duration: selectedDuration,
-                    payment_method: selectedPayment,
-                    guest_name: guestNameInput.value.trim(),
-                    guest_contact: guestContactInput.value.trim(),
-                    equipment: equipmentPayload,
-                }),
+                body: formData,
             });
 
             const data = await res.json().catch(() => ({}));
@@ -869,16 +1113,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
-            showToast(data.message || 'Booking confirmed! See you on the court.', 'success');
             closePaymentModal();
-
-            // No dashboard to send a guest to — reset state so the widget
-            // is ready for another booking instead of redirecting anywhere.
-            guestNameInput.value = '';
-            guestContactInput.value = '';
-            equipmentSelection = {};
-            resetBookingState();
-            renderCalendar();
+            watchGcashPayment(data.booking_id, data.poll_token, data.expires_at, `₱${Number(data.amount).toFixed(2)}`);
         } catch (err) {
             console.error(err);
             showToast('Something went wrong. Please try again.', 'error');

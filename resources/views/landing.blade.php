@@ -11,6 +11,7 @@
     <link rel="stylesheet" href="{{ asset('css/landing.css') }}">
     <link rel="stylesheet" href="{{ asset('css/landing-book.css') }}">
     <link rel="icon" type="image/png" href="{{ asset('images/tab_icon.png') }}">
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 <body>
 
@@ -56,11 +57,13 @@
             data-availability-url="{{ route('guest.book.availability') }}"
             data-equipment-url="{{ route('guest.book.equipment-availability') }}"
             data-store-url="{{ route('guest.book.store') }}"
+            data-status-url-template="{{ route('guest.book.status', ['booking' => '__ID__']) }}"
             data-open-hour="{{ $openHour }}"
             data-close-hour="{{ $closeHour }}"
             data-min-duration="{{ $minDuration }}"
             data-max-duration="{{ $maxDuration }}"
             data-step-minutes="{{ $stepMinutes }}"
+            data-google-client-id="{{ config('services.google.client_id') }}"
             @if ($courts->isNotEmpty())
                 data-court-id="{{ $courts->first()->id }}"
                 data-court-name="{{ $courts->first()->name }}"
@@ -320,19 +323,59 @@
                             <input type="tel" id="guestContact" placeholder="09XX XXX XXXX" autocomplete="tel">
                         </div>
                     </div>
+
+                    {{-- Google vouches for the address instead of the guest
+                         typing it twice — the button renders here via
+                         google.accounts.id.renderButton() in guest-book.js. --}}
+                    <div class="guest-email-block">
+                        <label class="guest-email-label" id="guestEmailLabel">Email Address</label>
+                        <div id="googleSignInBtn" class="google-signin-btn"></div>
+                        <div class="guest-email-confirmed" id="guestEmailConfirmed" hidden>
+                            <span class="guest-email-confirmed-icon">&check;</span>
+                            <span>Signed in as <strong id="guestEmailConfirmedAddress"></strong></span>
+                            <button type="button" class="guest-email-change" id="guestEmailChange">Change</button>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="booking-section">
                     <p class="booking-section-label">How will you pay?</p>
                     <div class="payment-grid" id="paymentGrid">
-                        <button type="button" class="payment-btn" data-method="arrival">
-                            <span class="payment-btn-title">Pay on Arrival</span>
-                            <span class="payment-btn-sub">Settle cash at the counter</span>
+                        <button type="button" class="payment-btn" data-method="gcash">
+                            <span class="payment-btn-title">GCash</span>
+                            <span class="payment-btn-sub">Scan  the QR code through Gcash to pay</span>
                         </button>
-                        <button type="button" class="payment-btn" data-method="ewallet" disabled>
-                            <span class="payment-btn-title">E-Wallet</span>
-                            <span class="payment-btn-sub">Coming soon</span>
+
+                        <button type="button" class="payment-btn" data-method="landbank" disabled>
+                            <span class="payment-btn-title">Landbank<br><p style="font-size: 10px; color: #8e0a0a">Coming soon</p></span>
+                            <span class="payment-btn-sub">Payment using Landbank account by Scanning the Qr Code</span>
                         </button>
+                    </div>
+
+                    {{-- Revealed via JS (adds .open) when GCash is selected.
+                         Drop the real QR at public/images/gcash-qr.png — no
+                         code changes needed. Until that file exists, the
+                         image 404s and the fallback box below shows instead. --}}
+                    <div class="gcash-qr-panel" id="gcashQrPanel">
+                        <p class="gcash-qr-instructions">Scan this code in your GCash app to pay, then enter the reference number from the payment confirmation below.</p>
+                        <div class="gcash-qr-image-wrap">
+                            <img
+                                src="{{ asset('images/gcash-qr.png') }}"
+                                alt="GCash QR code"
+                                id="gcashQrImage"
+                                class="gcash-qr-image"
+                                onerror="this.hidden=true; document.getElementById('gcashQrFallback').hidden=false;"
+                            >
+                            <div class="gcash-qr-fallback" id="gcashQrFallback" hidden>
+                                <span>QR code coming soon</span>
+                            </div>
+                        </div>
+
+                        <div class="gcash-proof-block">
+                            <label for="gcashRefNumber" class="gcash-proof-label">GCash Reference Number</label>
+                            <input type="text" id="gcashRefNumber" class="gcash-ref-input" placeholder="e.g. 1234 567 890123" autocomplete="off">
+                            <p class="gcash-proof-note">We confirm automatically the moment GCash notifies us — usually within a minute or two. Your booking stays pending until then.</p>
+                        </div>
                     </div>
                 </div>
 
@@ -347,6 +390,23 @@
             <div class="modal-actions">
                 <button type="button" class="btn btn-secondary" id="backToEquipment2">Back</button>
                 <button type="button" class="btn btn-primary" id="confirmBooking">Confirm Booking</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="gcashWaitModal">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h3>Waiting for GCash Payment</h3>
+            </div>
+            <div class="gcash-wait-body">
+                <div class="gcash-wait-spinner" aria-hidden="true"></div>
+                <p class="gcash-wait-amount">Pay <strong id="gcashWaitAmount"></strong> via the QR code you scanned.</p>
+                <p class="gcash-wait-status" id="gcashWaitStatus">We'll confirm automatically the moment GCash notifies us — usually within a minute or two.</p>
+                <p class="gcash-wait-countdown">Slot held for <strong id="gcashWaitCountdown">--:--</strong></p>
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-secondary" id="gcashWaitCancel">Cancel Booking</button>
             </div>
         </div>
     </div>

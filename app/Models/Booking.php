@@ -13,18 +13,25 @@ class Booking extends Model
         'user_id',
         'customer_name',
         'contact_number',
+        'email',
         'court_id',
         'date',
         'start_time',
         'end_time',
         'amount',
         'payment_method',
+        'gcash_reference_number',
+        'poll_token',
+        'expires_at',
+        'confirmed_at',
         'status',
     ];
 
     protected $casts = [
-        'date'   => 'date',
-        'amount' => 'decimal:2',
+        'date'         => 'date',
+        'amount'       => 'decimal:2',
+        'expires_at'   => 'datetime',
+        'confirmed_at' => 'datetime',
     ];
 
     public function user()

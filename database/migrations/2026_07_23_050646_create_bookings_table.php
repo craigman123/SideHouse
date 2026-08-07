@@ -11,10 +11,17 @@ return new class extends Migration
         Schema::create('bookings', function (Blueprint $table) {
             $table->id();
             $table->string('customer_name');
+            $table->string('contact_number');
+            $table->string('email')->nullable();
             $table->unsignedBigInteger('court_id')->nullable();
             $table->date('date');
             $table->time('start_time');
             $table->time('end_time');
+            $table->string('payment_proof_path')->nullable();
+            $table->string('gcash_reference_number')->nullable();
+            $table->timestamp('confirmed_at')->nullable();
+            $table->timestamp('expires_at')->nullable();
+            $table->string('poll_token')->nullable()->unique();
             $table->decimal('amount', 10, 2)->default(0);
             $table->enum('status', ['pending', 'paid', 'cancelled'])->default('pending');
             $table->timestamps();

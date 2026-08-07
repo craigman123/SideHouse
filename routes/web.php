@@ -5,6 +5,7 @@ use App\Http\Controllers\Admin\Admin_DashboardController;
 use App\Http\Controllers\Admin\BookingController;
 use App\Http\Controllers\Admin\CourtController;
 use App\Http\Controllers\Auth\AuthController;
+use App\Http\Controllers\GcashWebhookController;
 use App\Http\Controllers\Guest\GuestBookingController;
 use App\Http\Controllers\User\User_UserController;
 use App\Http\Controllers\User\UserDashboardController;
@@ -12,8 +13,10 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('/', [GuestBookingController::class, 'landing'])->name('landing');
 
-Route::get('/book/monthly-stats', [GuestBookingController::class, 'monthlyStats'])
-    ->name('guest.book.monthly-stats');
+Route::get('/book/monthly-stats', [GuestBookingController::class, 'monthlyStats'])->name('guest.book.monthly-stats');
+Route::get('/guest/bookings/{booking}/status', [GuestBookingController::class, 'status'])->name('guest.book.status');
+Route::post('/guest/bookings/{booking}/cancel', [GuestBookingController::class, 'cancel'])->name('guest.book.cancel');
+Route::post('/webhooks/gcash-sms', [GcashWebhookController::class, 'handleSms']);
 
 // Guest booking (no login required)
 Route::get('/guest-book/availability', [GuestBookingController::class, 'availability'])->name('guest.book.availability');

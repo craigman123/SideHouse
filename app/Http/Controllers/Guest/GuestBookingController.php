@@ -9,6 +9,8 @@ use App\Models\Equipment;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Str;
 
 class GuestBookingController extends Controller
 {
@@ -21,6 +23,13 @@ class GuestBookingController extends Controller
     private const BOOKING_STEP_MINUTES = 60;
     private const MIN_DURATION_HOURS = 1;
     private const MAX_DURATION_HOURS = 8;
+
+    // How long a pending GCash booking holds its slot before
+    // ExpireUnconfirmedGcashBookings cancels it. Must stay <=
+    // GcashWebhookController::MATCH_WINDOW_MINUTES, or a real payment that
+    // lands late could arrive after we've already expired the booking it
+    // belongs to.
+    public const GCASH_CONFIRM_WINDOW_MINUTES = 15;
 
     public function landing()
     {
@@ -154,12 +163,23 @@ class GuestBookingController extends Controller
             'court_id'       => ['required', 'integer', 'exists:courts,id'],
             'date'           => ['required', 'date', 'after_or_equal:today'],
             'start_time'     => ['required', 'date_format:H:i'],
-            'payment_method' => ['required', 'in:arrival,ewallet'],
+            // GCash and Landbank are the guest payment methods — the QR
+            // code / account number is static (same one for every
+            // booking), so nothing here proves payment on its own.
+            // GcashWebhookController / LandbankWebhookController are what
+            // actually confirm it, by matching the amount (and the
+            // reference number below, when there's more than one
+            // same-amount booking pending at once) against the SMS receipt
+            // for whichever method was selected.
+            'payment_method' => ['required', 'in:gcash,landbank'],
             'guest_name'     => ['required', 'string', 'max:255'],
             // Loose on purpose (7–30 digits/spaces/dashes/parens/+) since
             // this needs to accept PH mobile numbers in several common
             // formats without being a full phone-format validator.
             'guest_contact'  => ['required', 'string', 'max:30', 'regex:/^[0-9+\-\s()]{7,30}$/'],
+            // Raw JWT from Google Identity Services — verified against
+            // Google's tokeninfo endpoint below, never trusted as-is.
+            'google_id_token' => ['required', 'string'],
             'duration'       => [
                 'required',
                 'numeric',
@@ -175,7 +195,21 @@ class GuestBookingController extends Controller
             'equipment'            => ['array'],
             'equipment.*.id'       => ['required_with:equipment', 'integer', 'exists:equipment,id'],
             'equipment.*.quantity' => ['required_with:equipment', 'integer', 'min:1', 'max:20'],
+            // Guest-entered, so never trusted on its own — it's only used
+            // to disambiguate when two pending bookings share the exact
+            // same amount at the same time. The matching webhook
+            // controller for the selected payment_method is the only
+            // thing that actually confirms payment, from the real SMS
+            // receipt.
+            'payment_reference' => ['required', 'string', 'max:50'],
         ]);
+
+        $guestEmail = $this->verifyGoogleIdToken($validated['google_id_token']);
+        if ($guestEmail === null) {
+            return response()->json([
+                'message' => "We couldn't verify that Google sign-in. Please sign in again.",
+            ], 422);
+        }
 
         $court = Court::findOrFail($validated['court_id']);
 
@@ -238,17 +272,33 @@ class GuestBookingController extends Controller
             ->sum(fn ($line) => $line['item']->price * $line['quantity']);
         $amount = round($courtAmount + $equipmentAmount, 2);
 
-        $booking = DB::transaction(function () use ($validated, $court, $start, $end, $amount, $resolvedEquipment) {
+        // Unique per booking so the guest's status/cancel links can't be
+        // guessed from the booking id alone.
+        do {
+            $pollToken = Str::random(40);
+        } while (Booking::where('poll_token', $pollToken)->exists());
+
+        $expiresAt = now()->addMinutes(self::GCASH_CONFIRM_WINDOW_MINUTES);
+
+        $booking = DB::transaction(function () use ($validated, $court, $start, $end, $amount, $resolvedEquipment, $guestEmail, $pollToken, $expiresAt) {
             $booking = Booking::create([
                 'user_id'        => null,
                 'customer_name'  => $validated['guest_name'],
                 'contact_number' => $validated['guest_contact'],
+                'email'          => $guestEmail,
                 'court_id'       => $court->id,
                 'date'           => $validated['date'],
                 'start_time'     => $start->format('H:i:s'),
                 'end_time'       => $end->format('H:i:s'),
                 'amount'         => $amount,
                 'payment_method' => $validated['payment_method'],
+                // Column name is legacy from GCash-only days, but it's a
+                // plain varchar used for the guest-entered reference
+                // number regardless of which method (GCash, Landbank...)
+                // was selected — no need to rename it in the DB.
+                'gcash_reference_number' => $validated['payment_reference'],
+                'poll_token'     => $pollToken,
+                'expires_at'     => $expiresAt,
                 'status'         => 'pending',
             ]);
 
@@ -264,8 +314,108 @@ class GuestBookingController extends Controller
         });
 
         return response()->json([
-            'message' => 'Booking submitted! We\'ll see you on the court.',
-            'booking' => $booking,
+            'message'    => 'Booking submitted! Waiting for GCash to confirm your payment.',
+            'booking'    => $booking,
+            'booking_id' => $booking->id,
+            'poll_token' => $booking->poll_token,
+            'expires_at' => $booking->expires_at->toIso8601String(),
+            'amount'     => $booking->amount,
         ]);
+    }
+
+    /**
+     * Lets the guest's own browser poll for the outcome of their pending
+     * GCash booking, without needing an account or session — the
+     * poll_token generated at booking time (and handed back in the store()
+     * response) stands in for auth here.
+     */
+    public function status(Request $request, Booking $booking)
+    {
+        $token = (string) $request->query('token', '');
+
+        if ($token === '' || ! $booking->poll_token || ! hash_equals($booking->poll_token, $token)) {
+            abort(403);
+        }
+
+        return response()->json([
+            'status' => $booking->status,
+        ]);
+    }
+
+    /**
+     * Lets the guest give up on a pending GCash payment and release the
+     * slot early, instead of waiting out the full confirmation window.
+     * Only works while the booking is still pending — once GCash confirms
+     * it (or it's already cancelled/expired) this is a no-op.
+     */
+    public function cancel(Request $request, Booking $booking)
+    {
+        $token = (string) $request->query('token', '');
+
+        if ($token === '' || ! $booking->poll_token || ! hash_equals($booking->poll_token, $token)) {
+            abort(403);
+        }
+
+        if ($booking->status === 'pending') {
+            $booking->update(['status' => 'cancelled']);
+        }
+
+        return response()->json([
+            'status' => $booking->status,
+        ]);
+    }
+
+    /**
+     * Verifies a Google Identity Services ID token against Google's
+     * tokeninfo endpoint and returns the verified, Google-owned email
+     * address — or null if the token is missing, expired, unverified,
+     * or wasn't issued for this site's OAuth client.
+     *
+     * Uses the tokeninfo endpoint (rather than a JWKS/signature library)
+     * to avoid adding a dependency; it's an extra network round trip per
+     * booking, which is fine at guest-booking volume. If that ever
+     * becomes a bottleneck, swap this for google/apiclient's
+     * Google_Client::verifyIdToken(), which checks the signature locally.
+     */
+    private function verifyGoogleIdToken(string $idToken): ?string
+    {
+        $clientId = config('services.google.client_id');
+        if (! $clientId) {
+            return null;
+        }
+
+        try {
+            $response = Http::timeout(5)->get('https://oauth2.googleapis.com/tokeninfo', [
+                'id_token' => $idToken,
+            ]);
+        } catch (\Throwable $e) {
+            return null;
+        }
+
+        if (! $response->ok()) {
+            return null;
+        }
+
+        $claims = $response->json();
+
+        if (! is_array($claims) || empty($claims['email']) || empty($claims['aud'])) {
+            return null;
+        }
+
+        // aud must match our OAuth client — otherwise this is a token
+        // issued for a completely different Google app.
+        if (! hash_equals($clientId, (string) $claims['aud'])) {
+            return null;
+        }
+
+        // Google sends this as the string "true"/"false", not a boolean.
+        $emailVerified = ($claims['email_verified'] ?? 'false') === 'true'
+            || ($claims['email_verified'] ?? false) === true;
+
+        if (! $emailVerified) {
+            return null;
+        }
+
+        return $claims['email'];
     }
 }
