@@ -1069,7 +1069,7 @@ document.addEventListener('DOMContentLoaded', () => {
         formData.append('guest_contact', guestContactInput.value.trim());
         formData.append('google_id_token', googleIdToken);
         if (gcashRefInput && gcashRefInput.value.trim()) {
-            formData.append('gcash_reference', gcashRefInput.value.trim());
+            formData.append('payment_reference', gcashRefInput.value.trim());
         }
         equipmentPayload.forEach((item, i) => {
             formData.append(`equipment[${i}][id]`, item.id);
