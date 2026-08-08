@@ -39,7 +39,6 @@
 
             <div class="hero-actions">
                 <a href="#bookNow" class="btn-hero-primary">Book Now</a>
-                <a href="{{ route('register') }}" class="btn-hero-secondary">Create an account</a>
             </div>
 
             <a href="#bookNow" class="scroll-cue" aria-label="Scroll to booking">
@@ -76,6 +75,9 @@
             <div class="book-now-intro">
                 <h2>Book a Court Right Now</h2>
                 <p>No sign-up required. Pick your date, time, and duration — you're booked.</p>
+                @if ($courts->isNotEmpty())
+                    <p class="book-now-rate">₱{{ number_format($courts->first()->hourly_rate, 2) }} / hour</p>
+                @endif
             </div>
 
             @if ($courts->isEmpty())
@@ -119,6 +121,12 @@
                 <div class="feature-icon">⚡</div>
                 <h3>Fast & Simple</h3>
                 <p>No calls, no messages, no account required — just book online and show up ready to play.</p>
+            </div>
+
+            <div class="feature-card fade-in feature-card-exclusive">
+                <div class="feature-icon">🌟</div>
+                <h3>Exclusive</h3>
+                <p>Create a free account to unlock member-only perks: discounted equipment rentals and booking discounts.</p>
             </div>
         </section>
 
@@ -237,6 +245,14 @@
                         </div>
                     </div>
                 </div>
+            </div>
+        </section>
+
+        <section class="member-cta fade-in">
+            <div class="member-cta-inner">
+                <h2>Get More From Every Visit</h2>
+                <p>Create a free Side House account to view a detailed history of your bookings, rebook your favorite court and time slot in a single click, and unlock member-only perks like hourly rates discounts and discounted equipment rentals. It only takes a minute.</p>
+                <a href="{{ route('register') }}" class="btn-hero-primary">Create Your Account</a>
             </div>
         </section>
 

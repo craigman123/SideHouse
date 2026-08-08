@@ -91,6 +91,13 @@ html {
     color: #8b949e;
 }
 
+.book-now-rate {
+    margin-top: 10px;
+    font-size: 15px;
+    font-weight: 700;
+    color: #3fb950;
+}
+
 .book-now-section .empty-state {
     text-align: center;
     color: #8b949e;
