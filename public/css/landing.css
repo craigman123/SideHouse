@@ -178,6 +178,19 @@ body {
     border-top-color: #d4a017;
 }
 
+
+.feature-card-fast {
+    border-top-color: #ffea00;
+}
+
+.feature-card-cc {
+    border-top-color: #0051ff;
+}
+
+.feature-card-gear {
+    border-top-color: #a90a0a;
+}
+
 /* Footer */
 .landing-footer {
     position: relative;

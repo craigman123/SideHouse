@@ -128,6 +128,12 @@
                 <h3>Exclusive</h3>
                 <p>Create a free account to unlock member-only perks: discounted equipment rentals and booking discounts.</p>
             </div>
+
+            <div class="feature-card fade-in">
+                <div class="feature-icon">🚻</div>
+                <h3>Comfort Room Available</h3>
+                <p>Clean, accessible restrooms on-site so you can freshen up before, during, or after your game.</p>
+            </div>
         </section>
 
         <section class="stats-section fade-in" id="courtStats" data-stats-url="{{ route('guest.book.monthly-stats') }}">
@@ -383,9 +389,9 @@
                             <span class="payment-btn-sub">Scan  the QR code through Gcash to pay</span>
                         </button>
 
-                        <button type="button" class="payment-btn" data-method="landbank" disabled>
-                            <span class="payment-btn-title">Landbank<br><p style="font-size: 10px; color: #8e0a0a">Coming soon</p></span>
-                            <span class="payment-btn-sub">Payment using Landbank account by Scanning the Qr Code</span>
+                        <button type="button" class="payment-btn" data-method="landbank">
+                            <span class="payment-btn-title">Landbank</span>
+                            <span class="payment-btn-sub">Pay via InstaPay by scanning the QR code</span>
                         </button>
                     </div>
 
@@ -393,25 +399,55 @@
                          Drop the real QR at public/images/gcash-qr.png — no
                          code changes needed. Until that file exists, the
                          image 404s and the fallback box below shows instead. --}}
-                    <div class="gcash-qr-panel" id="gcashQrPanel">
-                        <p class="gcash-qr-instructions">Scan this code in your GCash app to pay, then enter the reference number from the payment confirmation below.</p>
-                        <div class="gcash-qr-image-wrap">
+                    <div class="payment-qr-panel" id="gcashQrPanel">
+                        <p class="payment-qr-instructions">Scan this code in your GCash app to pay, then enter the reference number from the payment confirmation below.</p>
+                        <div class="payment-qr-image-wrap">
                             <img
-                                src="{{ asset('images/gcash-qr.png') }}"
+                                src="{{ asset('images/qr-image.png') }}"
                                 alt="GCash QR code"
                                 id="gcashQrImage"
-                                class="gcash-qr-image"
+                                class="payment-qr-image"
                                 onerror="this.hidden=true; document.getElementById('gcashQrFallback').hidden=false;"
                             >
-                            <div class="gcash-qr-fallback" id="gcashQrFallback" hidden>
+                            <div class="payment-qr-fallback" id="gcashQrFallback" hidden>
                                 <span>QR code coming soon</span>
                             </div>
                         </div>
 
-                        <div class="gcash-proof-block">
-                            <label for="gcashRefNumber" class="gcash-proof-label">GCash Reference Number</label>
-                            <input type="text" id="gcashRefNumber" class="gcash-ref-input" placeholder="e.g. 1234 567 890123" autocomplete="off">
-                            <p class="gcash-proof-note">We confirm automatically the moment GCash notifies us — usually within a minute or two. Your booking stays pending until then.</p>
+                        <div class="payment-proof-block" id="gcashProofBlock">
+                            <label for="gcashRefNumber" class="payment-proof-label">GCash Reference Number</label>
+                            <input type="text" id="gcashRefNumber" class="payment-ref-input" placeholder="e.g. 1234 567 890123" autocomplete="off">
+                            <p class="payment-proof-note">We confirm automatically the moment GCash notifies us — usually within a minute or two. Your booking stays pending until then.</p>
+                        </div>
+                    </div>
+
+                    {{-- Revealed via JS (adds .open) when Landbank is
+                         selected. Drop the real QR at
+                         public/images/landbank-qr.png — no code changes
+                         needed. Until that file exists, the image 404s
+                         and the fallback box below shows instead. This is
+                         an InstaPay QR (transfers land in the same
+                         EastWest account GCash payouts already go to),
+                         not a Landbank-specific merchant QR. --}}
+                    <div class="payment-qr-panel" id="landbankQrPanel">
+                        <p class="payment-qr-instructions">Scan this code with your Landbank app (or any InstaPay-enabled app) to pay, then enter the reference number from the transfer confirmation below.</p>
+                        <div class="payment-qr-image-wrap">
+                            <img
+                                src="{{ asset('images/qr-image.png') }}"
+                                alt="Landbank InstaPay QR code"
+                                id="landbankQrImage"
+                                class="payment-qr-image"
+                                onerror="this.hidden=true; document.getElementById('landbankQrFallback').hidden=false;"
+                            >
+                            <div class="payment-qr-fallback" id="landbankQrFallback" hidden>
+                                <span>QR code coming soon</span>
+                            </div>
+                        </div>
+
+                        <div class="payment-proof-block" id="landbankProofBlock">
+                            <label for="landbankRefNumber" class="payment-proof-label">Landbank / InstaPay Reference Number</label>
+                            <input type="text" id="landbankRefNumber" class="payment-ref-input" placeholder="e.g. 1234 567 890123" autocomplete="off">
+                            <p class="payment-proof-note">We confirm automatically the moment the transfer notifies us — usually within a minute or two. Your booking stays pending until then.</p>
                         </div>
                     </div>
                 </div>
@@ -434,7 +470,7 @@
     <div class="modal-overlay" id="gcashWaitModal">
         <div class="modal-box">
             <div class="modal-header">
-                <h3>Waiting for GCash Payment</h3>
+                <h3 id="gcashWaitTitle">Waiting for GCash Payment</h3>
             </div>
             <div class="gcash-wait-body">
                 <div class="gcash-wait-spinner" aria-hidden="true"></div>

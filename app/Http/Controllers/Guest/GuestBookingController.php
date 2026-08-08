@@ -374,8 +374,11 @@ class GuestBookingController extends Controller
             return $booking;
         });
 
+        $paymentMethodLabels = ['gcash' => 'GCash', 'landbank' => 'Landbank'];
+        $methodLabel = $paymentMethodLabels[$validated['payment_method']] ?? 'the selected method';
+
         return response()->json([
-            'message'    => 'Booking submitted! Waiting for GCash to confirm your payment.',
+            'message'    => "Booking submitted! Waiting for {$methodLabel} to confirm your payment.",
             'booking'    => $booking,
             'booking_id' => $booking->id,
             'poll_token' => $booking->poll_token,

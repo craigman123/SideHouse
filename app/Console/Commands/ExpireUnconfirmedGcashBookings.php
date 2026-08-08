@@ -12,17 +12,22 @@ use Illuminate\Console\Command;
  * amount, etc.). Without this, a pending booking blocks that slot forever
  * regardless of whether anyone actually paid.
  *
+ * Landbank has its own separate command — ExpireUnconfirmedLandbankBookings
+ * — rather than this one covering both methods. Keep the two in sync if
+ * the expiry logic ever changes (same window comment applies to both:
+ * must stay >= the matching webhook controller's MATCH_WINDOW_MINUTES).
+ *
  * Register in app/Console/Kernel.php:
  *   protected function schedule(Schedule $schedule): void
  *   {
- *       $schedule->command('bookings:expire-unconfirmed')->everyMinute();
+ *       $schedule->command('bookings:expire-unconfirmed-gcash')->everyMinute();
  *   }
  * and make sure the Laravel scheduler cron entry is set up on the server:
  *   * * * * * cd /path-to-app && php artisan schedule:run >> /dev/null 2>&1
  */
 class ExpireUnconfirmedGcashBookings extends Command
 {
-    protected $signature = 'bookings:expire-unconfirmed';
+    protected $signature = 'bookings:expire-unconfirmed-gcash';
 
     protected $description = 'Cancel GCash bookings that passed their confirmation window without a matching payment';
 

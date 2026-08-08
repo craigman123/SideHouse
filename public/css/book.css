@@ -132,6 +132,16 @@
     overflow: hidden;
 }
 
+/* Short viewports (small phones, or a phone in landscape) had less room
+   to begin with, and the payment section got taller once a second QR
+   panel (Landbank, alongside GCash) was added — claw back a bit more
+   height here so there's less to scroll through. */
+@media (max-height: 640px) {
+    .modal-box-scrollable {
+        max-height: 94vh;
+    }
+}
+
 .modal-box-scrollable .modal-header,
 .modal-box-scrollable .modal-back {
     flex-shrink: 0;
@@ -140,6 +150,8 @@
 .modal-scroll-body {
     overflow-y: auto;
     overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-y;
     flex: 1 1 auto;
     min-height: 0;
     margin: 0 -8px;

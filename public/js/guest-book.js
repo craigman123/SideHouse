@@ -266,7 +266,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const paymentGrid = document.getElementById('paymentGrid');
     const gcashQrPanel = document.getElementById('gcashQrPanel');
     const gcashRefInput = document.getElementById('gcashRefNumber');
+    const gcashProofBlock = document.getElementById('gcashProofBlock');
+    const landbankQrPanel = document.getElementById('landbankQrPanel');
+    const landbankRefInput = document.getElementById('landbankRefNumber');
+    const landbankProofBlock = document.getElementById('landbankProofBlock');
     const gcashWaitModal = document.getElementById('gcashWaitModal');
+    const gcashWaitTitle = document.getElementById('gcashWaitTitle');
     const gcashWaitAmount = document.getElementById('gcashWaitAmount');
     const gcashWaitStatus = document.getElementById('gcashWaitStatus');
     const gcashWaitCountdown = document.getElementById('gcashWaitCountdown');
@@ -280,7 +285,33 @@ document.addEventListener('DOMContentLoaded', () => {
     const summaryTotal = document.getElementById('summaryTotal');
     const confirmBtn = document.getElementById('confirmBooking');
 
-    const PAYMENT_LABELS = { gcash: 'GCash' };
+    const PAYMENT_LABELS = { gcash: 'GCash', landbank: 'Landbank' };
+
+    // Every current payment method (GCash, Landbank) works the same way:
+    // a QR panel opens under the selected button, and the backend
+    // requires a guest-entered reference number regardless of which one
+    // — see GuestBookingController::store()'s 'payment_reference' rule,
+    // which is unconditionally 'required'. These maps let the rest of
+    // the payment code stay generic instead of branching on method name.
+    const QR_PANELS = { gcash: gcashQrPanel, landbank: landbankQrPanel };
+    const REF_INPUTS = { gcash: gcashRefInput, landbank: landbankRefInput };
+    const PROOF_BLOCKS = { gcash: gcashProofBlock, landbank: landbankProofBlock };
+
+    function getActiveRefInput() {
+        return selectedPayment ? REF_INPUTS[selectedPayment] || null : null;
+    }
+
+    function getActiveProofBlock() {
+        return selectedPayment ? PROOF_BLOCKS[selectedPayment] || null : null;
+    }
+
+    // Opens the QR panel for the selected method and closes every other
+    // one, instead of just toggling a single hardcoded gcash panel.
+    function syncPaymentQrPanels() {
+        Object.entries(QR_PANELS).forEach(([method, panel]) => {
+            if (panel) panel.classList.toggle('open', selectedPayment === method);
+        });
+    }
 
     let selectedCourt = null;
     let calendarCursor = new Date();
@@ -325,17 +356,22 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Polls GET .../guest/bookings/{id}/status?token=... every few seconds.
-    // Ends in one of three ways: GcashWebhookController confirms it
+    // Same endpoint and same modal regardless of payment method — only
+    // GcashWebhookController vs LandbankWebhookController differs on the
+    // backend, matched by the booking's stored payment_method. Ends in
+    // one of three ways: the matching webhook controller confirms it
     // ('confirmed'), ExpireUnconfirmedGcashBookings times it out
     // ('cancelled'), or the guest gives up and cancels manually.
-    function watchGcashPayment(bookingId, pollToken, expiresAtIso, amountLabel) {
+    function watchPaymentConfirmation(bookingId, pollToken, expiresAtIso, amountLabel, method) {
         const statusUrl = statusUrlTemplate.replace('__ID__', bookingId) + `?token=${encodeURIComponent(pollToken)}`;
         const cancelUrl = statusUrlTemplate.replace('__ID__', bookingId).replace('/status', '/cancel') + `?token=${encodeURIComponent(pollToken)}`;
         gcashActiveCancelUrl = cancelUrl;
         const expiresAt = new Date(expiresAtIso).getTime();
+        const methodLabel = PAYMENT_LABELS[method] || 'the payment provider';
 
+        if (gcashWaitTitle) gcashWaitTitle.textContent = `Waiting for ${methodLabel} Payment`;
         gcashWaitAmount.textContent = amountLabel;
-        gcashWaitStatus.textContent = "We'll confirm automatically the moment GCash notifies us — usually within a minute or two.";
+        gcashWaitStatus.textContent = `We'll confirm automatically the moment ${methodLabel} notifies us — usually within a minute or two.`;
         gcashWaitModal.classList.add('open');
 
         gcashCountdownTimer = setInterval(() => {
@@ -404,6 +440,7 @@ document.addEventListener('DOMContentLoaded', () => {
         clearGoogleSignIn();
         equipmentSelection = {};
         if (gcashRefInput) gcashRefInput.value = '';
+        if (landbankRefInput) landbankRefInput.value = '';
         resetBookingState();
         renderCalendar();
     }
@@ -432,7 +469,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function openPaymentModal() {
         selectedPayment = null;
         paymentGrid.querySelectorAll('.payment-btn').forEach((el) => el.classList.remove('selected'));
-        if (gcashQrPanel) gcashQrPanel.classList.remove('open');
+        syncPaymentQrPanels();
         updateSummary();
         paymentModal.classList.add('open');
     }
@@ -541,7 +578,7 @@ document.addEventListener('DOMContentLoaded', () => {
         equipmentSelection = {};
         calendarCursor = new Date();
         paymentGrid.querySelectorAll('.payment-btn').forEach((el) => el.classList.remove('selected'));
-        if (gcashQrPanel) gcashQrPanel.classList.remove('open');
+        syncPaymentQrPanels();
         closeTimePickerModal();
     }
 
@@ -978,9 +1015,7 @@ document.addEventListener('DOMContentLoaded', () => {
         paymentGrid.querySelectorAll('.payment-btn').forEach((el) => el.classList.remove('selected'));
         btn.classList.add('selected');
 
-        if (gcashQrPanel) {
-            gcashQrPanel.classList.toggle('open', selectedPayment === 'gcash');
-        }
+        syncPaymentQrPanels();
 
         updateSummary();
     });
@@ -1063,8 +1098,9 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!guestContactInput.value.trim()) missing.push('a contact number');
         if (!googleIdToken) missing.push('an email address (sign in with Google)');
         if (!selectedPayment) missing.push('a payment method');
-        if (selectedPayment === 'gcash' && !(gcashRefInput && gcashRefInput.value.trim())) {
-            missing.push('your GCash reference number');
+        const activeRefInput = getActiveRefInput();
+        if (selectedPayment && !(activeRefInput && activeRefInput.value.trim())) {
+            missing.push(`your ${PAYMENT_LABELS[selectedPayment] || 'payment'} reference number`);
         }
         return missing;
     }
@@ -1084,14 +1120,16 @@ document.addEventListener('DOMContentLoaded', () => {
             guestNameInput.classList.toggle('field-invalid', !guestNameInput.value.trim());
             guestContactInput.classList.toggle('field-invalid', !guestContactInput.value.trim());
             document.querySelector('.guest-email-block').classList.toggle('guest-email-block-invalid', !googleIdToken);
-            document.querySelector('.gcash-proof-block')?.classList.toggle(
-                'gcash-proof-invalid',
-                selectedPayment === 'gcash' && !(gcashRefInput && gcashRefInput.value.trim())
+            const invalidRefInput = getActiveRefInput();
+            getActiveProofBlock()?.classList.toggle(
+                'payment-proof-invalid',
+                !!selectedPayment && !(invalidRefInput && invalidRefInput.value.trim())
             );
             return;
         }
         document.querySelector('.guest-email-block').classList.remove('guest-email-block-invalid');
-        document.querySelector('.gcash-proof-block')?.classList.remove('gcash-proof-invalid');
+        gcashProofBlock?.classList.remove('payment-proof-invalid');
+        landbankProofBlock?.classList.remove('payment-proof-invalid');
 
         if (!selectedCourt || !selectedDate || selectedSlots.length < MIN_DURATION) return;
 
@@ -1114,8 +1152,9 @@ document.addEventListener('DOMContentLoaded', () => {
         formData.append('guest_name', guestNameInput.value.trim());
         formData.append('guest_contact', guestContactInput.value.trim());
         formData.append('google_id_token', googleIdToken);
-        if (gcashRefInput && gcashRefInput.value.trim()) {
-            formData.append('payment_reference', gcashRefInput.value.trim());
+        const submittedRefInput = getActiveRefInput();
+        if (submittedRefInput && submittedRefInput.value.trim()) {
+            formData.append('payment_reference', submittedRefInput.value.trim());
         }
         equipmentPayload.forEach((item, i) => {
             formData.append(`equipment[${i}][id]`, item.id);
@@ -1157,8 +1196,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
                     guestNameInput.classList.toggle('field-invalid', !!data.errors.guest_name);
                     guestContactInput.classList.toggle('field-invalid', !!data.errors.guest_contact);
-                    document.querySelector('.gcash-proof-block')?.classList.toggle(
-                        'gcash-proof-invalid',
+                    getActiveProofBlock()?.classList.toggle(
+                        'payment-proof-invalid',
                         !!data.errors.payment_reference
                     );
 
@@ -1182,7 +1221,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             closePaymentModal();
-            watchGcashPayment(data.booking_id, data.poll_token, data.expires_at, `₱${Number(data.amount).toFixed(2)}`);
+            watchPaymentConfirmation(data.booking_id, data.poll_token, data.expires_at, `₱${Number(data.amount).toFixed(2)}`, selectedPayment);
         } catch (err) {
             console.error(err);
             showToast('Something went wrong. Please try again.', 'error');
