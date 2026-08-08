@@ -49,6 +49,15 @@ class Booking extends Model
         return $this->hasMany(BookingEquipment::class);
     }
 
+    // Only present for bookings made through the multi-slot picker.
+    // Older/duration-based bookings (e.g. the signed-in user flow) have
+    // no rows here — code that reads this must fall back to the
+    // booking's own date/start_time/end_time in that case.
+    public function slots()
+    {
+        return $this->hasMany(BookingSlot::class);
+    }
+
     public function scopeStatus($query, $status)
     {
         if ($status && $status !== 'all') {

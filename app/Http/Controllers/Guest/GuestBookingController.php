@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Guest;
 
 use App\Http\Controllers\Controller;
 use App\Models\Booking;
+use App\Models\BookingSlot;
 use App\Models\Court;
 use App\Models\Equipment;
 use Carbon\Carbon;
@@ -98,8 +99,14 @@ class GuestBookingController extends Controller
     }
 
     /**
-     * Same shape/logic as User_UserController::availability() — booked
-     * time ranges for a court on a date, so the widget can grey out slots.
+     * Same shape as User_UserController::availability() at the top level
+     * (a flat list of booked ranges), but the guest widget now books
+     * individual hours rather than one continuous range, so a booking's
+     * *actual* reserved hours (its booking_slots rows) are returned
+     * instead of its full start-to-end envelope — otherwise a booking
+     * spanning 4–5 PM and 9–10 PM would incorrectly grey out the empty
+     * 5–9 PM gap for everyone else too. Older duration-only bookings
+     * (no slot rows) fall back to their envelope, same as before.
      */
     public function availability(Request $request)
     {
@@ -111,31 +118,50 @@ class GuestBookingController extends Controller
         $bookings = Booking::where('court_id', $validated['court_id'])
             ->where('date', $validated['date'])
             ->where('status', '!=', 'cancelled')
-            ->get(['start_time', 'end_time']);
+            ->with('slots')
+            ->get(['id', 'start_time', 'end_time']);
 
-        return response()->json([
-            'booked' => $bookings->map(fn ($b) => [
-                'start' => substr($b->start_time, 0, 5),
-                'end'   => substr($b->end_time, 0, 5),
-            ]),
-        ]);
+        $booked = [];
+        foreach ($bookings as $booking) {
+            if ($booking->slots->isNotEmpty()) {
+                foreach ($booking->slots as $slot) {
+                    $booked[] = [
+                        'start' => substr($slot->start_time, 0, 5),
+                        'end'   => substr($slot->end_time, 0, 5),
+                    ];
+                }
+            } else {
+                $booked[] = [
+                    'start' => substr($booking->start_time, 0, 5),
+                    'end'   => substr($booking->end_time, 0, 5),
+                ];
+            }
+        }
+
+        return response()->json(['booked' => $booked]);
     }
 
     /**
-     * Active equipment plus how many of each are actually free for the
-     * chosen date/start/duration, so the rental step can grey out
-     * sold-out items instead of just listing raw stock totals.
+     * Active equipment plus how many of each are actually free across
+     * every hour the guest has selected so far, so the rental step can
+     * grey out sold-out items instead of just listing raw stock totals.
+     * Selected hours no longer have to be contiguous, so this takes the
+     * *minimum* available count across all of them — the item needs to
+     * be free for each hour requested, not just one.
      */
     public function equipmentAvailability(Request $request)
     {
         $validated = $request->validate([
-            'date'       => ['required', 'date'],
-            'start_time' => ['required', 'date_format:H:i'],
-            'duration'   => ['required', 'numeric', 'min:0.25', 'max:' . self::MAX_DURATION_HOURS],
+            'date'    => ['required', 'date'],
+            'slots'   => ['required', 'array', 'min:1'],
+            'slots.*' => ['required', 'date_format:H:i', 'distinct'],
         ]);
 
-        $start = Carbon::parse($validated['date'] . ' ' . $validated['start_time']);
-        $end   = $start->copy()->addMinutes((int) round($validated['duration'] * 60));
+        $windows = collect($validated['slots'])->map(function ($time) {
+            $start = Carbon::parse($time);
+            $end   = $start->copy()->addMinutes(self::BOOKING_STEP_MINUTES);
+            return [$start->format('H:i:s'), $end->format('H:i:s')];
+        });
 
         $equipment = Equipment::where('status', 'active')
             ->orderBy('category')
@@ -143,17 +169,19 @@ class GuestBookingController extends Controller
             ->get();
 
         return response()->json([
-            'equipment' => $equipment->map(fn ($item) => [
-                'id'        => $item->id,
-                'name'      => $item->name,
-                'category'  => $item->category,
-                'price'     => $item->price,
-                'available' => $item->availableStock(
-                    $validated['date'],
-                    $start->format('H:i:s'),
-                    $end->format('H:i:s')
-                ),
-            ]),
+            'equipment' => $equipment->map(function ($item) use ($validated, $windows) {
+                $available = $windows
+                    ->map(fn ($w) => $item->availableStock($validated['date'], $w[0], $w[1]))
+                    ->min();
+
+                return [
+                    'id'        => $item->id,
+                    'name'      => $item->name,
+                    'category'  => $item->category,
+                    'price'     => $item->price,
+                    'available' => $available,
+                ];
+            }),
         ]);
     }
 
@@ -162,7 +190,16 @@ class GuestBookingController extends Controller
         $validated = $request->validate([
             'court_id'       => ['required', 'integer', 'exists:courts,id'],
             'date'           => ['required', 'date', 'after_or_equal:today'],
-            'start_time'     => ['required', 'date_format:H:i'],
+            // Individual selected hours instead of a single start_time +
+            // duration — no longer required to be contiguous (e.g. 4–5 PM
+            // and 9–10 PM in the same booking is valid).
+            'slots'          => [
+                'required',
+                'array',
+                'min:' . self::MIN_DURATION_HOURS,
+                'max:' . self::MAX_DURATION_HOURS,
+            ],
+            'slots.*'        => ['required', 'date_format:H:i', 'distinct'],
             // GCash and Landbank are the guest payment methods — the QR
             // code / account number is static (same one for every
             // booking), so nothing here proves payment on its own.
@@ -180,18 +217,6 @@ class GuestBookingController extends Controller
             // Raw JWT from Google Identity Services — verified against
             // Google's tokeninfo endpoint below, never trusted as-is.
             'google_id_token' => ['required', 'string'],
-            'duration'       => [
-                'required',
-                'numeric',
-                'min:' . self::MIN_DURATION_HOURS,
-                'max:' . self::MAX_DURATION_HOURS,
-                function ($attribute, $value, $fail) {
-                    $steps = ($value * 60) / self::BOOKING_STEP_MINUTES;
-                    if (abs($steps - round($steps)) > 0.001) {
-                        $fail('Duration must be in ' . self::BOOKING_STEP_MINUTES . '-minute increments.');
-                    }
-                },
-            ],
             'equipment'            => ['array'],
             'equipment.*.id'       => ['required_with:equipment', 'integer', 'exists:equipment,id'],
             'equipment.*.quantity' => ['required_with:equipment', 'integer', 'min:1', 'max:20'],
@@ -213,61 +238,97 @@ class GuestBookingController extends Controller
 
         $court = Court::findOrFail($validated['court_id']);
 
-        $start = Carbon::parse($validated['date'] . ' ' . $validated['start_time']);
-        $end   = $start->copy()->addMinutes((int) round($validated['duration'] * 60));
-
+        // Same overnight-wrap handling as before (OPEN_HOUR can be later
+        // in the clock than CLOSE_HOUR, e.g. 4 PM to 7 AM), just applied
+        // per selected hour now instead of to a single start/end pair.
         $overnight = self::CLOSE_HOUR <= self::OPEN_HOUR;
-        $open  = $start->copy()->setTime(self::OPEN_HOUR, 0);
-        $close = $start->copy()->setTime(self::CLOSE_HOUR, 0);
-
+        $open  = Carbon::parse($validated['date'])->setTime(self::OPEN_HOUR, 0);
+        $close = Carbon::parse($validated['date'])->setTime(self::CLOSE_HOUR, 0);
         if ($overnight) {
             $close->addDay();
-            if ($start->lt($open)) {
-                $open->subDay();
-                $close->subDay();
+        }
+
+        $slotWindows = [];
+        foreach ($validated['slots'] as $time) {
+            $start = Carbon::parse($validated['date'] . ' ' . $time);
+
+            // A clock time earlier than OPEN_HOUR belongs to the tail end
+            // of the previous night's window (e.g. 2 AM when OPEN_HOUR is
+            // 4 PM) — push it a day forward so it lands inside [$open, $close].
+            if ($overnight && $start->lt($open)) {
+                $start->addDay();
+            }
+
+            $end = $start->copy()->addMinutes(self::BOOKING_STEP_MINUTES);
+
+            if (! ($start->gte($open) && $end->lte($close))) {
+                return response()->json([
+                    'message' => "The {$time} slot falls outside operating hours.",
+                ], 422);
+            }
+
+            $slotWindows[] = [$start, $end];
+        }
+
+        // Sort chronologically so the envelope stored on the booking row
+        // itself (still date/start_time/end_time, for the admin dashboard
+        // and stats chart) reflects the true earliest-to-latest range even
+        // when the selected hours wrap past midnight.
+        usort($slotWindows, fn ($a, $b) => $a[0]->lt($b[0]) ? -1 : 1);
+        $envelopeStart = $slotWindows[0][0];
+        $envelopeEnd   = $slotWindows[count($slotWindows) - 1][1];
+
+        // Conflict check per selected hour — does any OTHER booking's
+        // slot (or, for older duration-only bookings with no slot rows,
+        // its whole envelope) overlap this one?
+        foreach ($slotWindows as [$slotStart, $slotEnd]) {
+            $slotConflict = BookingSlot::whereHas('booking', function ($q) use ($court, $validated) {
+                    $q->where('court_id', $court->id)
+                        ->where('date', $validated['date'])
+                        ->where('status', '!=', 'cancelled');
+                })
+                ->where('start_time', '<', $slotEnd->format('H:i:s'))
+                ->where('end_time', '>', $slotStart->format('H:i:s'))
+                ->exists();
+
+            $legacyConflict = Booking::where('court_id', $court->id)
+                ->where('date', $validated['date'])
+                ->where('status', '!=', 'cancelled')
+                ->whereDoesntHave('slots')
+                ->where('start_time', '<', $slotEnd->format('H:i:s'))
+                ->where('end_time', '>', $slotStart->format('H:i:s'))
+                ->exists();
+
+            if ($slotConflict || $legacyConflict) {
+                return response()->json(['message' => 'That slot was just taken. Please pick another time.'], 422);
             }
         }
 
-        if (! ($start->gte($open) && $end->lte($close))) {
-            return response()->json(['message' => 'That time falls outside operating hours.'], 422);
-        }
-
-        $conflict = Booking::where('court_id', $court->id)
-            ->where('date', $validated['date'])
-            ->where('status', '!=', 'cancelled')
-            ->where(function ($q) use ($start, $end) {
-                $q->where('start_time', '<', $end->format('H:i:s'))
-                  ->where('end_time', '>', $start->format('H:i:s'));
-            })
-            ->exists();
-
-        if ($conflict) {
-            return response()->json(['message' => 'That slot was just taken. Please pick another time.'], 422);
-        }
-
         // Re-check equipment stock here too — the browser only showed what
-        // was available a moment ago; this is the check that actually counts.
+        // was available a moment ago; this is the check that actually
+        // counts. An item has to be free for every selected hour, not
+        // just one, so take the minimum across all of them.
         $equipmentLines = collect($validated['equipment'] ?? []);
         $resolvedEquipment = [];
 
         foreach ($equipmentLines as $line) {
             $item = Equipment::findOrFail($line['id']);
-            $available = $item->availableStock(
-                $validated['date'],
-                $start->format('H:i:s'),
-                $end->format('H:i:s')
-            );
 
-            if ($line['quantity'] > $available) {
+            $minAvailable = collect($slotWindows)
+                ->map(fn ($w) => $item->availableStock($validated['date'], $w[0]->format('H:i:s'), $w[1]->format('H:i:s')))
+                ->min();
+
+            if ($line['quantity'] > $minAvailable) {
                 return response()->json([
-                    'message' => "Only {$available} \"{$item->name}\" left for that time slot — please adjust your rental.",
+                    'message' => "Only {$minAvailable} \"{$item->name}\" left for one of your selected hours — please adjust your rental.",
                 ], 422);
             }
 
             $resolvedEquipment[] = ['item' => $item, 'quantity' => $line['quantity']];
         }
 
-        $courtAmount = $court->hourly_rate * $validated['duration'];
+        $slotPrice = $court->hourly_rate * (self::BOOKING_STEP_MINUTES / 60);
+        $courtAmount = $slotPrice * count($slotWindows);
         $equipmentAmount = collect($resolvedEquipment)
             ->sum(fn ($line) => $line['item']->price * $line['quantity']);
         $amount = round($courtAmount + $equipmentAmount, 2);
@@ -280,7 +341,7 @@ class GuestBookingController extends Controller
 
         $expiresAt = now()->addMinutes(self::GCASH_CONFIRM_WINDOW_MINUTES);
 
-        $booking = DB::transaction(function () use ($validated, $court, $start, $end, $amount, $resolvedEquipment, $guestEmail, $pollToken, $expiresAt) {
+        $booking = DB::transaction(function () use ($validated, $court, $envelopeStart, $envelopeEnd, $slotWindows, $slotPrice, $amount, $resolvedEquipment, $guestEmail, $pollToken, $expiresAt) {
             $booking = Booking::create([
                 'user_id'        => null,
                 'customer_name'  => $validated['guest_name'],
@@ -288,8 +349,8 @@ class GuestBookingController extends Controller
                 'email'          => $guestEmail,
                 'court_id'       => $court->id,
                 'date'           => $validated['date'],
-                'start_time'     => $start->format('H:i:s'),
-                'end_time'       => $end->format('H:i:s'),
+                'start_time'     => $envelopeStart->format('H:i:s'),
+                'end_time'       => $envelopeEnd->format('H:i:s'),
                 'amount'         => $amount,
                 'payment_method' => $validated['payment_method'],
                 // Column name is legacy from GCash-only days, but it's a

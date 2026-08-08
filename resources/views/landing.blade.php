@@ -261,25 +261,46 @@
         </footer>
     </div>
 
-    {{-- Modal 2.5: time + duration picker (opens after picking a date) --}}
+    {{-- Modal 2.5: time picker (opens after picking a date). Hours are
+         picked one at a time (no separate duration step) — the left
+         column is a scrollable list of hour slots, the right column
+         tracks a running fee total for whatever's selected so far. --}}
     <div class="modal-overlay" id="timePickerModal">
-        <div class="modal-box modal-box-lg modal-box-scrollable">
+        <div class="modal-box modal-box-lg modal-box-timepicker">
             <div class="modal-header">
-                <h3 id="timePickerDateLabel">Pick a Time</h3>
+                <h3 id="timePickerDateLabel">Pick Your Hours</h3>
                 <button type="button" class="modal-close" id="timePickerModalClose" aria-label="Close">&times;</button>
             </div>
 
             <button type="button" class="modal-back" id="backToCalendar">&larr; Back to date</button>
 
-            <div class="modal-scroll-body" id="timePickerScrollBody">
-                <div class="booking-section" id="timeSection">
-                    <p class="booking-section-label">1. Pick a start time</p>
-                    <div class="time-slot-grid" id="timeSlotGrid"></div>
+            <div class="time-picker-body">
+                <p class="booking-section-label">Select one or more hours</p>
+
+                <div class="time-picker-legend">
+                    <span class="time-picker-legend-item">
+                        <span class="time-picker-legend-swatch"></span> Available
+                    </span>
+                    <span class="time-picker-legend-item">
+                        <span class="time-picker-legend-swatch legend-selected"></span> Selected
+                    </span>
+                    <span class="time-picker-legend-item">
+                        <span class="time-picker-legend-swatch legend-booked"></span> Booked
+                    </span>
                 </div>
 
-                <div class="booking-section" id="durationSection" hidden>
-                    <p class="booking-section-label">2. How long?</p>
-                    <div class="duration-grid" id="durationGrid"></div>
+                {{-- Each row shows the hour as a plain label on the left —
+                     only the price button on the right is actually
+                     clickable/selectable. Only one court, so just one
+                     button per row instead of one per court. --}}
+                <div class="time-slot-list" id="timeSlotGrid"></div>
+
+                <div class="time-picker-fee-panel">
+                    <p class="time-picker-fee-ranges" id="timePickerFeeRanges">Select at least one hour</p>
+                    <div class="time-picker-fee-total-row">
+                        <span>Total</span>
+                        <span id="timePickerFeeTotal">₱0</span>
+                    </div>
                 </div>
             </div>
 

@@ -142,6 +142,209 @@ html {
     }
 }
 
+/* ---------- Time picker (Modal 2.5) ----------
+   Hours are picked one at a time (toggle on/off), not a start time +
+   duration pair. Single column so it fits a narrow phone screen: a
+   scrollable list of hour rows, then a compact fee panel underneath
+   that shows the selected hours collapsed into ranges (not one line
+   per hour) plus a running total. */
+
+.modal-box-timepicker {
+    display: flex;
+    flex-direction: column;
+    /* Leaves room for the header/back-button/actions around it so the
+       whole modal — list, fee panel, and buttons — fits within the
+       viewport instead of getting cut off on short phone screens. */
+    max-height: 85vh;
+}
+
+.time-picker-body {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin: 12px 0;
+    min-height: 0;
+}
+
+/* The part that scrolls. Height is viewport-relative (not a fixed px
+   value) so it shrinks gracefully on short screens instead of pushing
+   the fee panel and Continue button off screen. */
+.time-slot-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    max-height: min(320px, 40vh);
+    overflow-y: auto;
+    padding-right: 4px;
+}
+
+.time-picker-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px;
+    margin: 0 0 4px;
+}
+
+.time-picker-legend-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #8b949e;
+}
+
+.time-picker-legend-swatch {
+    width: 14px;
+    height: 14px;
+    border-radius: 4px;
+    border: 1.5px solid #30363d;
+    background-color: #161b22;
+    flex-shrink: 0;
+}
+
+.time-picker-legend-swatch.legend-selected {
+    background-color: rgba(63, 185, 80, 0.15);
+    border-color: #3fb950;
+}
+
+.time-picker-legend-swatch.legend-booked {
+    background-color: #0d1117;
+    border-color: #21262d;
+    opacity: 0.6;
+}
+
+/* Each row: the time label in a fixed-width left column, and a single
+   full-width button on the right showing the fee — the button itself
+   is the whole selectable "slot", same idea as a one-court version of
+   a multi-court booking grid. */
+.time-slot-row {
+    display: grid;
+    grid-template-columns: 68px 1fr;
+    align-items: stretch;
+    gap: 10px;
+}
+
+.time-slot-row-time {
+    display: flex;
+    align-items: center;
+    font-size: 13px;
+    font-weight: 700;
+    color: #8b949e;
+}
+
+.time-slot-row.disabled .time-slot-row-time {
+    color: #484f58;
+}
+
+/* The only clickable element in the row. */
+.time-slot-row-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    background-color: #161b22;
+    border: 1.5px solid #30363d;
+    border-radius: 10px;
+    padding: 14px 10px;
+    font-size: 15px;
+    font-weight: 700;
+    color: #8b949e;
+    cursor: pointer;
+    transition: border-color 0.15s ease, background-color 0.15s ease, color 0.15s ease;
+}
+
+.time-slot-row-toggle:hover:not(:disabled) {
+    border-color: #3fb950;
+    color: #f0f6fc;
+}
+
+.time-slot-row-toggle.selected {
+    background-color: rgba(63, 185, 80, 0.12);
+    border-color: #3fb950;
+    color: #3fb950;
+}
+
+.time-slot-row-toggle:disabled {
+    background-color: #0d1117;
+    border-color: #21262d;
+    color: #484f58;
+    cursor: not-allowed;
+}
+
+.time-slot-row-check {
+    display: none;
+    line-height: 1;
+}
+
+.time-slot-row-toggle.selected .time-slot-row-check {
+    display: inline;
+}
+
+.time-slot-skeleton {
+    height: 40px;
+    border-radius: 8px;
+    background: linear-gradient(90deg, #0d1117 25%, #161b22 37%, #0d1117 63%);
+    background-size: 400% 100%;
+    animation: skeletonShimmer 1.4s ease infinite;
+}
+
+@keyframes skeletonShimmer {
+    0% { background-position: 100% 0; }
+    100% { background-position: 0 0; }
+}
+
+/* Compact fee summary — grouped ranges (e.g. "4:00 PM – 6:00 PM |
+   8:00 PM – 9:00 PM") on one line instead of a per-hour list, so it
+   stays short no matter how many hours are picked. */
+.time-picker-fee-panel {
+    background-color: #0d1117;
+    border: 1.5px solid #30363d;
+    border-radius: 8px;
+    padding: 12px 14px;
+    flex-shrink: 0;
+}
+
+.time-picker-fee-ranges {
+    margin: 0 0 8px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #c9d1d9;
+    line-height: 1.5;
+    word-break: break-word;
+}
+
+.time-picker-fee-ranges.is-empty {
+    color: #6e7681;
+    font-style: italic;
+    font-weight: 400;
+}
+
+.time-picker-fee-total-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-top: 8px;
+    border-top: 1px solid #21262d;
+    font-size: 15px;
+    font-weight: 800;
+    color: #f0f6fc;
+}
+
+.time-picker-fee-total-row span:last-child {
+    color: #3fb950;
+}
+
+@media (max-width: 560px) {
+    .modal-box-timepicker {
+        max-height: 92vh;
+    }
+
+    .time-slot-list {
+        max-height: min(280px, 38vh);
+    }
+}
+
 /* ---------- Equipment rental (Modal 3) ---------- */
 
 .equipment-grid {

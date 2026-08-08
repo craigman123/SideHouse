@@ -216,6 +216,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const OPEN_HOUR = parseInt(grid.dataset.openHour, 10);
     const CLOSE_HOUR = parseInt(grid.dataset.closeHour, 10);
+    // Now bound how many individual hour-slots can be selected per
+    // booking (min/max count), not a single start+duration value.
     const MIN_DURATION = parseFloat(grid.dataset.minDuration);
     const MAX_DURATION = parseFloat(grid.dataset.maxDuration);
     const STEP_MINUTES = parseInt(grid.dataset.stepMinutes, 10);
@@ -240,17 +242,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const paymentModal = document.getElementById('courtPaymentModal');
     const timePickerModal = document.getElementById('timePickerModal');
     const timePickerDateLabel = document.getElementById('timePickerDateLabel');
-    const timePickerScrollBody = document.getElementById('timePickerScrollBody');
 
     const calMonthLabel = document.getElementById('calMonthLabel');
     const calendarGrid = document.getElementById('calendarGrid');
     const calPrev = document.getElementById('calPrev');
     const calNext = document.getElementById('calNext');
 
-    const timeSection = document.getElementById('timeSection');
     const timeSlotGrid = document.getElementById('timeSlotGrid');
-    const durationSection = document.getElementById('durationSection');
-    const durationGrid = document.getElementById('durationGrid');
+    const timePickerFeeRanges = document.getElementById('timePickerFeeRanges');
+    const timePickerFeeTotal = document.getElementById('timePickerFeeTotal');
     const continueToEquipmentBtn = document.getElementById('continueToEquipment');
 
     const equipmentGrid = document.getElementById('equipmentGrid');
@@ -285,8 +285,9 @@ document.addEventListener('DOMContentLoaded', () => {
     let selectedCourt = null;
     let calendarCursor = new Date();
     let selectedDate = null;
-    let selectedStart = null;
-    let selectedDuration = null;
+    // Individually toggled hour slots (e.g. ['16:00', '17:00', '20:00']),
+    // always kept sorted chronologically — no separate duration step.
+    let selectedSlots = [];
     let selectedPayment = null;
     let bookedRanges = [];
     let equipmentCatalog = []; // [{id, name, category, price, available}]
@@ -421,7 +422,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function openTimePickerModal() {
         timePickerModal.classList.add('open');
-        if (timePickerScrollBody) timePickerScrollBody.scrollTop = 0;
+        if (timeSlotGrid) timeSlotGrid.scrollTop = 0;
     }
 
     function closeTimePickerModal() {
@@ -534,13 +535,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function resetBookingState() {
         selectedDate = null;
-        selectedStart = null;
-        selectedDuration = null;
+        selectedSlots = [];
         selectedPayment = null;
         bookedRanges = [];
         equipmentSelection = {};
         calendarCursor = new Date();
-        durationSection.hidden = true;
         paymentGrid.querySelectorAll('.payment-btn').forEach((el) => el.classList.remove('selected'));
         if (gcashQrPanel) gcashQrPanel.classList.remove('open');
         closeTimePickerModal();
@@ -665,9 +664,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function selectDate(dateStr, btn) {
         selectedDate = dateStr;
-        selectedStart = null;
-        selectedDuration = null;
-        durationSection.hidden = true;
+        selectedSlots = [];
 
         calendarGrid.querySelectorAll('.calendar-day').forEach((el) => el.classList.remove('selected'));
         btn.classList.add('selected');
@@ -688,15 +685,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
         bookedRanges = ranges;
         renderTimeSlots();
+        updateTimePickerFee();
     }
 
     function renderTimeSlotSkeleton() {
         timeSlotGrid.innerHTML = '';
 
         // Same slot-count math as renderTimeSlots() below, so the number
-        // of skeleton placeholders matches the real grid that replaces it.
+        // of skeleton placeholders matches the real list that replaces it.
+        // Each slot is STEP_MINUTES long — a slot only needs to fit itself
+        // before closing time now, not a whole multi-hour duration.
         const spanMinutes = OVERNIGHT ? (24 - OPEN_HOUR + CLOSE_HOUR) * 60 : (CLOSE_HOUR - OPEN_HOUR) * 60;
-        const lastStart = spanMinutes - MIN_DURATION * 60;
+        const lastStart = spanMinutes - STEP_MINUTES;
         const slotCount = Math.floor(lastStart / STEP_MINUTES) + 1;
 
         for (let i = 0; i < slotCount; i++) {
@@ -731,7 +731,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function isSlotBooked(slotSinceOpen) {
-        const slotEnd = slotSinceOpen + MIN_DURATION * 60;
+        const slotEnd = slotSinceOpen + STEP_MINUTES;
         return bookedRanges.some((r) => {
             const rangeStart = minutesSinceOpen(r.start);
             let rangeEnd = minutesSinceOpen(r.end);
@@ -740,11 +740,18 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // Price for a single STEP_MINUTES-long slot (STEP_MINUTES is 60 for
+    // the guest widget, so this is normally just the court's hourly rate,
+    // but the math stays correct if that ever changes).
+    function slotPrice() {
+        return Number(selectedCourt.price) * (STEP_MINUTES / 60);
+    }
+
     function renderTimeSlots() {
         timeSlotGrid.innerHTML = '';
 
         const spanMinutes = OVERNIGHT ? (24 - OPEN_HOUR + CLOSE_HOUR) * 60 : (CLOSE_HOUR - OPEN_HOUR) * 60;
-        const lastStart = spanMinutes - MIN_DURATION * 60;
+        const lastStart = spanMinutes - STEP_MINUTES;
 
         for (let offset = 0; offset <= lastStart; offset += STEP_MINUTES) {
             const totalMin = (OPEN_HOUR * 60 + offset) % 1440;
@@ -752,91 +759,94 @@ document.addEventListener('DOMContentLoaded', () => {
             const m = totalMin % 60;
             const timeStr = `${pad(h)}:${pad(m)}`;
 
-            const btn = document.createElement('button');
-            btn.type = 'button';
-            btn.className = 'time-slot-btn';
-            btn.textContent = formatTime(timeStr);
+            const booked = isSlotBooked(offset);
+            const isSelected = selectedSlots.includes(timeStr);
 
-            if (isSlotBooked(offset)) {
-                btn.disabled = true;
-                btn.dataset.tooltip = 'Reserved — already booked by another player';
+            // The row itself is just a container — the time label on the
+            // left is plain text, not clickable. Only the button on the
+            // right (the price pill) actually toggles the selection.
+            const row = document.createElement('div');
+            row.className = 'time-slot-row' + (isSelected ? ' selected' : '') + (booked ? ' disabled' : '');
+
+            const label = document.createElement('span');
+            label.className = 'time-slot-row-time';
+            label.textContent = formatTime(timeStr);
+
+            const toggle = document.createElement('button');
+            toggle.type = 'button';
+            toggle.className = 'time-slot-row-toggle' + (isSelected ? ' selected' : '');
+
+            const check = document.createElement('span');
+            check.className = 'time-slot-row-check';
+            check.textContent = '✓ ';
+            check.setAttribute('aria-hidden', 'true');
+
+            const priceLabel = document.createElement('span');
+            priceLabel.textContent = booked ? 'Booked' : `₱${slotPrice().toLocaleString()}`;
+
+            toggle.appendChild(check);
+            toggle.appendChild(priceLabel);
+
+            if (booked) {
+                toggle.disabled = true;
+                row.dataset.tooltip = 'Reserved — already booked by another player';
             } else {
-                btn.addEventListener('click', () => selectStart(timeStr, btn));
+                toggle.setAttribute('aria-pressed', String(isSelected));
+                toggle.addEventListener('click', () => toggleSlot(timeStr));
             }
 
-            if (timeStr === selectedStart) btn.classList.add('selected');
+            row.appendChild(label);
+            row.appendChild(toggle);
 
-            timeSlotGrid.appendChild(btn);
+            timeSlotGrid.appendChild(row);
         }
     }
-
-    function selectStart(timeStr, btn) {
-        selectedStart = timeStr;
-        selectedDuration = null;
-
-        timeSlotGrid.querySelectorAll('.time-slot-btn').forEach((el) => el.classList.remove('selected'));
-        btn.classList.add('selected');
-
-        durationSection.hidden = false;
-        renderDurationOptions();
-
-        // Auto-scroll within the modal so the duration options are
-        // immediately visible — no manual scrolling needed on the user's end.
-        durationSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
-
-    // ---------- Duration ----------
 
     function timeToMinutes(t) {
         const [h, m] = t.split(':').map(Number);
         return h * 60 + m;
     }
 
-    function renderDurationOptions() {
-        durationGrid.innerHTML = '';
+    // Toggles one hour on or off. Selected hours don't need to be
+    // contiguous — the backend accepts any set of individual hours, not
+    // just a single continuous start+duration range.
+    function toggleSlot(timeStr) {
+        const idx = selectedSlots.indexOf(timeStr);
 
-        const startMin = timeToMinutes(selectedStart);
-        const startSinceOpen = minutesSinceOpen(selectedStart);
-        const spanMinutes = OVERNIGHT ? (24 - OPEN_HOUR + CLOSE_HOUR) * 60 : (CLOSE_HOUR - OPEN_HOUR) * 60;
-
-        for (let hrs = MIN_DURATION; hrs <= MAX_DURATION; hrs += STEP_MINUTES / 60) {
-            const hours = Math.round(hrs * 100) / 100;
-            const btn = document.createElement('button');
-            btn.type = 'button';
-            btn.className = 'duration-btn';
-            btn.dataset.hours = hours;
-            btn.textContent = hours === 1 ? '1 hr' : `${hours} hrs`;
-
-            const endSinceOpen = startSinceOpen + hours * 60;
-            const overrunsClose = endSinceOpen > spanMinutes;
-
-            const endMinAbs = (startMin + hours * 60) % 1440;
-            const overlapsBooking = bookedRanges.some((r) => {
-                const rangeStart = minutesSinceOpen(r.start);
-                let rangeEnd = minutesSinceOpen(r.end);
-                if (rangeEnd <= rangeStart) rangeEnd += 1440;
-                return startSinceOpen < rangeEnd && endSinceOpen > rangeStart;
-            });
-
-            btn.disabled = overrunsClose || overlapsBooking;
-            if (hours === selectedDuration) btn.classList.add('selected');
-
-            durationGrid.appendChild(btn);
+        if (idx >= 0) {
+            selectedSlots.splice(idx, 1);
+        } else {
+            if (selectedSlots.length >= MAX_DURATION) {
+                showToast(`You can book up to ${MAX_DURATION} hour${MAX_DURATION === 1 ? '' : 's'} per booking.`, 'error');
+                return;
+            }
+            selectedSlots.push(timeStr);
+            selectedSlots.sort((a, b) => minutesSinceOpen(a) - minutesSinceOpen(b));
         }
+
+        renderTimeSlots();
+        updateTimePickerFee();
     }
 
-    durationGrid.addEventListener('click', (e) => {
-        const btn = e.target.closest('.duration-btn');
-        if (!btn || btn.disabled) return;
+    // Running fee shown under the hour list — collapses the selected
+    // hours into ranges (e.g. "4:00 PM – 6:00 PM | 8:00 PM – 9:00 PM")
+    // instead of one line per hour, so it stays compact no matter how
+    // many hours are picked, then shows a single total underneath.
+    function updateTimePickerFee() {
+        if (!timePickerFeeRanges) return;
 
-        selectedDuration = parseFloat(btn.dataset.hours);
-        durationGrid.querySelectorAll('.duration-btn').forEach((el) => el.classList.remove('selected'));
-        btn.classList.add('selected');
+        if (selectedSlots.length === 0) {
+            timePickerFeeRanges.textContent = 'Select at least one hour';
+            timePickerFeeRanges.classList.add('is-empty');
+        } else {
+            timePickerFeeRanges.textContent = formatSelectedSlotsSummary(' | ');
+            timePickerFeeRanges.classList.remove('is-empty');
+        }
 
-        // Bring the Continue button into view too, same reasoning as the
-        // auto-scroll to duration — keep the user from having to scroll.
-        continueToEquipmentBtn.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    });
+        if (timePickerFeeTotal) {
+            timePickerFeeTotal.textContent = `₱${(slotPrice() * selectedSlots.length).toLocaleString()}`;
+        }
+    }
 
     // ---------- Equipment rental ----------
 
@@ -844,7 +854,9 @@ document.addEventListener('DOMContentLoaded', () => {
         equipmentGrid.innerHTML = '<p class="loading-text">Loading equipment…</p>';
 
         try {
-            const url = `${equipmentUrl}?date=${selectedDate}&start_time=${selectedStart}&duration=${selectedDuration}`;
+            const params = new URLSearchParams({ date: selectedDate });
+            selectedSlots.forEach((timeStr) => params.append('slots[]', timeStr));
+            const url = `${equipmentUrl}?${params.toString()}`;
             const res = await fetch(url, { headers: { Accept: 'application/json' } });
             const data = await res.json();
             equipmentCatalog = data.equipment || [];
@@ -936,6 +948,11 @@ document.addEventListener('DOMContentLoaded', () => {
         return card;
     }
 
+    // Equipment is a flat per-booking rental fee (price × quantity) —
+    // deliberately NOT multiplied by the number of hours selected. Rent a
+    // paddle for a 1-hour booking or a 5-hour one, it's the same charge
+    // either way. This matches GuestBookingController::store(), where
+    // $equipmentAmount is computed the same flat way server-side.
     function equipmentTotal() {
         return Object.entries(equipmentSelection).reduce((sum, [id, qty]) => {
             const item = equipmentCatalog.find((e) => String(e.id) === String(id));
@@ -983,13 +1000,40 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    function updateSummary() {
-        const startMin = timeToMinutes(selectedStart);
-        const endMin = (startMin + selectedDuration * 60) % 1440;
-        const endTimeStr = `${pad(Math.floor(endMin / 60))}:${pad(endMin % 60)}`;
+    // Groups selected hours into contiguous ranges for a compact summary
+    // — e.g. [16:00, 17:00, 20:00] displays as "4:00 PM – 6:00 PM, 8:00 PM
+    // – 9:00 PM" instead of listing every hour separately.
+    function formatSelectedSlotsSummary(separator = ', ') {
+        if (selectedSlots.length === 0) return '';
 
+        const ranges = [];
+        let rangeStart = selectedSlots[0];
+        let rangeEnd = selectedSlots[0];
+
+        for (let i = 1; i < selectedSlots.length; i++) {
+            const prevSinceOpen = minutesSinceOpen(rangeEnd);
+            const curSinceOpen = minutesSinceOpen(selectedSlots[i]);
+
+            if (curSinceOpen === prevSinceOpen + STEP_MINUTES) {
+                rangeEnd = selectedSlots[i];
+            } else {
+                ranges.push([rangeStart, rangeEnd]);
+                rangeStart = selectedSlots[i];
+                rangeEnd = selectedSlots[i];
+            }
+        }
+        ranges.push([rangeStart, rangeEnd]);
+
+        return ranges.map(([start, end]) => {
+            const endMin = (timeToMinutes(end) + STEP_MINUTES) % 1440;
+            const endTimeStr = `${pad(Math.floor(endMin / 60))}:${pad(endMin % 60)}`;
+            return `${formatTime(start)} – ${formatTime(endTimeStr)}`;
+        }).join(separator);
+    }
+
+    function updateSummary() {
         summaryDate.textContent = formatDate(selectedDate);
-        summaryTime.textContent = `${formatTime(selectedStart)} – ${formatTime(endTimeStr)}`;
+        summaryTime.textContent = formatSelectedSlotsSummary();
         summaryPayment.textContent = selectedPayment ? PAYMENT_LABELS[selectedPayment] : '—';
 
         const equipText = equipmentSummaryText();
@@ -1000,15 +1044,16 @@ document.addEventListener('DOMContentLoaded', () => {
             summaryEquipmentRow.hidden = true;
         }
 
-        const total = selectedCourt.price * selectedDuration + equipmentTotal();
+        const total = slotPrice() * selectedSlots.length + equipmentTotal();
         summaryTotal.textContent = `₱${total.toLocaleString()}`;
     }
 
     function getMissingBookingRequirements() {
         const missing = [];
         if (!selectedDate) missing.push('a date');
-        if (!selectedStart) missing.push('a start time');
-        if (!selectedDuration) missing.push('a duration');
+        if (selectedSlots.length < MIN_DURATION) {
+            missing.push(`at least ${MIN_DURATION} hour${MIN_DURATION === 1 ? '' : 's'}`);
+        }
         return missing;
     }
 
@@ -1048,7 +1093,7 @@ document.addEventListener('DOMContentLoaded', () => {
         document.querySelector('.guest-email-block').classList.remove('guest-email-block-invalid');
         document.querySelector('.gcash-proof-block')?.classList.remove('gcash-proof-invalid');
 
-        if (!selectedCourt || !selectedDate || !selectedStart || !selectedDuration) return;
+        if (!selectedCourt || !selectedDate || selectedSlots.length < MIN_DURATION) return;
 
         confirmBtn.disabled = true;
         const originalLabel = confirmBtn.textContent;
@@ -1062,8 +1107,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const formData = new FormData();
         formData.append('court_id', selectedCourt.id);
         formData.append('date', selectedDate);
-        formData.append('start_time', selectedStart);
-        formData.append('duration', selectedDuration);
+        selectedSlots.forEach((timeStr, i) => {
+            formData.append(`slots[${i}]`, timeStr);
+        });
         formData.append('payment_method', selectedPayment);
         formData.append('guest_name', guestNameInput.value.trim());
         formData.append('guest_contact', guestContactInput.value.trim());
@@ -1097,11 +1143,33 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             if (!res.ok) {
+                // Laravel validation failures (invalid phone format, etc.)
+                // come back as a 422 with an `errors` object keyed by
+                // field name. Slot-taken / equipment-stock conflicts are
+                // also 422s, but from our own checks — they only carry a
+                // plain `message`. Handle these two cases differently:
+                // a bad field should keep the guest info open and point
+                // at what's wrong, not bounce the user back to time
+                // selection and wipe what they typed.
+                if (res.status === 422 && data.errors) {
+                    const firstError = Object.values(data.errors)[0]?.[0];
+                    showToast(firstError || 'Please check the highlighted field.', 'error');
+
+                    guestNameInput.classList.toggle('field-invalid', !!data.errors.guest_name);
+                    guestContactInput.classList.toggle('field-invalid', !!data.errors.guest_contact);
+                    document.querySelector('.gcash-proof-block')?.classList.toggle(
+                        'gcash-proof-invalid',
+                        !!data.errors.payment_reference
+                    );
+
+                    confirmBtn.disabled = false;
+                    confirmBtn.textContent = originalLabel;
+                    return;
+                }
+
                 showToast(data.message || 'That slot is no longer available.', 'error');
 
-                selectedStart = null;
-                selectedDuration = null;
-                durationSection.hidden = true;
+                selectedSlots = [];
 
                 closePaymentModal();
                 bookedRanges = await fetchAvailability(selectedDate);
