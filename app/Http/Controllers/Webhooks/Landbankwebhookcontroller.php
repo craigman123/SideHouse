@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Webhooks;
 
 use App\Http\Controllers\Controller;
 use App\Models\Booking;
+use App\Models\UnmatchedPayment;
+use App\Support\PaymentReference;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
@@ -78,18 +80,34 @@ class LandbankWebhookController extends Controller
             ->get();
 
         if ($candidates->isEmpty()) {
-            Log::warning('landbank_sms: payment received but no matching pending booking', [
+            // Don't just log and drop this — see the matching comment in
+            // GcashWebhookController for why. Park it so a booking
+            // created moments later can still claim it.
+            UnmatchedPayment::create([
+                'payment_method'    => 'landbank',
+                'amount'            => $amount,
+                'reference_number'  => $refNumber,
+                'raw_message'       => $validated['message'],
+            ]);
+
+            Log::warning('landbank_sms: payment received but no matching pending booking — parked for later claim', [
                 'amount' => $amount,
                 'ref' => $refNumber,
             ]);
             return response()->json(['status' => 'no_match']);
         }
 
-        // Prefer the booking whose guest-entered reference number matches
-        // the real one from the SMS — disambiguates two guests who happen
-        // to owe the exact same amount around the same time. If only one
-        // candidate exists at all, match on amount alone.
-        $booking = $candidates->first(fn ($b) => $refNumber && $b->gcash_reference_number === $refNumber)
+        // Normalize before comparing — a guest might type "294-087-757",
+        // "Ref# 294087757", or with stray spaces; the SMS-parsed number
+        // is already digits-only, but comparing both through the same
+        // normalizer keeps this correct even if that ever changes.
+        $normalizedRef = $refNumber !== null ? PaymentReference::normalize($refNumber) : null;
+
+        $booking = $candidates->first(function ($b) use ($normalizedRef) {
+                return $normalizedRef !== null
+                    && $normalizedRef !== ''
+                    && PaymentReference::normalize((string) $b->gcash_reference_number) === $normalizedRef;
+            })
             ?? ($candidates->count() === 1 ? $candidates->first() : null);
 
         if ($booking === null) {
@@ -107,7 +125,7 @@ class LandbankWebhookController extends Controller
         }
 
         $booking->update([
-            'status'       => 'confirmed',
+            'status'       => 'paid',
             'confirmed_at' => now(),
             'gcash_reference_number' => $refNumber ?? $booking->gcash_reference_number,
         ]);
@@ -137,7 +155,7 @@ class LandbankWebhookController extends Controller
 
         $refNumber = null;
         if (preg_match('/Ref\.?\s*(?:No\.?|Number)?\s*[:.]?\s*([\d\s]{6,20})/i', $message, $refMatch)) {
-            $refNumber = preg_replace('/\s+/', '', $refMatch[1]);
+            $refNumber = PaymentReference::normalize($refMatch[1]);
         }
 
         return [$amount, $refNumber];

@@ -360,8 +360,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // GcashWebhookController vs LandbankWebhookController differs on the
     // backend, matched by the booking's stored payment_method. Ends in
     // one of three ways: the matching webhook controller confirms it
-    // ('confirmed'), ExpireUnconfirmedGcashBookings times it out
-    // ('cancelled'), or the guest gives up and cancels manually.
+    // ('paid'), ExpireUnconfirmedGcashBookings times it out ('cancelled'),
+    // or the guest gives up and cancels manually.
     function watchPaymentConfirmation(bookingId, pollToken, expiresAtIso, amountLabel, method) {
         const statusUrl = statusUrlTemplate.replace('__ID__', bookingId) + `?token=${encodeURIComponent(pollToken)}`;
         const cancelUrl = statusUrlTemplate.replace('__ID__', bookingId).replace('/status', '/cancel') + `?token=${encodeURIComponent(pollToken)}`;
@@ -387,7 +387,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (res.ok) {
                     const data = await res.json();
 
-                    if (data.status === 'confirmed') {
+                    if (data.status === 'paid') {
                         stopGcashPolling();
                         gcashWaitStatus.textContent = 'Payment confirmed!';
                         setTimeout(() => {
@@ -637,9 +637,55 @@ document.addEventListener('DOMContentLoaded', () => {
         closeEquipmentModal();
     });
 
-    continueToGuestInfoBtn.addEventListener('click', () => {
-        closeEquipmentModal();
-        openPaymentModal();
+    continueToGuestInfoBtn.addEventListener('click', async () => {
+        const originalLabel = continueToGuestInfoBtn.textContent;
+        continueToGuestInfoBtn.disabled = true;
+        continueToGuestInfoBtn.textContent = 'Checking stock…';
+
+        try {
+            // The equipment grid only reflects stock as of when this step
+            // first loaded — someone else could've taken the last one
+            // since. Re-check against the database now, right before
+            // moving on, instead of waiting until final submit to find out.
+            const params = new URLSearchParams({ date: selectedDate });
+            selectedSlots.forEach((timeStr) => params.append('slots[]', timeStr));
+            const res = await fetch(`${equipmentUrl}?${params.toString()}`, { headers: { Accept: 'application/json' } });
+            const data = await res.json();
+            const freshCatalog = data.equipment || [];
+            equipmentCatalog = freshCatalog;
+
+            const shortages = [];
+            Object.keys(equipmentSelection).forEach((id) => {
+                const fresh = freshCatalog.find((e) => String(e.id) === String(id));
+                const available = fresh ? fresh.available : 0;
+                const wanted = equipmentSelection[id];
+
+                if (available < wanted) {
+                    shortages.push(fresh ? fresh.name : 'An item');
+                    if (available <= 0) {
+                        delete equipmentSelection[id];
+                    } else {
+                        equipmentSelection[id] = available;
+                    }
+                }
+            });
+
+            renderEquipment();
+
+            if (shortages.length > 0) {
+                showToast(`Sorry, ${formatList(shortages)} sold out for this time while you were browsing — please review your rental.`, 'error');
+                return;
+            }
+
+            closeEquipmentModal();
+            openPaymentModal();
+        } catch (err) {
+            console.error(err);
+            showToast("Couldn't confirm equipment availability. Please try again.", 'error');
+        } finally {
+            continueToGuestInfoBtn.disabled = false;
+            continueToGuestInfoBtn.textContent = originalLabel;
+        }
     });
 
     document.getElementById('backToEquipment').addEventListener('click', () => {
@@ -1221,7 +1267,20 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             closePaymentModal();
-            watchPaymentConfirmation(data.booking_id, data.poll_token, data.expires_at, `₱${Number(data.amount).toFixed(2)}`, selectedPayment);
+
+            if (data.booking && data.booking.status === 'paid') {
+                // The GCash/Landbank SMS beat the guest to "Confirm" —
+                // store() already matched it to this booking retroactively
+                // (see GuestBookingController::store()'s UnmatchedPayment
+                // claim), so there's nothing left to poll for. Skip
+                // straight to the same success state watchPaymentConfirmation
+                // would've landed on, instead of opening a "waiting for
+                // payment" modal that would just spin forever.
+                showToast('Payment already matched — you\'re all set!', 'success');
+                finishBookingReset();
+            } else {
+                watchPaymentConfirmation(data.booking_id, data.poll_token, data.expires_at, `₱${Number(data.amount).toFixed(2)}`, selectedPayment);
+            }
         } catch (err) {
             console.error(err);
             showToast('Something went wrong. Please try again.', 'error');
