@@ -15,6 +15,15 @@ return Application::configure(basePath: dirname(__DIR__))
             \App\Http\Middleware\PreventBackHistory::class,
         ]);
         $middleware->trustProxies(at: '*');
+
+        // These are hit by an external SMS-forwarding app, not a browser —
+        // there's no session/CSRF token for it to send. The webhook is
+        // still protected by its own ?token= secret check inside each
+        // controller (see GcashWebhookController / LandbankWebhookController).
+        $middleware->validateCsrfTokens(except: [
+            'webhooks/gcash-sms',
+            'webhooks/landbank-sms',
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //
