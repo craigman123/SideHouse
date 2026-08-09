@@ -40,4 +40,12 @@ return [
         'client_secret' => env('GOOGLE_CLIENT_SECRET'),
     ],
 
+    'gcash_sms' => [
+        'secret' => env('GCASH_SMS_WEBHOOK_SECRET'),
+    ],
+
+    'landbank_sms' => [
+        'secret' => env('LANDBANK_SMS_WEBHOOK_SECRET'),
+    ],
+
 ];
