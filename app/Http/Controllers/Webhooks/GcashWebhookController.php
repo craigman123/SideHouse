@@ -1,7 +1,8 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Webhooks;
 
+use App\Http\Controllers\Controller;
 use App\Models\Booking;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -21,10 +22,10 @@ use Illuminate\Support\Facades\Log;
  *      https://yourdomain.com/webhooks/gcash-sms?token=<GCASH_SMS_WEBHOOK_SECRET>
  *      as JSON: {"message": "<full SMS text>"}
  *   3. GCASH_SMS_WEBHOOK_SECRET set in .env and read via
- *      config('services.gcash_sms.secret') — add to config/services.php:
- *      'gcash_sms' => ['secret' => env('GCASH_SMS_WEBHOOK_SECRET')],
- *   4. Route (routes/web.php or api.php, CSRF-exempt since it's an
- *      external POST with no session):
+ *      config('services.gcash_sms.secret') — see config/services.php.
+ *   4. Route (routes/web.php, CSRF-exempt via bootstrap/app.php's
+ *      validateCsrfTokens(except: [...]) since it's an external POST
+ *      with no session):
  *      Route::post('/webhooks/gcash-sms', [GcashWebhookController::class, 'handleSms']);
  */
 class GcashWebhookController extends Controller

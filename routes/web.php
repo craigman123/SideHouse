@@ -5,11 +5,11 @@ use App\Http\Controllers\Admin\Admin_DashboardController;
 use App\Http\Controllers\Admin\BookingController;
 use App\Http\Controllers\Admin\CourtController;
 use App\Http\Controllers\Auth\AuthController;
-use App\Http\Controllers\GcashWebhookController;
 use App\Http\Controllers\Guest\GuestBookingController;
-use App\Http\Controllers\LandbankWebhookController;
 use App\Http\Controllers\User\User_UserController;
 use App\Http\Controllers\User\UserDashboardController;
+use App\Http\Controllers\Webhooks\GcashWebhookController;
+use App\Http\Controllers\Webhooks\LandbankWebhookController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', [GuestBookingController::class, 'landing'])->name('landing');

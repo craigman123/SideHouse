@@ -1,7 +1,8 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Webhooks;
 
+use App\Http\Controllers\Controller;
 use App\Models\Booking;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -24,11 +25,10 @@ use Illuminate\Support\Facades\Log;
  *      https://yourdomain.com/webhooks/landbank-sms?token=<LANDBANK_SMS_WEBHOOK_SECRET>
  *      as JSON: {"message": "<full SMS text>"}
  *   3. LANDBANK_SMS_WEBHOOK_SECRET set in .env and read via
- *      config('services.landbank_sms.secret') — add to
- *      config/services.php:
- *      'landbank_sms' => ['secret' => env('LANDBANK_SMS_WEBHOOK_SECRET')],
- *   4. Route (already added in routes/web.php, CSRF-exempt since it's an
- *      external POST with no session):
+ *      config('services.landbank_sms.secret') — see config/services.php.
+ *   4. Route (routes/web.php, CSRF-exempt via bootstrap/app.php's
+ *      validateCsrfTokens(except: [...]) since it's an external POST
+ *      with no session):
  *      Route::post('/webhooks/landbank-sms', [LandbankWebhookController::class, 'handleSms']);
  *
  * IMPORTANT: unlike GCash, this regex is an unverified guess at Landbank's
