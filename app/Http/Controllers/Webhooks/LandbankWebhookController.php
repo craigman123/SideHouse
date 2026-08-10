@@ -6,7 +6,10 @@ use App\Http\Controllers\Controller;
 use App\Models\Booking;
 use App\Models\UnmatchedPayment;
 use App\Support\PaymentReference;
+use App\Support\PaymentWindows;
+use App\Support\WebhookAuth;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -16,6 +19,7 @@ use Illuminate\Support\Facades\Log;
  * pattern as GcashWebhookController — this is the only thing that
  * actually confirms a guest's payment; the reference number the guest
  * types into the booking form is never trusted on its own.
+ *
  * Setup checklist (none of this is in the codebase — it's account/device
  * config):
  *   1. Landbank account that receives SMS/mobile alerts for incoming
@@ -23,32 +27,39 @@ use Illuminate\Support\Facades\Log;
  *      receiving account, if not already on by default).
  *   2. A phone with that SIM, running an SMS-forwarding app configured to
  *      POST every incoming SMS to:
- *      https://yourdomain.com/webhooks/landbank-sms?token=<LANDBANK_SMS_WEBHOOK_SECRET>
- *      as JSON: {"message": "<full SMS text>"}
+ *      https://yourdomain.com/webhooks/landbank-sms
+ *      with header:
+ *      X-Webhook-Token: <LANDBANK_SMS_WEBHOOK_SECRET>
+ *      as JSON body: {"message": "<full SMS text>"}
+ *      (a `?token=` query-string fallback still works but is deprecated
+ *      — see App\Support\WebhookAuth — migrate the device config off it)
  *   3. LANDBANK_SMS_WEBHOOK_SECRET set in .env and read via
  *      config('services.landbank_sms.secret') — see config/services.php.
+ *      Optionally also set LANDBANK_SMS_ALLOWED_IPS (comma-separated) if
+ *      the forwarding phone has a stable IP/VPN egress; read via
+ *      config('services.landbank_sms.allowed_ips').
  *   4. Route (routes/web.php, CSRF-exempt via bootstrap/app.php's
  *      validateCsrfTokens(except: [...]) since it's an external POST
- *      with no session):
- *      Route::post('/webhooks/landbank-sms', [LandbankWebhookController::class, 'handleSms']);
+ *      with no session), rate-limited:
+ *      Route::post('/webhooks/landbank-sms', [LandbankWebhookController::class, 'handleSms'])
+ *          ->middleware('throttle:30,1');
  *
  * IMPORTANT: unlike GCash, this regex is an unverified guess at Landbank's
- * SMS wording — nobody on this project has seen a real one yet. Log the
- * first real SMS that comes in (see the 'ignored' branch below) and
- * adjust parseLandbankSms() to match it exactly before relying on this
- * for real bookings.
+ * SMS wording — nobody on this project has seen a real one yet. Set
+ * SMS_WEBHOOK_LOG_RAW=true temporarily to capture the first real SMS,
+ * then adjust parseLandbankSms() to match it exactly before relying on
+ * this for real bookings, and turn raw logging back off.
  */
 class LandbankWebhookController extends Controller
 {
-    // Must stay >= GuestBookingController::GCASH_CONFIRM_WINDOW_MINUTES —
-    // see the comment on GcashWebhookController::MATCH_WINDOW_MINUTES for
-    // why.
-    private const MATCH_WINDOW_MINUTES = 20;
-
     public function handleSms(Request $request)
     {
         $secret = (string) config('services.landbank_sms.secret');
-        if ($secret === '' || ! hash_equals($secret, (string) $request->query('token'))) {
+        if (! WebhookAuth::verifyToken($request, $secret)) {
+            abort(403);
+        }
+
+        if (! WebhookAuth::verifyIp($request, (string) config('services.landbank_sms.allowed_ips', ''))) {
             abort(403);
         }
 
@@ -56,80 +67,105 @@ class LandbankWebhookController extends Controller
             'message' => ['required', 'string'],
         ]);
 
-        $parsed = $this->parseLandbankSms($validated['message']);
+        $rawMessage = $validated['message'];
+        $matchWindow = PaymentWindows::matchWindowMinutes('landbank');
+
+        if (WebhookAuth::isDuplicate('landbank_sms', $rawMessage, $matchWindow)) {
+            Log::info('landbank_sms: duplicate message ignored', ['hash' => hash('sha256', $rawMessage)]);
+            return response()->json(['status' => 'duplicate']);
+        }
+
+        $parsed = $this->parseLandbankSms($rawMessage);
 
         if ($parsed === null) {
-            // Not every SMS on this line is a payment (could be an OTP,
-            // a balance alert, etc.) — that's expected and not an error.
-            // But if *none* ever match once real transfers start coming
-            // in, the regex below needs updating to the actual wording.
+            // Never log the full SMS body by default — see the class
+            // docblock. Set SMS_WEBHOOK_LOG_RAW=true in .env while
+            // capturing the first real sample to fix the parser below.
             Log::info('landbank_sms: message did not match payment format', [
-                'message' => $validated['message'],
+                'hash'   => hash('sha256', $rawMessage),
+                'length' => strlen($rawMessage),
+                'raw'    => config('services.sms_webhook.log_raw') ? $rawMessage : null,
             ]);
             return response()->json(['status' => 'ignored']);
         }
 
         [$amount, $refNumber] = $parsed;
-
-        $candidates = Booking::where('status', 'pending')
-            ->where('payment_method', 'landbank')
-            ->where('amount', $amount)
-            ->where('created_at', '>=', now()->subMinutes(self::MATCH_WINDOW_MINUTES))
-            ->orderBy('created_at')
-            ->get();
-
-        if ($candidates->isEmpty()) {
-            // Don't just log and drop this — see the matching comment in
-            // GcashWebhookController for why. Park it so a booking
-            // created moments later can still claim it.
-            UnmatchedPayment::create([
-                'payment_method'    => 'landbank',
-                'amount'            => $amount,
-                'reference_number'  => $refNumber,
-                'raw_message'       => $validated['message'],
-            ]);
-
-            Log::warning('landbank_sms: payment received but no matching pending booking — parked for later claim', [
-                'amount' => $amount,
-                'ref' => $refNumber,
-            ]);
-            return response()->json(['status' => 'no_match']);
-        }
-
-        // Normalize before comparing — a guest might type "294-087-757",
-        // "Ref# 294087757", or with stray spaces; the SMS-parsed number
-        // is already digits-only, but comparing both through the same
-        // normalizer keeps this correct even if that ever changes.
         $normalizedRef = $refNumber !== null ? PaymentReference::normalize($refNumber) : null;
 
-        $booking = $candidates->first(function ($b) use ($normalizedRef) {
-                return $normalizedRef !== null
-                    && $normalizedRef !== ''
-                    && PaymentReference::normalize((string) $b->gcash_reference_number) === $normalizedRef;
-            })
-            ?? ($candidates->count() === 1 ? $candidates->first() : null);
+        $result = DB::transaction(function () use ($amount, $refNumber, $normalizedRef, $matchWindow, $rawMessage) {
+            $candidates = Booking::where('status', 'pending')
+                ->where('payment_method', 'landbank')
+                ->where('amount', $amount)
+                ->where('created_at', '>=', now()->subMinutes($matchWindow))
+                ->orderBy('created_at')
+                ->lockForUpdate()
+                ->get();
 
-        if ($booking === null) {
-            // Multiple same-amount bookings, no reference match — don't
-            // guess which one got paid. Leave them pending; auto-expire
-            // will still clean up whichever one never gets a real match,
-            // and staff can sort it out from the Landbank account
-            // directly.
-            Log::warning('landbank_sms: ambiguous match, multiple same-amount pending bookings', [
-                'amount' => $amount,
-                'ref' => $refNumber,
-                'candidate_ids' => $candidates->pluck('id')->all(),
+            if ($candidates->isEmpty()) {
+                // Park it so a booking created moments later can still
+                // claim it — see the matching comment in
+                // GcashWebhookController. raw_message is pruned after a
+                // short time by payments:prune-raw-sms.
+                UnmatchedPayment::create([
+                    'payment_method'   => 'landbank',
+                    'amount'           => $amount,
+                    'reference_number' => $refNumber,
+                    'raw_message'      => $rawMessage,
+                ]);
+
+                return ['status' => 'no_match'];
+            }
+
+            // Reference number is the ONLY thing that confirms which
+            // booking this is — deliberately no "only one candidate at
+            // this amount" fallback. Court pricing is round numbers, so
+            // same-amount collisions are common; auto-confirming on
+            // amount alone would let a stranger who typed a made-up
+            // reference race a real payer and get matched to their
+            // payment before the real payer even finishes the form. A
+            // mismatched reference stays unmatched — recoverable
+            // manually by staff; a stolen payment is not.
+            $booking = ($normalizedRef !== null && $normalizedRef !== '')
+                ? $candidates->first(fn ($b) => PaymentReference::normalize((string) $b->gcash_reference_number) === $normalizedRef)
+                : null;
+
+            if ($booking === null) {
+                return ['status' => 'ambiguous', 'candidate_ids' => $candidates->pluck('id')->all()];
+            }
+
+            // See GcashWebhookController for why this re-check exists —
+            // covers the expire-command race specifically.
+            if ($booking->status !== 'pending') {
+                return ['status' => 'already_resolved', 'booking_id' => $booking->id];
+            }
+
+            if ($normalizedRef !== null && $normalizedRef !== '') {
+                $alreadyUsed = Booking::where('payment_method', 'landbank')
+                    ->where('status', 'paid')
+                    ->where('id', '!=', $booking->id)
+                    ->where('created_at', '>=', now()->subDay())
+                    ->get(['id', 'gcash_reference_number'])
+                    ->contains(fn ($b) => PaymentReference::normalize((string) $b->gcash_reference_number) === $normalizedRef);
+
+                if ($alreadyUsed) {
+                    return ['status' => 'duplicate_reference', 'booking_id' => $booking->id];
+                }
+            }
+
+            $booking->update([
+                'status'       => 'paid',
+                'confirmed_at' => now(),
+                'gcash_reference_number' => $refNumber ?? $booking->gcash_reference_number,
             ]);
-            return response()->json(['status' => 'ambiguous']);
+
+            return ['status' => 'confirmed', 'booking_id' => $booking->id];
+        });
+
+        if (in_array($result['status'], ['no_match', 'ambiguous', 'already_resolved', 'duplicate_reference'], true)) {
+            Log::warning("landbank_sms: {$result['status']}", ['amount' => $amount, 'ref' => $refNumber] + $result);
         }
 
-        $booking->update([
-            'status'       => 'paid',
-            'confirmed_at' => now(),
-            'gcash_reference_number' => $refNumber ?? $booking->gcash_reference_number,
-        ]);
-
-        return response()->json(['status' => 'confirmed', 'booking_id' => $booking->id]);
+        return response()->json($result);
     }
 
     /**
@@ -142,8 +178,9 @@ class LandbankWebhookController extends Controller
      * account will receive. Written loosely to catch common phrasings
      * like:
      *   "You have received PHP 1,500.00 via InstaPay. Ref No. 123456789012."
-     * Log a real sample first (see handleSms above) and tighten/adjust
-     * this once you have one.
+     * Capture a real sample first (SMS_WEBHOOK_LOG_RAW=true) and
+     * tighten/adjust this once you have one, then add a couple of tests
+     * pinned to the real wording.
      */
     private function parseLandbankSms(string $message): ?array
     {

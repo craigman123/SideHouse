@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Guest;
 
+use App\Support\PaymentWindows;
 use App\Http\Controllers\Controller;
 use App\Models\Booking;
 use App\Models\BookingSlot;
@@ -23,27 +24,9 @@ class GuestBookingController extends Controller
     // If OPEN_HOUR/CLOSE_HOUR/etc. change, update both places.
     private const OPEN_HOUR = 16;
     private const CLOSE_HOUR = 7;
-    private const BOOKING_STEP_MINUTES = 60;
+    private const BOOKING_STEP_MINUTES = 30;
     private const MIN_DURATION_HOURS = 1;
-    private const MAX_DURATION_HOURS = 8;
-
-    // How long a pending GCash booking holds its slot before
-    // ExpireUnconfirmedGcashBookings cancels it. Must stay <=
-    // GcashWebhookController::MATCH_WINDOW_MINUTES, or a real payment that
-    // lands late could arrive after we've already expired the booking it
-    // belongs to.
-    public const GCASH_CONFIRM_WINDOW_MINUTES = 15;
-
-    // How far back to look for a parked UnmatchedPayment when a booking
-    // is created — must match GcashWebhookController::MATCH_WINDOW_MINUTES
-    // and LandbankWebhookController::MATCH_WINDOW_MINUTES (both private
-    // consts on those classes, kept in sync manually, same as those two
-    // already have to stay in sync with GCASH_CONFIRM_WINDOW_MINUTES
-    // above). If a real payment's SMS arrived up to this many minutes
-    // before the guest finished the booking form, claim it here instead
-    // of leaving the booking stuck pending for a payment that already
-    // landed.
-    private const UNMATCHED_PAYMENT_CLAIM_WINDOW_MINUTES = 20;
+    private const MAX_DURATION_HOURS = 10;
 
     public function landing()
     {
@@ -299,7 +282,7 @@ class GuestBookingController extends Controller
             $pollToken = Str::random(40);
         } while (Booking::where('poll_token', $pollToken)->exists());
 
-        $expiresAt = now()->addMinutes(self::GCASH_CONFIRM_WINDOW_MINUTES);
+        $expiresAt = now()->addMinutes(PaymentWindows::BOOKING_EXPIRY_MINUTES);
 
         try {
             $booking = DB::transaction(function () use ($validated, $court, $envelopeStart, $envelopeEnd, $slotWindows, $slotPrice, $guestEmail, $pollToken, $expiresAt) {
@@ -387,9 +370,19 @@ class GuestBookingController extends Controller
                 // booking to attach it to yet and parked it as an
                 // UnmatchedPayment instead. Claim it now, retroactively,
                 // the same way the webhook itself would've matched it:
-                // prefer the guest-typed reference number, and only fall
-                // back to "exactly one candidate" when there's no
-                // reference to disambiguate with.
+                // require the guest-typed reference number to match the
+                // parked payment's real reference number. There is
+                // deliberately no "only one candidate, so it must be
+                // them" fallback — amount alone (court pricing is round
+                // numbers, so same-amount collisions are common) is not
+                // proof of payment, and without a hard reference-number
+                // requirement a guest who types a made-up reference could
+                // race a real payer and get their booking marked paid
+                // using someone else's payment before that payer even
+                // finishes the form. A guest who mistyped their own real
+                // reference number just stays pending and needs staff to
+                // resolve it manually — worse UX, but a typo is
+                // recoverable and a stolen payment is not.
                 //
                 // lockForUpdate() here for the same reason as the
                 // equipment lock above — without it, two concurrent
@@ -398,7 +391,7 @@ class GuestBookingController extends Controller
                 $unmatchedCandidates = UnmatchedPayment::unmatched()
                     ->where('payment_method', $validated['payment_method'])
                     ->where('amount', $amount)
-                    ->where('created_at', '>=', now()->subMinutes(self::UNMATCHED_PAYMENT_CLAIM_WINDOW_MINUTES))
+                    ->where('created_at', '>=', now()->subMinutes(PaymentWindows::claimWindowMinutes($validated['payment_method'])))
                     ->orderBy('created_at')
                     ->lockForUpdate()
                     ->get();
@@ -407,11 +400,11 @@ class GuestBookingController extends Controller
                 if ($unmatchedCandidates->isNotEmpty()) {
                     $normalizedGuestRef = PaymentReference::normalize($validated['payment_reference']);
 
-                    $claimedPayment = $unmatchedCandidates->first(function ($p) use ($normalizedGuestRef) {
-                            return $normalizedGuestRef !== ''
-                                && PaymentReference::normalize((string) $p->reference_number) === $normalizedGuestRef;
+                    $claimedPayment = $normalizedGuestRef !== ''
+                        ? $unmatchedCandidates->first(function ($p) use ($normalizedGuestRef) {
+                            return PaymentReference::normalize((string) $p->reference_number) === $normalizedGuestRef;
                         })
-                        ?? ($unmatchedCandidates->count() === 1 ? $unmatchedCandidates->first() : null);
+                        : null;
                 }
 
                 $booking = Booking::create([

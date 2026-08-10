@@ -369,6 +369,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const cancelUrl = statusUrlTemplate.replace('__ID__', bookingId).replace('/status', '/cancel') + `?token=${encodeURIComponent(pollToken)}`;
         gcashActiveCancelUrl = cancelUrl;
         const expiresAt = new Date(expiresAtIso).getTime();
+        // Guards against poll() and handleCountdownExpired() both trying
+        // to close/toast/reschedule if they land at nearly the same
+        // moment (e.g. a poll() request is already in flight when the
+        // countdown hits zero).
+        let resolved = false;
         const methodLabel = PAYMENT_LABELS[method] || 'the payment provider';
 
         if (gcashWaitTitle) gcashWaitTitle.textContent = `Waiting for ${methodLabel} Payment`;
@@ -379,9 +384,69 @@ document.addEventListener('DOMContentLoaded', () => {
         gcashCountdownTimer = setInterval(() => {
             const remaining = expiresAt - Date.now();
             gcashWaitCountdown.textContent = formatCountdown(remaining);
-            if (remaining <= 0) clearInterval(gcashCountdownTimer);
+            if (remaining <= 0) {
+                clearInterval(gcashCountdownTimer);
+                gcashCountdownTimer = null;
+                handleCountdownExpired();
+            }
         }, 1000);
         gcashWaitCountdown.textContent = formatCountdown(expiresAt - Date.now());
+
+        // Fires once when the on-screen countdown reaches 0:00. Without
+        // this, the countdown just freezes at 0:00 and the modal only
+        // ever closes once the next poll() tick happens to land after
+        // ExpireUnconfirmedGcashBookings/ExpireUnconfirmedLandbankBookings
+        // (a once-a-minute cron) has actually flipped the booking to
+        // 'cancelled' server-side — leaving a gap of up to ~poll interval
+        // + ~60s where the modal just sits there looking stuck.
+        //
+        // Does one last authoritative status check first, since a real
+        // payment could land in the same second the countdown hits zero
+        // and we don't want to tell the guest their slot was released
+        // when it was actually just confirmed. Only self-cancels if the
+        // server still says 'pending' — and cancel() server-side is a
+        // no-op unless the booking is still pending, so this can never
+        // clobber a payment that was confirmed a moment earlier.
+        async function handleCountdownExpired() {
+            if (gcashPollTimer) clearTimeout(gcashPollTimer);
+            gcashPollTimer = null;
+
+            try {
+                const res = await fetch(statusUrl, { headers: { Accept: 'application/json' } });
+                if (res.ok) {
+                    const data = await res.json();
+
+                    if (data.status === 'paid') {
+                        closeGcashWaitModal();
+                        showToast('Payment confirmed — see you on the court!', 'success');
+                        finishBookingReset();
+                        return;
+                    }
+
+                    if (data.status === 'cancelled') {
+                        closeGcashWaitModal();
+                        showToast("We didn't receive that payment in time, so the slot was released. Please rebook when you're ready to pay.", 'error');
+                        finishBookingReset();
+                        return;
+                    }
+                }
+            } catch (err) {
+                console.error(err);
+            }
+
+            // Still pending as far as the server knows — the expiry cron
+            // just hasn't caught up yet. Cancel it ourselves right now
+            // instead of leaving the modal open until the next cron tick.
+            try {
+                await fetch(cancelUrl, { method: 'POST', headers: { Accept: 'application/json', ...csrfHeaders() } });
+            } catch (err) {
+                console.error(err);
+            }
+
+            closeGcashWaitModal();
+            showToast("We didn't receive that payment in time, so the slot was released. Please rebook when you're ready to pay.", 'error');
+            finishBookingReset();
+        }
 
         async function poll() {
             try {

@@ -6,7 +6,10 @@ use App\Http\Controllers\Controller;
 use App\Models\Booking;
 use App\Models\UnmatchedPayment;
 use App\Support\PaymentReference;
+use App\Support\PaymentWindows;
+use App\Support\WebhookAuth;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -21,27 +24,33 @@ use Illuminate\Support\Facades\Log;
  *   1. GCash for Business account approved, merchant QR active.
  *   2. A phone with that SIM, running an SMS-forwarding app configured to
  *      POST every incoming SMS to:
- *      https://yourdomain.com/webhooks/gcash-sms?token=<GCASH_SMS_WEBHOOK_SECRET>
- *      as JSON: {"message": "<full SMS text>"}
+ *      https://yourdomain.com/webhooks/gcash-sms
+ *      with header:
+ *      X-Webhook-Token: <GCASH_SMS_WEBHOOK_SECRET>
+ *      as JSON body: {"message": "<full SMS text>"}
+ *      (a `?token=` query-string fallback still works but is deprecated
+ *      — see App\Support\WebhookAuth — migrate the device config off it)
  *   3. GCASH_SMS_WEBHOOK_SECRET set in .env and read via
  *      config('services.gcash_sms.secret') — see config/services.php.
+ *      Optionally also set GCASH_SMS_ALLOWED_IPS (comma-separated) if
+ *      the forwarding phone has a stable IP/VPN egress; read via
+ *      config('services.gcash_sms.allowed_ips').
  *   4. Route (routes/web.php, CSRF-exempt via bootstrap/app.php's
  *      validateCsrfTokens(except: [...]) since it's an external POST
- *      with no session):
- *      Route::post('/webhooks/gcash-sms', [GcashWebhookController::class, 'handleSms']);
+ *      with no session), rate-limited:
+ *      Route::post('/webhooks/gcash-sms', [GcashWebhookController::class, 'handleSms'])
+ *          ->middleware('throttle:30,1');
  */
 class GcashWebhookController extends Controller
 {
-    // How far back we'll look for a pending booking to match this SMS
-    // against. Must stay >= GuestBookingController::GCASH_CONFIRM_WINDOW_MINUTES
-    // — if this is shorter, a real payment that arrives just before the
-    // booking expires could fail to match a booking that's still pending.
-    private const MATCH_WINDOW_MINUTES = 40;
-
     public function handleSms(Request $request)
     {
         $secret = (string) config('services.gcash_sms.secret');
-        if ($secret === '' || ! hash_equals($secret, (string) $request->query('token'))) {
+        if (! WebhookAuth::verifyToken($request, $secret)) {
+            abort(403);
+        }
+
+        if (! WebhookAuth::verifyIp($request, (string) config('services.gcash_sms.allowed_ips', ''))) {
             abort(403);
         }
 
@@ -49,89 +58,142 @@ class GcashWebhookController extends Controller
             'message' => ['required', 'string'],
         ]);
 
-        $parsed = $this->parseGcashSms($validated['message']);
+        $rawMessage = $validated['message'];
+        $matchWindow = PaymentWindows::matchWindowMinutes('gcash');
+
+        // Replay guard: the exact same SMS body arriving twice (forwarder
+        // retry, proxy resend, a captured-and-replayed request) must
+        // never be processed twice. Window matches the match window
+        // since that's the longest this message could still legitimately
+        // matter for.
+        if (WebhookAuth::isDuplicate('gcash_sms', $rawMessage, $matchWindow)) {
+            Log::info('gcash_sms: duplicate message ignored', ['hash' => hash('sha256', $rawMessage)]);
+            return response()->json(['status' => 'duplicate']);
+        }
+
+        $parsed = $this->parseGcashSms($rawMessage);
 
         if ($parsed === null) {
-            // Not every SMS on this line is a payment (could be a load
-            // promo, OTP, etc.) — that's expected and not an error. But if
-            // *none* ever match once real payments start coming in, the
-            // regex below needs updating to your actual SMS wording.
+            // Never log the full SMS body by default — it can carry a
+            // sender's name and partial phone number. Log a hash+length
+            // so you can still tell "same unmatched wording keeps
+            // recurring" apart from noise. If you're actively tuning the
+            // regex below, set SMS_WEBHOOK_LOG_RAW=true in .env
+            // temporarily (config('services.sms_webhook.log_raw')) to
+            // see real bodies, then turn it back off.
             Log::info('gcash_sms: message did not match payment format', [
-                'message' => $validated['message'],
+                'hash'   => hash('sha256', $rawMessage),
+                'length' => strlen($rawMessage),
+                'raw'    => config('services.sms_webhook.log_raw') ? $rawMessage : null,
             ]);
             return response()->json(['status' => 'ignored']);
         }
 
         [$amount, $refNumber] = $parsed;
-
-        $candidates = Booking::where('status', 'pending')
-            ->where('payment_method', 'gcash')
-            ->where('amount', $amount)
-            ->where('created_at', '>=', now()->subMinutes(self::MATCH_WINDOW_MINUTES))
-            ->orderBy('created_at')
-            ->get();
-
-        if ($candidates->isEmpty()) {
-            // Don't just log and drop this — the guest may pay (and this
-            // SMS may arrive) before they've finished typing their name/
-            // contact and hitting "Confirm Booking". Park it here so
-            // GuestBookingController::store() can claim it retroactively
-            // the moment a matching booking actually gets created.
-            UnmatchedPayment::create([
-                'payment_method'    => 'gcash',
-                'amount'            => $amount,
-                'reference_number'  => $refNumber,
-                'raw_message'       => $validated['message'],
-            ]);
-
-            Log::warning('gcash_sms: payment received but no matching pending booking — parked for later claim', [
-                'amount' => $amount,
-                'ref' => $refNumber,
-            ]);
-            return response()->json(['status' => 'no_match']);
-        }
-
-        // Normalize before comparing — a guest might type "294-087-757",
-        // "Ref# 294087757", or with stray spaces; the SMS-parsed number
-        // is already digits-only, but comparing both through the same
-        // normalizer keeps this correct even if that ever changes.
-        //
-        // Reference number is the ONLY thing that confirms which booking
-        // this is — there's deliberately no "only one candidate at this
-        // amount, so it must be them" fallback anymore. Court pricing is
-        // round numbers, so two unrelated bookings landing on the same
-        // amount is common, not rare; auto-confirming on amount alone
-        // would let a stranger who typed a made-up reference number get
-        // matched to someone else's real payment. A mismatched reference
-        // stays unmatched — the guest can fix a typo from the booking's
-        // "waiting for payment" screen (see GuestBookingController::
-        // updateReference()), which re-attempts this same match.
         $normalizedRef = $refNumber !== null ? PaymentReference::normalize($refNumber) : null;
 
-        $booking = ($normalizedRef !== null && $normalizedRef !== '')
-            ? $candidates->first(fn ($b) => PaymentReference::normalize((string) $b->gcash_reference_number) === $normalizedRef)
-            : null;
+        $result = DB::transaction(function () use ($amount, $refNumber, $normalizedRef, $matchWindow, $rawMessage) {
+            // lockForUpdate() here closes the same race the expire-command
+            // could otherwise cause: without it, ExpireUnconfirmedGcashBookings
+            // could flip a candidate to 'cancelled' between this query and
+            // the update below, and we'd happily mark a cancelled booking
+            // 'paid'.
+            $candidates = Booking::where('status', 'pending')
+                ->where('payment_method', 'gcash')
+                ->where('amount', $amount)
+                ->where('created_at', '>=', now()->subMinutes($matchWindow))
+                ->orderBy('created_at')
+                ->lockForUpdate()
+                ->get();
 
-        if ($booking === null) {
-            // No reference match — don't guess which booking this was
-            // for. Leave them pending; auto-expire will still clean up
-            // whichever one never gets a real match, and staff can sort
-            // it out from the GCash dashboard directly.
-            Log::warning('gcash_sms: no reference-number match among same-amount pending bookings', [
-                'amount' => $amount,
-                'ref' => $refNumber,
-                'candidate_ids' => $candidates->pluck('id')->all(),
+            if ($candidates->isEmpty()) {
+                // Don't just log and drop this — the guest may pay (and
+                // this SMS may arrive) before they've finished typing
+                // their name/contact and hitting "Confirm Booking". Park
+                // it here so GuestBookingController::store() can claim it
+                // retroactively the moment a matching booking actually
+                // gets created. raw_message is pruned after a short time
+                // by the payments:prune-raw-sms scheduled command — see
+                // App\Console\Commands\PruneUnmatchedPaymentMessages.
+                UnmatchedPayment::create([
+                    'payment_method'   => 'gcash',
+                    'amount'           => $amount,
+                    'reference_number' => $refNumber,
+                    'raw_message'      => $rawMessage,
+                ]);
+
+                return ['status' => 'no_match'];
+            }
+
+            // Normalize before comparing — a guest might type
+            // "294-087-757", "Ref# 294087757", or with stray spaces; the
+            // SMS-parsed number is already digits-only, but comparing
+            // both through the same normalizer keeps this correct even
+            // if that ever changes.
+            //
+            // Reference number is the ONLY thing that confirms which
+            // booking this is — there's deliberately no "only one
+            // candidate at this amount, so it must be them" fallback.
+            // Court pricing is round numbers, so two unrelated bookings
+            // landing on the same amount is common, not rare; auto-
+            // confirming on amount alone would let a stranger who typed a
+            // made-up reference number get matched to someone else's real
+            // payment. A mismatched reference stays unmatched — the guest
+            // can fix a typo from the booking's "waiting for payment"
+            // screen, which re-attempts this same match.
+            $booking = ($normalizedRef !== null && $normalizedRef !== '')
+                ? $candidates->first(fn ($b) => PaymentReference::normalize((string) $b->gcash_reference_number) === $normalizedRef)
+                : null;
+
+            if ($booking === null) {
+                return ['status' => 'ambiguous', 'candidate_ids' => $candidates->pluck('id')->all()];
+            }
+
+            // Re-check status under the lock. lockForUpdate() on the
+            // query above already serializes this against a second,
+            // concurrent handleSms() call for the same amount — this
+            // guard is specifically for the expire-command race: the
+            // booking could have already been cancelled by
+            // ExpireUnconfirmedGcashBookings in between being selected
+            // above (it was still 'pending' then, hence matched the
+            // where()) and this line.
+            if ($booking->status !== 'pending') {
+                return ['status' => 'already_resolved', 'booking_id' => $booking->id];
+            }
+
+            // Belt-and-suspenders: refuse to let the same reference
+            // number confirm a second booking. The matching logic above
+            // shouldn't be able to reach this given normal traffic, but
+            // it's cheap insurance against a future change to that logic
+            // accidentally allowing it. Bounded to the last day of paid
+            // bookings rather than the whole table.
+            if ($normalizedRef !== null && $normalizedRef !== '') {
+                $alreadyUsed = Booking::where('payment_method', 'gcash')
+                    ->where('status', 'paid')
+                    ->where('id', '!=', $booking->id)
+                    ->where('created_at', '>=', now()->subDay())
+                    ->get(['id', 'gcash_reference_number'])
+                    ->contains(fn ($b) => PaymentReference::normalize((string) $b->gcash_reference_number) === $normalizedRef);
+
+                if ($alreadyUsed) {
+                    return ['status' => 'duplicate_reference', 'booking_id' => $booking->id];
+                }
+            }
+
+            $booking->update([
+                'status'       => 'paid',
+                'confirmed_at' => now(),
+                'gcash_reference_number' => $refNumber ?? $booking->gcash_reference_number,
             ]);
-            return response()->json(['status' => 'ambiguous']);
+
+            return ['status' => 'confirmed', 'booking_id' => $booking->id];
+        });
+
+        if (in_array($result['status'], ['no_match', 'ambiguous', 'already_resolved', 'duplicate_reference'], true)) {
+            Log::warning("gcash_sms: {$result['status']}", ['amount' => $amount, 'ref' => $refNumber] + $result);
         }
 
-        $booking->update([
-            'status'       => 'paid',
-            'confirmed_at' => now(),
-            'gcash_reference_number' => $refNumber ?? $booking->gcash_reference_number,
-        ]);
-
-        return response()->json(['status' => 'confirmed', 'booking_id' => $booking->id]);
+        return response()->json($result);
     }
 
     /**
@@ -144,7 +206,8 @@ class GcashWebhookController extends Controller
      * GCash for Business (merchant QR) notifications may be worded
      * differently — confirm against a real SMS once the merchant account
      * is active and adjust the two patterns below if it doesn't match.
-     * Log a real sample first rather than guessing blind.
+     * Log a real sample first (SMS_WEBHOOK_LOG_RAW=true) rather than
+     * guessing blind.
      */
     private function parseGcashSms(string $message): ?array
     {
