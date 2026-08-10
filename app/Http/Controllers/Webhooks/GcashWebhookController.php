@@ -36,7 +36,7 @@ class GcashWebhookController extends Controller
     // against. Must stay >= GuestBookingController::GCASH_CONFIRM_WINDOW_MINUTES
     // — if this is shorter, a real payment that arrives just before the
     // booking expires could fail to match a booking that's still pending.
-    private const MATCH_WINDOW_MINUTES = 20;
+    private const MATCH_WINDOW_MINUTES = 40;
 
     public function handleSms(Request $request)
     {
@@ -95,21 +95,29 @@ class GcashWebhookController extends Controller
         // "Ref# 294087757", or with stray spaces; the SMS-parsed number
         // is already digits-only, but comparing both through the same
         // normalizer keeps this correct even if that ever changes.
+        //
+        // Reference number is the ONLY thing that confirms which booking
+        // this is — there's deliberately no "only one candidate at this
+        // amount, so it must be them" fallback anymore. Court pricing is
+        // round numbers, so two unrelated bookings landing on the same
+        // amount is common, not rare; auto-confirming on amount alone
+        // would let a stranger who typed a made-up reference number get
+        // matched to someone else's real payment. A mismatched reference
+        // stays unmatched — the guest can fix a typo from the booking's
+        // "waiting for payment" screen (see GuestBookingController::
+        // updateReference()), which re-attempts this same match.
         $normalizedRef = $refNumber !== null ? PaymentReference::normalize($refNumber) : null;
 
-        $booking = $candidates->first(function ($b) use ($normalizedRef) {
-                return $normalizedRef !== null
-                    && $normalizedRef !== ''
-                    && PaymentReference::normalize((string) $b->gcash_reference_number) === $normalizedRef;
-            })
-            ?? ($candidates->count() === 1 ? $candidates->first() : null);
+        $booking = ($normalizedRef !== null && $normalizedRef !== '')
+            ? $candidates->first(fn ($b) => PaymentReference::normalize((string) $b->gcash_reference_number) === $normalizedRef)
+            : null;
 
         if ($booking === null) {
-            // Multiple same-amount bookings, no reference match — don't
-            // guess which one got paid. Leave them pending; auto-expire
-            // will still clean up whichever one never gets a real match,
-            // and staff can sort it out from the GCash dashboard directly.
-            Log::warning('gcash_sms: ambiguous match, multiple same-amount pending bookings', [
+            // No reference match — don't guess which booking this was
+            // for. Leave them pending; auto-expire will still clean up
+            // whichever one never gets a real match, and staff can sort
+            // it out from the GCash dashboard directly.
+            Log::warning('gcash_sms: no reference-number match among same-amount pending bookings', [
                 'amount' => $amount,
                 'ref' => $refNumber,
                 'candidate_ids' => $candidates->pluck('id')->all(),
