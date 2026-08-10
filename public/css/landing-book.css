@@ -224,6 +224,47 @@ html {
     min-height: 0;
 }
 
+.time-picker-day-switch {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    margin: 4px 0 2px;
+}
+
+.time-picker-day-switch h3 {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    text-align: center;
+}
+
+.time-picker-day-nav {
+    flex-shrink: 0;
+    width: 26px;
+    height: 26px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #161b22;
+    border: 1.5px solid #30363d;
+    border-radius: 8px;
+    color: #c9d1d9;
+    font-size: 16px;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.time-picker-day-nav:hover:not(:disabled) {
+    border-color: #3fb950;
+    color: #3fb950;
+}
+
+.time-picker-day-nav:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+}
+
 /* The part that scrolls. Height is viewport-relative (not a fixed px
    value) so it shrinks gracefully on short screens instead of pushing
    the fee panel and Continue button off screen. */

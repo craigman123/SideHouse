@@ -252,6 +252,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const timePickerFeeRanges = document.getElementById('timePickerFeeRanges');
     const timePickerFeeTotal = document.getElementById('timePickerFeeTotal');
     const continueToEquipmentBtn = document.getElementById('continueToEquipment');
+    const timePickerPrevDayBtn = document.getElementById('timePickerPrevDay');
+    const timePickerNextDayBtn = document.getElementById('timePickerNextDay');
 
     const equipmentGrid = document.getElementById('equipmentGrid');
     const continueToGuestInfoBtn = document.getElementById('continueToGuestInfo');
@@ -465,6 +467,65 @@ document.addEventListener('DOMContentLoaded', () => {
     function closeTimePickerModal() {
         timePickerModal.classList.remove('open');
     }
+
+    // ---------- Day-stepper (prev/next day arrows in the time picker
+    // header) — swaps the date without leaving the modal or hiding the
+    // hour list, so the guest can quickly flip through days and see
+    // who's already booked each one. ----------
+
+    function updateDayNavState() {
+        if (timePickerPrevDayBtn) {
+            timePickerPrevDayBtn.disabled = !selectedDate || selectedDate <= todayStr();
+        }
+    }
+
+    function addDaysToDateStr(dateStr, deltaDays) {
+        const [y, m, d] = dateStr.split('-').map(Number);
+        const next = new Date(y, m - 1, d + deltaDays);
+        return `${next.getFullYear()}-${pad(next.getMonth() + 1)}-${pad(next.getDate())}`;
+    }
+
+    function shiftSelectedDate(deltaDays) {
+        if (!selectedDate) return;
+        const nextStr = addDaysToDateStr(selectedDate, deltaDays);
+        if (nextStr < todayStr()) return; // never step before today
+        changeDateInModal(nextStr);
+    }
+
+    if (timePickerPrevDayBtn) {
+        timePickerPrevDayBtn.addEventListener('click', () => shiftSelectedDate(-1));
+    }
+    if (timePickerNextDayBtn) {
+        timePickerNextDayBtn.addEventListener('click', () => shiftSelectedDate(1));
+    }
+
+    // Same steps as selectDate() below, but for switching days from
+    // inside an already-open time picker modal via the arrows — no need
+    // to open the modal (it's already open) or touch the page's own
+    // calendar buttons.
+    async function changeDateInModal(dateStr) {
+        selectedDate = dateStr;
+        selectedSlots = [];
+
+        if (timePickerDateLabel) timePickerDateLabel.textContent = formatDate(dateStr);
+        updateDayNavState();
+        renderTimeSlotSkeleton();
+
+        // Keeps the page's own inline calendar showing the right day
+        // highlighted, in case the guest backs all the way out later.
+        renderCalendar();
+
+        const MIN_SKELETON_MS = 300;
+        const [ranges] = await Promise.all([
+            fetchAvailability(dateStr),
+            new Promise((resolve) => setTimeout(resolve, MIN_SKELETON_MS)),
+        ]);
+
+        bookedRanges = ranges;
+        renderTimeSlots();
+        updateTimePickerFee();
+    }
+
 
     function openPaymentModal() {
         selectedPayment = null;
@@ -753,6 +814,7 @@ document.addEventListener('DOMContentLoaded', () => {
         btn.classList.add('selected');
 
         if (timePickerDateLabel) timePickerDateLabel.textContent = formatDate(dateStr);
+        updateDayNavState();
         openTimePickerModal();
         renderTimeSlotSkeleton();
 

@@ -274,11 +274,15 @@
     <div class="modal-overlay" id="timePickerModal">
         <div class="modal-box modal-box-lg modal-box-timepicker">
             <div class="modal-header">
-                <h3 id="timePickerDateLabel">Pick Your Hours</h3>
+                <button type="button" class="modal-back" id="backToCalendar">&larr; Back to date</button>
                 <button type="button" class="modal-close" id="timePickerModalClose" aria-label="Close">&times;</button>
             </div>
 
-            <button type="button" class="modal-back" id="backToCalendar">&larr; Back to date</button>
+            <div class="time-picker-day-switch">
+                <button type="button" class="time-picker-day-nav" id="timePickerPrevDay" aria-label="Previous day">&lsaquo;</button>
+                <h3 id="timePickerDateLabel">Pick Your Hours</h3>
+                <button type="button" class="time-picker-day-nav" id="timePickerNextDay" aria-label="Next day">&rsaquo;</button>
+            </div>
 
             <div class="time-picker-body">
                 <p class="booking-section-label">Select one or more hours</p>

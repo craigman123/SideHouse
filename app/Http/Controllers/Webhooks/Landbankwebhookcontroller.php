@@ -16,7 +16,6 @@ use Illuminate\Support\Facades\Log;
  * pattern as GcashWebhookController — this is the only thing that
  * actually confirms a guest's payment; the reference number the guest
  * types into the booking form is never trusted on its own.
- *
  * Setup checklist (none of this is in the codebase — it's account/device
  * config):
  *   1. Landbank account that receives SMS/mobile alerts for incoming
