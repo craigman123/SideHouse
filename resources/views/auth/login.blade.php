@@ -49,6 +49,8 @@
 
             <div class="auth-footer">
                 <br>Don't have an account? <a href="{{ route('register') }}">Register</a>
+                <p class="auth-footer-back">Book as Guest <a href="{{ route('landing') }}">here</a></p>
+                
             </div>
         </div>
     </div>

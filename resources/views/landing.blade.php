@@ -259,6 +259,7 @@
                 <h2>Get More From Every Visit</h2>
                 <p>Create a free Side House account to view a detailed history of your bookings, rebook your favorite court and time slot in a single click, and unlock member-only perks like hourly rates discounts and discounted equipment rentals. It only takes a minute.</p>
                 <a href="{{ route('register') }}" class="btn-hero-primary">Create Your Account</a>
+                <p class="member-cta-sub">Already have an account? <a href="{{ route('login') }}">Log in</a></p>
             </div>
         </section>
 

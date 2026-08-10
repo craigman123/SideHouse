@@ -206,7 +206,7 @@ body {
 .member-cta {
     position: relative;
     z-index: 2;
-    padding: 60px 20px 70px;
+    padding: 20px 20px;
     text-align: center;
     background-color: #161b22;
     border-top: 1px solid #21262d;
@@ -231,6 +231,22 @@ body {
     color: #8b949e;
     line-height: 1.6;
     margin-bottom: 28px;
+}
+
+.member-cta-sub p {
+    font-size: 8px;
+    font-weight: 500;
+}
+
+.member-cta-sub {
+    font-size: 14px;
+    color: #8b949e;
+    margin-top: 15px;
+}
+
+.member-cta-sub a {
+    color: #3fb950;
+    text-decoration: none;
 }
 
 @media (max-width: 640px) {

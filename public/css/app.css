@@ -201,6 +201,12 @@ body {
     margin-top: 20px;
 }
 
+.auth-footer-back {
+    font-size: 13px;
+    color: #8b949e;
+    margin-top: 8px;
+}
+
 .auth-footer a {
     color: #3fb950;
     font-weight: 700;
