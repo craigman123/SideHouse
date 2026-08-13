@@ -40,7 +40,7 @@ class BusinessSetting extends Model
             return static::query()->firstOrCreate([], [
                 'open_hour' => 8,
                 'close_hour' => 7,
-                'step_minutes' => 30,
+                'step_minutes' => 60,
                 'min_duration_hours' => 1,
                 'max_duration_hours' => 10,
                 'closed_weekdays' => [],

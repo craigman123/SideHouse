@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Booking;
 use App\Models\BookingSlot;
 use App\Models\Court;
+use App\Models\CourtClosure;
 use App\Models\Equipment;
 use App\Models\UnmatchedPayment;
 use App\Support\ActivityLogger;
@@ -30,13 +31,32 @@ class GuestBookingController extends Controller
     {
         $courts = Court::where('status', 'active')->orderBy('name')->get();
 
+        // The guest widget only ever books the first active court (see
+        // initBooking() in guest-book.js), so the calendar only needs
+        // closures that apply to that one court — either scoped to it
+        // directly, or store-wide (court_id null).
+        $primaryCourtId = $courts->first()?->id;
+
+        $closureDates = CourtClosure::upcoming()
+            ->where(function ($query) use ($primaryCourtId) {
+                $query->whereNull('court_id');
+                if ($primaryCourtId) {
+                    $query->orWhere('court_id', $primaryCourtId);
+                }
+            })
+            ->pluck('date')
+            ->map(fn ($date) => $date->toDateString())
+            ->values();
+
         return view('landing', [
-            'courts'      => $courts,
-            'openHour'    => BookingHours::openHour(),
-            'closeHour'   => BookingHours::closeHour(),
-            'minDuration' => BookingHours::minDurationHours(),
-            'maxDuration' => BookingHours::maxDurationHours(),
-            'stepMinutes' => BookingHours::stepMinutes(),
+            'courts'         => $courts,
+            'openHour'       => BookingHours::openHour(),
+            'closeHour'      => BookingHours::closeHour(),
+            'minDuration'    => BookingHours::minDurationHours(),
+            'maxDuration'    => BookingHours::maxDurationHours(),
+            'stepMinutes'    => BookingHours::stepMinutes(),
+            'closedWeekdays' => BookingHours::closedWeekdays(),
+            'closureDates'   => $closureDates,
         ]);
     }
 
@@ -133,18 +153,15 @@ class GuestBookingController extends Controller
         }
 
         // Lets the picker show "Closed" for a date instead of just an
-        // empty/fully-available slot list — see App\Models\CourtClosure
-        // and the admin Schedule page.
-        $closure = BookingHours::closureFor((int) $validated['court_id'], $validated['date']);
-
-        if (BookingHours::isClosed($validated['court_id'], $validated['date'])) {
-            abort(422, 'This court is closed on the selected date.');
-        }
+        // empty/fully-available slot list — covers both a one-off
+        // CourtClosure row and a recurring weekly closure (see
+        // App\Support\BookingHours and the admin Schedule page).
+        $courtId = (int) $validated['court_id'];
 
         return response()->json([
             'booked' => $booked,
-            'closed' => BookingHours::isClosed((int) $validated['court_id'], $validated['date']),
-            'closed_reason' => BookingHours::closedReason((int) $validated['court_id'], $validated['date']),
+            'closed' => BookingHours::isClosed($courtId, $validated['date']),
+            'closed_reason' => BookingHours::closedReason($courtId, $validated['date']),
         ]);
     }
 
@@ -235,6 +252,12 @@ class GuestBookingController extends Controller
             // receipt.
             'payment_reference' => ['required', 'string', 'max:50'],
         ]);
+
+        if (BookingHours::isClosed((int) $validated['court_id'], $validated['date'])) {
+            return response()->json([
+                'message' => 'This court is closed on the selected date.',
+            ], 422);
+        }
 
         $guestEmail = $this->verifyGoogleIdToken($validated['google_id_token']);
         if ($guestEmail === null) {

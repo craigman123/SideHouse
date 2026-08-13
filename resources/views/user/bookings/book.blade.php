@@ -30,6 +30,9 @@
             data-max-duration="{{ $maxDuration }}"
             data-step-minutes="{{ $stepMinutes }}"
             data-user-phone="{{ $userPhone }}"
+            data-closed-weekdays="{{ implode(',', $closedWeekdays ?? []) }}"
+            data-closure-dates="{{ ($closureDates ?? collect())->implode(',') }}"
+            data-court-closures="{{ $courtClosures ?? '' }}"
         >
             @forelse ($courts as $court)
                 <button

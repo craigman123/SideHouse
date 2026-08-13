@@ -62,6 +62,8 @@
             data-min-duration="{{ $minDuration }}"
             data-max-duration="{{ $maxDuration }}"
             data-step-minutes="{{ $stepMinutes }}"
+            data-closed-weekdays="{{ implode(',', $closedWeekdays) }}"
+            data-closure-dates="{{ $closureDates->implode(',') }}"
             data-google-client-id="{{ config('services.google.client_id') }}"
             @if ($courts->isNotEmpty())
                 data-court-id="{{ $courts->first()->id }}"

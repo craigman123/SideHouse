@@ -126,8 +126,53 @@
 
                 <div class="schedule-field-grid">
                     <div class="schedule-field">
-                        <label for="closure_date">Date</label>
-                        <input type="date" name="date" id="closure_date" min="{{ today()->toDateString() }}" value="{{ old('date') }}" required>
+                        <label for="closure_date_trigger">Date</label>
+
+                        {{--
+                            Custom calendar popover instead of the native
+                            <input type="date"> — the hidden input below is
+                            what actually submits with the form (same
+                            "date" field name/shape the controller already
+                            validates). data-existing-dates lets the JS mark
+                            dates that already have a closure entry.
+                        --}}
+                        <div
+                            class="sh-datepicker"
+                            data-existing-dates="{{ $closures->pluck('date')->map(fn ($d) => $d->toDateString())->implode(',') }}"
+                        >
+                            <button
+                                type="button"
+                                class="sh-datepicker-trigger"
+                                id="closure_date_trigger"
+                                aria-haspopup="dialog"
+                                aria-expanded="false"
+                            >
+                                <span class="sh-datepicker-value {{ old('date') ? '' : 'sh-datepicker-placeholder' }}">
+                                    {{ old('date') ? \Carbon\Carbon::parse(old('date'))->format('M d, Y') : 'Select a date' }}
+                                </span>
+                                <svg class="sh-datepicker-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <rect x="3" y="4" width="18" height="18" rx="2"></rect>
+                                    <line x1="16" y1="2" x2="16" y2="6"></line>
+                                    <line x1="8" y1="2" x2="8" y2="6"></line>
+                                    <line x1="3" y1="10" x2="21" y2="10"></line>
+                                </svg>
+                            </button>
+
+                            <input type="hidden" name="date" id="closure_date" value="{{ old('date') }}" required>
+
+                            <div class="sh-datepicker-panel" role="dialog" hidden>
+                                <div class="sh-datepicker-header">
+                                    <button type="button" class="sh-datepicker-nav" data-dir="-1" aria-label="Previous month">&lsaquo;</button>
+                                    <span class="sh-datepicker-month-label"></span>
+                                    <button type="button" class="sh-datepicker-nav" data-dir="1" aria-label="Next month">&rsaquo;</button>
+                                </div>
+                                <div class="sh-datepicker-weekdays">
+                                    <span>Su</span><span>Mo</span><span>Tu</span><span>We</span><span>Th</span><span>Fr</span><span>Sa</span>
+                                </div>
+                                <div class="sh-datepicker-grid"></div>
+                            </div>
+                        </div>
+
                         @error('date') <span class="schedule-field-error">{{ $message }}</span> @enderror
                     </div>
 
@@ -178,3 +223,7 @@
 
     </div>
 @endsection
+
+@push('scripts')
+    <script src="{{ asset('js/admin-schedule.js') }}" defer></script>
+@endpush

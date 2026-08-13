@@ -364,6 +364,22 @@
     cursor: not-allowed;
 }
 
+/* Closed weekdays / one-off closures from the admin Schedule page */
+.calendar-day.calendar-day-closed {
+    background-color: #3b0d0d !important;
+    border-color: #f85149 !important;
+    color: #f85149 !important;
+    opacity: 1;
+    cursor: pointer;
+}
+
+.calendar-day.calendar-day-closed:hover {
+    background-color: #4d1212 !important;
+    border-color: #ff7b72 !important;
+    color: #ff7b72 !important;
+    transform: none;
+}
+
 .calendar-day-empty {
     visibility: hidden;
     pointer-events: none;

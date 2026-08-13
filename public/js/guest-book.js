@@ -223,6 +223,44 @@ document.addEventListener('DOMContentLoaded', () => {
     const STEP_MINUTES = parseInt(grid.dataset.stepMinutes, 10);
     const OVERNIGHT = CLOSE_HOUR <= OPEN_HOUR;
 
+    // Days of week (0 = Sunday ... 6 = Saturday) closed every week, plus
+    // specific upcoming one-off closure dates — both set on the admin
+    // Schedule page. Used to mark the calendar red before the guest even
+    // picks a date, instead of only surfacing "closed" after they've
+    // opened the time picker.
+    const CLOSED_WEEKDAYS = new Set(
+        (grid.dataset.closedWeekdays || '')
+            .split(',')
+            .map((s) => s.trim())
+            .filter((s) => s !== '')
+            .map(Number)
+    );
+    const CLOSURE_DATES = new Set(
+        (grid.dataset.closureDates || '')
+            .split(',')
+            .map((s) => s.trim())
+            .filter(Boolean)
+    );
+
+    function isDateClosed(dateStr) {
+        if (CLOSURE_DATES.has(dateStr)) return true;
+        const weekday = new Date(`${dateStr}T00:00:00`).getDay();
+        return CLOSED_WEEKDAYS.has(weekday);
+    }
+
+    // Slot must start at least 1 hour from now. Overnight early-morning
+    // slots belong to the next calendar day so they aren't greyed at 11 AM.
+    function isSlotPast(timeStr) {
+        if (!selectedDate) return false;
+        const [h, m] = timeStr.split(':').map(Number);
+        const slotDate = new Date(`${selectedDate}T00:00:00`);
+        slotDate.setHours(h, m, 0, 0);
+        if (OVERNIGHT && h * 60 + m < OPEN_HOUR * 60) {
+            slotDate.setDate(slotDate.getDate() + 1);
+        }
+        return slotDate.getTime() <= Date.now() + 60 * 60 * 1000;
+    }
+
     function getCookie(name) {
         const match = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)'));
         return match ? decodeURIComponent(match[1]) : null;
@@ -552,9 +590,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function shiftSelectedDate(deltaDays) {
         if (!selectedDate) return;
-        const nextStr = addDaysToDateStr(selectedDate, deltaDays);
-        if (nextStr < todayStr()) return; // never step before today
-        changeDateInModal(nextStr);
+        let nextStr = selectedDate;
+        for (let i = 0; i < 60; i++) {
+            nextStr = addDaysToDateStr(nextStr, deltaDays);
+            if (nextStr < todayStr()) return;
+            if (!isDateClosed(nextStr)) {
+                changeDateInModal(nextStr);
+                return;
+            }
+        }
     }
 
     if (timePickerPrevDayBtn) {
@@ -858,8 +902,19 @@ document.addEventListener('DOMContentLoaded', () => {
             btn.className = 'calendar-day';
             btn.textContent = d;
 
-            if (dateStr < today) {
+            const isPast = dateStr < today;
+            const isClosed = !isPast && isDateClosed(dateStr);
+
+            if (isPast) {
                 btn.disabled = true;
+            } else if (isClosed) {
+                // Still clickable (not disabled) so tapping it tells the
+                // guest why, instead of just looking unresponsive.
+                btn.classList.add('calendar-day-closed');
+                btn.setAttribute('aria-label', `${dateStr} — closed`);
+                btn.addEventListener('click', () => {
+                    showToast('This date is closed.', 'error');
+                });
             } else {
                 btn.addEventListener('click', () => selectDate(dateStr, btn));
             }
@@ -970,13 +1025,15 @@ document.addEventListener('DOMContentLoaded', () => {
             const timeStr = `${pad(h)}:${pad(m)}`;
 
             const booked = isSlotBooked(offset);
+            const past = isSlotPast(timeStr);
+            const unavailable = booked || past;
             const isSelected = selectedSlots.includes(timeStr);
 
             // The row itself is just a container — the time label on the
             // left is plain text, not clickable. Only the button on the
             // right (the price pill) actually toggles the selection.
             const row = document.createElement('div');
-            row.className = 'time-slot-row' + (isSelected ? ' selected' : '') + (booked ? ' disabled' : '');
+            row.className = 'time-slot-row' + (isSelected ? ' selected' : '') + (unavailable ? ' disabled' : '');
 
             const label = document.createElement('span');
             label.className = 'time-slot-row-time';
@@ -992,14 +1049,22 @@ document.addEventListener('DOMContentLoaded', () => {
             check.setAttribute('aria-hidden', 'true');
 
             const priceLabel = document.createElement('span');
-            priceLabel.textContent = booked ? 'Booked' : `₱${slotPrice().toLocaleString()}`;
+            if (booked) {
+                priceLabel.textContent = 'Booked';
+            } else if (past) {
+                priceLabel.textContent = 'Past';
+            } else {
+                priceLabel.textContent = `₱${slotPrice().toLocaleString()}`;
+            }
 
             toggle.appendChild(check);
             toggle.appendChild(priceLabel);
 
-            if (booked) {
+            if (unavailable) {
                 toggle.disabled = true;
-                row.dataset.tooltip = 'Reserved — already booked by another player';
+                row.dataset.tooltip = booked
+                    ? 'Reserved — already booked by another player'
+                    : 'This time has already passed';
             } else {
                 toggle.setAttribute('aria-pressed', String(isSelected));
                 toggle.addEventListener('click', () => toggleSlot(timeStr));
