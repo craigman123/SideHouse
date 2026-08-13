@@ -181,9 +181,11 @@ class GuestBookingController extends Controller
             'slots.*' => ['required', 'date_format:H:i', 'distinct'],
         ]);
 
-        $windows = collect($validated['slots'])->map(function ($time) {
+        $stepMinutes = BookingHours::stepMinutes();
+
+        $windows = collect($validated['slots'])->map(function ($time) use ($stepMinutes) {
             $start = Carbon::parse($time);
-            $end   = $start->copy()->addMinutes(self::BOOKING_STEP_MINUTES);
+            $end   = $start->copy()->addMinutes($stepMinutes);
             return [$start->format('H:i:s'), $end->format('H:i:s')];
         });
 
@@ -214,14 +216,15 @@ class GuestBookingController extends Controller
         $validated = $request->validate([
             'court_id'       => ['required', 'integer', 'exists:courts,id'],
             'date'           => ['required', 'date', 'after_or_equal:today'],
-            // Individual selected hours instead of a single start_time +
+            // Individual selected slots instead of a single start_time +
             // duration — no longer required to be contiguous (e.g. 4–5 PM
-            // and 9–10 PM in the same booking is valid).
+            // and 9–10 PM in the same booking is valid). Min/max are slot
+            // *counts* derived from the configured hours and step length.
             'slots'          => [
                 'required',
                 'array',
-                'min:' . self::MIN_DURATION_HOURS,
-                'max:' . self::MAX_DURATION_HOURS,
+                'min:' . max(1, (int) ceil(BookingHours::minDurationHours() * 60 / BookingHours::stepMinutes())),
+                'max:' . max(1, (int) floor(BookingHours::maxDurationHours() * 60 / BookingHours::stepMinutes())),
             ],
             'slots.*'        => ['required', 'date_format:H:i', 'distinct'],
             // GCash and Landbank are the guest payment methods — the QR
@@ -268,12 +271,16 @@ class GuestBookingController extends Controller
 
         $court = Court::findOrFail($validated['court_id']);
 
-        // Same overnight-wrap handling as before (OPEN_HOUR can be later
-        // in the clock than CLOSE_HOUR, e.g. 4 PM to 7 AM), just applied
+        $openHour    = BookingHours::openHour();
+        $closeHour   = BookingHours::closeHour();
+        $stepMinutes = BookingHours::stepMinutes();
+
+        // Same overnight-wrap handling as before (open can be later
+        // in the clock than close, e.g. 4 PM to 7 AM), just applied
         // per selected hour now instead of to a single start/end pair.
-        $overnight = self::CLOSE_HOUR <= self::OPEN_HOUR;
-        $open  = Carbon::parse($validated['date'])->setTime(self::OPEN_HOUR, 0);
-        $close = Carbon::parse($validated['date'])->setTime(self::CLOSE_HOUR, 0);
+        $overnight = $closeHour <= $openHour;
+        $open  = Carbon::parse($validated['date'])->setTime($openHour, 0);
+        $close = Carbon::parse($validated['date'])->setTime($closeHour, 0);
         if ($overnight) {
             $close->addDay();
         }
@@ -282,14 +289,14 @@ class GuestBookingController extends Controller
         foreach ($validated['slots'] as $time) {
             $start = Carbon::parse($validated['date'] . ' ' . $time);
 
-            // A clock time earlier than OPEN_HOUR belongs to the tail end
-            // of the previous night's window (e.g. 2 AM when OPEN_HOUR is
+            // A clock time earlier than open belongs to the tail end
+            // of the previous night's window (e.g. 2 AM when open is
             // 4 PM) — push it a day forward so it lands inside [$open, $close].
             if ($overnight && $start->lt($open)) {
                 $start->addDay();
             }
 
-            $end = $start->copy()->addMinutes(self::BOOKING_STEP_MINUTES);
+            $end = $start->copy()->addMinutes($stepMinutes);
 
             if (! ($start->gte($open) && $end->lte($close))) {
                 return response()->json([
@@ -308,7 +315,7 @@ class GuestBookingController extends Controller
         $envelopeStart = $slotWindows[0][0];
         $envelopeEnd   = $slotWindows[count($slotWindows) - 1][1];
 
-        $slotPrice = $court->hourly_rate * (self::BOOKING_STEP_MINUTES / 60);
+        $slotPrice = $court->hourly_rate * ($stepMinutes / 60);
 
         // Unique per booking so the guest's status/cancel links can't be
         // guessed from the booking id alone.

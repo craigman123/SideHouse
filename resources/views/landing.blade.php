@@ -10,6 +10,7 @@
     <link rel="stylesheet" href="{{ asset('css/book.css') }}">
     <link rel="stylesheet" href="{{ asset('css/landing.css') }}">
     <link rel="stylesheet" href="{{ asset('css/landing-book.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/landing-search.css') }}">
     <link rel="icon" type="image/png" href="{{ asset('images/tab_icon.png') }}">
     <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
@@ -25,12 +26,108 @@
         <div class="bg-particle"></div>
         <div class="bg-particle"></div>
 
+        {{-- Updated navigation with search bar --}}
         <nav class="landing-nav">
-            <img src="{{ asset('images/tab_icon.png') }}" alt="Side House" class="nav-logo">
-            <div class="nav-links">
-                <a href="#bookNow" class="btn-hero-primary">Book Now</a>
+            <div class="nav-left">
+                <img src="{{ asset('images/tab_icon.png') }}" alt="Side House" class="nav-logo">
+                <strong class="nav-title-landing">Side House Paddlers</strong>
             </div>
+
+            <div class="nav-center">
+                <div class="nav-links">
+                    <a href="#" class="nav-link active">Home</a>
+                    <a href="#bookNow" class="nav-link">Rates</a>
+                    <a href="#features" class="nav-link">Features</a>
+                    <a href="#faq" class="nav-link">FAQ</a>
+                    <a href="#findUs" class="nav-link">Find Us</a>
+                </div>
+
+                    <div class="nav-search-show">
+                        <svg class="nav-search-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="11" cy="11" r="7" />
+                            <path d="M16.5 16.5l4.5 4.5" />
+                        </svg>
+                        <button type="button" class="nav-search-clear" id="navSearchClear" aria-label="Clear search" hidden>&times;</button>
+                    </div>
+
+                    <div class="nav-search-results" id="navSearchResults" hidden>
+                        <div class="nav-search-results-inner">
+                            <p class="nav-search-results-label">Quick Links</p>
+                            <a href="#bookNow" class="nav-search-result-item" data-keyword="book court reserve">
+                                <span class="nav-search-result-icon">📅</span>
+                                <span class="nav-search-result-text">Book a Court</span>
+                            </a>
+                            <a href="#faq" class="nav-search-result-item" data-keyword="faq questions help">
+                                <span class="nav-search-result-icon">❓</span>
+                                <span class="nav-search-result-text">FAQ</span>
+                            </a>
+                            <a href="#courtStats" class="nav-search-result-item" data-keyword="stats usage chart">
+                                <span class="nav-search-result-icon">📊</span>
+                                <span class="nav-search-result-text">Court Usage Stats</span>
+                            </a>
+                            <p class="nav-search-results-label">Features</p>
+                            <a href="#features" class="nav-search-result-item" data-keyword="gear equipment paddle racket">
+                                <span class="nav-search-result-icon">🎒</span>
+                                <span class="nav-search-result-text">Equipment Rental</span>
+                            </a>
+                            <a href="#features" class="nav-search-result-item" data-keyword="comfort room restroom bathroom">
+                                <span class="nav-search-result-icon">🚻</span>
+                                <span class="nav-search-result-text">Comfort Room</span>
+                            </a>
+                            <p class="nav-search-results-label">Account</p>
+                            <a href="{{ route('register') }}" class="nav-search-result-item" data-keyword="register signup account member">
+                                <span class="nav-search-result-icon">👤</span>
+                                <span class="nav-search-result-text">Create Account</span>
+                            </a>
+                            <a href="{{ route('login') }}" class="nav-search-result-item" data-keyword="login signin">
+                                <span class="nav-search-result-icon">🔑</span>
+                                <span class="nav-search-result-text">Log In</span>
+                            </a>
+                        </div>
+                    </div>
+                <a href="#bookNow" class="nav-link nav-link-book">Book Now</a>
+            </div>
+
+            <button class="nav-toggle" id="navToggle" aria-label="Toggle navigation" aria-expanded="false">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
         </nav>
+
+    <!-- Mobile Menu Overlay -->
+    <div class="nav-mobile-overlay" id="navMobileOverlay"></div>
+
+    <!-- Mobile Menu -->
+    <div class="nav-mobile-menu" id="navMobileMenu">
+        <div class="nav-mobile-panel">
+            <div class="nav-links">
+                <a href="#" class="nav-link active">Home</a>
+                <a href="#bookNow" class="nav-link">Rates</a>
+                <a href="#features" class="nav-link">Features</a>
+                <a href="#faq" class="nav-link">FAQ</a>
+                <a href="#findUs" class="nav-link">Find Us</a>
+            </div>
+
+            <div class="nav-search-wrap">
+                <div class="nav-search">
+                    <svg class="nav-search-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="11" cy="11" r="7" />
+                        <path d="M16.5 16.5l4.5 4.5" />
+                    </svg>
+                    <input
+                        type="text"
+                        class="nav-search-input"
+                        id="navSearchInputMobile"
+                        placeholder="Search courts, dates, or equipment..."
+                        aria-label="Search"
+                        autocomplete="off"
+                    >
+                    <button type="button" class="nav-search-clear" id="navSearchClearMobile" aria-label="Clear search" hidden>&times;</button>
+                </div>
+            </div>
+        </div>
+    </div>
 
         <section class="hero">
             <img src="{{ asset('images/logo.png') }}" alt="Side House" class="hero-logo">
@@ -85,8 +182,6 @@
             @if ($courts->isEmpty())
                 <p class="empty-state">No courts available right now — check back soon.</p>
             @else
-                {{-- Only one court exists, so there's nothing to pick between —
-                     straight to the calendar instead of a court-selection step. --}}
                 <div class="book-now-widget">
                     <div class="booking-section">
                         <p class="booking-section-label">Pick a date</p>
@@ -106,7 +201,7 @@
             @endif
         </section>
 
-        <section class="features">
+        <section class="features" id="features">
             <div class="feature-card fade-in">
                 <div class="feature-icon">🏓</div>
                 <h3>Easy Booking</h3>
@@ -265,15 +360,82 @@
             </div>
         </section>
 
-        <footer class="landing-footer">
-            &copy; {{ date('Y') }} Side House Paddlers. All rights reserved.
-        </footer>
+        <footer class="landing-footer" id="findUs">
+        <div class="footer-inner">
+
+            <!-- Brand -->
+            <div class="footer-brand">
+                <div class="footer-brand-header">
+                    <img
+                        src="{{ asset('images/tab_icon.png') }}"
+                        alt="Side House Paddlers"
+                        class="footer-logo"
+                    >
+                    <strong>Side House Paddlers</strong>
+                </div>
+
+                <p>
+                    Book your court, grab your gear, and play your game.
+                    Simple, fast, and convenient.
+                </p>
+            </div>
+
+            <!-- Visit -->
+            <div class="footer-column">
+                <h4>VISIT</h4>
+
+                <a href="#bookNow">Book a Court</a>
+                <a href="#features">Features</a>
+                <a href="#faq">FAQ</a>
+
+                <a
+                    href="https://www.google.com/maps/dir/?api=1&destination=10.246043101731798,123.78949399013447"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                >
+                    Get Directions
+                </a>
+            </div>
+
+            <!-- Contact -->
+            <div class="footer-column">
+                <h4>CONTACT</h4>
+
+                <p class="footer-contact">
+                    <span class="footer-icon">📍</span>
+                    <span>
+                        423 Tabay, Tunghaan<br>
+                        Minglanilla, Cebu
+                    </span>
+                </p>
+
+                <a href="tel:09335191862" class="footer-contact">
+                    <span class="footer-icon">☎</span>
+                    <span>0933 519 1863</span>
+                </a>
+
+                <p class="footer-contact">
+                    <span class="footer-icon">●</span>
+                    <span>Facebook Messenger</span>
+                </p>
+            </div>
+
+        </div>
+
+        <div class="footer-bottom">
+            <span>
+                &copy; {{ date('Y') }} Side House Paddlers.
+                All rights reserved.
+            </span>
+
+            <span>
+                Play. Book. Repeat.
+            </span>
+        </div>
+    </footer>
     </div>
 
-    {{-- Modal 2.5: time picker (opens after picking a date). Hours are
-         picked one at a time (no separate duration step) — the left
-         column is a scrollable list of hour slots, the right column
-         tracks a running fee total for whatever's selected so far. --}}
+    {{-- Modal 2.5: time picker --}}
     <div class="modal-overlay" id="timePickerModal">
         <div class="modal-box modal-box-lg modal-box-timepicker">
             <div class="modal-header">
@@ -302,10 +464,6 @@
                     </span>
                 </div>
 
-                {{-- Each row shows the hour as a plain label on the left —
-                     only the price button on the right is actually
-                     clickable/selectable. Only one court, so just one
-                     button per row instead of one per court. --}}
                 <div class="time-slot-list" id="timeSlotGrid"></div>
 
                 <div class="time-picker-fee-panel">
@@ -324,7 +482,7 @@
         </div>
     </div>
 
-    {{-- Modal 3: equipment rental (optional) --}}
+    {{-- Modal 3: equipment rental --}}
     <div class="modal-overlay" id="equipmentModal">
         <div class="modal-box modal-box-lg modal-box-scrollable">
             <div class="modal-header">
@@ -374,9 +532,6 @@
                         </div>
                     </div>
 
-                    {{-- Google vouches for the address instead of the guest
-                         typing it twice — the button renders here via
-                         google.accounts.id.renderButton() in guest-book.js. --}}
                     <div class="guest-email-block">
                         <label class="guest-email-label" id="guestEmailLabel">Email Address</label>
                         <div id="googleSignInBtn" class="google-signin-btn"></div>
@@ -393,7 +548,7 @@
                     <div class="payment-grid" id="paymentGrid">
                         <button type="button" class="payment-btn" data-method="gcash">
                             <span class="payment-btn-title">GCash</span>
-                            <span class="payment-btn-sub">Scan  the QR code through Gcash to pay</span>
+                            <span class="payment-btn-sub">Scan the QR code through Gcash to pay</span>
                         </button>
 
                         <button type="button" class="payment-btn" data-method="landbank">
@@ -402,10 +557,6 @@
                         </button>
                     </div>
 
-                    {{-- Revealed via JS (adds .open) when GCash is selected.
-                         Drop the real QR at public/images/gcash-qr.png — no
-                         code changes needed. Until that file exists, the
-                         image 404s and the fallback box below shows instead. --}}
                     <div class="payment-qr-panel" id="gcashQrPanel">
                         <p class="payment-qr-instructions">Scan this code in your GCash app to pay, then enter the reference number from the payment confirmation below.</p>
                         <div class="payment-qr-image-wrap">
@@ -428,10 +579,6 @@
                         </div>
                     </div>
 
-                    {{-- Revealed via JS (adds .open) when Landbank is selected.
-                         Drop the real QR at public/images/landbank-qr.png — no
-                         code changes needed. Until that file exists, the
-                         image 404s and the fallback box below shows instead. --}}
                     <div class="payment-qr-panel" id="landbankQrPanel">
                         <p class="payment-qr-instructions">Scan this code with your Landbank app (or any InstaPay-enabled app) to pay, then enter the reference number from the transfer confirmation below.</p>
                         <div class="payment-qr-image-wrap">
@@ -485,10 +632,45 @@
                 <button type="button" class="btn btn-secondary" id="gcashWaitCancel">Cancel Booking</button>
             </div>
         </div>
+    </div>\
+
+    <!-- Search modal: insert above your scripts, before the closing </body> -->
+    <div class="modal-overlay" id="searchModal" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="searchModalLabel" hidden>
+        <div class="modal-box modal-box-search" role="document">
+            <div class="modal-header">
+                <h3 id="searchModalLabel">Search</h3>
+                <button type="button" class="modal-close" id="searchModalClose" aria-label="Close search">&times;</button>
+            </div>
+
+            <div class="modal-body">
+                <div class="nav-search modal-search-row" role="search">
+                    <svg class="nav-search-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                        <circle cx="11" cy="11" r="7" />
+                        <path d="M16.5 16.5l4.5 4.5" />
+                    </svg>
+                    <input
+                        id="searchModalInput"
+                        class="nav-search-input"
+                        type="search"
+                        autocomplete="off"
+                        placeholder="Search courts, dates, equipment..."
+                        aria-label="Search"
+                    />
+                    <button id="searchModalClear" class="nav-search-clear" aria-label="Clear search" hidden>&times;</button>
+                </div>
+
+                <div id="searchModalResults" class="nav-search-results" role="listbox" aria-live="polite">
+                    <div class="nav-search-results-inner">
+                        <!-- Results will be injected here by JS -->
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <div class="toast-container" id="toastContainer"></div>
 
     <script src="{{ asset('js/guest-book.js') }}" defer></script>
+    <script src="{{ asset('js/landing-search.js') }}" defer></script>
 </body>
 </html>

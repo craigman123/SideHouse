@@ -117,6 +117,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
 
+
         async function loadStats() {
             if (!statsUrl) {
                 chartEl.innerHTML = '<p class="loading-text">Stats endpoint not configured.</p>';
@@ -134,6 +135,102 @@ document.addEventListener('DOMContentLoaded', () => {
                 monthLabel.textContent = '';
             }
         }
+
+    const grid = document.getElementById('bookNow');
+    if (!grid) return;
+
+    // ---------- DYNAMIC RATES & OPENING HOURS ----------
+    const ratesContainer = document.getElementById('ratesCardsContainer');
+    const weeklyHoursList = document.getElementById('weeklyHoursList');
+
+    if (ratesContainer && weeklyHoursList) {
+        // Read data directly from the grid's dataset
+        const openHour = parseInt(grid.dataset.openHour, 10);
+        const closeHour = parseInt(grid.dataset.closeHour, 10);
+        const courtPrice = parseInt(grid.dataset.courtPrice, 10);
+        const stepMinutes = parseInt(grid.dataset.stepMinutes, 10);
+        const closedWeekdaysRaw = grid.dataset.closedWeekdays || '';
+        
+        // Parse closed weekdays (0=Sun, 1=Mon ... 6=Sat)
+        const closedWeekdays = closedWeekdaysRaw
+            .split(',')
+            .map(s => parseInt(s.trim(), 10))
+            .filter(n => !isNaN(n));
+        
+        const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+        // --- 1. Build the 3 Dynamic Info Cards ---
+        const format12Hour = (hour) => {
+            const period = hour >= 12 ? 'PM' : 'AM';
+            const h12 = hour % 12 === 0 ? 12 : hour % 12;
+            return `${h12}:00 ${period}`;
+        };
+
+        const openStr = format12Hour(openHour);
+        const closeStr = format12Hour(closeHour);
+        const overnight = closeHour <= openHour;
+        
+        const closedDaysText = closedWeekdays.length > 0 
+            ? closedWeekdays.map(d => dayNames[d]).join(', ') 
+            : 'None (Open daily)';
+
+        const cardsData = [
+            {
+                title: 'Opening Hours',
+                value: `${openStr} – ${closeStr}`,
+                detail: overnight ? 'Overnight operation (wrap-around)' : 'Standard daily schedule'
+            },
+            {
+                title: 'Hourly Rate',
+                value: `₱${courtPrice.toLocaleString()}`,
+                detail: `Per ${stepMinutes}-minute slot`
+            },
+            {
+                title: 'Closed Days',
+                value: closedDaysText,
+                detail: closedWeekdays.length > 0 ? 'No bookings on these days' : 'Open every day of the week'
+            }
+        ];
+
+        ratesContainer.innerHTML = cardsData.map(card => `
+            <div class="rate-card fade-in">
+                <div class="rate-card-title">${card.title}</div>
+                <div class="rate-card-value">${card.value}</div>
+                <div class="rate-card-details">${card.detail}</div>
+            </div>
+        `).join('');
+
+        // --- 2. Build the "This Week" Side Panel ---
+        const today = new Date();
+        const startOfWeek = new Date(today);
+        startOfWeek.setDate(today.getDate() - today.getDay() + 1); // Monday
+
+        const weekRows = [];
+        for (let i = 0; i < 7; i++) {
+            const date = new Date(startOfWeek);
+            date.setDate(startOfWeek.getDate() + i);
+            const dayIndex = date.getDay(); // 0=Sun
+            const isClosed = closedWeekdays.includes(dayIndex);
+            
+            const dayLabel = dayNames[dayIndex];
+            const hoursDisplay = isClosed 
+                ? '<span style="color:#f85149;font-weight:600;">Closed</span>' 
+                : `${openStr} – ${closeStr}`;
+
+            weekRows.push({ day: dayLabel, hours: hoursDisplay });
+        }
+
+        weeklyHoursList.innerHTML = weekRows.map(row => `
+            <div class="hours-row">
+                <span>${row.day}</span>
+                <span>${row.hours}</span>
+            </div>
+        `).join('');
+    }
+    // ---------- END DYNAMIC RATES ----------
+
+    const availabilityUrl = grid.dataset.availabilityUrl;
+    // ... (the rest of your existing code continues below) ...
 
         function renderStats(data) {
             const days = data.days || []; // [{ day, date, hours }]
