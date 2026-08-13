@@ -25,13 +25,15 @@
             <label class="nav-label">Management</label>
             <a href="{{ route('bookings.index') }}" class="{{ request()->routeIs('bookings.*') ? 'active' : '' }}">Bookings</a>
             <a href="{{ route('courts.index') }}" class="{{ request()->routeIs('courts.*') ? 'active' : '' }}">Courts</a>
+            <a href="#">Configuration</a>
+            <a href="{{ route('admin.profile') }}" class="{{ request()->routeIs('admin.profile') ? 'active' : '' }}">Profile</a>
 
             <label class="nav-label">Users</label>
             <a href="#">Customers</a>
             <a href="{{ route('admin.announcements.index') }}" class="{{ request()->routeIs('admin.announcements.*') ? 'active' : '' }}">Announcements</a>
 
             <label class="nav-label">Audit Logs</label>
-            <a href="#">Reports</a>
+            <a href="{{ route('admin.reports.index') }}" class="{{ request()->routeIs('admin.reports.*') ? 'active' : '' }}">Reports</a>
             <a href="{{ route('activity_logs.index') }}" class="{{ request()->routeIs('activity_logs.*') ? 'active' : '' }}">Activity Logs</a>
         </nav>
 
@@ -42,6 +44,7 @@
             </button>
 
             <div class="profile-dropdown" id="profile-dropdown">
+                <a href="{{ route('admin.profile') }}" class="dropdown-link">My Profile</a>
                 <form method="POST" action="{{ route('logout') }}">
                     @csrf
                     <button type="submit" class="dropdown-logout">Logout</button>

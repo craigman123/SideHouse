@@ -2,9 +2,11 @@
 
 use App\Http\Controllers\Admin\ActivityLogController;
 use App\Http\Controllers\Admin\Admin_DashboardController;
+use App\Http\Controllers\Admin\AdminProfileController;
 use App\Http\Controllers\Admin\AnnouncementController;
 use App\Http\Controllers\Admin\BookingController;
 use App\Http\Controllers\Admin\CourtController;
+use App\Http\Controllers\Admin\ReportController;
 use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\Guest\GuestBookingController;
 use App\Http\Controllers\User\NotificationController;
@@ -54,6 +56,15 @@ Route::middleware('auth')->group(function () {
     Route::get('/announcements', [AnnouncementController::class, 'index'])->name('admin.announcements.index');
     Route::get('/announcements/create', [AnnouncementController::class, 'create'])->name('admin.announcements.create');
     Route::post('/announcements', [AnnouncementController::class, 'store'])->name('admin.announcements.store');
+
+    // Profile
+    Route::get('/admin/profile', [AdminProfileController::class, 'profile'])->name('admin.profile');
+    Route::put('/admin/profile', [AdminProfileController::class, 'updateProfile'])->name('admin.profile.update');
+    Route::delete('/admin/profile', [AdminProfileController::class, 'destroyAccount'])->name('admin.profile.destroy');
+
+    // Reports
+    Route::get('/reports', [ReportController::class, 'index'])->name('admin.reports.index');
+    Route::get('/reports/data', [ReportController::class, 'data'])->name('admin.reports.data');
 });
 
 Route::middleware('auth')->group(function () {
