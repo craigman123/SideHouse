@@ -40,7 +40,7 @@
                 the moment you hit send, so give it a read-through first.
             </p>
 
-            <form id="announcementForm">
+            <form id="announcementForm" data-store-url="{{ route('admin.announcements.store') }}">
                 @csrf
 
                 <div class="filter-group" style="margin-bottom: 16px;">
@@ -64,6 +64,24 @@
                     <button type="button" class="btn" id="cancelAnnouncementModal">Cancel</button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    {{-- ---------- Confirm-send modal ---------- --}}
+    <div class="modal-overlay" id="confirmSendModal">
+        <div class="modal-box" style="max-width: 420px;">
+            <div class="modal-header">
+                <h2>Send this announcement?</h2>
+            </div>
+
+            <p class="modal-text" style="margin-bottom: 20px;">
+                This will notify every registered user immediately. There's no "draft" or "undo," so make sure it's ready.
+            </p>
+
+            <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                <button type="button" class="btn" id="cancelSendConfirm">Cancel</button>
+                <button type="button" class="btn btn-filter" id="confirmSendBtn">Send to All Users</button>
+            </div>
         </div>
     </div>
 

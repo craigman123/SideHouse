@@ -1,17 +1,23 @@
 document.addEventListener('DOMContentLoaded', () => {
     const flash = document.getElementById('flash-data');
     const toastContainer = document.getElementById('toastContainer');
+
     const modal = document.getElementById('announcementModal');
     const openBtn = document.getElementById('openAnnouncementModal');
     const closeBtn = document.getElementById('closeAnnouncementModal');
     const cancelBtn = document.getElementById('cancelAnnouncementModal');
+
+    const confirmModal = document.getElementById('confirmSendModal');
+    const confirmSendBtn = document.getElementById('confirmSendBtn');
+    const cancelSendConfirm = document.getElementById('cancelSendConfirm');
+
     const form = document.getElementById('announcementForm');
     const sendBtn = document.getElementById('sendAnnouncementBtn');
     const titleInput = document.getElementById('title');
     const bodyInput = document.getElementById('body');
     const titleError = document.getElementById('titleError');
     const bodyError = document.getElementById('bodyError');
-    const storeUrl = "{{ route('admin.announcements.store') }}";
+    const storeUrl = form?.dataset.storeUrl;
 
     function showToast(message, type = 'success') {
         if (!toastContainer) return;
@@ -32,9 +38,11 @@ document.addEventListener('DOMContentLoaded', () => {
         [titleError, bodyError].forEach((el) => { el.style.display = 'none'; el.textContent = ''; });
     }
 
-    function openModal() {
+    // ---------- Compose modal ----------
+
+    function openModal(reset = true) {
         clearErrors();
-        form.reset();
+        if (reset) form.reset();
         modal.classList.add('open');
         titleInput.focus();
     }
@@ -43,14 +51,34 @@ document.addEventListener('DOMContentLoaded', () => {
         modal.classList.remove('open');
     }
 
-    openBtn?.addEventListener('click', openModal);
+    openBtn?.addEventListener('click', () => openModal(true));
     closeBtn?.addEventListener('click', closeModal);
     cancelBtn?.addEventListener('click', closeModal);
     modal?.addEventListener('click', (e) => {
         if (e.target === modal) closeModal();
     });
+
+    // ---------- Confirm-send modal ----------
+    // Stacked on top of the compose modal instead of a native confirm() —
+    // same overlay/box styling so it doesn't feel like a browser popup.
+
+    function openConfirm() {
+        confirmModal.classList.add('open');
+    }
+
+    function closeConfirm() {
+        confirmModal.classList.remove('open');
+    }
+
+    cancelSendConfirm?.addEventListener('click', closeConfirm);
+    confirmModal?.addEventListener('click', (e) => {
+        if (e.target === confirmModal) closeConfirm();
+    });
+
     document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape' && modal.classList.contains('open')) closeModal();
+        if (e.key !== 'Escape') return;
+        if (confirmModal?.classList.contains('open')) { closeConfirm(); return; }
+        if (modal?.classList.contains('open')) closeModal();
     });
 
     function prependAnnouncement(item) {
@@ -82,13 +110,17 @@ document.addEventListener('DOMContentLoaded', () => {
         tbody.prepend(tr);
     }
 
-    form?.addEventListener('submit', async (e) => {
+    // Submitting the form no longer sends anything directly — it just
+    // runs native validation, then opens the confirm modal. The actual
+    // POST happens when "Send to All Users" is clicked on that modal.
+    form?.addEventListener('submit', (e) => {
         e.preventDefault();
+        if (!form.reportValidity()) return;
+        openConfirm();
+    });
 
-        if (!confirm('Send this announcement to every user? This can\'t be undone.')) {
-            return;
-        }
-
+    confirmSendBtn?.addEventListener('click', async () => {
+        closeConfirm();
         clearErrors();
         sendBtn.disabled = true;
         const originalLabel = sendBtn.textContent;
@@ -107,6 +139,9 @@ document.addEventListener('DOMContentLoaded', () => {
             const data = await res.json().catch(() => ({}));
 
             if (res.status === 422 && data.errors) {
+                // Reopen the compose modal (without wiping what was typed)
+                // so the user can see and fix what's wrong.
+                openModal(false);
                 if (data.errors.title) {
                     titleInput.classList.add('field-invalid');
                     titleError.textContent = data.errors.title[0];
