@@ -44,7 +44,7 @@
                     </div>
                 </div>
 
-                <button type="submit" class="btn-primary">Log In</button>
+                <button type="submit" class="btn-primary" id="loginSubmitBtn">Log In</button>
             </form>
 
             <div class="auth-footer">
@@ -54,6 +54,18 @@
             </div>
         </div>
     </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            var form = document.querySelector('form');
+            var submitBtn = document.getElementById('loginSubmitBtn');
+
+            form.addEventListener('submit', function () {
+                submitBtn.disabled = true;
+                submitBtn.textContent = 'Logging in…';
+            });
+        });
+    </script>
 
     @if ($errors->any())
         <script>

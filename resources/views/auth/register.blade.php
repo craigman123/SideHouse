@@ -51,7 +51,7 @@
                     <input type="password" id="password_confirmation" name="password_confirmation" required>
                 </div>
 
-                <button type="submit" class="btn-primary">Register</button>
+                <button type="submit" class="btn-primary" id="registerSubmitBtn">Register</button>
             </form>
 
             <div class="auth-footer">
@@ -59,6 +59,18 @@
             </div>
         </div>
     </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            var form = document.querySelector('form');
+            var submitBtn = document.getElementById('registerSubmitBtn');
+
+            form.addEventListener('submit', function () {
+                submitBtn.disabled = true;
+                submitBtn.textContent = 'Creating account…';
+            });
+        });
+    </script>
 
     @if ($errors->any())
         <script>
