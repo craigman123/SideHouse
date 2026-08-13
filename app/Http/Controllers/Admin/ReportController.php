@@ -142,21 +142,31 @@ class ReportController extends Controller
      * lines up with how "today" is defined elsewhere in this
      * controller — bookings scheduled for today, same as $todayIncome
      * above and Admin_DashboardController's $todayBookings.
+     *
+     * Grouped in PHP rather than SQL's HOUR() — that function is
+     * MySQL-only and throws on SQLite/Postgres, which is what was
+     * actually breaking this period. A day's worth of paid bookings is
+     * small, so pulling the rows and bucketing here is cheap and works
+     * on any DB driver.
      */
     private function hourlyTrendToday(): array
     {
-        $rows = Booking::where('status', 'paid')
+        $bookings = Booking::where('status', 'paid')
             ->whereDate('date', today())
-            ->select(DB::raw('HOUR(start_time) as hr'), DB::raw('SUM(amount) as total'))
-            ->groupBy('hr')
-            ->get()
-            ->keyBy('hr');
+            ->select('start_time', 'amount')
+            ->get();
+
+        $totals = array_fill(0, 24, 0.0);
+        foreach ($bookings as $booking) {
+            $hour = (int) Carbon::parse($booking->start_time)->format('G');
+            $totals[$hour] += (float) $booking->amount;
+        }
 
         $out = [];
         for ($h = 0; $h < 24; $h++) {
             $out[] = [
                 'label' => Carbon::createFromTime($h, 0)->format('g A'),
-                'total' => isset($rows[$h]) ? (float) $rows[$h]->total : 0.0,
+                'total' => $totals[$h],
             ];
         }
 
@@ -187,19 +197,25 @@ class ReportController extends Controller
         return $out;
     }
 
+    /**
+     * Same driver-agnostic approach as hourlyTrendToday() above —
+     * DATE_FORMAT() is MySQL-only and would throw the same way on
+     * SQLite/Postgres, so this groups by month in PHP instead.
+     */
     private function monthlyTrend(): array
     {
         $start = today()->startOfMonth()->subMonths(11);
 
-        $rows = Booking::where('status', 'paid')
+        $bookings = Booking::where('status', 'paid')
             ->whereDate('date', '>=', $start)
-            ->select(
-                DB::raw("DATE_FORMAT(date, '%Y-%m') as ym"),
-                DB::raw('SUM(amount) as total')
-            )
-            ->groupBy('ym')
-            ->get()
-            ->keyBy('ym');
+            ->select('date', 'amount')
+            ->get();
+
+        $totals = [];
+        foreach ($bookings as $booking) {
+            $key = Carbon::parse($booking->date)->format('Y-m');
+            $totals[$key] = ($totals[$key] ?? 0.0) + (float) $booking->amount;
+        }
 
         $out = [];
         for ($i = 0; $i < 12; $i++) {
@@ -207,7 +223,7 @@ class ReportController extends Controller
             $key = $month->format('Y-m');
             $out[] = [
                 'label' => $month->format('M Y'),
-                'total' => isset($rows[$key]) ? (float) $rows[$key]->total : 0.0,
+                'total' => $totals[$key] ?? 0.0,
             ];
         }
 

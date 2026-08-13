@@ -6,6 +6,7 @@ use App\Http\Controllers\Admin\AdminProfileController;
 use App\Http\Controllers\Admin\AnnouncementController;
 use App\Http\Controllers\Admin\BookingController;
 use App\Http\Controllers\Admin\CourtController;
+use App\Http\Controllers\Admin\ConfigurationController;
 use App\Http\Controllers\Admin\ReportController;
 use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\Guest\GuestBookingController;
@@ -65,6 +66,12 @@ Route::middleware('auth')->group(function () {
     // Reports
     Route::get('/reports', [ReportController::class, 'index'])->name('admin.reports.index');
     Route::get('/reports/data', [ReportController::class, 'data'])->name('admin.reports.data');
+
+    // Configuration / Schedule
+    Route::get('/admin/configuration', [ConfigurationController::class, 'index'])->name('admin.configuration.index');
+    Route::put('/admin/configuration/hours', [ConfigurationController::class, 'updateHours'])->name('admin.configuration.hours.update');
+    Route::post('/admin/configuration/closures', [ConfigurationController::class, 'storeClosure'])->name('admin.configuration.closures.store');
+    Route::delete('/admin/configuration/closures/{closure}', [ConfigurationController::class, 'destroyClosure'])->name('admin.configuration.closures.destroy');
 });
 
 Route::middleware('auth')->group(function () {

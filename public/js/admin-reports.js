@@ -184,7 +184,10 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const url = `${reportsUrl}?period=${encodeURIComponent(period)}`;
             const res = await fetch(url, { headers: { Accept: 'application/json' } });
-            if (!res.ok) throw new Error('Failed to load report data');
+            if (!res.ok) {
+                const body = await res.text().catch(() => '');
+                throw new Error(`Failed to load report data (${res.status}): ${body.slice(0, 500)}`);
+            }
             const data = await res.json();
 
             renderSummary(data.summary);

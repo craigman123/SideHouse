@@ -25,7 +25,7 @@
             <label class="nav-label">Management</label>
             <a href="{{ route('bookings.index') }}" class="{{ request()->routeIs('bookings.*') ? 'active' : '' }}">Bookings</a>
             <a href="{{ route('courts.index') }}" class="{{ request()->routeIs('courts.*') ? 'active' : '' }}">Courts</a>
-            <a href="#">Configuration</a>
+            <a href="{{ route('admin.configuration.index') }}" class="{{ request()->routeIs('admin.configuration.*') ? 'active' : '' }}">Configuration</a>
             <a href="{{ route('admin.profile') }}" class="{{ request()->routeIs('admin.profile') ? 'active' : '' }}">Profile</a>
 
             <label class="nav-label">Users</label>
@@ -38,19 +38,10 @@
         </nav>
 
         <div class="sidebar-profile">
-            <button type="button" class="profile-trigger" onclick="toggleProfileDropdown()">
+            <a href="{{ route('admin.profile') }}" type="button" class="profile-trigger" onclick="toggleProfileDropdown()">
                 <span class="profile-avatar">{{ strtoupper(substr(auth()->user()->name ?? 'A', 0, 1)) }}</span>
                 <span class="profile-name">{{ auth()->user()->name ?? 'Admin' }}</span>
-            </button>
-
-            <div class="profile-dropdown" id="profile-dropdown">
-                <a href="{{ route('admin.profile') }}" class="dropdown-link">My Profile</a>
-                <form method="POST" action="{{ route('logout') }}">
-                    @csrf
-                    <button type="submit" class="dropdown-logout">Logout</button>
-                </form>
-                <button type="button" class="dropdown-cancel" onclick="closeProfileDropdown()">Cancel</button>
-            </div>
+            </a>
         </div>
 
         <div class="sidebar-footer">&copy; {{ date('Y') }} Court Booking</div>

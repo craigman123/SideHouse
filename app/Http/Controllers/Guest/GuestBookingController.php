@@ -10,6 +10,7 @@ use App\Models\Court;
 use App\Models\Equipment;
 use App\Models\UnmatchedPayment;
 use App\Support\ActivityLogger;
+use App\Support\BookingHours;
 use App\Support\PaymentReference;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -19,15 +20,11 @@ use Illuminate\Support\Str;
 
 class GuestBookingController extends Controller
 {
-    // Deliberately duplicated from User_UserController rather than shared —
-    // guest booking has different validation and can never call auth(),
-    // so keeping it fully separate avoids accidentally coupling the two.
-    // If OPEN_HOUR/CLOSE_HOUR/etc. change, update both places.
-    private const OPEN_HOUR = 8;
-    private const CLOSE_HOUR = 7;
-    private const BOOKING_STEP_MINUTES = 30;
-    private const MIN_DURATION_HOURS = 1;
-    private const MAX_DURATION_HOURS = 10;
+    // Opening/closing hours, slot length, and min/max booking duration
+    // now live in the business_settings table (see App\Support\BookingHours
+    // and Admin\ScheduleController) instead of being hardcoded here.
+    // User_UserController should switch to the same BookingHours calls
+    // rather than keeping its own separate copy of these values.
 
     public function landing()
     {
@@ -35,11 +32,11 @@ class GuestBookingController extends Controller
 
         return view('landing', [
             'courts'      => $courts,
-            'openHour'    => self::OPEN_HOUR,
-            'closeHour'   => self::CLOSE_HOUR,
-            'minDuration' => self::MIN_DURATION_HOURS,
-            'maxDuration' => self::MAX_DURATION_HOURS,
-            'stepMinutes' => self::BOOKING_STEP_MINUTES,
+            'openHour'    => BookingHours::openHour(),
+            'closeHour'   => BookingHours::closeHour(),
+            'minDuration' => BookingHours::minDurationHours(),
+            'maxDuration' => BookingHours::maxDurationHours(),
+            'stepMinutes' => BookingHours::stepMinutes(),
         ]);
     }
 
@@ -135,7 +132,20 @@ class GuestBookingController extends Controller
             }
         }
 
-        return response()->json(['booked' => $booked]);
+        // Lets the picker show "Closed" for a date instead of just an
+        // empty/fully-available slot list — see App\Models\CourtClosure
+        // and the admin Schedule page.
+        $closure = BookingHours::closureFor((int) $validated['court_id'], $validated['date']);
+
+        if (BookingHours::isClosed($validated['court_id'], $validated['date'])) {
+            abort(422, 'This court is closed on the selected date.');
+        }
+
+        return response()->json([
+            'booked' => $booked,
+            'closed' => BookingHours::isClosed((int) $validated['court_id'], $validated['date']),
+            'closed_reason' => BookingHours::closedReason((int) $validated['court_id'], $validated['date']),
+        ]);
     }
 
     /**
