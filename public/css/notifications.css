@@ -1,0 +1,134 @@
+/* Notifications Page Styles */
+
+.notifications-page {
+    max-width: 720px;
+}
+
+.notifications-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.notifications-header h2 {
+    font-size: 20px;
+    font-weight: 800;
+    color: #f0f6fc;
+    margin: 0;
+}
+
+.btn-sm {
+    padding: 8px 14px;
+    font-size: 13px;
+}
+
+.notifications-empty {
+    background-color: #161b22;
+    border: 1.5px solid #30363d;
+    border-radius: 10px;
+    padding: 40px 20px;
+    text-align: center;
+    color: #8b949e;
+    font-size: 14px;
+}
+
+.notifications-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.notification-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    background-color: #161b22;
+    border: 1.5px solid #30363d;
+    border-radius: 10px;
+    padding: 14px 16px;
+    position: relative;
+}
+
+/* Unread rows get a quiet green tint and a left accent bar — enough to
+   scan the list and see what's new without every row shouting for
+   attention. */
+.notification-row.is-unread {
+    background-color: rgba(63, 185, 80, 0.06);
+    border-color: rgba(63, 185, 80, 0.35);
+}
+
+.notification-row.is-unread::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 10px;
+    bottom: 10px;
+    width: 3px;
+    border-radius: 3px;
+    background-color: #3fb950;
+}
+
+.notification-row-icon {
+    font-size: 20px;
+    line-height: 1;
+    flex-shrink: 0;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #0d1117;
+    border-radius: 8px;
+}
+
+.notification-row-body {
+    flex: 1;
+    min-width: 0;
+}
+
+.notification-row-title {
+    margin: 0 0 4px;
+    font-size: 14px;
+    font-weight: 700;
+    color: #f0f6fc;
+}
+
+.notification-row-text {
+    margin: 0 0 6px;
+    font-size: 13px;
+    color: #c9d1d9;
+    line-height: 1.5;
+}
+
+.notification-row-time {
+    margin: 0;
+    font-size: 12px;
+    color: #6e7681;
+}
+
+/* A small unlabeled dot the guest clicks to dismiss the unread state —
+   deliberately not a big "Mark as read" button competing for attention
+   next to the notification text itself. */
+.notification-mark-read-btn {
+    flex-shrink: 0;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background-color: #3fb950;
+    border: none;
+    cursor: pointer;
+    margin-top: 4px;
+    padding: 0;
+    transition: transform 0.15s ease, opacity 0.15s ease;
+}
+
+.notification-mark-read-btn:hover {
+    transform: scale(1.3);
+}
+
+.notification-mark-read-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}

@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="{{ asset('css/dashboard.css') }}">
     <link rel="stylesheet" href="{{ asset('css/user-dashboard.css') }}">
     <link rel="stylesheet" href="{{ asset('css/book.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/landing-book.css') }}">
 @endpush
 
 @section('content')
@@ -19,12 +20,16 @@
             class="court-grid"
             id="courtGrid"
             data-availability-url="{{ route('book.availability') }}"
+            data-equipment-url="{{ route('book.equipment-availability') }}"
             data-store-url="{{ route('book.store') }}"
+            data-status-url-template="{{ route('book.status', ['booking' => '__ID__']) }}"
+            data-cancel-url-template="{{ route('user.bookings.cancel', ['booking' => '__ID__']) }}"
             data-open-hour="{{ $openHour }}"
             data-close-hour="{{ $closeHour }}"
             data-min-duration="{{ $minDuration }}"
             data-max-duration="{{ $maxDuration }}"
             data-step-minutes="{{ $stepMinutes }}"
+            data-user-phone="{{ $userPhone }}"
         >
             @forelse ($courts as $court)
                 <button
@@ -90,9 +95,9 @@
         </div>
     </div>
 
-    {{-- Modal 2: calendar → time → duration --}}
+    {{-- Modal 2: calendar (date only — hour picking happens in timePickerModal) --}}
     <div class="modal-overlay" id="courtBookingModal">
-        <div class="modal-box modal-box-lg modal-box-scrollable">
+        <div class="modal-box modal-box-lg">
             <div class="modal-header">
                 <h3 id="modalCourtNameBooking">Book a Court</h3>
                 <button type="button" class="modal-close" id="courtBookingModalClose" aria-label="Close">&times;</button>
@@ -100,75 +105,209 @@
 
             <button type="button" class="modal-back" id="backToInfo">&larr; Back to details</button>
 
-            <div class="modal-scroll-body">
-                <div class="booking-section">
-                    <p class="booking-section-label">1. Pick a date</p>
-                    <div class="calendar">
-                        <div class="calendar-header">
-                            <button type="button" class="calendar-nav" id="calPrev" aria-label="Previous month">&lsaquo;</button>
-                            <span id="calMonthLabel"></span>
-                            <button type="button" class="calendar-nav" id="calNext" aria-label="Next month">&rsaquo;</button>
-                        </div>
-                        <div class="calendar-weekdays">
-                            <span>S</span><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span>
-                        </div>
-                        <div class="calendar-grid" id="calendarGrid"></div>
+            <div class="booking-section">
+                <p class="booking-section-label">Pick a date</p>
+                <div class="calendar">
+                    <div class="calendar-header">
+                        <button type="button" class="calendar-nav" id="calPrev" aria-label="Previous month">&lsaquo;</button>
+                        <span id="calMonthLabel"></span>
+                        <button type="button" class="calendar-nav" id="calNext" aria-label="Next month">&rsaquo;</button>
                     </div>
-                </div>
-
-                <div class="booking-section" id="timeSection" hidden>
-                    <p class="booking-section-label">2. Pick a start time</p>
-                    <div class="time-slot-grid" id="timeSlotGrid"></div>
-                </div>
-
-                <div class="booking-section" id="durationSection" hidden>
-                    <p class="booking-section-label">3. How long?</p>
-                    <div class="duration-grid" id="durationGrid"></div>
+                    <div class="calendar-weekdays">
+                        <span>S</span><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span>
+                    </div>
+                    <div class="calendar-grid" id="calendarGrid"></div>
                 </div>
             </div>
 
             <div class="modal-actions">
                 <button type="button" class="btn btn-secondary" id="backToInfo2">Back</button>
-                <button type="button" class="btn btn-primary" id="continueToPayment">Continue to Payment</button>
             </div>
         </div>
     </div>
 
-    {{-- Modal 3: payment method → confirm --}}
-    <div class="modal-overlay" id="courtPaymentModal">
-        <div class="modal-box modal-box-lg modal-box-scrollable">
+    {{-- Modal 2.5: time picker — individual hours, no separate duration step --}}
+    <div class="modal-overlay" id="timePickerModal">
+        <div class="modal-box modal-box-lg modal-box-timepicker">
             <div class="modal-header">
-                <h3>Payment</h3>
-                <button type="button" class="modal-close" id="courtPaymentModalClose" aria-label="Close">&times;</button>
+                <button type="button" class="modal-back" id="backToCalendar">&larr; Back to date</button>
+                <button type="button" class="modal-close" id="timePickerModalClose" aria-label="Close">&times;</button>
             </div>
 
-            <button type="button" class="modal-back" id="backToBooking">&larr; Back to date &amp; time</button>
+            <div class="time-picker-day-switch">
+                <button type="button" class="time-picker-day-nav" id="timePickerPrevDay" aria-label="Previous day">&lsaquo;</button>
+                <h3 id="timePickerDateLabel">Pick Your Hours</h3>
+                <button type="button" class="time-picker-day-nav" id="timePickerNextDay" aria-label="Next day">&rsaquo;</button>
+            </div>
+
+            <div class="time-picker-body">
+                <p class="booking-section-label">Select one or more hours</p>
+
+                <div class="time-picker-legend">
+                    <span class="time-picker-legend-item">
+                        <span class="time-picker-legend-swatch"></span> Available
+                    </span>
+                    <span class="time-picker-legend-item">
+                        <span class="time-picker-legend-swatch legend-selected"></span> Selected
+                    </span>
+                    <span class="time-picker-legend-item">
+                        <span class="time-picker-legend-swatch legend-booked"></span> Booked
+                    </span>
+                </div>
+
+                <div class="time-slot-list" id="timeSlotGrid"></div>
+
+                <div class="time-picker-fee-panel">
+                    <p class="time-picker-fee-ranges" id="timePickerFeeRanges">Select at least one hour</p>
+                    <div class="time-picker-fee-total-row">
+                        <span>Total</span>
+                        <span id="timePickerFeeTotal">₱0</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-actions">
+                <button type="button" class="btn btn-secondary" id="backToCalendar2">Back</button>
+                <button type="button" class="btn btn-primary" id="continueToEquipment">Continue</button>
+            </div>
+        </div>
+    </div>
+
+    {{-- Modal 3: equipment rental (optional) --}}
+    <div class="modal-overlay" id="equipmentModal">
+        <div class="modal-box modal-box-lg modal-box-scrollable">
+            <div class="modal-header">
+                <h3>Rent Equipment</h3>
+                <button type="button" class="modal-close" id="equipmentModalClose" aria-label="Close">&times;</button>
+            </div>
+
+            <button type="button" class="modal-back" id="backToBookingFromEquipment">&larr; Back to date &amp; time</button>
 
             <div class="modal-scroll-body">
                 <div class="booking-section">
+                    <p class="booking-section-label">Need a racket or paddle? (optional)</p>
+                    <div class="equipment-grid" id="equipmentGrid">
+                        <p class="loading-text">Loading equipment…</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-actions">
+                <button type="button" class="btn btn-secondary" id="backToBookingFromEquipment2">Back</button>
+                <button type="button" class="btn btn-primary" id="continueToPayment">Continue</button>
+            </div>
+        </div>
+    </div>
+
+    {{-- Modal 4: contact number + payment method → confirm --}}
+    <div class="modal-overlay" id="courtPaymentModal">
+        <div class="modal-box modal-box-lg modal-box-scrollable">
+            <div class="modal-header">
+                <h3>Almost Done</h3>
+                <button type="button" class="modal-close" id="courtPaymentModalClose" aria-label="Close">&times;</button>
+            </div>
+
+            <button type="button" class="modal-back" id="backToEquipment">&larr; Back to equipment</button>
+
+            <div class="modal-scroll-body">
+                <div class="booking-section">
+                    <p class="booking-section-label">Contact number for this booking</p>
+                    <div class="guest-info-grid">
+                        <div class="guest-info-item">
+                            <label for="contactNumber">Contact Number</label>
+                            <input type="tel" id="contactNumber" placeholder="09XX XXX XXXX" autocomplete="tel">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="booking-section">
                     <p class="booking-section-label">How will you pay?</p>
                     <div class="payment-grid" id="paymentGrid">
-                        <button type="button" class="payment-btn" data-method="arrival">
-                            <span class="payment-btn-title">Pay on Arrival</span>
-                            <span class="payment-btn-sub">Settle cash at the counter</span>
+                        <button type="button" class="payment-btn" data-method="gcash">
+                            <span class="payment-btn-title">GCash</span>
+                            <span class="payment-btn-sub">Scan the QR code through GCash to pay</span>
                         </button>
-                        <button type="button" class="payment-btn" data-method="ewallet" disabled>
-                            <span class="payment-btn-title">E-Wallet</span>
-                            <span class="payment-btn-sub">Coming soon</span>
+
+                        <button type="button" class="payment-btn" data-method="landbank">
+                            <span class="payment-btn-title">Landbank</span>
+                            <span class="payment-btn-sub">Pay via InstaPay by scanning the QR code</span>
                         </button>
+                    </div>
+
+                    <div class="payment-qr-panel" id="gcashQrPanel">
+                        <p class="payment-qr-instructions">Scan this code in your GCash app to pay, then enter the reference number from the payment confirmation below.</p>
+                        <div class="payment-qr-image-wrap">
+                            <img
+                                src="{{ asset('images/qr-image.png') }}"
+                                alt="GCash QR code"
+                                id="gcashQrImage"
+                                class="payment-qr-image"
+                                onerror="this.hidden=true; document.getElementById('gcashQrFallback').hidden=false;"
+                            >
+                            <div class="payment-qr-fallback" id="gcashQrFallback" hidden>
+                                <span>QR code coming soon</span>
+                            </div>
+                        </div>
+
+                        <div class="payment-proof-block" id="gcashProofBlock">
+                            <label for="gcashRefNumber" class="payment-proof-label">GCash Reference Number</label>
+                            <input type="text" id="gcashRefNumber" class="payment-ref-input" placeholder="e.g. 1234 567 890123" autocomplete="off">
+                            <p class="payment-proof-note">We confirm automatically the moment GCash notifies us — usually within a minute or two. Your booking stays pending until then.</p>
+                        </div>
+                    </div>
+
+                    <div class="payment-qr-panel" id="landbankQrPanel">
+                        <p class="payment-qr-instructions">Scan this code with your Landbank app (or any InstaPay-enabled app) to pay, then enter the reference number from the transfer confirmation below.</p>
+                        <div class="payment-qr-image-wrap">
+                            <img
+                                src="{{ asset('images/qr-image.png') }}"
+                                alt="Landbank InstaPay QR code"
+                                id="landbankQrImage"
+                                class="payment-qr-image"
+                                onerror="this.hidden=true; document.getElementById('landbankQrFallback').hidden=false;"
+                            >
+                            <div class="payment-qr-fallback" id="landbankQrFallback" hidden>
+                                <span>QR code coming soon</span>
+                            </div>
+                        </div>
+
+                        <div class="payment-proof-block" id="landbankProofBlock">
+                            <label for="landbankRefNumber" class="payment-proof-label">Landbank / InstaPay Reference Number</label>
+                            <input type="text" id="landbankRefNumber" class="payment-ref-input" placeholder="e.g. 1234 567 890123" autocomplete="off">
+                            <p class="payment-proof-note">We confirm automatically the moment the transfer notifies us — usually within a minute or two. Your booking stays pending until then.</p>
+                        </div>
                     </div>
                 </div>
 
                 <div class="booking-summary" id="bookingSummary">
                     <p><span id="summaryDate"></span> &middot; <span id="summaryTime"></span></p>
+                    <p id="summaryEquipmentRow" hidden>Equipment: <strong id="summaryEquipment"></strong></p>
                     <p>Payment: <strong id="summaryPayment">&mdash;</strong></p>
                     <p class="booking-summary-total">Total: <strong id="summaryTotal"></strong></p>
                 </div>
             </div>
 
             <div class="modal-actions">
-                <button type="button" class="btn btn-secondary" id="backToBooking2">Back</button>
+                <button type="button" class="btn btn-secondary" id="backToEquipment2">Back</button>
                 <button type="button" class="btn btn-primary" id="confirmBooking">Confirm Booking</button>
+            </div>
+        </div>
+    </div>
+
+    {{-- Modal 5: waiting for payment confirmation --}}
+    <div class="modal-overlay" id="gcashWaitModal">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h3 id="gcashWaitTitle">Waiting for Payment</h3>
+            </div>
+            <div class="gcash-wait-body">
+                <div class="gcash-wait-spinner" aria-hidden="true"></div>
+                <p class="gcash-wait-amount">Pay <strong id="gcashWaitAmount"></strong> via the QR code you scanned.</p>
+                <p class="gcash-wait-status" id="gcashWaitStatus">We'll confirm automatically the moment we're notified — usually within a minute or two.</p>
+                <p class="gcash-wait-countdown">Slot held for <strong id="gcashWaitCountdown">--:--</strong></p>
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-secondary" id="gcashWaitCancel">Cancel Booking</button>
             </div>
         </div>
     </div>

@@ -382,8 +382,10 @@ html {
 
 .time-slot-skeleton {
     height: 40px;
-    border-radius: 8px;
-    background: linear-gradient(90deg, #0d1117 25%, #161b22 37%, #0d1117 63%);
+    flex-shrink: 0;
+    border-radius: 10px;
+    border: 1.5px solid #30363d;
+    background: linear-gradient(90deg, #161b22 25%, #30363d 37%, #161b22 63%);
     background-size: 400% 100%;
     animation: skeletonShimmer 1.4s ease infinite;
 }
@@ -521,6 +523,41 @@ html {
 .qty-btn:hover:not(:disabled) {
     border-color: #3fb950;
     color: #3fb950;
+}
+
+.equipment-card-skeleton {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    background-color: #0d1117;
+    border: 1px solid #21262d;
+    border-radius: 8px;
+    padding: 12px 14px;
+}
+
+.equipment-skeleton-line {
+    border-radius: 6px;
+    background: linear-gradient(90deg, #161b22 25%, #30363d 37%, #161b22 63%);
+    background-size: 400% 100%;
+    animation: skeletonShimmer 1.4s ease infinite;
+}
+
+.equipment-skeleton-name {
+    width: 120px;
+    height: 14px;
+    margin-bottom: 8px;
+}
+
+.equipment-skeleton-meta {
+    width: 160px;
+    height: 11px;
+}
+
+.equipment-skeleton-stepper {
+    width: 84px;
+    height: 28px;
+    flex-shrink: 0;
 }
 
 .qty-btn:disabled {
@@ -1245,6 +1282,12 @@ html {
 
 .stats-bar-col.stats-bar-today .stats-bar-label {
     color: #3fb950;
+}
+
+@media (max-width: 800px) {
+    .stats-section{
+        max-width: 100%;
+    }
 }
 
 @media (max-width: 480px) {

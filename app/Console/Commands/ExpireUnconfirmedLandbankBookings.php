@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Models\Booking;
+use App\Support\NotificationService;
 use Illuminate\Console\Command;
 
 /**
@@ -42,6 +43,14 @@ class ExpireUnconfirmedLandbankBookings extends Command
 
         foreach ($expired as $booking) {
             $booking->update(['status' => 'cancelled']);
+
+            NotificationService::bookingStatus(
+                $booking->user_id,
+                $booking->id,
+                'Booking expired',
+                'We never received a matching Landbank payment in time, so this booking was cancelled and the slot released.',
+            );
+
             $this->info("Expired booking #{$booking->id} (no matching Landbank payment within the window).");
         }
 

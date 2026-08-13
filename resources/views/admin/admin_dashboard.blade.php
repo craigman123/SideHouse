@@ -32,8 +32,9 @@
     </div>
 
     <div class="panel">
-        <h2>Upcoming Bookings</h2>
+    <h2>Upcoming Bookings</h2>
 
+    <div class="table-responsive">
         <table>
             <thead>
                 <tr>
@@ -65,5 +66,6 @@
             </tbody>
         </table>
     </div>
+</div>
 
 @endsection

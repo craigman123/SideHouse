@@ -10,7 +10,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Only these fields are ever unlocked — role/dates/id stay readonly
     // and disabled no matter what, so they're never even submitted.
     const editableFields = form
-        ? form.querySelectorAll('#name, #username, #email')
+        ? form.querySelectorAll('#name, #username, #email, #phone_number')
         : [];
 
     const originalValues = new Map();

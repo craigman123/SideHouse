@@ -426,14 +426,10 @@
                         </div>
                     </div>
 
-                    {{-- Revealed via JS (adds .open) when Landbank is
-                         selected. Drop the real QR at
-                         public/images/landbank-qr.png — no code changes
-                         needed. Until that file exists, the image 404s
-                         and the fallback box below shows instead. This is
-                         an InstaPay QR (transfers land in the same
-                         EastWest account GCash payouts already go to),
-                         not a Landbank-specific merchant QR. --}}
+                    {{-- Revealed via JS (adds .open) when Landbank is selected.
+                         Drop the real QR at public/images/landbank-qr.png — no
+                         code changes needed. Until that file exists, the
+                         image 404s and the fallback box below shows instead. --}}
                     <div class="payment-qr-panel" id="landbankQrPanel">
                         <p class="payment-qr-instructions">Scan this code with your Landbank app (or any InstaPay-enabled app) to pay, then enter the reference number from the transfer confirmation below.</p>
                         <div class="payment-qr-image-wrap">

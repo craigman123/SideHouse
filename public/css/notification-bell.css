@@ -1,0 +1,15 @@
+/* Bell icon unread indicator. Add this to user-navbar.css. Assumes the
+   bell <a> is position: relative (or add it here if it isn't already —
+   see the note sent alongside this file). */
+
+.bell-unread-dot {
+    position: absolute;
+    top: -2px;
+    right: -2px;
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background-color: #f85149;
+    border: 1.5px solid #0d1117;
+    pointer-events: none;
+}

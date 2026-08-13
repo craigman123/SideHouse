@@ -8,6 +8,8 @@
     padding-bottom: 12px;
     border-bottom: 1px solid #21262d;
     margin-bottom: 16px;
+    flex-wrap: wrap;
+    gap: 12px;
 }
 
 .panel-header h2 {
@@ -208,4 +210,24 @@
 .field-error {
     display: block;
     min-height: 16px;
+}
+
+/* ---------- Responsive ---------- */
+
+@media (max-width: 480px) {
+    .panel-header {
+        align-items: flex-start;
+    }
+
+    .panel-header .btn {
+        width: 100%;
+    }
+
+    .form-row {
+        grid-template-columns: 1fr;
+    }
+
+    .modal-box {
+        padding: 18px;
+    }
 }

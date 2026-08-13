@@ -9,6 +9,7 @@ use App\Models\BookingSlot;
 use App\Models\Court;
 use App\Models\Equipment;
 use App\Models\UnmatchedPayment;
+use App\Support\ActivityLogger;
 use App\Support\PaymentReference;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -463,6 +464,52 @@ class GuestBookingController extends Controller
             return response()->json(['message' => $e->getMessage()], 422);
         }
 
+        // Logged after the transaction commits, not inside it — a booking
+        // that gets rolled back (slot conflict, stock conflict, etc.)
+        // should never leave a log entry behind. actor is explicitly null
+        // (never auth()->user()) since this is always a guest, unauthenticated
+        // action; subject is the booking itself so it shows up as
+        // "Booking #<id>" in the admin activity log.
+        ActivityLogger::log(
+            'booking.created',
+            sprintf(
+                '%s booked %s on %s from %s to %s.',
+                $booking->customer_name,
+                $court->name,
+                Carbon::parse($booking->date)->format('M d, Y'),
+                Carbon::parse($booking->start_time)->format('g:i A'),
+                Carbon::parse($booking->end_time)->format('g:i A'),
+            ),
+            actor: null,
+            subject: $booking,
+            properties: [
+                'payment_method' => $booking->payment_method,
+                'amount'         => $booking->amount,
+                'status'         => $booking->status,
+            ],
+        );
+
+        // The booking can already be 'paid' at creation time if it just
+        // claimed a payment that arrived (and got parked as an
+        // UnmatchedPayment) before the guest finished this form — see the
+        // $claimedPayment logic above. Worth its own log line since "paid
+        // the instant it was created" is a distinct, useful thing to see
+        // in the audit trail, separate from "booked".
+        if ($booking->status === 'paid') {
+            ActivityLogger::log(
+                'booking.paid',
+                sprintf(
+                    "%s's payment for %s was confirmed automatically (matched an existing %s payment).",
+                    $booking->customer_name,
+                    $court->name,
+                    ucfirst($booking->payment_method),
+                ),
+                actor: null,
+                subject: $booking,
+                properties: ['amount' => $booking->amount],
+            );
+        }
+
         return response()->json([
             'message'    => $booking->status === 'paid'
                 ? 'Booking confirmed! We matched it to a payment that already came in.'
@@ -510,11 +557,112 @@ class GuestBookingController extends Controller
 
         if ($booking->status === 'pending') {
             $booking->update(['status' => 'cancelled']);
+
+            ActivityLogger::log(
+                'booking.cancelled',
+                sprintf(
+                    '%s cancelled a booking for %s on %s.',
+                    $booking->customer_name,
+                    $booking->court?->name ?? 'a court',
+                    Carbon::parse($booking->date)->format('M d, Y'),
+                ),
+                actor: null,
+                subject: $booking,
+            );
         }
 
         return response()->json([
             'status' => $booking->status,
         ]);
+    }
+
+    /**
+     * Lets the guest fix a typo'd reference number on their own still-
+     * pending booking, instead of the only options being "wait for it to
+     * expire" or "cancel and start the whole booking over" — the slot
+     * and everything else about the booking stays exactly as-is, only
+     * the reference number (and the retroactive payment match it
+     * unlocks) changes. A no-op once the booking is already
+     * paid/cancelled/expired — see the already_resolved branch below.
+     */
+    public function updateReference(Request $request, Booking $booking)
+    {
+        $token = (string) $request->query('token', '');
+
+        if ($token === '' || ! $booking->poll_token || ! hash_equals($booking->poll_token, $token)) {
+            abort(403);
+        }
+
+        $validated = $request->validate([
+            'payment_reference' => ['required', 'string', 'max:50'],
+        ]);
+
+        $result = DB::transaction(function () use ($booking, $validated) {
+            // Re-fetch under lockForUpdate() rather than trusting the
+            // route-bound $booking — same reasoning as the webhook
+            // controllers' status re-check: without this, a webhook
+            // confirming (or ExpireUnconfirmedGcashBookings/
+            // ExpireUnconfirmedLandbankBookings cancelling) this exact
+            // booking between the check below and the update at the
+            // bottom could get silently clobbered by this request, or
+            // vice versa.
+            $booking = Booking::where('id', $booking->id)->lockForUpdate()->first();
+
+            if ($booking->status !== 'pending') {
+                return ['status' => $booking->status, 'already_resolved' => true];
+            }
+
+            $booking->update(['gcash_reference_number' => $validated['payment_reference']]);
+
+            // Same rule as store()'s retroactive claim and both webhook
+            // controllers: reference number is the only thing that can
+            // confirm a match. No "only one candidate at this amount"
+            // fallback — see those three for why.
+            $normalizedRef = PaymentReference::normalize($validated['payment_reference']);
+            $claimedPayment = null;
+
+            if ($normalizedRef !== '') {
+                $claimedPayment = UnmatchedPayment::unmatched()
+                    ->where('payment_method', $booking->payment_method)
+                    ->where('amount', $booking->amount)
+                    ->where('created_at', '>=', now()->subMinutes(PaymentWindows::claimWindowMinutes($booking->payment_method)))
+                    ->lockForUpdate()
+                    ->get()
+                    ->first(fn ($p) => PaymentReference::normalize((string) $p->reference_number) === $normalizedRef);
+            }
+
+            if ($claimedPayment) {
+                $booking->update(['status' => 'paid', 'confirmed_at' => now()]);
+                $claimedPayment->update(['matched_booking_id' => $booking->id, 'matched_at' => now()]);
+            }
+
+            return ['status' => $booking->status];
+        });
+
+        if ($result['status'] === 'paid') {
+            $booking->refresh();
+
+            ActivityLogger::log(
+                'booking.paid',
+                sprintf(
+                    "%s's payment for %s was confirmed after they corrected their reference number.",
+                    $booking->customer_name,
+                    $booking->court?->name ?? 'a court',
+                ),
+                actor: null,
+                subject: $booking,
+                properties: ['amount' => $booking->amount],
+            );
+        }
+
+        return response()->json([
+            'status'  => $result['status'],
+            'message' => match (true) {
+                $result['status'] === 'paid' => 'Payment matched! Your booking is confirmed.',
+                ! empty($result['already_resolved']) => "This booking is no longer pending, so its reference number can't be changed.",
+                default => "Reference number updated — we'll keep watching for a match.",
+            },
+        ], ! empty($result['already_resolved']) ? 422 : 200);
     }
 
     /**

@@ -1061,19 +1061,47 @@ document.addEventListener('DOMContentLoaded', () => {
     // ---------- Equipment rental ----------
 
     async function loadEquipment() {
-        equipmentGrid.innerHTML = '<p class="loading-text">Loading equipment…</p>';
+        renderEquipmentSkeleton();
 
         try {
             const params = new URLSearchParams({ date: selectedDate });
             selectedSlots.forEach((timeStr) => params.append('slots[]', timeStr));
             const url = `${equipmentUrl}?${params.toString()}`;
-            const res = await fetch(url, { headers: { Accept: 'application/json' } });
+
+            // Same min-delay pattern as the time-slot skeleton — keeps the
+            // skeleton from flashing by too fast to register on quick
+            // connections, without adding lag on slower ones.
+            const MIN_SKELETON_MS = 300;
+            const [res] = await Promise.all([
+                fetch(url, { headers: { Accept: 'application/json' } }),
+                new Promise((resolve) => setTimeout(resolve, MIN_SKELETON_MS)),
+            ]);
+
             const data = await res.json();
             equipmentCatalog = data.equipment || [];
             renderEquipment();
         } catch (err) {
             console.error(err);
             equipmentGrid.innerHTML = '<p class="loading-text">Couldn\'t load equipment right now.</p>';
+        }
+    }
+
+    function renderEquipmentSkeleton() {
+        equipmentGrid.innerHTML = '';
+
+        const EQUIPMENT_SKELETON_COUNT = 4;
+        for (let i = 0; i < EQUIPMENT_SKELETON_COUNT; i++) {
+            const card = document.createElement('div');
+            card.className = 'equipment-card-skeleton';
+            card.style.animationDelay = `${i * 0.05}s`;
+            card.innerHTML = `
+                <div>
+                    <div class="equipment-skeleton-line equipment-skeleton-name"></div>
+                    <div class="equipment-skeleton-line equipment-skeleton-meta"></div>
+                </div>
+                <div class="equipment-skeleton-line equipment-skeleton-stepper"></div>
+            `;
+            equipmentGrid.appendChild(card);
         }
     }
 

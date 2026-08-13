@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Webhooks;
 use App\Http\Controllers\Controller;
 use App\Models\Booking;
 use App\Models\UnmatchedPayment;
+use App\Support\ActivityLogger;
 use App\Support\PaymentReference;
 use App\Support\PaymentWindows;
 use App\Support\WebhookAuth;
@@ -163,6 +164,26 @@ class LandbankWebhookController extends Controller
 
         if (in_array($result['status'], ['no_match', 'ambiguous', 'already_resolved', 'duplicate_reference'], true)) {
             Log::warning("landbank_sms: {$result['status']}", ['amount' => $amount, 'ref' => $refNumber] + $result);
+        }
+
+        // See GcashWebhookController for why this is only logged on
+        // 'confirmed' and outside the transaction.
+        if ($result['status'] === 'confirmed') {
+            $booking = Booking::find($result['booking_id']);
+
+            if ($booking) {
+                ActivityLogger::log(
+                    'booking.paid',
+                    sprintf(
+                        "%s's Landbank payment for %s was confirmed via SMS.",
+                        $booking->customer_name,
+                        $booking->court?->name ?? 'a court',
+                    ),
+                    actor: null,
+                    subject: $booking,
+                    properties: ['amount' => $amount, 'reference_number' => $refNumber],
+                );
+            }
         }
 
         return response()->json($result);

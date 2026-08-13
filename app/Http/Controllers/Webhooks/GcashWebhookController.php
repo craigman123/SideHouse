@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Webhooks;
 use App\Http\Controllers\Controller;
 use App\Models\Booking;
 use App\Models\UnmatchedPayment;
+use App\Support\ActivityLogger;
 use App\Support\PaymentReference;
 use App\Support\PaymentWindows;
 use App\Support\WebhookAuth;
@@ -191,6 +192,30 @@ class GcashWebhookController extends Controller
 
         if (in_array($result['status'], ['no_match', 'ambiguous', 'already_resolved', 'duplicate_reference'], true)) {
             Log::warning("gcash_sms: {$result['status']}", ['amount' => $amount, 'ref' => $refNumber] + $result);
+        }
+
+        // Logged outside the transaction (which has already committed by
+        // this point) and only for the 'confirmed' outcome — an
+        // unmatched/ambiguous/duplicate SMS isn't a real payment event
+        // yet and shouldn't show up as one in the audit trail. actor is
+        // explicitly null since this request has no authenticated user —
+        // it's an incoming webhook, not a guest or staff action.
+        if ($result['status'] === 'confirmed') {
+            $booking = Booking::find($result['booking_id']);
+
+            if ($booking) {
+                ActivityLogger::log(
+                    'booking.paid',
+                    sprintf(
+                        "%s's GCash payment for %s was confirmed via SMS.",
+                        $booking->customer_name,
+                        $booking->court?->name ?? 'a court',
+                    ),
+                    actor: null,
+                    subject: $booking,
+                    properties: ['amount' => $amount, 'reference_number' => $refNumber],
+                );
+            }
         }
 
         return response()->json($result);

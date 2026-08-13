@@ -186,7 +186,7 @@
                             <td>{{ \Carbon\Carbon::parse($booking->date)->format('d M Y') }}</td>
                             <td>{{ \Carbon\Carbon::parse($booking->start_time)->format('g:i A') }} &ndash; {{ \Carbon\Carbon::parse($booking->end_time)->format('g:i A') }}</td>
                             <td>
-                                <span class="status status-{{ $booking->status === 'confirmed' ? 'paid' : ($booking->status === 'cancelled' ? 'cancelled' : 'pending') }}">
+                                <span class="status status-{{ $booking->status }}">
                                     {{ ucfirst($booking->status) }}
                                 </span>
                             </td>
@@ -221,7 +221,7 @@
                             <td>{{ \Carbon\Carbon::parse($booking->date)->format('d M Y') }}</td>
                             <td>&#8369;{{ number_format($booking->amount, 0) }}</td>
                             <td>
-                                <span class="status status-{{ $booking->status === 'confirmed' ? 'paid' : ($booking->status === 'cancelled' ? 'cancelled' : 'pending') }}">
+                                <span class="status status-{{ $booking->status }}">
                                     {{ ucfirst($booking->status) }}
                                 </span>
                             </td>

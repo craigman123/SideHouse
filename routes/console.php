@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Schedule;
 Schedule::command('bookings:expire-unconfirmed-gcash')->everyMinute();
 Schedule::command('bookings:expire-unconfirmed-landbank')->everyMinute();
 Schedule::command('bookings:send-reminders')->everyFiveMinutes();
+Schedule::command('bookings:send-reminders')->everyFiveMinutes();
 
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());

@@ -5,9 +5,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const availabilityUrl = grid.dataset.availabilityUrl;
     const equipmentUrl = grid.dataset.equipmentUrl;
     const storeUrl = grid.dataset.storeUrl;
+    const statusUrlTemplate = grid.dataset.statusUrlTemplate;
+    const cancelUrlTemplate = grid.dataset.cancelUrlTemplate;
+    const userPhone = grid.dataset.userPhone || '';
 
     const OPEN_HOUR = parseInt(grid.dataset.openHour, 10);
     const CLOSE_HOUR = parseInt(grid.dataset.closeHour, 10);
+    // Slot *counts* (not hours) — e.g. MIN_DURATION=2 with 30-min steps
+    // means "at least 1 hour selected".
     const MIN_DURATION = parseFloat(grid.dataset.minDuration);
     const MAX_DURATION = parseFloat(grid.dataset.maxDuration);
     const STEP_MINUTES = parseInt(grid.dataset.stepMinutes, 10);
@@ -28,10 +33,14 @@ document.addEventListener('DOMContentLoaded', () => {
         return {};
     }
 
+    // ---------- Element refs ----------
+
     const infoModal = document.getElementById('courtInfoModal');
     const bookingModal = document.getElementById('courtBookingModal');
+    const timePickerModal = document.getElementById('timePickerModal');
     const equipmentModal = document.getElementById('equipmentModal');
     const paymentModal = document.getElementById('courtPaymentModal');
+    const gcashWaitModal = document.getElementById('gcashWaitModal');
 
     const modalCourtName = document.getElementById('modalCourtName');
     const modalCourtNameBooking = document.getElementById('modalCourtNameBooking');
@@ -44,18 +53,30 @@ document.addEventListener('DOMContentLoaded', () => {
     const calPrev = document.getElementById('calPrev');
     const calNext = document.getElementById('calNext');
 
-    const timeSection = document.getElementById('timeSection');
+    const timePickerDateLabel = document.getElementById('timePickerDateLabel');
+    const timePickerPrevDay = document.getElementById('timePickerPrevDay');
+    const timePickerNextDay = document.getElementById('timePickerNextDay');
     const timeSlotGrid = document.getElementById('timeSlotGrid');
-    const durationSection = document.getElementById('durationSection');
-    const durationGrid = document.getElementById('durationGrid');
+    const timePickerFeeRanges = document.getElementById('timePickerFeeRanges');
+    const timePickerFeeTotal = document.getElementById('timePickerFeeTotal');
     const continueToEquipmentBtn = document.getElementById('continueToEquipment');
 
     const equipmentGrid = document.getElementById('equipmentGrid');
-    const continueToGuestInfoBtn = document.getElementById('continueToGuestInfo');
+    const continueToPaymentBtn = document.getElementById('continueToPayment');
 
-    const guestNameInput = document.getElementById('guestName');
-    const guestContactInput = document.getElementById('guestContact');
+    const contactNumberInput = document.getElementById('contactNumber');
     const paymentGrid = document.getElementById('paymentGrid');
+    const gcashQrPanel = document.getElementById('gcashQrPanel');
+    const gcashRefInput = document.getElementById('gcashRefNumber');
+    const gcashProofBlock = document.getElementById('gcashProofBlock');
+    const landbankQrPanel = document.getElementById('landbankQrPanel');
+    const landbankRefInput = document.getElementById('landbankRefNumber');
+    const landbankProofBlock = document.getElementById('landbankProofBlock');
+    const gcashWaitTitle = document.getElementById('gcashWaitTitle');
+    const gcashWaitAmount = document.getElementById('gcashWaitAmount');
+    const gcashWaitStatus = document.getElementById('gcashWaitStatus');
+    const gcashWaitCountdown = document.getElementById('gcashWaitCountdown');
+    const gcashWaitCancel = document.getElementById('gcashWaitCancel');
     const bookingSummary = document.getElementById('bookingSummary');
     const summaryDate = document.getElementById('summaryDate');
     const summaryTime = document.getElementById('summaryTime');
@@ -65,17 +86,33 @@ document.addEventListener('DOMContentLoaded', () => {
     const summaryTotal = document.getElementById('summaryTotal');
     const confirmBtn = document.getElementById('confirmBooking');
 
-    const PAYMENT_LABELS = { arrival: 'Pay on Arrival', ewallet: 'E-Wallet' };
+    const PAYMENT_LABELS = { gcash: 'GCash', landbank: 'Landbank' };
+    const QR_PANELS = { gcash: gcashQrPanel, landbank: landbankQrPanel };
+    const REF_INPUTS = { gcash: gcashRefInput, landbank: landbankRefInput };
+    const PROOF_BLOCKS = { gcash: gcashProofBlock, landbank: landbankProofBlock };
+
+    function getActiveRefInput() {
+        return selectedPayment ? REF_INPUTS[selectedPayment] || null : null;
+    }
+
+    function getActiveProofBlock() {
+        return selectedPayment ? PROOF_BLOCKS[selectedPayment] || null : null;
+    }
+
+    function syncPaymentQrPanels() {
+        Object.entries(QR_PANELS).forEach(([method, panel]) => {
+            if (panel) panel.classList.toggle('open', selectedPayment === method);
+        });
+    }
 
     let selectedCourt = null;
     let calendarCursor = new Date();
     let selectedDate = null;
-    let selectedStart = null;
-    let selectedDuration = null;
+    let selectedSlots = []; // e.g. ['16:00', '17:00'], always sorted
     let selectedPayment = null;
     let bookedRanges = [];
-    let equipmentCatalog = []; // [{id, name, category, price, available}]
-    let equipmentSelection = {}; // { [equipmentId]: quantity }
+    let equipmentCatalog = [];
+    let equipmentSelection = {};
 
     const pad = (n) => n.toString().padStart(2, '0');
     const todayStr = () => new Date().toISOString().slice(0, 10);
@@ -112,6 +149,16 @@ document.addEventListener('DOMContentLoaded', () => {
         bookingModal.classList.add('open');
     }
 
+    function openTimePickerModal() {
+        timePickerModal.classList.add('open');
+        renderTimePickerDateLabel();
+        updateDayNavState();
+    }
+
+    function closeTimePickerModal() {
+        timePickerModal.classList.remove('open');
+    }
+
     function openEquipmentModal() {
         equipmentModal.classList.add('open');
         loadEquipment();
@@ -124,6 +171,15 @@ document.addEventListener('DOMContentLoaded', () => {
     function openPaymentModal() {
         selectedPayment = null;
         paymentGrid.querySelectorAll('.payment-btn').forEach((el) => el.classList.remove('selected'));
+        syncPaymentQrPanels();
+
+        // Prefill from the saved profile number, but only if the field is
+        // still empty — never overwrite something the person already
+        // typed (e.g. they went back and forth between steps).
+        if (userPhone && !contactNumberInput.value.trim()) {
+            contactNumberInput.value = userPhone;
+        }
+
         updateSummary();
         paymentModal.classList.add('open');
     }
@@ -134,15 +190,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function resetBookingState() {
         selectedDate = null;
-        selectedStart = null;
-        selectedDuration = null;
+        selectedSlots = [];
         selectedPayment = null;
         bookedRanges = [];
         equipmentSelection = {};
         calendarCursor = new Date();
-        timeSection.hidden = true;
-        durationSection.hidden = true;
     }
+
+    // ---------- Court grid ----------
 
     grid.addEventListener('click', (e) => {
         const card = e.target.closest('.court-card-clickable');
@@ -158,40 +213,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // ---------- Default to the first court ----------
-    // Guests don't have to pick a court from the grid themselves — the
-    // hero "Book Now" button and the scroll-cue link both jump straight
-    // into the first available court's info modal. The grid stays
-    // visible for context (and still works if clicked directly), this
-    // just skips that step for the common one-court case.
-    function openFirstCourtModal() {
-        const firstCard = grid.querySelector('.court-card-clickable');
-        if (!firstCard) return;
-
-        // Skip the info-card step entirely and go straight to the
-        // calendar/time/duration modal — with only one court in the
-        // database, there's nothing for a guest to actually choose
-        // between, so just land them on "pick a date" directly.
-        selectedCourt = {
-            id: firstCard.dataset.id,
-            name: firstCard.dataset.name,
-            type: firstCard.dataset.type,
-            length: firstCard.dataset.length,
-            width: firstCard.dataset.width,
-            price: firstCard.dataset.price,
-        };
-
-        openBookingModal();
-    }
-
-    document.querySelectorAll('a[href="#bookNow"]').forEach((link) => {
-        link.addEventListener('click', () => {
-            // Let the native #bookNow anchor scroll happen first, then
-            // reveal the modal once the section is actually in view.
-            setTimeout(openFirstCourtModal, 400);
-        });
-    });
-
     document.getElementById('courtInfoModalClose').addEventListener('click', closeInfoModal);
     document.getElementById('stepInfoClose').addEventListener('click', closeInfoModal);
     infoModal.addEventListener('click', (e) => {
@@ -201,6 +222,11 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('courtBookingModalClose').addEventListener('click', closeBookingModal);
     bookingModal.addEventListener('click', (e) => {
         if (e.target === bookingModal) closeBookingModal();
+    });
+
+    document.getElementById('timePickerModalClose').addEventListener('click', closeTimePickerModal);
+    timePickerModal.addEventListener('click', (e) => {
+        if (e.target === timePickerModal) closeTimePickerModal();
     });
 
     document.getElementById('equipmentModalClose').addEventListener('click', closeEquipmentModal);
@@ -227,26 +253,35 @@ document.addEventListener('DOMContentLoaded', () => {
         openInfoModal(selectedCourt);
     });
 
+    document.getElementById('backToCalendar').addEventListener('click', () => {
+        closeTimePickerModal();
+        reopenBookingModal();
+    });
+    document.getElementById('backToCalendar2').addEventListener('click', () => {
+        closeTimePickerModal();
+        reopenBookingModal();
+    });
+
     continueToEquipmentBtn.addEventListener('click', () => {
         const missing = getMissingBookingRequirements();
         if (missing.length > 0) {
             showToast(`Please select ${formatList(missing)} to continue.`, 'error');
             return;
         }
-        closeBookingModal();
+        closeTimePickerModal();
         openEquipmentModal();
     });
 
     document.getElementById('backToBookingFromEquipment').addEventListener('click', () => {
         closeEquipmentModal();
-        reopenBookingModal();
+        openTimePickerModal();
     });
     document.getElementById('backToBookingFromEquipment2').addEventListener('click', () => {
         closeEquipmentModal();
-        reopenBookingModal();
+        openTimePickerModal();
     });
 
-    continueToGuestInfoBtn.addEventListener('click', () => {
+    continueToPaymentBtn.addEventListener('click', () => {
         closeEquipmentModal();
         openPaymentModal();
     });
@@ -298,7 +333,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (dateStr < today) {
                 btn.disabled = true;
             } else {
-                btn.addEventListener('click', () => selectDate(dateStr, btn));
+                btn.addEventListener('click', () => selectDate(dateStr));
             }
 
             if (dateStr === today) btn.classList.add('calendar-day-today');
@@ -308,22 +343,50 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    async function selectDate(dateStr, btn) {
+    async function selectDate(dateStr) {
         selectedDate = dateStr;
-        selectedStart = null;
-        selectedDuration = null;
-        durationSection.hidden = true;
+        selectedSlots = [];
 
-        calendarGrid.querySelectorAll('.calendar-day').forEach((el) => el.classList.remove('selected'));
-        btn.classList.add('selected');
+        closeBookingModal();
+        openTimePickerModal();
+        await changeDateInModal(dateStr);
+    }
 
-        timeSection.hidden = false;
+    function renderTimePickerDateLabel() {
+        if (!timePickerDateLabel || !selectedDate) return;
+        timePickerDateLabel.textContent = formatDate(selectedDate);
+    }
+
+    function updateDayNavState() {
+        if (timePickerPrevDay) {
+            timePickerPrevDay.disabled = !selectedDate || selectedDate <= todayStr();
+        }
+    }
+
+    function addDaysToDateStr(dateStr, deltaDays) {
+        const d = new Date(`${dateStr}T00:00:00`);
+        d.setDate(d.getDate() + deltaDays);
+        return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+    }
+
+    function shiftSelectedDate(deltaDays) {
+        if (!selectedDate) return;
+        const next = addDaysToDateStr(selectedDate, deltaDays);
+        if (next < todayStr()) return;
+        selectedDate = next;
+        selectedSlots = [];
+        changeDateInModal(next);
+    }
+
+    timePickerPrevDay?.addEventListener('click', () => shiftSelectedDate(-1));
+    timePickerNextDay?.addEventListener('click', () => shiftSelectedDate(1));
+
+    async function changeDateInModal(dateStr) {
+        selectedSlots = [];
+        renderTimePickerDateLabel();
+        updateDayNavState();
         renderTimeSlotSkeleton();
 
-        // Guarantee the skeleton is visible for at least a beat — on a
-        // fast connection fetchAvailability can resolve before it's even
-        // perceptible. Racing it against a minimum delay avoids that
-        // without adding lag on slower connections.
         const MIN_SKELETON_MS = 300;
         const [ranges] = await Promise.all([
             fetchAvailability(dateStr),
@@ -332,15 +395,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
         bookedRanges = ranges;
         renderTimeSlots();
+        updateTimePickerFee();
     }
 
     function renderTimeSlotSkeleton() {
         timeSlotGrid.innerHTML = '';
 
-        // Same slot-count math as renderTimeSlots() below, so the number
-        // of skeleton placeholders matches the real grid that replaces it.
         const spanMinutes = OVERNIGHT ? (24 - OPEN_HOUR + CLOSE_HOUR) * 60 : (CLOSE_HOUR - OPEN_HOUR) * 60;
-        const lastStart = spanMinutes - MIN_DURATION * 60;
+        const lastStart = spanMinutes - STEP_MINUTES;
         const slotCount = Math.floor(lastStart / STEP_MINUTES) + 1;
 
         for (let i = 0; i < slotCount; i++) {
@@ -352,7 +414,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function fetchAvailability(dateStr) {
-        if (!availabilityUrl) return [];
+        if (!availabilityUrl || !selectedCourt) return [];
         try {
             const url = `${availabilityUrl}?court_id=${selectedCourt.id}&date=${dateStr}`;
             const res = await fetch(url, { headers: { Accept: 'application/json' } });
@@ -365,7 +427,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // ---------- Time slots ----------
+    // ---------- Time slots (multi-select hours) ----------
 
     function minutesSinceOpen(timeStr) {
         const [h, m] = timeStr.split(':').map(Number);
@@ -375,7 +437,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function isSlotBooked(slotSinceOpen) {
-        const slotEnd = slotSinceOpen + MIN_DURATION * 60;
+        const slotEnd = slotSinceOpen + STEP_MINUTES;
         return bookedRanges.some((r) => {
             const rangeStart = minutesSinceOpen(r.start);
             let rangeEnd = minutesSinceOpen(r.end);
@@ -384,11 +446,15 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    function slotPrice() {
+        return selectedCourt ? Number(selectedCourt.price) * (STEP_MINUTES / 60) : 0;
+    }
+
     function renderTimeSlots() {
         timeSlotGrid.innerHTML = '';
 
         const spanMinutes = OVERNIGHT ? (24 - OPEN_HOUR + CLOSE_HOUR) * 60 : (CLOSE_HOUR - OPEN_HOUR) * 60;
-        const lastStart = spanMinutes - MIN_DURATION * 60;
+        const lastStart = spanMinutes - STEP_MINUTES;
 
         for (let offset = 0; offset <= lastStart; offset += STEP_MINUTES) {
             const totalMin = (OPEN_HOUR * 60 + offset) % 1440;
@@ -396,83 +462,111 @@ document.addEventListener('DOMContentLoaded', () => {
             const m = totalMin % 60;
             const timeStr = `${pad(h)}:${pad(m)}`;
 
-            const btn = document.createElement('button');
-            btn.type = 'button';
-            btn.className = 'time-slot-btn';
-            btn.textContent = formatTime(timeStr);
+            const booked = isSlotBooked(offset);
+            const isSelected = selectedSlots.includes(timeStr);
 
-            if (isSlotBooked(offset)) {
-                btn.disabled = true;
-                btn.dataset.tooltip = 'Reserved — already booked by another player';
+            // The row itself is just a container — the time label on the
+            // left is plain text, not clickable. Only the button on the
+            // right (the price pill) actually toggles the selection.
+            const row = document.createElement('div');
+            row.className = 'time-slot-row' + (isSelected ? ' selected' : '') + (booked ? ' disabled' : '');
+
+            const label = document.createElement('span');
+            label.className = 'time-slot-row-time';
+            label.textContent = formatTime(timeStr);
+
+            const toggle = document.createElement('button');
+            toggle.type = 'button';
+            toggle.className = 'time-slot-row-toggle' + (isSelected ? ' selected' : '');
+
+            const check = document.createElement('span');
+            check.className = 'time-slot-row-check';
+            check.textContent = '✓ ';
+            check.setAttribute('aria-hidden', 'true');
+
+            const priceLabel = document.createElement('span');
+            priceLabel.textContent = booked ? 'Booked' : `₱${slotPrice().toLocaleString()}`;
+
+            toggle.appendChild(check);
+            toggle.appendChild(priceLabel);
+
+            if (booked) {
+                toggle.disabled = true;
+                row.dataset.tooltip = 'Reserved — already booked by another player';
             } else {
-                btn.addEventListener('click', () => selectStart(timeStr, btn));
+                toggle.setAttribute('aria-pressed', String(isSelected));
+                toggle.addEventListener('click', () => toggleSlot(timeStr));
             }
 
-            if (timeStr === selectedStart) btn.classList.add('selected');
+            row.appendChild(label);
+            row.appendChild(toggle);
 
-            timeSlotGrid.appendChild(btn);
+            timeSlotGrid.appendChild(row);
         }
     }
-
-    function selectStart(timeStr, btn) {
-        selectedStart = timeStr;
-        selectedDuration = null;
-
-        timeSlotGrid.querySelectorAll('.time-slot-btn').forEach((el) => el.classList.remove('selected'));
-        btn.classList.add('selected');
-
-        durationSection.hidden = false;
-        renderDurationOptions();
-    }
-
-    // ---------- Duration ----------
 
     function timeToMinutes(t) {
         const [h, m] = t.split(':').map(Number);
         return h * 60 + m;
     }
 
-    function renderDurationOptions() {
-        durationGrid.innerHTML = '';
+    function toggleSlot(timeStr) {
+        const idx = selectedSlots.indexOf(timeStr);
 
-        const startMin = timeToMinutes(selectedStart);
-        const startSinceOpen = minutesSinceOpen(selectedStart);
-        const spanMinutes = OVERNIGHT ? (24 - OPEN_HOUR + CLOSE_HOUR) * 60 : (CLOSE_HOUR - OPEN_HOUR) * 60;
-
-        for (let hrs = MIN_DURATION; hrs <= MAX_DURATION; hrs += STEP_MINUTES / 60) {
-            const hours = Math.round(hrs * 100) / 100;
-            const btn = document.createElement('button');
-            btn.type = 'button';
-            btn.className = 'duration-btn';
-            btn.dataset.hours = hours;
-            btn.textContent = hours === 1 ? '1 hr' : `${hours} hrs`;
-
-            const endSinceOpen = startSinceOpen + hours * 60;
-            const overrunsClose = endSinceOpen > spanMinutes;
-
-            const endMinAbs = (startMin + hours * 60) % 1440;
-            const overlapsBooking = bookedRanges.some((r) => {
-                const rangeStart = minutesSinceOpen(r.start);
-                let rangeEnd = minutesSinceOpen(r.end);
-                if (rangeEnd <= rangeStart) rangeEnd += 1440;
-                return startSinceOpen < rangeEnd && endSinceOpen > rangeStart;
-            });
-
-            btn.disabled = overrunsClose || overlapsBooking;
-            if (hours === selectedDuration) btn.classList.add('selected');
-
-            durationGrid.appendChild(btn);
+        if (idx !== -1) {
+            selectedSlots.splice(idx, 1);
+        } else {
+            if (selectedSlots.length >= MAX_DURATION) {
+                showToast(`You can book up to ${MAX_DURATION * STEP_MINUTES / 60} hours per booking.`, 'error');
+                return;
+            }
+            selectedSlots.push(timeStr);
+            selectedSlots.sort((a, b) => minutesSinceOpen(a) - minutesSinceOpen(b));
         }
+
+        renderTimeSlots();
+        updateTimePickerFee();
     }
 
-    durationGrid.addEventListener('click', (e) => {
-        const btn = e.target.closest('.duration-btn');
-        if (!btn || btn.disabled) return;
+    function formatSelectedSlotsSummary(separator = ', ') {
+        if (selectedSlots.length === 0) return '';
 
-        selectedDuration = parseFloat(btn.dataset.hours);
-        durationGrid.querySelectorAll('.duration-btn').forEach((el) => el.classList.remove('selected'));
-        btn.classList.add('selected');
-    });
+        const ranges = [];
+        let rangeStart = selectedSlots[0];
+        let rangeEnd = selectedSlots[0];
+
+        for (let i = 1; i < selectedSlots.length; i++) {
+            const prevSinceOpen = minutesSinceOpen(rangeEnd);
+            const curSinceOpen = minutesSinceOpen(selectedSlots[i]);
+
+            if (curSinceOpen === prevSinceOpen + STEP_MINUTES) {
+                rangeEnd = selectedSlots[i];
+            } else {
+                ranges.push([rangeStart, rangeEnd]);
+                rangeStart = selectedSlots[i];
+                rangeEnd = selectedSlots[i];
+            }
+        }
+        ranges.push([rangeStart, rangeEnd]);
+
+        return ranges.map(([start, end]) => {
+            const endMin = (timeToMinutes(end) + STEP_MINUTES) % 1440;
+            const endStr = `${pad(Math.floor(endMin / 60))}:${pad(endMin % 60)}`;
+            return `${formatTime(start)} – ${formatTime(endStr)}`;
+        }).join(separator);
+    }
+
+    function updateTimePickerFee() {
+        if (!timePickerFeeRanges || !timePickerFeeTotal) return;
+
+        if (selectedSlots.length === 0) {
+            timePickerFeeRanges.textContent = 'Select at least one hour';
+            timePickerFeeTotal.textContent = '₱0';
+        } else {
+            timePickerFeeRanges.textContent = formatSelectedSlotsSummary();
+            timePickerFeeTotal.textContent = `₱${(slotPrice() * selectedSlots.length).toLocaleString()}`;
+        }
+    }
 
     // ---------- Equipment rental ----------
 
@@ -480,8 +574,11 @@ document.addEventListener('DOMContentLoaded', () => {
         equipmentGrid.innerHTML = '<p class="loading-text">Loading equipment…</p>';
 
         try {
-            const url = `${equipmentUrl}?date=${selectedDate}&start_time=${selectedStart}&duration=${selectedDuration}`;
-            const res = await fetch(url, { headers: { Accept: 'application/json' } });
+            const params = new URLSearchParams();
+            params.append('date', selectedDate);
+            selectedSlots.forEach((timeStr) => params.append('slots[]', timeStr));
+
+            const res = await fetch(`${equipmentUrl}?${params.toString()}`, { headers: { Accept: 'application/json' } });
             const data = await res.json();
             equipmentCatalog = data.equipment || [];
             renderEquipment();
@@ -596,9 +693,157 @@ document.addEventListener('DOMContentLoaded', () => {
         selectedPayment = btn.dataset.method;
         paymentGrid.querySelectorAll('.payment-btn').forEach((el) => el.classList.remove('selected'));
         btn.classList.add('selected');
+        syncPaymentQrPanels();
 
         updateSummary();
     });
+
+    // ---------- Payment confirmation polling ----------
+
+    const POLL_INTERVAL_MS = 4000;
+    let pollTimer = null;
+    let countdownTimer = null;
+    let activeCancelUrl = null;
+
+    function stopPolling() {
+        if (pollTimer) clearTimeout(pollTimer);
+        if (countdownTimer) clearInterval(countdownTimer);
+        pollTimer = null;
+        countdownTimer = null;
+    }
+
+    function closeWaitModal() {
+        stopPolling();
+        gcashWaitModal.classList.remove('open');
+    }
+
+    function formatCountdown(msRemaining) {
+        const totalSeconds = Math.max(0, Math.floor(msRemaining / 1000));
+        const mins = Math.floor(totalSeconds / 60);
+        const secs = totalSeconds % 60;
+        return `${mins}:${secs.toString().padStart(2, '0')}`;
+    }
+
+    function watchPaymentConfirmation(bookingId, expiresAtIso, amountLabel, method) {
+        const statusUrl = statusUrlTemplate.replace('__ID__', bookingId);
+        const cancelUrl = cancelUrlTemplate.replace('__ID__', bookingId);
+        activeCancelUrl = cancelUrl;
+        const expiresAt = new Date(expiresAtIso).getTime();
+        const methodLabel = PAYMENT_LABELS[method] || 'the payment provider';
+
+        if (gcashWaitTitle) gcashWaitTitle.textContent = `Waiting for ${methodLabel} Payment`;
+        gcashWaitAmount.textContent = amountLabel;
+        gcashWaitStatus.textContent = `We'll confirm automatically the moment ${methodLabel} notifies us — usually within a minute or two.`;
+        gcashWaitModal.classList.add('open');
+
+        countdownTimer = setInterval(() => {
+            const remaining = expiresAt - Date.now();
+            gcashWaitCountdown.textContent = formatCountdown(remaining);
+            if (remaining <= 0) {
+                clearInterval(countdownTimer);
+                countdownTimer = null;
+                handleCountdownExpired();
+            }
+        }, 1000);
+        gcashWaitCountdown.textContent = formatCountdown(expiresAt - Date.now());
+
+        async function handleCountdownExpired() {
+            if (pollTimer) clearTimeout(pollTimer);
+            pollTimer = null;
+
+            try {
+                const res = await fetch(statusUrl, { headers: { Accept: 'application/json' } });
+                if (res.ok) {
+                    const data = await res.json();
+
+                    if (data.status === 'paid') {
+                        closeWaitModal();
+                        showToast('Payment confirmed — see you on the court!', 'success');
+                        finishBookingReset();
+                        return;
+                    }
+
+                    if (data.status === 'cancelled') {
+                        closeWaitModal();
+                        showToast("We didn't receive that payment in time, so the slot was released. Please rebook when you're ready to pay.", 'error');
+                        finishBookingReset();
+                        return;
+                    }
+                }
+            } catch (err) {
+                console.error(err);
+            }
+
+            try {
+                await fetch(cancelUrl, { method: 'POST', headers: { Accept: 'application/json', ...csrfHeaders() } });
+            } catch (err) {
+                console.error(err);
+            }
+
+            closeWaitModal();
+            showToast("We didn't receive that payment in time, so the slot was released. Please rebook when you're ready to pay.", 'error');
+            finishBookingReset();
+        }
+
+        async function poll() {
+            try {
+                const res = await fetch(statusUrl, { headers: { Accept: 'application/json' } });
+                if (res.ok) {
+                    const data = await res.json();
+
+                    if (data.status === 'paid') {
+                        stopPolling();
+                        gcashWaitStatus.textContent = 'Payment confirmed!';
+                        setTimeout(() => {
+                            closeWaitModal();
+                            showToast('Payment confirmed — see you on the court!', 'success');
+                            finishBookingReset();
+                        }, 900);
+                        return;
+                    }
+
+                    if (data.status === 'cancelled') {
+                        stopPolling();
+                        closeWaitModal();
+                        showToast("We didn't receive that payment in time, so the slot was released. Please rebook when you're ready to pay.", 'error');
+                        finishBookingReset();
+                        return;
+                    }
+                }
+            } catch (err) {
+                console.error(err);
+            }
+
+            pollTimer = setTimeout(poll, POLL_INTERVAL_MS);
+        }
+
+        poll();
+    }
+
+    gcashWaitCancel?.addEventListener('click', async () => {
+        const cancelUrl = activeCancelUrl;
+        closeWaitModal();
+        if (cancelUrl) {
+            try {
+                await fetch(cancelUrl, { method: 'POST', headers: { Accept: 'application/json', ...csrfHeaders() } });
+            } catch (err) {
+                console.error(err);
+            }
+        }
+        showToast('Booking cancelled.', 'success');
+        finishBookingReset();
+    });
+
+    function finishBookingReset() {
+        // Reset back to the saved profile number (if any) rather than
+        // blanking it out — so it's still prefilled next time the person
+        // books, instead of making them retype it every visit.
+        contactNumberInput.value = userPhone || '';
+        equipmentSelection = {};
+        if (gcashRefInput) gcashRefInput.value = '';
+        if (landbankRefInput) landbankRefInput.value = '';
+        resetBookingState();
+    }
 
     // ---------- Summary + validation ----------
 
@@ -616,12 +861,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function updateSummary() {
-        const startMin = timeToMinutes(selectedStart);
-        const endMin = (startMin + selectedDuration * 60) % 1440;
-        const endTimeStr = `${pad(Math.floor(endMin / 60))}:${pad(endMin % 60)}`;
-
         summaryDate.textContent = formatDate(selectedDate);
-        summaryTime.textContent = `${formatTime(selectedStart)} – ${formatTime(endTimeStr)}`;
+        summaryTime.textContent = formatSelectedSlotsSummary();
         summaryPayment.textContent = selectedPayment ? PAYMENT_LABELS[selectedPayment] : '—';
 
         const equipText = equipmentSummaryText();
@@ -632,23 +873,27 @@ document.addEventListener('DOMContentLoaded', () => {
             summaryEquipmentRow.hidden = true;
         }
 
-        const total = selectedCourt.price * selectedDuration + equipmentTotal();
+        const total = slotPrice() * selectedSlots.length + equipmentTotal();
         summaryTotal.textContent = `₱${total.toLocaleString()}`;
     }
 
     function getMissingBookingRequirements() {
         const missing = [];
         if (!selectedDate) missing.push('a date');
-        if (!selectedStart) missing.push('a start time');
-        if (!selectedDuration) missing.push('a duration');
+        if (selectedSlots.length < MIN_DURATION) {
+            missing.push(`at least ${MIN_DURATION * STEP_MINUTES / 60} hour${MIN_DURATION * STEP_MINUTES / 60 === 1 ? '' : 's'}`);
+        }
         return missing;
     }
 
-    function getMissingGuestRequirements() {
+    function getMissingPaymentRequirements() {
         const missing = [];
-        if (!guestNameInput.value.trim()) missing.push('your name');
-        if (!guestContactInput.value.trim()) missing.push('a contact number');
+        if (!contactNumberInput.value.trim()) missing.push('a contact number');
         if (!selectedPayment) missing.push('a payment method');
+        const activeRefInput = getActiveRefInput();
+        if (selectedPayment && !(activeRefInput && activeRefInput.value.trim())) {
+            missing.push(`your ${PAYMENT_LABELS[selectedPayment] || 'payment'} reference number`);
+        }
         return missing;
     }
 
@@ -661,15 +906,21 @@ document.addEventListener('DOMContentLoaded', () => {
     // ---------- Confirm ----------
 
     confirmBtn.addEventListener('click', async () => {
-        const missing = getMissingGuestRequirements();
+        const missing = getMissingPaymentRequirements();
         if (missing.length > 0) {
             showToast(`Please provide ${formatList(missing)} to continue.`, 'error');
-            guestNameInput.classList.toggle('field-invalid', !guestNameInput.value.trim());
-            guestContactInput.classList.toggle('field-invalid', !guestContactInput.value.trim());
+            contactNumberInput.classList.toggle('field-invalid', !contactNumberInput.value.trim());
+            const invalidRefInput = getActiveRefInput();
+            getActiveProofBlock()?.classList.toggle(
+                'payment-proof-invalid',
+                !!selectedPayment && !(invalidRefInput && invalidRefInput.value.trim())
+            );
             return;
         }
+        gcashProofBlock?.classList.remove('payment-proof-invalid');
+        landbankProofBlock?.classList.remove('payment-proof-invalid');
 
-        if (!selectedCourt || !selectedDate || !selectedStart || !selectedDuration) return;
+        if (!selectedCourt || !selectedDate || selectedSlots.length < MIN_DURATION) return;
 
         confirmBtn.disabled = true;
         const originalLabel = confirmBtn.textContent;
@@ -691,11 +942,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 body: JSON.stringify({
                     court_id: selectedCourt.id,
                     date: selectedDate,
-                    start_time: selectedStart,
-                    duration: selectedDuration,
+                    slots: selectedSlots,
                     payment_method: selectedPayment,
-                    guest_name: guestNameInput.value.trim(),
-                    guest_contact: guestContactInput.value.trim(),
+                    contact_number: contactNumberInput.value.trim(),
+                    payment_reference: getActiveRefInput()?.value.trim() || '',
                     equipment: equipmentPayload,
                 }),
             });
@@ -709,31 +959,44 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             if (!res.ok) {
+                if (res.status === 422 && data.errors) {
+                    const firstError = Object.values(data.errors)[0]?.[0];
+                    showToast(firstError || 'Please check the highlighted field.', 'error');
+
+                    contactNumberInput.classList.toggle('field-invalid', !!data.errors.contact_number);
+                    getActiveProofBlock()?.classList.toggle(
+                        'payment-proof-invalid',
+                        !!data.errors.payment_reference
+                    );
+
+                    confirmBtn.disabled = false;
+                    confirmBtn.textContent = originalLabel;
+                    return;
+                }
+
                 showToast(data.message || 'That slot is no longer available.', 'error');
 
-                selectedStart = null;
-                selectedDuration = null;
-                durationSection.hidden = true;
+                selectedSlots = [];
 
                 closePaymentModal();
                 bookedRanges = await fetchAvailability(selectedDate);
                 renderTimeSlots();
-                reopenBookingModal();
+                updateTimePickerFee();
+                openTimePickerModal();
 
                 confirmBtn.disabled = false;
                 confirmBtn.textContent = originalLabel;
                 return;
             }
 
-            showToast(data.message || 'Booking confirmed! See you on the court.', 'success');
             closePaymentModal();
 
-            // No dashboard to send a guest to — reset state so the widget
-            // is ready for another booking instead of redirecting anywhere.
-            guestNameInput.value = '';
-            guestContactInput.value = '';
-            equipmentSelection = {};
-            resetBookingState();
+            if (data.booking && data.booking.status === 'paid') {
+                showToast('Payment already matched — you\'re all set!', 'success');
+                finishBookingReset();
+            } else {
+                watchPaymentConfirmation(data.booking_id, data.expires_at, `₱${Number(data.amount).toFixed(2)}`, selectedPayment);
+            }
         } catch (err) {
             console.error(err);
             showToast('Something went wrong. Please try again.', 'error');

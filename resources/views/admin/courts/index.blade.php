@@ -27,54 +27,56 @@
             </button>
         </div>
 
-        <table>
-            <thead>
-                <tr>
-                    <th>Name</th>
-                    <th>Dimensions (W x L)</th>
-                    <th>Area</th>
-                    <th>Surface</th>
-                    <th>Hourly Rate</th>
-                    <th>Status</th>
-                    <th>Actions</th>
-                </tr>
-            </thead>
-            <tbody>
-                @forelse ($courts as $court)
+        <div class="table-responsive">
+            <table>
+                <thead>
                     <tr>
-                        <td>{{ $court->name }}</td>
-                        <td>{{ number_format($court->width, 2) }}m x {{ number_format($court->length, 2) }}m</td>
-                        <td>{{ number_format($court->area, 2) }} m&sup2;</td>
-                        <td>{{ $court->surface_type ?: '—' }}</td>
-                        <td>₱{{ number_format($court->hourly_rate, 2) }}</td>
-                        <td>
-                            <span class="status status-{{ $court->status }}">
-                                {{ ucfirst($court->status) }}
-                            </span>
-                        </td>
-                        <td class="actions-cell">
-                            <button
-                                type="button"
-                                class="btn-icon btn-edit"
-                                title="Edit court"
-                                onclick='openEditCourtModal(@json($court))'
-                            >Edit</button>
+                        <th>Name</th>
+                        <th>Dimensions (W x L)</th>
+                        <th>Area</th>
+                        <th>Surface</th>
+                        <th>Hourly Rate</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @forelse ($courts as $court)
+                        <tr>
+                            <td>{{ $court->name }}</td>
+                            <td>{{ number_format($court->width, 2) }}m x {{ number_format($court->length, 2) }}m</td>
+                            <td>{{ number_format($court->area, 2) }} m&sup2;</td>
+                            <td>{{ $court->surface_type ?: '—' }}</td>
+                            <td>₱{{ number_format($court->hourly_rate, 2) }}</td>
+                            <td>
+                                <span class="status status-{{ $court->status }}">
+                                    {{ ucfirst($court->status) }}
+                                </span>
+                            </td>
+                            <td class="actions-cell">
+                                <button
+                                    type="button"
+                                    class="btn-icon btn-edit"
+                                    title="Edit court"
+                                    onclick='openEditCourtModal(@json($court))'
+                                >Edit</button>
 
-                            <button
-                                type="button"
-                                class="btn-icon btn-delete"
-                                title="Delete court"
-                                onclick="openDeleteCourtModal({{ $court->id }}, {{ json_encode($court->name) }})"
-                            >Delete</button>
-                        </td>
-                    </tr>
-                @empty
-                    <tr>
-                        <td colspan="7" class="empty-row">No courts added yet.</td>
-                    </tr>
-                @endforelse
-            </tbody>
-        </table>
+                                <button
+                                    type="button"
+                                    class="btn-icon btn-delete"
+                                    title="Delete court"
+                                    onclick="openDeleteCourtModal({{ $court->id }}, {{ json_encode($court->name) }})"
+                                >Delete</button>
+                            </td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="7" class="empty-row">No courts added yet.</td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
     </div>
 
     {{-- Add / Edit Court Modal --}}

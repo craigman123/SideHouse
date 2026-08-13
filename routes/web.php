@@ -2,10 +2,12 @@
 
 use App\Http\Controllers\Admin\ActivityLogController;
 use App\Http\Controllers\Admin\Admin_DashboardController;
+use App\Http\Controllers\Admin\AnnouncementController;
 use App\Http\Controllers\Admin\BookingController;
 use App\Http\Controllers\Admin\CourtController;
 use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\Guest\GuestBookingController;
+use App\Http\Controllers\User\NotificationController;
 use App\Http\Controllers\User\User_UserController;
 use App\Http\Controllers\User\UserDashboardController;
 use App\Http\Controllers\Webhooks\GcashWebhookController;
@@ -35,6 +37,8 @@ Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
 Route::middleware('auth')->group(function () {
     Route::get('/dashboard', [Admin_DashboardController::class, 'index'])->name('admin.dashboard');
+
+    // Bookings CRUD
     Route::get('/bookings', [BookingController::class, 'index'])->name('bookings.index');
 
     // Courts CRUD
@@ -43,7 +47,13 @@ Route::middleware('auth')->group(function () {
     Route::put('/courts/{court}', [CourtController::class, 'update'])->name('courts.update');
     Route::delete('/courts/{court}', [CourtController::class, 'destroy'])->name('courts.destroy');
 
+    // Activity Logs
     Route::get('/activity_logs', [ActivityLogController::class, 'index'])->name('activity_logs.index');
+
+    //Announcements
+    Route::get('/announcements', [AnnouncementController::class, 'index'])->name('admin.announcements.index');
+    Route::get('/announcements/create', [AnnouncementController::class, 'create'])->name('admin.announcements.create');
+    Route::post('/announcements', [AnnouncementController::class, 'store'])->name('admin.announcements.store');
 });
 
 Route::middleware('auth')->group(function () {
@@ -52,6 +62,8 @@ Route::middleware('auth')->group(function () {
     // Book a court
     Route::get('/book', [User_UserController::class, 'createBooking'])->name('book.index');
     Route::get('/book/availability', [User_UserController::class, 'availability'])->name('book.availability');
+    Route::get('/book/equipment-availability', [User_UserController::class, 'equipmentAvailability'])->name('book.equipment-availability');
+    Route::get('/book/bookings/{booking}/status', [User_UserController::class, 'bookingStatus'])->name('book.status');
     Route::post('/book', [User_UserController::class, 'storeBooking'])->name('book.store');
 
     // Booking history
@@ -62,4 +74,9 @@ Route::middleware('auth')->group(function () {
     Route::get('/profile', [User_UserController::class, 'profile'])->name('user.profile');
     Route::put('/profile', [User_UserController::class, 'updateProfile'])->name('user.profile.update');
     Route::delete('/profile', [User_UserController::class, 'destroyAccount'])->name('user.profile.destroy');
+
+    // Notifications
+    Route::get('/notifications', [NotificationController::class, 'index'])->name('user.notifications.index');
+    Route::get('/notifications/unread-count', [NotificationController::class, 'unreadNotificationsCount'])->name('user.notifications.unread-count');
+    Route::post('/notifications/{notification}/mark-read', [NotificationController::class, 'markNotificationRead'])->name('user.notifications.mark-read');
 });

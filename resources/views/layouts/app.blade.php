@@ -28,6 +28,7 @@
 
             <label class="nav-label">Users</label>
             <a href="#">Customers</a>
+            <a href="{{ route('admin.announcements.index') }}" class="{{ request()->routeIs('admin.announcements.*') ? 'active' : '' }}">Announcements</a>
 
             <label class="nav-label">Audit Logs</label>
             <a href="#">Reports</a>

@@ -46,40 +46,43 @@
     <div class="panel">
         <h2>All Bookings <span class="count-badge">{{ $bookings->total() }}</span></h2>
 
-        <table>
-            <thead>
-                <tr>
-                    <th>Customer</th>
-                    <th>Court</th>
-                    <th>Date</th>
-                    <th>Time</th>
-                    <th>Amount</th>
-                    <th>Status</th>
-                </tr>
-            </thead>
-            <tbody>
-                @forelse ($bookings as $booking)
+        <div class="table-responsive">
+            <table>
+                <thead>
                     <tr>
-                        <td class="cell-name">{{ $booking->customer_name }}</td>
-                        <td>{{ $booking->court_id ? 'Court ' . $booking->court_id : '—' }}</td>
-                        <td>{{ \Carbon\Carbon::parse($booking->date)->format('M d, Y') }}</td>
-                        <td>{{ \Carbon\Carbon::parse($booking->start_time)->format('g:i A') }} - {{ \Carbon\Carbon::parse($booking->end_time)->format('g:i A') }}</td>
-                        <td>₱{{ number_format($booking->amount, 2) }}</td>
-                        <td>
-                            <span class="status status-{{ $booking->status }}">
-                                {{ ucfirst($booking->status) }}
-                            </span>
-                        </td>
+                        <th>Customer</th>
+                        <th>Court</th>
+                        <th>Date</th>
+                        <th>Time</th>
+                        <th>Amount</th>
+                        <th>Status</th>
                     </tr>
-                @empty
-                    <tr>
-                        <td colspan="6" class="empty-row">No bookings found.</td>
-                    </tr>
-                @endforelse
-            </tbody>
-        </table>
+                </thead>
+                <tbody>
+                    @forelse ($bookings as $booking)
+                        <tr>
+                            <td class="cell-name">{{ $booking->customer_name }}</td>
+                            <td>{{ $booking->court_id ? 'Court ' . $booking->court_id : '—' }}</td>
+                            <td>{{ \Carbon\Carbon::parse($booking->date)->format('M d, Y') }}</td>
+                            <td>{{ \Carbon\Carbon::parse($booking->start_time)->format('g:i A') }} - {{ \Carbon\Carbon::parse($booking->end_time)->format('g:i A') }}</td>
+                            <td>₱{{ number_format($booking->amount, 2) }}</td>
+                            <td>
+                                <span class="status status-{{ $booking->status }}">
+                                    {{ ucfirst($booking->status) }}
+                                </span>
+                            </td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="6" class="empty-row">No bookings found.</td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
 
         {{-- Pagination --}}
+        <p style="text-align: center">Showing {{ $bookings->firstItem() }} to {{ $bookings->lastItem() }} of {{ $bookings->total() }} results</p>
         @if ($bookings->hasPages())
             <div class="pagination-wrapper">
                 {{ $bookings->links() }}

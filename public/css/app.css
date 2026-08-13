@@ -518,7 +518,7 @@ body {
 
 /* ---------- Responsive ---------- */
 
-@media (max-width: 1450px) {
+@media (max-width: 800px) {
     body {
         flex-direction: column;
     }

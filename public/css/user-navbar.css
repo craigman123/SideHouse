@@ -149,6 +149,15 @@ html, body {
     color: #8b949e;
 }
 
+svg {
+    vertical-align: middle;
+}
+
+.date a {
+    color: #8b949e;
+    text-decoration: none;
+}
+
 .content {
     padding: 24px;
     flex: 1;

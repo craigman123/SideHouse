@@ -14,7 +14,7 @@
     <div
         id="flash-data"
         data-success="{{ session('success') }}"
-        data-error="{{ $errors->hasAny(['name', 'username', 'email']) ? $errors->first() : '' }}"
+        data-error="{{ $errors->hasAny(['name', 'username', 'email', 'phone_number']) ? $errors->first() : '' }}"
         data-delete-error="{{ $errors->first('confirmation') }}"
     ></div>
 
@@ -73,18 +73,16 @@
                     </div>
 
                     <div class="profile-item">
-                        <label>Role</label>
-                        <input type="text" value="{{ ucfirst($user->role) }}" readonly disabled>
-                    </div>
-
-                    <div class="profile-item">
-                        <label>Member Since</label>
-                        <input type="text" value="{{ $user->created_at->format('F d, Y') }}" readonly disabled>
-                    </div>
-
-                    <div class="profile-item">
-                        <label>User ID</label>
-                        <input type="text" value="{{ $user->user_id }}" readonly disabled>
+                        <label for="phone_number">Phone Number</label>
+                        <input
+                            type="tel"
+                            id="phone_number"
+                            name="phone_number"
+                            value="{{ old('phone_number', $user->phone_number) }}"
+                            placeholder="09XX XXX XXXX"
+                            autocomplete="tel"
+                            readonly
+                        >
                     </div>
                 </div>
 

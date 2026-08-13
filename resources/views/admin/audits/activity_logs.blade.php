@@ -55,7 +55,7 @@
                             <td class="cell-name">{{ $log->user_name ?? 'Guest' }}</td>
                             <td><code>{{ $log->action }}</code></td>
                             <td>{{ $log->description }}</td>
-                            <td class="cell-muted">{{ $log->subject_label ?? '—' }}</td>
+                            <td class="cell-muted">{{ $log->subject_type ?? '—' }}</td>
                             <td class="cell-muted">{{ $log->ip_address ?? '—' }}</td>
                         </tr>
                     @empty
@@ -68,6 +68,7 @@
         </div>
 
         {{-- Pagination --}}
+        <p style="text-align: center">Showing {{ $logs->firstItem() }} to {{ $logs->lastItem() }} of {{ $logs->total() }} results</p>
         @if ($logs->hasPages())
             <div class="pagination-wrapper">
                 {{ $logs->links() }}

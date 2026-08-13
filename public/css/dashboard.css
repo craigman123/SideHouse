@@ -116,6 +116,11 @@ table tr:hover td {
     padding: 20px;
 }
 
+.table-responsive {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
 /* ---------- Responsive ---------- */
 
 @media (max-width: 900px) {
