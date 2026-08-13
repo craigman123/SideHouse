@@ -23,7 +23,7 @@ class GuestBookingController extends Controller
     // guest booking has different validation and can never call auth(),
     // so keeping it fully separate avoids accidentally coupling the two.
     // If OPEN_HOUR/CLOSE_HOUR/etc. change, update both places.
-    private const OPEN_HOUR = 16;
+    private const OPEN_HOUR = 8;
     private const CLOSE_HOUR = 7;
     private const BOOKING_STEP_MINUTES = 30;
     private const MIN_DURATION_HOURS = 1;
