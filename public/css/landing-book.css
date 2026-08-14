@@ -228,10 +228,7 @@ html {
 .modal-box-timepicker {
     display: flex;
     flex-direction: column;
-    /* Leaves room for the header/back-button/actions around it so the
-       whole modal — list, fee panel, and buttons — fits within the
-       viewport instead of getting cut off on short phone screens. */
-    max-height: 85vh;
+    max-height: 95vh;
 }
 
 .time-picker-body {
@@ -290,7 +287,7 @@ html {
     display: flex;
     flex-direction: column;
     gap: 6px;
-    max-height: min(320px, 40vh);
+    max-height: min(320px, 95vh);
     overflow-y: auto;
     padding-right: 4px;
 }

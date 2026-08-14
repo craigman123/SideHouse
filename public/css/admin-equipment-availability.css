@@ -1,0 +1,435 @@
+/* ---------- Admin Equipment Availability ---------- */
+:root {
+    --main-bg: #161b22;
+    --main-border: #30363d;
+    --card-bg: #fff;
+    --selected-bg: #0f1621;
+    --selected-text: #fcfcfc;
+    --reports-card-bg: #161b22;
+    --summary-text: hsl(225, 100%, 99%);
+    --reports-text: hsl(225, 100%, 99%);
+    --skeleton-base: #232b36;
+    --skeleton-highlight: #313d4c;
+    --reports-accent: #3fb950;
+}
+/* ---------- Admin Equipment Availability ---------- */
+
+.equip-page {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    padding: 24px;
+}
+
+.equip-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 16px;
+}
+
+.equip-title {
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--reports-text, #111827);
+}
+
+.equip-subtitle {
+    margin: 4px 0 0;
+    color: var(--reports-muted, #6b7280);
+    font-size: 0.9rem;
+}
+
+.equip-date-wrap {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.equip-date-label {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--reports-muted, #6b7280);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.equip-date-input {
+    background: var(--selected-bg, #0f1621);
+    color: var(--reports-text, var(--selected-text, #111827));
+    border: 1px solid var(--reports-border, var(--main-border, #30363d));
+    border-radius: 10px;
+    padding: 8px 12px;
+    font-size: 0.85rem;
+    font-family: inherit;
+}
+
+.equip-date-input:focus {
+    outline: none;
+    border-color: var(--reports-accent, #2563eb);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.25);
+}
+
+/* ---------- Flash + Add Equipment panel ---------- */
+
+.equip-flash {
+    border-radius: 10px;
+    padding: 12px 16px;
+    font-size: 0.9rem;
+}
+
+.equip-flash-success {
+    color: #15803d;
+    background: #f0fdf4;
+    border: 1px solid #bbf7d0;
+}
+
+.equip-flash-error {
+    color: #b91c1c;
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+}
+
+.equip-add-panel {
+    background: var(--reports-card-bg, #161b22);
+    border: 1px solid var(--reports-border, var(--main-border, #30363d));
+    border-radius: 14px;
+    padding: 16px 20px;
+}
+
+.equip-add-panel summary {
+    cursor: pointer;
+    font-weight: 700;
+    color: var(--reports-accent, #2563eb);
+    font-size: 0.9rem;
+    list-style: none;
+}
+
+.equip-add-panel summary::-webkit-details-marker {
+    display: none;
+}
+
+.equip-add-form {
+    margin-top: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.equip-field-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 16px;
+}
+
+.equip-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.equip-field label {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--reports-muted, #6b7280);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.equip-field input,
+.equip-field select {
+    appearance: none;
+    -webkit-appearance: none;
+    background: var(--selected-bg, #0f1621);
+    color: var(--reports-text, var(--selected-text, #111827));
+    border: 1px solid var(--reports-border, var(--main-border, #30363d));
+    border-radius: 10px;
+    padding: 8px 12px;
+    font-size: 0.9rem;
+    font-family: inherit;
+}
+
+.equip-field select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='%236b7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='5 8 10 13 15 8'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    background-size: 14px;
+    padding-right: 32px;
+    cursor: pointer;
+}
+
+.equip-field input:focus,
+.equip-field select:focus {
+    outline: none;
+    border-color: var(--reports-accent, #2563eb);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.25);
+}
+
+.equip-field-error {
+    color: #f87171;
+    font-size: 0.78rem;
+}
+
+.equip-form-actions {
+    display: flex;
+    justify-content: flex-end;
+}
+
+.equip-page .btn {
+    border: none;
+    border-radius: 8px;
+    padding: 9px 18px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.equip-page .btn-primary {
+    background: var(--reports-accent, #2563eb);
+    color: #fff;
+}
+
+/* ---------- Table ---------- */
+
+.equip-table-wrap {
+    background: var(--reports-card-bg, #161b22);
+    border: 1px solid var(--reports-border, var(--main-border, #30363d));
+    border-radius: 14px;
+    padding: 8px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.equip-table {
+    /* Not width:100% — that forces columns to shrink-to-fit any
+       container, however narrow, producing the squeezed/unreadable
+       columns seen on a tablet-width viewport. min-width instead lets
+       the table stay legible and the wrapper above scroll horizontally
+       once the viewport can't fit it. */
+    width: 100%;
+    min-width: 640px;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+}
+
+.equip-table th {
+    text-align: left;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--reports-muted, #6b7280);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--reports-border, var(--main-border, #30363d));
+}
+
+.equip-table td {
+    padding: 12px 16px;
+    color: var(--reports-text, #111827);
+    border-bottom: 1px solid var(--reports-border, var(--main-border, #30363d));
+}
+
+.equip-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.equip-item-name {
+    font-weight: 600;
+}
+
+.equip-category-pill {
+    display: inline-block;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--reports-muted, #6b7280);
+}
+
+.equip-available-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 28px;
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-weight: 700;
+    font-size: 0.85rem;
+}
+
+.equip-available-ok {
+    background: rgba(16, 185, 129, 0.15);
+    color: #10b981;
+}
+
+.equip-available-low {
+    background: rgba(245, 158, 11, 0.15);
+    color: #f59e0b;
+}
+
+.equip-available-none {
+    background: rgba(239, 68, 68, 0.15);
+    color: #ef4444;
+}
+
+.equip-empty-note,
+.equip-error {
+    margin: 16px;
+    text-align: center;
+    font-size: 0.88rem;
+}
+
+.equip-empty-note {
+    color: var(--reports-muted, #6b7280);
+}
+
+.equip-error {
+    color: #b91c1c;
+}
+
+/* ---------- Skeleton ---------- */
+
+.skeleton {
+    display: inline-block;
+    width: 60%;
+    height: 1rem;
+    border-radius: 6px;
+    background: linear-gradient(90deg, var(--skeleton-base, #232b36) 25%, var(--skeleton-highlight, #313d4c) 37%, var(--skeleton-base, #232b36) 63%);
+    background-size: 400% 100%;
+    animation: skeleton-shimmer 1.4s ease infinite;
+}
+
+@keyframes skeleton-shimmer {
+    0% { background-position: 100% 50%; }
+    100% { background-position: 0 50%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .skeleton {
+        animation: none;
+        background: var(--skeleton-base, #232b36);
+    }
+}
+
+.equip-table tbody { position: relative; }
+
+/* Real rows are injected by JS and replace the skeleton rows entirely —
+   see admin-equipment-availability.js — so no extra hide/show class is
+   needed here beyond the initial skeleton markup rendered by Blade. */
+
+.equip-edit-btn {
+    background: transparent;
+    border: 1px solid var(--reports-border, var(--main-border, #30363d));
+    color: var(--reports-text, #111827);
+    border-radius: 8px;
+    padding: 6px 10px;
+    margin-bottom: 2px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    width: 100%;
+}
+
+.equip-edit-btn:hover {
+    border-color: var(--reports-accent, #2563eb);
+    color: var(--reports-accent, #2563eb);
+}
+
+.equip-delete-btn {
+    background: transparent;
+    border: 1px solid var(--reports-border, var(--main-border, #30363d));
+    color: #ef4444;
+    border-radius: 8px;
+    padding: 6px 10px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    width: 100%;
+}
+
+.equip-delete-btn:hover {
+    border-color: #ef4444;
+    color: #fff;
+    background: #ef4444;
+}
+
+.modal-overlay-equipment {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.55);
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    padding: 16px;
+}
+
+/* ---------- Edit modal ---------- */
+/* Self-contained (not assumed to already exist in the admin layout) —
+   uses the same .modal-overlay + .open toggle convention as the guest
+   booking widget's modals for consistency across the codebase. */
+
+.modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.55);
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    padding: 16px;
+}
+
+.modal-overlay.open {
+    display: flex;
+}
+
+.equip-modal {
+    position: relative;
+    background: var(--reports-card-bg, #161b22);
+    border: 1px solid var(--reports-border, var(--main-border, #30363d));
+    border-radius: 14px;
+    padding: 24px;
+    width: 100%;
+    max-width: 480px;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.equip-modal-title {
+    margin: 0 0 16px;
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--reports-text, #111827);
+}
+
+.equip-modal-close {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    background: transparent;
+    border: none;
+    color: var(--reports-muted, #6b7280);
+    font-size: 1.4rem;
+    line-height: 1;
+    cursor: pointer;
+    padding: 4px;
+}
+
+.equip-modal-close:hover {
+    color: var(--reports-text, #111827);
+}
+
+/* ---------- Responsive ---------- */
+
+@media (max-width: 640px) {
+    .equip-header {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .equip-table th:nth-child(2),
+    .equip-table td:nth-child(2) {
+        display: none;
+    }
+}

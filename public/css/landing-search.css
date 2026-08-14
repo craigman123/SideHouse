@@ -21,6 +21,14 @@
     margin: 20px;
 }
 
+/* Toggled on <body> by openTimePickerModal()/closeTimePickerModal() in
+   guest-book.js — the nav is position:fixed and sits above everything
+   including modal backdrops, so it needs to be actively hidden rather
+   than just covered. */
+body.nav-hidden-for-modal .landing-nav {
+    display: none;
+}
+
 /* Add padding to body to account for fixed nav */
 body {
     padding-top: 68px;
@@ -548,6 +556,16 @@ body {
     }
 }
 
+@media (max-width: 950px) {
+    .nav-toggle {
+        display: flex;
+    }
+
+    .nav-links {
+        display: none;
+    }
+}
+
 @media (max-width: 768px) {
     .landing-nav {
         padding: 10px 20px;
@@ -567,10 +585,6 @@ body {
         display: none;
     }
 
-    /* Show mobile toggle */
-    .nav-toggle {
-        display: flex;
-    }
 
     /* Show mobile overlay */
     .nav-mobile-overlay {
@@ -937,8 +951,25 @@ body {
     align-items: center;
     justify-content: space-between;
     flex-direction: row;
-    padding: 20px 20px 0 20px;
     border-bottom: 1px solid #21262d;
+}
+
+.equipment-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-direction: row;
+    border-bottom: 1px solid #21262d;
+    padding: 18px 20px 12px;
+}
+
+.payment-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-direction: row;
+    border-bottom: 1px solid #21262d;
+    padding: 18px 20px 12px;
 }
 
 .search-modal-header {

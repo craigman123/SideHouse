@@ -40,6 +40,7 @@
                     <a href="#features" class="nav-link">Features</a>
                     <a href="#faq" class="nav-link">FAQ</a>
                     <a href="#findUs" class="nav-link">Find Us</a>
+                    <a href="#getMore" class="nav-link">Create Account</a>
                 </div>
 
                     <button type="button" class="nav-search-show" id="navSearchTrigger" aria-label="Find your booking" aria-haspopup="dialog">
@@ -70,6 +71,7 @@
                 <a href="#features" class="nav-link">Features</a>
                 <a href="#faq" class="nav-link">FAQ</a>
                 <a href="#findUs" class="nav-link">Find Us</a>
+                <a href="#getMore" class="nav-link">Create Account</a>
             </div>
 
             <div class="nav-search-wrap">
@@ -317,7 +319,7 @@
 
         <section class="member-cta fade-in">
             <div class="member-cta-inner">
-                <h2>Get More From Every Visit</h2>
+                <h2 id="getMore">Get More From Every Visit</h2>
                 <p>Create a free Side House account to view a detailed history of your bookings, rebook your favorite court and time slot in a single click, and unlock member-only perks like hourly rates discounts and discounted equipment rentals. It only takes a minute.</p>
                 <a href="{{ route('register') }}" class="btn-hero-primary">Create Your Account</a>
                 <p class="member-cta-sub">Already have an account? <a href="{{ route('login') }}">Log in</a></p>
@@ -449,7 +451,7 @@
     {{-- Modal 3: equipment rental --}}
     <div class="modal-overlay" id="equipmentModal">
         <div class="modal-box modal-box-lg modal-box-scrollable">
-            <div class="modal-header-equipment">
+            <div class="modal-header equipment-header">
                 <h3>Rent Equipment</h3>
             </div>
 
@@ -474,7 +476,7 @@
     {{-- Modal 4: guest details + payment + confirm --}}
     <div class="modal-overlay" id="courtPaymentModal">
         <div class="modal-box modal-box-lg modal-box-scrollable">
-            <div class="modal-header">
+            <div class="modal-header payment-header">
                 <h3>Almost Done</h3>
                 <button type="button" class="modal-close" id="courtPaymentModalClose" aria-label="Close">&times;</button>
             </div>

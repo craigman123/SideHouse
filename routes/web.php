@@ -15,6 +15,7 @@ use App\Http\Controllers\User\User_UserController;
 use App\Http\Controllers\User\UserDashboardController;
 use App\Http\Controllers\Webhooks\GcashWebhookController;
 use App\Http\Controllers\Webhooks\LandbankWebhookController;
+use App\Http\Controllers\Admin\EquipmentAvailabilityController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', [GuestBookingController::class, 'landing'])->name('landing');
@@ -75,6 +76,13 @@ Route::middleware('auth')->group(function () {
     Route::put('/admin/configuration/hours', [ConfigurationController::class, 'updateHours'])->name('admin.configuration.hours.update');
     Route::post('/admin/configuration/closures', [ConfigurationController::class, 'storeClosure'])->name('admin.configuration.closures.store');
     Route::delete('/admin/configuration/closures/{closure}', [ConfigurationController::class, 'destroyClosure'])->name('admin.configuration.closures.destroy');
+
+    //Equipment
+    Route::get('/admin/equipment/availability', [EquipmentAvailabilityController::class, 'index'])->name('admin.equipment.availability');
+    Route::get('/admin/equipment/availability/data', [EquipmentAvailabilityController::class, 'data'])->name('admin.equipment.availability.data');
+    Route::post('/equipment', [EquipmentAvailabilityController::class, 'store'])->name('admin.equipment.store');
+    Route::put('/equipment/{equipment}', [EquipmentAvailabilityController::class, 'update'])->name('admin.equipment.update');
+
 });
 
 Route::middleware('auth')->group(function () {
@@ -101,4 +109,5 @@ Route::middleware('auth')->group(function () {
     Route::get('/notifications/unread-count', [NotificationController::class, 'unreadCount'])->name('user.notifications.unread-count');
     Route::post('/notifications/{notification}/mark-read', [NotificationController::class, 'markRead'])->name('user.notifications.mark-read');
     Route::post('/notifications/mark-all-read', [NotificationController::class, 'markAllRead'])->name('user.notifications.mark-all-read');
+    
 });

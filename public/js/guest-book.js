@@ -483,6 +483,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function closeGcashWaitModal() {
         stopGcashPolling();
         gcashWaitModal.classList.remove('open');
+        syncNavVisibilityForModals();
     }
 
     function formatCountdown(msRemaining) {
@@ -515,6 +516,7 @@ document.addEventListener('DOMContentLoaded', () => {
         gcashWaitAmount.textContent = amountLabel;
         gcashWaitStatus.textContent = `We'll confirm automatically the moment ${methodLabel} notifies us — usually within a minute or two.`;
         gcashWaitModal.classList.add('open');
+        syncNavVisibilityForModals();
 
         gcashCountdownTimer = setInterval(() => {
             const remaining = expiresAt - Date.now();
@@ -620,6 +622,18 @@ document.addEventListener('DOMContentLoaded', () => {
         poll();
     }
 
+    function returnToPaymentModal() {
+        const previousPayment = selectedPayment;
+        openPaymentModal();
+        if (previousPayment) {
+            const btn = paymentGrid.querySelector(`.payment-btn[data-method="${previousPayment}"]`);
+            if (btn) btn.classList.add('selected');
+            selectedPayment = previousPayment;
+            syncPaymentQrPanels();
+            updateSummary();
+        }
+    }
+
     if (gcashWaitCancel) {
         gcashWaitCancel.addEventListener('click', async () => {
             const cancelUrl = gcashActiveCancelUrl;
@@ -632,11 +646,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
             showToast('Booking cancelled.', 'success');
-            finishBookingReset();
+            returnToPaymentModal();
         });
     }
 
     function finishBookingReset() {
+        closePaymentModal();
         guestNameInput.value = '';
         guestContactInput.value = '';
         clearGoogleSignIn();
@@ -650,22 +665,38 @@ document.addEventListener('DOMContentLoaded', () => {
     // ---------- Modal open/close (equipment + payment only — the calendar
     // is inline in the page now, not a modal) ----------
 
+    // The topbar is position:fixed and sits above everything (including
+    // every modal's own backdrop), so it has to be actively hidden rather
+    // than just covered. Called from every modal's open/close instead of
+    // toggling a class per-modal, so it stays correct however modals chain
+    // into each other (e.g. equipment -> payment -> gcash wait) — it's
+    // hidden the moment any .modal-overlay is open, and only comes back
+    // once none of them are.
+    function syncNavVisibilityForModals() {
+        const anyModalOpen = document.querySelector('.modal-overlay.open') !== null;
+        document.body.classList.toggle('nav-hidden-for-modal', anyModalOpen);
+    }
+
     function openEquipmentModal() {
         equipmentModal.classList.add('open');
         loadEquipment();
+        syncNavVisibilityForModals();
     }
 
     function closeEquipmentModal() {
         equipmentModal.classList.remove('open');
+        syncNavVisibilityForModals();
     }
 
     function openTimePickerModal() {
         timePickerModal.classList.add('open');
         if (timeSlotGrid) timeSlotGrid.scrollTop = 0;
+        syncNavVisibilityForModals();
     }
 
     function closeTimePickerModal() {
         timePickerModal.classList.remove('open');
+        syncNavVisibilityForModals();
     }
 
     // ---------- Day-stepper (prev/next day arrows in the time picker
@@ -739,10 +770,12 @@ document.addEventListener('DOMContentLoaded', () => {
         syncPaymentQrPanels();
         updateSummary();
         paymentModal.classList.add('open');
+        syncNavVisibilityForModals();
     }
 
     function closePaymentModal() {
         paymentModal.classList.remove('open');
+        syncNavVisibilityForModals();
     }
 
     // ---------- Google Sign-In (Google confirms the address, not a
@@ -1608,19 +1641,21 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
-            closePaymentModal();
-
             if (data.booking && data.booking.status === 'paid') {
                 // The GCash/Landbank SMS beat the guest to "Confirm" —
                 // store() already matched it to this booking retroactively
                 // (see GuestBookingController::store()'s UnmatchedPayment
-                // claim), so there's nothing left to poll for. Skip
-                // straight to the same success state watchPaymentConfirmation
-                // would've landed on, instead of opening a "waiting for
-                // payment" modal that would just spin forever.
+                // claim), so there's nothing left to poll for. The webhook
+                // already detected the payment, so close the payment modal
+                // now and skip straight to the same success state
+                // watchPaymentConfirmation would've landed on.
                 showToast('Payment already matched — you\'re all set!', 'success');
                 finishBookingReset();
             } else {
+                // courtPaymentModal stays open (underneath the wait modal,
+                // which layers on top since it comes later in the DOM) —
+                // it's only closed once the webhook actually detects the
+                // payment, inside finishBookingReset() below.
                 watchPaymentConfirmation(data.booking_id, data.poll_token, data.expires_at, `₱${Number(data.amount).toFixed(2)}`, selectedPayment);
             }
         } catch (err) {
