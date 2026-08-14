@@ -624,7 +624,7 @@ body {
     }
 }
 
-@media (max-width: 380px) {
+@media (max-width: 400px) {
 
     .nav-left .nav-title-landing {
         display: none;

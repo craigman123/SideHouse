@@ -451,7 +451,6 @@
         <div class="modal-box modal-box-lg modal-box-scrollable">
             <div class="modal-header-equipment">
                 <h3>Rent Equipment</h3>
-                <button type="button" class="modal-close" id="equipmentModalClose" aria-label="Close">&times;</button>
             </div>
 
             <button type="button" class="modal-back" id="backToBookingFromEquipment">&larr; Back to date &amp; time</button>
