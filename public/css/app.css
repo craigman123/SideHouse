@@ -85,11 +85,12 @@ body {
 }
 
 .topbar {
+    height: 100px;
     background-color: #161b22;
     padding: 16px 24px;
     display: flex;
     justify-content: space-between;
-    align-items: center;
+    align-items: flex-end;
     border-bottom: 1px solid #30363d;
 }
 
