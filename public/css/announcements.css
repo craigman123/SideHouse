@@ -125,13 +125,14 @@
 .row-delete-btn {
     background: none;
     border: none;
-    color: #6e7681;
+    color: #000000;
     font-size: 13px;
     font-weight: 600;
     cursor: pointer;
     padding: 4px 8px;
     border-radius: 6px;
     transition: color 0.15s ease, background-color 0.15s ease;
+    background-color: #620000;
 }
 
 .row-delete-btn:hover {
