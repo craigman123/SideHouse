@@ -49,42 +49,6 @@
                         </svg>
                         <button type="button" class="nav-search-clear" id="navSearchClear" aria-label="Clear search" hidden>&times;</button>
                     </div>
-
-                    <div class="nav-search-results" id="navSearchResults" hidden>
-                        <div class="nav-search-results-inner">
-                            <p class="nav-search-results-label">Quick Links</p>
-                            <a href="#bookNow" class="nav-search-result-item" data-keyword="book court reserve">
-                                <span class="nav-search-result-icon">📅</span>
-                                <span class="nav-search-result-text">Book a Court</span>
-                            </a>
-                            <a href="#faq" class="nav-search-result-item" data-keyword="faq questions help">
-                                <span class="nav-search-result-icon">❓</span>
-                                <span class="nav-search-result-text">FAQ</span>
-                            </a>
-                            <a href="#courtStats" class="nav-search-result-item" data-keyword="stats usage chart">
-                                <span class="nav-search-result-icon">📊</span>
-                                <span class="nav-search-result-text">Court Usage Stats</span>
-                            </a>
-                            <p class="nav-search-results-label">Features</p>
-                            <a href="#features" class="nav-search-result-item" data-keyword="gear equipment paddle racket">
-                                <span class="nav-search-result-icon">🎒</span>
-                                <span class="nav-search-result-text">Equipment Rental</span>
-                            </a>
-                            <a href="#features" class="nav-search-result-item" data-keyword="comfort room restroom bathroom">
-                                <span class="nav-search-result-icon">🚻</span>
-                                <span class="nav-search-result-text">Comfort Room</span>
-                            </a>
-                            <p class="nav-search-results-label">Account</p>
-                            <a href="{{ route('register') }}" class="nav-search-result-item" data-keyword="register signup account member">
-                                <span class="nav-search-result-icon">👤</span>
-                                <span class="nav-search-result-text">Create Account</span>
-                            </a>
-                            <a href="{{ route('login') }}" class="nav-search-result-item" data-keyword="login signin">
-                                <span class="nav-search-result-icon">🔑</span>
-                                <span class="nav-search-result-text">Log In</span>
-                            </a>
-                        </div>
-                    </div>
                 <a href="#bookNow" class="nav-link nav-link-book">Book Now</a>
             </div>
 
