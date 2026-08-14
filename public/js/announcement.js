@@ -11,6 +11,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const confirmSendBtn = document.getElementById('confirmSendBtn');
     const cancelSendConfirm = document.getElementById('cancelSendConfirm');
 
+    const deleteModal = document.getElementById('confirmDeleteModal');
+    const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
+    const cancelDeleteConfirm = document.getElementById('cancelDeleteConfirm');
+
     const form = document.getElementById('announcementForm');
     const sendBtn = document.getElementById('sendAnnouncementBtn');
     const titleInput = document.getElementById('title');
@@ -18,6 +22,18 @@ document.addEventListener('DOMContentLoaded', () => {
     const titleError = document.getElementById('titleError');
     const bodyError = document.getElementById('bodyError');
     const storeUrl = form?.dataset.storeUrl;
+
+    // Set by openDeleteConfirm() right before the modal opens, read by
+    // confirmDeleteBtn's click handler — simplest way to pass "which row"
+    // through a modal that's shared by every delete button in the table.
+    let pendingDeleteUrl = null;
+    let pendingDeleteRow = null;
+
+    function csrfToken() {
+        return form?.querySelector('input[name="_token"]')?.value
+            || document.querySelector('meta[name="csrf-token"]')?.content
+            || '';
+    }
 
     function showToast(message, type = 'success') {
         if (!toastContainer) return;
@@ -75,8 +91,84 @@ document.addEventListener('DOMContentLoaded', () => {
         if (e.target === confirmModal) closeConfirm();
     });
 
+    // ---------- Confirm-delete modal ----------
+
+    function openDeleteConfirm(url, row) {
+        pendingDeleteUrl = url;
+        pendingDeleteRow = row;
+        deleteModal.classList.add('open');
+    }
+
+    function closeDeleteConfirm() {
+        deleteModal.classList.remove('open');
+        pendingDeleteUrl = null;
+        pendingDeleteRow = null;
+    }
+
+    cancelDeleteConfirm?.addEventListener('click', closeDeleteConfirm);
+    deleteModal?.addEventListener('click', (e) => {
+        if (e.target === deleteModal) closeDeleteConfirm();
+    });
+
+    // Delegated on the table body rather than bound per-button, so this
+    // keeps working for rows prependAnnouncement() adds later without
+    // needing to re-wire anything after a successful send.
+    document.getElementById('announcementsTableBody')?.addEventListener('click', (e) => {
+        const btn = e.target.closest('.row-delete-btn');
+        if (!btn) return;
+
+        const row = btn.closest('tr');
+        openDeleteConfirm(btn.dataset.deleteUrl, row);
+    });
+
+    confirmDeleteBtn?.addEventListener('click', async () => {
+        if (!pendingDeleteUrl || !pendingDeleteRow) return;
+
+        const url = pendingDeleteUrl;
+        const row = pendingDeleteRow;
+        const rowDeleteBtn = row.querySelector('.row-delete-btn');
+
+        closeDeleteConfirm();
+        confirmDeleteBtn.disabled = true;
+        if (rowDeleteBtn) rowDeleteBtn.disabled = true;
+
+        try {
+            const res = await fetch(url, {
+                method: 'DELETE',
+                headers: {
+                    Accept: 'application/json',
+                    'X-CSRF-TOKEN': csrfToken(),
+                },
+            });
+
+            const data = await res.json().catch(() => ({}));
+
+            if (!res.ok) {
+                showToast(data.message || 'Could not delete this announcement.', 'error');
+                if (rowDeleteBtn) rowDeleteBtn.disabled = false;
+                return;
+            }
+
+            row.remove();
+            showToast(data.message || 'Announcement deleted.', 'success');
+
+            const tbody = document.getElementById('announcementsTableBody');
+            if (tbody && tbody.children.length === 0) {
+                document.getElementById('announcementsListWrap').innerHTML =
+                    '<p class="modal-text" id="noAnnouncementsMsg">No announcements have been sent yet.</p>';
+            }
+        } catch (err) {
+            console.error(err);
+            showToast('Something went wrong. Please try again.', 'error');
+            if (rowDeleteBtn) rowDeleteBtn.disabled = false;
+        } finally {
+            confirmDeleteBtn.disabled = false;
+        }
+    });
+
     document.addEventListener('keydown', (e) => {
         if (e.key !== 'Escape') return;
+        if (deleteModal?.classList.contains('open')) { closeDeleteConfirm(); return; }
         if (confirmModal?.classList.contains('open')) { closeConfirm(); return; }
         if (modal?.classList.contains('open')) closeModal();
     });
@@ -88,7 +180,7 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('announcementsListWrap').innerHTML = `
                 <table class="data-table" style="width: 100%;" id="announcementsTable">
                     <thead>
-                        <tr><th>Title</th><th>Message</th><th>Sent</th></tr>
+                        <tr><th>Title</th><th>Message</th><th>Sent</th><th></th></tr>
                     </thead>
                     <tbody id="announcementsTableBody"></tbody>
                 </table>
@@ -98,15 +190,26 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const tbody = document.getElementById('announcementsTableBody');
         const tr = document.createElement('tr');
+        tr.dataset.announcementId = item.id;
+
         const titleTd = document.createElement('td');
         const bodyTd = document.createElement('td');
         const sentTd = document.createElement('td');
+        const actionsTd = document.createElement('td');
 
         titleTd.textContent = item.title;
         bodyTd.textContent = item.body.length > 80 ? `${item.body.slice(0, 80)}…` : item.body;
         sentTd.textContent = item.created_at;
 
-        tr.append(titleTd, bodyTd, sentTd);
+        const deleteBtn = document.createElement('button');
+        deleteBtn.type = 'button';
+        deleteBtn.className = 'row-delete-btn';
+        deleteBtn.dataset.deleteUrl = item.delete_url;
+        deleteBtn.setAttribute('aria-label', 'Delete announcement');
+        deleteBtn.textContent = 'Delete';
+        actionsTd.appendChild(deleteBtn);
+
+        tr.append(titleTd, bodyTd, sentTd, actionsTd);
         tbody.prepend(tr);
     }
 
@@ -131,7 +234,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 method: 'POST',
                 headers: {
                     Accept: 'application/json',
-                    'X-CSRF-TOKEN': form.querySelector('input[name="_token"]').value,
+                    'X-CSRF-TOKEN': csrfToken(),
                 },
                 body: new FormData(form),
             });
