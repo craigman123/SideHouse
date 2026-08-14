@@ -57,6 +57,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/announcements', [AnnouncementController::class, 'index'])->name('admin.announcements.index');
     Route::get('/announcements/create', [AnnouncementController::class, 'create'])->name('admin.announcements.create');
     Route::post('/announcements', [AnnouncementController::class, 'store'])->name('admin.announcements.store');
+    Route::delete('/announcements/{announcement}', [AnnouncementController::class, 'destroy'])->name('admin.announcements.destroy');
 
     // Profile
     Route::get('/admin/profile', [AdminProfileController::class, 'profile'])->name('admin.profile');
