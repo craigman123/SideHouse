@@ -1,59 +1,163 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Side House
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+A court booking system for padel and pickleball, built on Laravel. Supports both
+guest (no account) and signed-in bookings, equipment rental, membership discounts,
+and GCash/Landbank payment confirmation via SMS webhook.
 
-## About Laravel
+## Tech Stack
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+- **Backend:** Laravel (PHP)
+- **Database:** MySQL (via XAMPP or your own server)
+- **Frontend:** Blade templates + vanilla JS, built assets via Vite
+- **Payments:** GCash & Landbank, confirmed through an SMS-forwarding webhook (no payment gateway API — see [Payment Webhook Setup](#payment-webhook-setup))
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## Requirements
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+- PHP 8.1+
+- Composer
+- MySQL (XAMPP, or a standalone install)
+- Node.js + npm
+- A phone with SMS-forwarding capability, if you want live payment confirmation (optional for local dev)
 
-## Learning Laravel
+## 1. Clone & Install Dependencies
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework. You can also check out [Laravel Learn](https://laravel.com/learn), where you will be guided through building a modern Laravel application.
+```bash
+git clone <your-repo-url> SideHouse
+cd SideHouse
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+# PHP dependencies — this is the step that's missing if you see
+# "Failed to open stream: vendor/autoload.php" when running artisan.
+composer install
 
-## Laravel Sponsors
+# JS dependencies
+npm install
+```
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+## 2. Environment Setup
 
-### Premium Partners
+```bash
+cp .env.example .env
+php artisan key:generate
+```
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
+Open `.env` and set your database credentials:
 
-## Contributing
+```env
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=side_house
+DB_USERNAME=root
+DB_PASSWORD=
+```
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+Create the database itself (e.g. in phpMyAdmin, or via the MySQL CLI):
 
-## Code of Conduct
+```sql
+CREATE DATABASE side_house;
+```
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+## 3. Migrate & Seed
 
-## Security Vulnerabilities
+```bash
+php artisan migrate
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+# If you have seeders for courts, equipment, and default business hours:
+php artisan db:seed
+```
+
+This creates all tables, including `courts`, `bookings`, `booking_slots`,
+`booking_equipment`, `equipment`, `business_settings`, `court_closures`,
+`memberships`, and `unmatched_payments`.
+
+## 4. Build Frontend Assets
+
+```bash
+npm run dev      # local development, with hot reload
+# or
+npm run build    # production build
+```
+
+## 5. Run the App
+
+```bash
+php artisan serve
+```
+
+Visit **http://127.0.0.1:8000**. The landing page is the guest booking flow —
+no login required. Signed-in users get a fuller dashboard at `/my-dashboard`
+after registering/logging in.
+
+## Payment Webhook Setup
+
+GCash and Landbank payments aren't confirmed through a payment gateway API —
+they're confirmed by forwarding the bank/e-wallet's own "money received" SMS
+to this app. This only matters for **live payment confirmation**; you can
+develop and test the booking flow itself without it.
+
+1. Set up GCash for Business (merchant QR) and/or a Landbank account with SMS
+   transfer alerts enabled.
+2. Install an SMS-forwarding app (e.g. an Android "SMS Forwarder" app) on a
+   phone with that SIM.
+3. Configure it to POST every incoming SMS to:
+   - `https://yourdomain.com/webhooks/gcash-sms`
+   - `https://yourdomain.com/webhooks/landbank-sms`
+
+   with header `X-Webhook-Token: <your-secret>` and JSON body
+   `{"message": "<full SMS text>"}`.
+4. Add the matching secrets to `.env`:
+
+   ```env
+   GCASH_SMS_WEBHOOK_SECRET=your-secret-here
+   LANDBANK_SMS_WEBHOOK_SECRET=your-secret-here
+
+   # Optional: lock the webhook to the forwarding phone's IP/VPN egress
+   GCASH_SMS_ALLOWED_IPS=
+   LANDBANK_SMS_ALLOWED_IPS=
+
+   # Temporarily true while tuning the SMS parser, then back to false
+   SMS_WEBHOOK_LOG_RAW=false
+   ```
+
+5. For local testing without a real phone, you can POST a sample SMS body to
+   the webhook endpoint directly with `curl` or Postman, using the same
+   header/secret.
+
+> **Note:** the Landbank SMS wording in the webhook parser is an unverified
+> placeholder — capture a real SMS (`SMS_WEBHOOK_LOG_RAW=true`) and adjust
+> `LandbankWebhookController::parseLandbankSms()` to match before relying on
+> it for real bookings.
+
+## Scheduled Tasks
+
+Run the scheduler so pending bookings expire correctly and old unmatched-SMS
+records get cleaned up:
+
+```bash
+php artisan schedule:work
+```
+
+(In production, this is a single cron entry calling `php artisan schedule:run`
+every minute — see Laravel's [task scheduling docs](https://laravel.com/docs/scheduling).)
+
+## Project Structure Notes
+
+- **Guest booking flow** — `app/Http/Controllers/Guest/GuestBookingController.php`, `resources/views/landing.blade.php`, `public/js/guest-book.js`
+- **Signed-in user booking flow** — `app/Http/Controllers/User/User_UserController.php`, `resources/views/user/bookings/book.blade.php`, `public/js/book.js`
+- **Admin** — courts, bookings, activity logs, announcements, reports, and business-hours/closure configuration under `app/Http/Controllers/Admin/`
+- **Payment webhooks** — `app/Http/Controllers/Webhooks/`
+- **Booking hours & closures** — `app/Models/BusinessSetting.php`, `app/Models/CourtClosure.php`, configured from the admin Configuration page
+
+## Troubleshooting
+
+| Symptom | Fix |
+|---|---|
+| `Failed to open stream: vendor/autoload.php` | Run `composer install` — dependencies were never installed. |
+| `SQLSTATE[HY000] [1049] Unknown database` | Create the database from step 2, and confirm `.env` matches. |
+| `No application encryption key has been specified` | Run `php artisan key:generate`. |
+| Styles/JS not loading | Run `npm run dev` or `npm run build`, and make sure `php artisan serve` is running from the project root. |
+| GCash/Landbank payments never confirm | Expected in local dev without the SMS forwarder set up — see [Payment Webhook Setup](#payment-webhook-setup). |
 
 ## License
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+The Laravel framework this project is built on is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).

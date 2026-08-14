@@ -211,6 +211,108 @@ class GuestBookingController extends Controller
         ]);
     }
 
+    /**
+     * Backs the landing page's "My Bookings" search tab — lets a guest
+     * look up their own bookings by the phone number or email they
+     * booked with, without an account or session. Loose digit-only
+     * matching on contact_number (guests type it in all kinds of
+     * formats: spaces, dashes, +63 vs 0-prefix) and a case-insensitive
+     * match on email, since those are the only two things a guest has
+     * to identify themselves with here.
+     */
+    public function search(Request $request)
+    {
+        $validated = $request->validate([
+            'phone' => ['nullable', 'string', 'max:30'],
+            'email' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        $phone = trim((string) ($validated['phone'] ?? ''));
+        $email = trim((string) ($validated['email'] ?? ''));
+        $digits = preg_replace('/\D/', '', $phone);
+
+        // Same readiness bar the frontend (landing-search.js) enforces
+        // before it even fires the request — re-checked here so a
+        // half-typed digit string or a bare '@' can't return the whole
+        // table if this endpoint is ever hit directly. Neither field
+        // being usable means there's nothing to search on at all —
+        // returning early here also avoids building an empty where()
+        // closure below, which would otherwise put no constraint on the
+        // query and match every booking in the system.
+        $phoneReady = strlen($digits) >= 7;
+        $emailReady = $email !== '' && str_contains($email, '@');
+
+        if (! $phoneReady && ! $emailReady) {
+            return response()->json(['bookings' => []]);
+        }
+
+        $bookings = Booking::with(['court', 'equipment'])
+            ->where(function ($q) use ($phoneReady, $emailReady, $email, $digits) {
+                // Both fields can be filled in at once — treated as "match
+                // either", not "match both", since a guest might only
+                // remember one of the two correctly.
+                if ($emailReady) {
+                    $q->orWhere('email', 'ILIKE', $email);
+                }
+                if ($phoneReady) {
+                    $q->orWhereRaw("regexp_replace(contact_number, '\\D', '', 'g') LIKE ?", ['%' . $digits . '%']);
+                }
+            })
+            ->orderByDesc('date')
+            ->orderByDesc('start_time')
+            ->limit(20)
+            ->get();
+
+        // Resolved by id rather than through a relation on the
+        // booking_equipment rows themselves (e.g. $line->equipmentItem)
+        // since that relation's exact name isn't something this method
+        // otherwise depends on — a plain id-to-name lookup stays correct
+        // no matter what that relation is called or whether it exists.
+        $equipmentNames = Equipment::whereIn(
+            'id',
+            $bookings->flatMap(fn ($b) => $b->equipment->pluck('equipment_id'))->unique()
+        )->pluck('name', 'id');
+
+        return response()->json([
+            'bookings' => $bookings->map(fn ($booking) => [
+                'court'      => $booking->court?->name ?? 'Court',
+                'date'       => Carbon::parse($booking->date)->format('M d, Y'),
+                'time'       => Carbon::parse($booking->start_time)->format('g:i A') . ' – ' . Carbon::parse($booking->end_time)->format('g:i A'),
+                'status'     => $booking->status,
+                'amount'     => (float) $booking->amount,
+                'payment'    => $booking->payment_method,
+                'reference'  => $this->maskReference($booking->gcash_reference_number),
+                'equipment'  => $booking->equipment->map(fn ($line) => [
+                    'name'     => $equipmentNames[$line->equipment_id] ?? 'Item',
+                    'quantity' => $line->quantity,
+                ])->values(),
+            ]),
+        ]);
+    }
+
+    /**
+     * Partially masks a payment reference for the guest-facing "Find Your
+     * Booking" lookup — this endpoint needs no login (just a phone number
+     * or email), so the full reference shouldn't be handed back over the
+     * wire. Uses a fixed-length mask rather than one sized to the input,
+     * so the asterisks don't themselves leak how long the real reference
+     * is.
+     */
+    private function maskReference(?string $reference): ?string
+    {
+        if ($reference === null || $reference === '') {
+            return $reference;
+        }
+
+        $length = strlen($reference);
+
+        if ($length <= 6) {
+            return substr($reference, 0, 1) . str_repeat('*', max($length - 1, 0));
+        }
+
+        return substr($reference, 0, 4) . '***' . substr($reference, -2);
+    }
+
     public function store(Request $request)
     {
         $validated = $request->validate([

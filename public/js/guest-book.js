@@ -870,7 +870,7 @@ document.addEventListener('DOMContentLoaded', () => {
         renderCalendar();
     }
 
-    document.getElementById('equipmentModalClose').addEventListener('click', closeEquipmentModal);
+    document.getElementById('equipmentModalClose')?.addEventListener('click', closeEquipmentModal);
     equipmentModal.addEventListener('click', (e) => {
         if (e.target === equipmentModal) closeEquipmentModal();
     });
@@ -1109,6 +1109,31 @@ document.addEventListener('DOMContentLoaded', () => {
         return Number(selectedCourt.price) * (STEP_MINUTES / 60);
     }
 
+    // Slot rows show the full "3:00 - 4:00 AM" window rather than just the
+    // start time, so it's clear how long each STEP_MINUTES block actually
+    // is at a glance. AM/PM is only shown once (on the end time) unless
+    // the slot actually crosses noon/midnight, since repeating it on both
+    // ends when they match is just noise.
+    function formatSlotRange(totalMin) {
+        const endMin = (totalMin + STEP_MINUTES) % 1440;
+        const startH = Math.floor(totalMin / 60);
+        const startM = totalMin % 60;
+        const endH = Math.floor(endMin / 60);
+        const endM = endMin % 60;
+
+        const startPeriod = startH >= 12 ? 'PM' : 'AM';
+        const endPeriod = endH >= 12 ? 'PM' : 'AM';
+        const startHour12 = startH % 12 === 0 ? 12 : startH % 12;
+        const endHour12 = endH % 12 === 0 ? 12 : endH % 12;
+
+        const startLabel = `${startHour12}:${pad(startM)}`;
+        const endLabel = `${endHour12}:${pad(endM)} ${endPeriod}`;
+
+        return startPeriod === endPeriod
+            ? `${startLabel} - ${endLabel}`
+            : `${startLabel} ${startPeriod} - ${endLabel}`;
+    }
+
     function renderTimeSlots() {
         timeSlotGrid.innerHTML = '';
 
@@ -1134,7 +1159,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const label = document.createElement('span');
             label.className = 'time-slot-row-time';
-            label.textContent = formatTime(timeStr);
+            label.textContent = formatSlotRange(totalMin);
 
             const toggle = document.createElement('button');
             toggle.type = 'button';

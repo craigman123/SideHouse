@@ -21,7 +21,9 @@ Route::get('/', [GuestBookingController::class, 'landing'])->name('landing');
 
 Route::get('/book/monthly-stats', [GuestBookingController::class, 'monthlyStats'])->name('guest.book.monthly-stats');
 Route::get('/guest/bookings/{booking}/status', [GuestBookingController::class, 'status'])->name('guest.book.status');
+Route::get('/guest/bookings/search', [GuestBookingController::class, 'search'])->name('guest.book.search');
 Route::post('/guest/bookings/{booking}/cancel', [GuestBookingController::class, 'cancel'])->name('guest.book.cancel');
+Route::put('/guest/bookings/{booking}/reference', [GuestBookingController::class, 'updateReference'])->name('guest.book.update-reference');
 Route::post('/webhooks/gcash-sms', [GcashWebhookController::class, 'handleSms']);
 Route::post('/webhooks/landbank-sms', [LandbankWebhookController::class, 'handleSms']);
 

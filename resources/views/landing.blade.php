@@ -42,13 +42,12 @@
                     <a href="#findUs" class="nav-link">Find Us</a>
                 </div>
 
-                    <div class="nav-search-show">
+                    <button type="button" class="nav-search-show" id="navSearchTrigger" aria-label="Find your booking" aria-haspopup="dialog">
                         <svg class="nav-search-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
                             <circle cx="11" cy="11" r="7" />
                             <path d="M16.5 16.5l4.5 4.5" />
                         </svg>
-                        <button type="button" class="nav-search-clear" id="navSearchClear" aria-label="Clear search" hidden>&times;</button>
-                    </div>
+                    </button>
                 <a href="#bookNow" class="nav-link nav-link-book">Book Now</a>
             </div>
 
@@ -83,9 +82,10 @@
                         type="text"
                         class="nav-search-input"
                         id="navSearchInputMobile"
-                        placeholder="Search courts, dates, or equipment..."
-                        aria-label="Search"
+                        placeholder="Find your booking..."
+                        aria-label="Find your booking"
                         autocomplete="off"
+                        readonly
                     >
                     <button type="button" class="nav-search-clear" id="navSearchClearMobile" aria-label="Clear search" hidden>&times;</button>
                 </div>
@@ -402,8 +402,8 @@
     {{-- Modal 2.5: time picker --}}
     <div class="modal-overlay" id="timePickerModal">
         <div class="modal-box modal-box-lg modal-box-timepicker">
-            <div class="modal-header">
-                <button type="button" class="modal-back" id="backToCalendar">&larr; Back to date</button>
+            <div class="modal-header-timepicker">
+                <button type="button" class="modal-back modal-back-time" id="backToCalendar">&larr; Back to date</button>
                 <button type="button" class="modal-close" id="timePickerModalClose" aria-label="Close">&times;</button>
             </div>
 
@@ -449,7 +449,7 @@
     {{-- Modal 3: equipment rental --}}
     <div class="modal-overlay" id="equipmentModal">
         <div class="modal-box modal-box-lg modal-box-scrollable">
-            <div class="modal-header">
+            <div class="modal-header-equipment">
                 <h3>Rent Equipment</h3>
                 <button type="button" class="modal-close" id="equipmentModalClose" aria-label="Close">&times;</button>
             </div>
@@ -599,34 +599,61 @@
     </div>\
 
     <!-- Search modal: insert above your scripts, before the closing </body> -->
-    <div class="modal-overlay" id="searchModal" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="searchModalLabel" hidden>
+    <div class="modal-overlay" id="searchModal" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="searchModalLabel" data-bookings-search-url="{{ route('guest.book.search') }}" hidden>
         <div class="modal-box modal-box-search" role="document">
             <div class="modal-header">
-                <h3 id="searchModalLabel">Search</h3>
-                <button type="button" class="modal-close" id="searchModalClose" aria-label="Close search">&times;</button>
+                <div class="search-modal-header">
+                    <h3 id="searchModalLabel">Find Your Booking</h3>
+                    <button type="button" class="modal-close" id="searchModalClose" aria-label="Close search">&times;</button>
+                </div>
+                <p class="search-modal-hint">Look up a booking using the phone number or email you used when booking.</p>
             </div>
 
             <div class="modal-body">
-                <div class="nav-search modal-search-row" role="search">
-                    <svg class="nav-search-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                        <circle cx="11" cy="11" r="7" />
-                        <path d="M16.5 16.5l4.5 4.5" />
-                    </svg>
-                    <input
-                        id="searchModalInput"
-                        class="nav-search-input"
-                        type="search"
-                        autocomplete="off"
-                        placeholder="Search courts, dates, equipment..."
-                        aria-label="Search"
-                    />
-                    <button id="searchModalClear" class="nav-search-clear" aria-label="Clear search" hidden>&times;</button>
-                </div>
-
-                <div id="searchModalResults" class="nav-search-results" role="listbox" aria-live="polite">
-                    <div class="nav-search-results-inner">
-                        <!-- Results will be injected here by JS -->
+                <form id="bookingSearchForm" class="booking-search-form">
+                    <div class="filter-group">
+                        <label for="searchPhoneInput">Phone Number</label>
+                        <div class="booking-search-field">
+                            <input
+                                id="searchPhoneInput"
+                                class="booking-search-input"
+                                type="text"
+                                inputmode="tel"
+                                autocomplete="tel"
+                                placeholder="09XX XXX XXXX"
+                                aria-label="Phone number"
+                            />
+                            <button type="button" class="booking-search-field-clear" id="searchPhoneClear" aria-label="Clear phone number" hidden>&times;</button>
+                        </div>
                     </div>
+
+                    <div class="filter-divider" role="separator" aria-hidden="true">
+                        <span class="filter-line"></span>
+                        <span class="filter-or">or</span>
+                        <span class="filter-line"></span>
+                    </div>
+
+                    <div class="filter-group">
+                        <label for="searchEmailInput">Email Address</label>
+                        <div class="booking-search-field">
+                            <input
+                                id="searchEmailInput"
+                                class="booking-search-input"
+                                type="text"
+                                inputmode="email"
+                                autocomplete="email"
+                                placeholder="you@example.com"
+                                aria-label="Email address"
+                            />
+                            <button type="button" class="booking-search-field-clear" id="searchEmailClear" aria-label="Clear email" hidden>&times;</button>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn-filter booking-search-submit" id="bookingSearchSubmit">Find Bookings</button>
+                </form>
+
+                <div id="searchModalResults" class="booking-search-results" role="listbox" aria-live="polite">
+                    <div class="booking-search-results-inner"></div>
                 </div>
             </div>
         </div>

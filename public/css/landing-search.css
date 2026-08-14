@@ -131,6 +131,41 @@ body {
     box-shadow: 0 0 0 3px rgba(63, 185, 80, 0.12);
 }
 
+/* Desktop search trigger — icon-only button that opens #searchModal.
+   Previously unstyled (no cursor, no hover/focus feedback), which read
+   as broken even after the click handler is wired up. */
+.nav-search-show {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 38px;
+    height: 38px;
+    padding: 0;
+    background: none;
+    border: 1.5px solid transparent;
+    border-radius: 8px;
+    cursor: pointer;
+    color: #6e7681;
+    transition: border-color 0.15s ease, color 0.15s ease, background-color 0.15s ease;
+}
+
+.nav-search-show:hover {
+    border-color: #30363d;
+    background-color: rgba(255, 255, 255, 0.03);
+    color: #3fb950;
+}
+
+.nav-search-show:focus-visible {
+    outline: none;
+    border-color: #3fb950;
+    box-shadow: 0 0 0 3px rgba(63, 185, 80, 0.15);
+}
+
+.nav-search-show .nav-search-icon {
+    width: 20px;
+    height: 20px;
+}
+
 .nav-search-icon {
     color: #6e7681;
     flex-shrink: 0;
@@ -590,7 +625,8 @@ body {
 }
 
 @media (max-width: 380px) {
-    .nav-search-show {
+
+    .nav-left .nav-title-landing {
         display: none;
     }
 }
@@ -599,6 +635,10 @@ body {
     .landing-nav {
         padding: 8px 12px;
         height: 56px;
+    }
+
+    .nav-search-show {
+        display: none;
     }
 
     body {
@@ -660,10 +700,6 @@ body {
     .nav-search-icon {
         width: 23px;
         height: 23px;
-    }
-
-    .nav-left .nav-title-landing {
-        display: none;
     }
 
     .nav-search-input {
@@ -891,8 +927,32 @@ body {
     display: flex;
     align-items: center;
     justify-content: space-between;
+    flex-direction: column;
     padding: 18px 20px;
     border-bottom: 1px solid #21262d;
+}
+
+.modal-header-timepicker{
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-direction: row;
+    padding: 20px 20px 0 20px;
+    border-bottom: 1px solid #21262d;
+}
+
+.search-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+}
+
+.search-modal-hint {
+    margin: 10px 0 0;
+    font-size: 13px;
+    color: #8b949e;
+    line-height: 1.5;
 }
 
 .modal-header h3 {
@@ -919,54 +979,209 @@ body {
     padding: 18px 20px 24px;
 }
 
-/* reuse nav search layout */
-.modal-search-row {
+.booking-search-result {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 12px 14px;
+    border-radius: 8px;
+    background-color: #0d1117;
+    border: 1px solid #21262d;
+    margin-bottom: 8px;
+}
+
+.booking-search-result:last-child {
+    margin-bottom: 0;
+}
+
+.booking-search-result-top {
     display: flex;
     align-items: center;
+    justify-content: space-between;
     gap: 12px;
-    margin-bottom: 12px;
-    background-color: #0d1117;
-    border-radius: 999px;
-    padding: 6px 12px;
-    border: 1px solid #30363d;
 }
 
-.modal-search-row .nav-search-icon { color: #6e7681; }
+.booking-search-result-main {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
 
-.nav-search-input {
+.booking-search-result-court {
+    font-size: 13px;
+    font-weight: 700;
+    color: #f0f6fc;
+}
+
+.booking-search-result-datetime {
+    font-size: 12px;
+    color: #8b949e;
+}
+
+.booking-search-result-equipment {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.booking-search-equipment-chip {
+    font-size: 11px;
+    font-weight: 600;
+    color: #c9d1d9;
+    background-color: #21262d;
+    border-radius: 999px;
+    padding: 3px 10px;
+}
+
+.booking-search-result-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-top: 8px;
+    border-top: 1px solid #21262d;
+}
+
+.booking-search-result-total-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: #8b949e;
+}
+
+.booking-search-result-total-amount {
+    font-size: 15px;
+    font-weight: 800;
+    color: #3fb950;
+}
+
+/* Phone / email lookup form */
+.booking-search-form {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    margin-bottom: 16px;
+}
+
+.booking-search-form .filter-group label {
+    display: block;
+    font-size: 13px;
+    font-weight: 700;
+    color: #f0f6fc;
+    margin-bottom: 6px;
+}
+
+.filter-divider {
+    display: flex;
+    align-items: center;
+    margin: 2px 0;
+}
+
+.filter-or {
+    font-size: 13px;
+    font-weight: 700;
+    color: #8b949e;
+    margin: 0 12px;
+}
+
+.filter-line {
     flex: 1;
-    padding: 10px 12px;
-    background: none;
-    border: none;
+    height: 1px;
+    background-color: #21262d;
+}
+
+.booking-search-field {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.booking-search-input {
+    width: 100%;
+    padding: 12px 40px 12px 14px;
+    background-color: #0d1117;
+    border: 1.5px solid #30363d;
+    border-radius: 10px;
     color: #f0f6fc;
     font-size: 15px;
-    outline: none;
+    font-weight: 600;
+    box-sizing: border-box;
 }
 
-.nav-search-clear { background: none; border: none; color: #6e7681; cursor: pointer; }
+.booking-search-input::placeholder {
+    color: #6e7681;
+    font-weight: 500;
+}
 
-.nav-search-results {
+.booking-search-input:focus {
+    outline: none;
+    border-color: #3fb950;
+    box-shadow: 0 0 0 3px rgba(63, 185, 80, 0.15);
+}
+
+/* One clear button per field, placed inside the input itself — this
+   input is intentionally type="text" rather than type="search", since
+   type="search" adds the browser's own built-in clear icon on top of
+   this one, producing two overlapping "x" buttons in the same field. */
+.booking-search-field-clear {
+    position: absolute;
+    right: 8px;
+    background: none;
+    border: none;
+    color: #6e7681;
+    font-size: 18px;
+    line-height: 1;
+    cursor: pointer;
+    padding: 6px;
+    border-radius: 6px;
+}
+
+.booking-search-field-clear:hover {
+    color: #f0f6fc;
+    background-color: #21262d;
+}
+
+.booking-search-submit {
+    width: 100%;
+    padding: 14px;
+    background-color: #3fb950;
+    color: #fff;
+    font-size: 16px;
+    font-weight: 700;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: background-color 0.2s ease, transform 0.2s ease
+}
+
+/* Old shared nav-search-input/clear rules (used by the mobile nav's
+   trigger-styled input, see landing.css/landing_blade.php) stay as-is —
+   the modal no longer reuses that row layout, it has its own fields
+   above. */
+
+/* This modal container used to share the .nav-search-results class name
+   with the old nav-bar dropdown (see the .nav-search-results rule further
+   up this file, which sets position:absolute for that unrelated dropdown).
+   That dropdown's markup doesn't exist anymore, but the class name was
+   still being reused here, and CSS doesn't let a later rule "unset" a
+   property the earlier rule set unless it's explicitly overridden — so
+   this container was silently inheriting position:absolute and being
+   shoved off-screen relative to the modal, even though the results were
+   rendering correctly into the DOM. Renamed so it can't inherit stray
+   rules from that dead code again. */
+.booking-search-results {
     background-color: transparent;
     border-radius: 10px;
     max-height: 52vh;
     overflow-y: auto;
 }
 
-.nav-search-results-inner {
+.booking-search-results-inner {
     display: flex;
     flex-direction: column;
     gap: 8px;
 }
 
-/* highlighted state consistent with your existing list styles */
-.nav-search-result-item.highlighted {
-    background-color: #21262d;
-    color: #f0f6fc;
-    outline: 2px solid rgba(63,185,80,0.12);
-}
-
-/* fallback empty state (cloned message) */
-.nav-search-results-empty {
+.booking-search-results-empty {
     padding: 18px;
     text-align: center;
     color: #6e7681;
@@ -976,8 +1191,71 @@ body {
 /* Keep mobile-friendly */
 @media (max-width: 640px) {
     .modal-box-search {
-        width: calc(100% - 28px);
+        width: calc(100% - 1px);
         margin: 12px auto;
         border-radius: 12px;
+        /* Phones with a small viewport height (or the on-screen keyboard
+           eating half the screen once a field is focused) need the modal
+           itself to scroll, not just the results list inside it. */
+        max-height: calc(100dvh - 24px);
+        overflow-y: auto;
     }
+
+    .modal-header {
+        padding: 16px;
+    }
+
+    .modal-body {
+        padding: 14px 16px 20px;
+    }
+
+    .booking-search-input {
+        font-size: 16px; /* iOS Safari zooms the page if a focused input's font is under 16px */
+        padding: 12px 38px 12px 12px;
+    }
+
+    .booking-search-submit {
+        padding: 12px 18px;
+        font-size: 15px;
+    }
+
+    .booking-search-results {
+        max-height: 42vh;
+    }
+}
+
+@media (max-width: 380px) {
+    .search-modal-header h3 {
+        font-size: 16px;
+    }
+
+    .search-modal-hint {
+        font-size: 12px;
+    }
+
+    .booking-search-form {
+        gap: 10px;
+    }
+}
+
+.booking-search-result-payment {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 0;
+    font-size: 12px;
+    color: #8b949e;
+    border-top: 1px solid #21262d;
+    margin-top: 4px;
+}
+
+.booking-search-result-payment-method {
+    font-weight: 700;
+    color: #c9d1d9;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+.booking-search-result-payment-ref {
+    font-family: ui-monospace, monospace;
 }
