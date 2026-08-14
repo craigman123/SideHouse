@@ -82,6 +82,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/admin/equipment/availability/data', [EquipmentAvailabilityController::class, 'data'])->name('admin.equipment.availability.data');
     Route::post('/equipment', [EquipmentAvailabilityController::class, 'store'])->name('admin.equipment.store');
     Route::put('/equipment/{equipment}', [EquipmentAvailabilityController::class, 'update'])->name('admin.equipment.update');
+    Route::delete('/equipment/{equipment}', [EquipmentAvailabilityController::class, 'destroy'])->name('admin.equipment.destroy');
 
 });
 
