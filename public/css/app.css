@@ -18,6 +18,7 @@ body {
 
 /* Sidebar */
 .sidebar {
+    position: fixed;
     width: 240px;
     background-color: #010409;
     color: #c9d1d9;
