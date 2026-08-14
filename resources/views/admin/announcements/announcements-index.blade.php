@@ -85,6 +85,30 @@
         </div>
     </div>
 
+    {{-- ---------- Confirm-delete modal ----------
+         Deliberately spells out that this only removes the admin-side
+         record — the notification itself already landed in users' bells
+         and can't be un-sent. That distinction matters here specifically
+         because "delete" right next to "send to all users" could easily
+         read as "unsend" if it isn't said outright. --}}
+    <div class="modal-overlay" id="confirmDeleteModal">
+        <div class="modal-box" style="max-width: 420px;">
+            <div class="modal-header">
+                <h2>Delete this announcement?</h2>
+            </div>
+
+            <p class="modal-text" style="margin-bottom: 20px;">
+                This only removes it from your list here — it does not un-send
+                the notification, which every user already received.
+            </p>
+
+            <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                <button type="button" class="btn" id="cancelDeleteConfirm">Cancel</button>
+                <button type="button" class="btn btn-danger" id="confirmDeleteBtn">Delete</button>
+            </div>
+        </div>
+    </div>
+
     <div id="announcementsListWrap">
             @if($announcements->isEmpty())
                 <p class="modal-text" id="noAnnouncementsMsg">No announcements have been sent yet.</p>
@@ -95,14 +119,23 @@
                             <th>Title</th>
                             <th>Message</th>
                             <th>Sent</th>
+                            <th></th>
                         </tr>
                     </thead>
                     <tbody id="announcementsTableBody">
                         @foreach($announcements as $announcement)
-                            <tr>
+                            <tr data-announcement-id="{{ $announcement->id }}">
                                 <td>{{ $announcement->title }}</td>
                                 <td>{{ Str::limit($announcement->body, 80) }}</td>
                                 <td>{{ $announcement->created_at->format('M d, Y g:i A') }}</td>
+                                <td>
+                                    <button
+                                        type="button"
+                                        class="row-delete-btn"
+                                        data-delete-url="{{ route('admin.announcements.destroy', $announcement) }}"
+                                        aria-label="Delete announcement"
+                                    >Delete</button>
+                                </td>
                             </tr>
                         @endforeach
                     </tbody>
