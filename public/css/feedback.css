@@ -1,0 +1,297 @@
+/* Feedback & Suggestions page */
+
+.feedback-form-panel {
+    max-width: 640px;
+}
+
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-group:last-of-type {
+    margin-bottom: 24px;
+}
+
+.form-group label {
+    display: block;
+    font-size: 13px;
+    font-weight: 700;
+    color: #f0f6fc;
+    margin-bottom: 8px;
+}
+
+.form-group select,
+.form-group textarea {
+    width: 100%;
+    padding: 12px 14px;
+    background-color: #0d1117;
+    border: 1.5px solid #30363d;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #f0f6fc;
+    font-family: inherit;
+    resize: vertical;
+    box-sizing: border-box;
+}
+
+.form-group select:focus,
+.form-group textarea:focus {
+    outline: none;
+    border-color: #3fb950;
+    box-shadow: 0 0 0 3px rgba(63, 185, 80, 0.15);
+}
+
+/* Buttons — normally defined in courts.css, but that stylesheet isn't
+   loaded on this page (it also carries court-modal/table styles this
+   page doesn't need), so the submit button is styled directly here
+   instead of pulling in the whole file for two classes. */
+.btn {
+    padding: 10px 18px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    border: 1px solid transparent;
+    letter-spacing: 0.2px;
+}
+
+.btn-primary-sm {
+    background-color: #238636;
+    color: #fff;
+    border: 1px solid rgba(240, 246, 252, 0.1);
+}
+
+.btn-primary-sm:hover {
+    background-color: #2ea043;
+}
+
+/* Star rating input */
+.star-rating {
+    display: flex;
+    gap: 4px;
+}
+
+.star-btn {
+    background: none;
+    border: none;
+    font-size: 32px;
+    line-height: 1;
+    color: #30363d;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 6px;
+    transition: color 0.15s ease, transform 0.15s ease;
+}
+
+.star-btn:hover,
+.star-btn:focus-visible {
+    transform: scale(1.12);
+}
+
+.star-btn:focus-visible {
+    outline: 2px solid #3fb950;
+    outline-offset: 2px;
+}
+
+.star-btn.filled {
+    color: #d29922;
+}
+
+.field-error {
+    display: block;
+    min-height: 16px;
+    font-size: 12px;
+    color: #f85149;
+    margin-top: 6px;
+}
+
+.feedback-flash {
+    padding: 12px 16px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 20px;
+}
+
+.feedback-flash-success {
+    background-color: #0d2818;
+    color: #3fb950;
+    border: 1px solid rgba(63, 185, 80, 0.3);
+}
+
+/* Previous feedback list */
+.feedback-entry {
+    padding: 16px;
+    border: 1px solid #21262d;
+    border-radius: 10px;
+    margin-bottom: 12px;
+    background-color: #0d1117;
+}
+
+.feedback-entry:last-child {
+    margin-bottom: 0;
+}
+
+.feedback-entry-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 8px;
+}
+
+.feedback-entry-stars {
+    font-size: 16px;
+    color: #30363d;
+    letter-spacing: 2px;
+}
+
+.feedback-star.filled {
+    color: #d29922;
+}
+
+.feedback-entry-date {
+    font-size: 12px;
+    color: #8b949e;
+    white-space: nowrap;
+}
+
+.feedback-entry-category {
+    display: inline-block;
+    background-color: #21262d;
+    color: #8b949e;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    padding: 3px 10px;
+    border-radius: 999px;
+    margin-bottom: 8px;
+}
+
+.feedback-entry-message {
+    font-size: 14px;
+    color: #c9d1d9;
+    line-height: 1.5;
+}
+
+.feedback-entry-meta {
+    font-size: 12px;
+    color: #6e7681;
+    margin-bottom: 8px;
+}
+
+.feedback-entry-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid #21262d;
+}
+
+/* Same small pill-button look as courts.css's .btn-icon, redefined here
+   since that stylesheet isn't loaded on this page (see the .btn note
+   above) */
+.btn-icon {
+    padding: 5px 12px;
+    font-size: 12px;
+    font-weight: 700;
+    border-radius: 6px;
+    cursor: pointer;
+    border: 1px solid #30363d;
+    background-color: transparent;
+    color: #c9d1d9;
+}
+
+.btn-edit-toggle:hover {
+    border-color: #3fb950;
+    color: #3fb950;
+}
+
+.btn-delete:hover {
+    border-color: #f85149;
+    color: #f85149;
+}
+
+/* The delete button lives inside its own <form> (needed for the DELETE
+   method + confirm() submit) — without this the form's default block
+   display would push it onto its own line instead of sitting next to
+   the Edit button. */
+.feedback-delete-form {
+    display: inline-flex;
+}
+
+/* Inline edit form (replaces the view state in place, see feedback.js) */
+.feedback-edit {
+    margin-top: 4px;
+}
+
+.feedback-edit .form-group {
+    margin-bottom: 14px;
+}
+
+.feedback-edit .form-group label {
+    font-size: 12px;
+    margin-bottom: 6px;
+}
+
+.feedback-edit select,
+.feedback-edit textarea {
+    width: 100%;
+    padding: 10px 12px;
+    background-color: #161b22;
+    border: 1.5px solid #30363d;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #f0f6fc;
+    font-family: inherit;
+    resize: vertical;
+    box-sizing: border-box;
+}
+
+.feedback-edit select:focus,
+.feedback-edit textarea:focus {
+    outline: none;
+    border-color: #3fb950;
+    box-shadow: 0 0 0 3px rgba(63, 185, 80, 0.15);
+}
+
+.feedback-edit-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+}
+
+/* ---------- Responsive ---------- */
+
+@media (max-width: 700px) {
+    .star-btn {
+        font-size: 30px;
+    }
+}
+
+@media (max-width: 480px) {
+    .star-btn {
+        font-size: 26px;
+        padding: 3px;
+    }
+
+    .feedback-entry-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 4px;
+    }
+
+    .feedback-edit-actions {
+        flex-direction: column-reverse;
+    }
+
+    .feedback-edit-actions .btn,
+    .feedback-edit-actions .btn-icon {
+        width: 100%;
+        text-align: center;
+    }
+}

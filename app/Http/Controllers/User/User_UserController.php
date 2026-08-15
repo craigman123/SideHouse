@@ -5,10 +5,12 @@ namespace App\Http\Controllers\User;
 use App\Http\Controllers\Controller;
 use App\Models\Booking;
 use App\Models\Court;
+use App\Models\CourtClosure;
 use App\Models\Equipment;
 use App\Models\Membership;
 use App\Models\UnmatchedPayment;
 use App\Support\ActivityLogger;
+use App\Support\BookingHours;
 use App\Support\PaymentReference;
 use App\Support\PaymentWindows;
 use Carbon\Carbon;
@@ -49,19 +51,46 @@ class User_UserController extends Controller
             ->orderBy('name')
             ->get();
 
+        // book_blade.php / book.js already read data-closed-weekdays and
+        // data-closure-dates to grey out closed dates on the calendar —
+        // this controller just wasn't supplying them, so the calendar
+        // silently fell back to "nothing is ever closed" via the blade's
+        // ?? [] / ?? collect() defaults. Mirrors
+        // GuestBookingController::landing()'s scoping: closures that are
+        // either store-wide (court_id null) or specific to whichever
+        // court ends up selected. The user picker lets them switch
+        // between courts (unlike the guest widget's single-court flow),
+        // so closures for every active court are included rather than
+        // just the first one.
+        $courtIds = $courts->pluck('id');
+
+        $closureDates = CourtClosure::upcoming()
+            ->where(function ($query) use ($courtIds) {
+                $query->whereNull('court_id');
+                if ($courtIds->isNotEmpty()) {
+                    $query->orWhereIn('court_id', $courtIds);
+                }
+            })
+            ->pluck('date')
+            ->map(fn ($date) => $date->toDateString())
+            ->unique()
+            ->values();
+
         return view('user.bookings.book', [
-            'courts'      => $courts,
-            'userName'    => auth()->user()->name,
+            'courts'         => $courts,
+            'userName'       => auth()->user()->name,
             // Prefills the contact-number step in book.js when set — see
             // User::phone_number, editable from the profile page. Empty
             // string (not null) so the blade attribute never renders the
             // literal word "null".
-            'userPhone'   => auth()->user()->phone_number ?? '',
-            'openHour'    => self::OPEN_HOUR,
-            'closeHour'   => self::CLOSE_HOUR,
-            'minDuration' => self::MIN_DURATION_SLOTS,
-            'maxDuration' => self::MAX_DURATION_SLOTS,
-            'stepMinutes' => self::BOOKING_STEP_MINUTES,
+            'userPhone'      => auth()->user()->phone_number ?? '',
+            'openHour'       => self::OPEN_HOUR,
+            'closeHour'      => self::CLOSE_HOUR,
+            'minDuration'    => self::MIN_DURATION_SLOTS,
+            'maxDuration'    => self::MAX_DURATION_SLOTS,
+            'stepMinutes'    => self::BOOKING_STEP_MINUTES,
+            'closedWeekdays' => BookingHours::closedWeekdays(),
+            'closureDates'   => $closureDates,
         ]);
     }
 
@@ -255,6 +284,17 @@ class User_UserController extends Controller
 
         $court = Court::findOrFail($validated['court_id']);
         $user  = auth()->user();
+
+        // The calendar greys out closed dates client-side (see
+        // createBooking()), but that's just UX — nothing stops a request
+        // built by hand or replayed from an old page with a since-closed
+        // date. This is the check that actually matters. Same helper and
+        // same rejection shape as GuestBookingController::store().
+        if (BookingHours::isClosed($validated['court_id'], $validated['date'])) {
+            return response()->json([
+                'message' => BookingHours::closedReason($validated['court_id'], $validated['date']) ?? 'This court is closed on the selected date.',
+            ], 422);
+        }
 
         // Same overnight-wrap handling as the guest flow (OPEN_HOUR can
         // be later in the clock than CLOSE_HOUR, e.g. 4 PM to 7 AM).

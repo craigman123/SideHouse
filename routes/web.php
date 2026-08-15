@@ -14,6 +14,7 @@ use App\Http\Controllers\Guest\GuestBookingController;
 use App\Http\Controllers\User\NotificationController;
 use App\Http\Controllers\User\User_UserController;
 use App\Http\Controllers\User\UserDashboardController;
+use App\Http\Controllers\User\FeedbackController;
 use App\Http\Controllers\Webhooks\GcashWebhookController;
 use App\Http\Controllers\Webhooks\LandbankWebhookController;
 use App\Http\Controllers\Admin\EquipmentAvailabilityController;
@@ -118,5 +119,11 @@ Route::middleware('auth')->group(function () {
     Route::get('/notifications/unread-count', [NotificationController::class, 'unreadCount'])->name('user.notifications.unread-count');
     Route::post('/notifications/{notification}/mark-read', [NotificationController::class, 'markRead'])->name('user.notifications.mark-read');
     Route::post('/notifications/mark-all-read', [NotificationController::class, 'markAllRead'])->name('user.notifications.mark-all-read');
+
+    // Feedback
+    Route::get('/feedback', [FeedbackController::class, 'index'])->name('user.feedback.index');
+    Route::post('/feedback', [FeedbackController::class, 'store'])->name('user.feedback.store');
+    Route::put('/feedback/{feedback}', [FeedbackController::class, 'update'])->name('user.feedback.update');
+    Route::delete('/feedback/{feedback}', [FeedbackController::class, 'destroy'])->name('user.feedback.destroy');
     
 });
