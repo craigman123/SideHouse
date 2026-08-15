@@ -17,7 +17,7 @@
     {{-- is-loading starts present so the skeleton shows immediately on
          first paint, before admin-reports.js even runs — avoids a flash
          of "₱0" before the real numbers load. --}}
-    <div class="reports-page is-loading" id="reportsPage" data-reports-url="{{ route('admin.reports.data') }}">
+    <div class="reports-page is-loading" id="reportsPage" data-reports-url="{{ route('admin.reports.data') }}" data-system-url="{{ route('admin.reports.system') }}">
 
         <div class="reports-header">
             <div>
@@ -122,6 +122,88 @@
                     </div>
                 </div>
                 <p class="report-empty-note" id="splitEmpty" hidden>No paid bookings yet.</p>
+            </div>
+        </div>
+
+        {{-- System health --}}
+        <div class="reports-header">
+            <div>
+                <h2 class="reports-title reports-title-sm">System Health</h2>
+                <p class="reports-subtitle">Live server, database, and traffic status.</p>
+            </div>
+        </div>
+
+        <div class="reports-summary-grid" id="systemSummaryGrid">
+            <div class="summary-card">
+                <span class="summary-card-label">Users Online</span>
+                <div class="summary-card-value-wrap">
+                    <span class="summary-card-value" id="summaryUsersOnline">0</span>
+                    <span class="skeleton" aria-hidden="true"></span>
+                </div>
+            </div>
+            <div class="summary-card">
+                <span class="summary-card-label">Requests Today</span>
+                <div class="summary-card-value-wrap">
+                    <span class="summary-card-value" id="summaryRequestsToday">0</span>
+                    <span class="skeleton" aria-hidden="true"></span>
+                </div>
+            </div>
+            <div class="summary-card">
+                <span class="summary-card-label">Requests / Hour</span>
+                <div class="summary-card-value-wrap">
+                    <span class="summary-card-value" id="summaryRequestsHour">0</span>
+                    <span class="skeleton" aria-hidden="true"></span>
+                </div>
+            </div>
+            <div class="summary-card">
+                <span class="summary-card-label">Unique Visitors Today</span>
+                <div class="summary-card-value-wrap">
+                    <span class="summary-card-value" id="summaryUniqueVisitors">0</span>
+                    <span class="skeleton" aria-hidden="true"></span>
+                </div>
+            </div>
+        </div>
+
+        <div class="report-panel-grid report-panel-grid-health">
+            <div class="report-panel">
+                <div class="report-panel-header">
+                    <h2>Database</h2>
+                </div>
+                <div class="health-status-row">
+                    <span class="health-status-label">Connection</span>
+                    <span class="health-status-pill" id="dbStatusPill">—</span>
+                </div>
+                <div class="health-stat-row">
+                    <span class="health-stat-label">Database Size</span>
+                    <span class="health-stat-value" id="dbSize">—</span>
+                </div>
+                <ul class="health-table-list" id="dbTableList"></ul>
+            </div>
+
+            <div class="report-panel">
+                <div class="report-panel-header">
+                    <h2>Server</h2>
+                </div>
+                <div class="health-stat-row">
+                    <span class="health-stat-label">PHP Version</span>
+                    <span class="health-stat-value" id="phpVersion">—</span>
+                </div>
+                <div class="health-stat-row">
+                    <span class="health-stat-label">Laravel Version</span>
+                    <span class="health-stat-value" id="laravelVersion">—</span>
+                </div>
+
+                <div class="health-stat-row">
+                    <span class="health-stat-label">Disk Usage</span>
+                    <span class="health-stat-value" id="diskUsage">—</span>
+                </div>
+                <div class="health-progress"><div class="health-progress-bar" id="diskUsageBar"></div></div>
+
+                <div class="health-stat-row">
+                    <span class="health-stat-label">PHP Memory Usage</span>
+                    <span class="health-stat-value" id="memoryUsage">—</span>
+                </div>
+                <div class="health-progress"><div class="health-progress-bar" id="memoryUsageBar"></div></div>
             </div>
         </div>
 

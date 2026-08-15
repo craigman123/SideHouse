@@ -5,9 +5,11 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Support\ActivityLogger;
+use App\Support\GoogleIdentity;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 
 class AuthController extends Controller
 {
@@ -86,6 +88,99 @@ class AuthController extends Controller
         );
 
         return redirect()->route('user.dashboard')->with('success', 'Account created! Welcome to Side House.');
+    }
+
+    /**
+     * Google sign-in for both login and registration — one endpoint
+     * handles both, since from the button's perspective there's no
+     * meaningful difference: verify the token, then log the matching
+     * account in or create one on the spot.
+     *
+     * Unlike the password flow, a verified Google token IS proof of
+     * identity on its own — Google has already confirmed this person
+     * owns the email address, so an existing account is logged into
+     * directly with no password check.
+     */
+    public function googleAuth(Request $request)
+    {
+        $validated = $request->validate([
+            'id_token' => ['required', 'string'],
+        ]);
+
+        $claims = GoogleIdentity::verifyIdToken($validated['id_token']);
+
+        if ($claims === null) {
+            return response()->json([
+                'message' => "We couldn't verify that Google sign-in. Please try again.",
+            ], 422);
+        }
+
+        $user = User::where('email', $claims['email'])->first();
+        $isNewAccount = false;
+
+        if ($user === null) {
+            $user = User::create([
+                'name'     => $claims['name'] ?: Str::before($claims['email'], '@'),
+                'username' => $this->generateUniqueUsername($claims['name'] ?? $claims['email']),
+                'email'    => $claims['email'],
+                // Google already verified this person owns the email, so
+                // there's nothing meaningful for a password to protect —
+                // a random value just keeps the (required) column filled
+                // without implying a real password exists to sign in with
+                // any other way.
+                'password' => Str::random(40),
+                'role'     => 'user',
+            ]);
+            $user->forceFill(['email_verified_at' => now()])->save();
+            $isNewAccount = true;
+        }
+
+        Auth::login($user);
+        $request->session()->regenerate();
+
+        ActivityLogger::log(
+            $isNewAccount ? 'user.registered' : 'user.logged_in',
+            $isNewAccount
+                ? $user->name . ' registered via Google sign-in.'
+                : $user->name . ' logged in via Google sign-in.',
+            subject: $user,
+        );
+
+        return response()->json([
+            'message'  => $isNewAccount ? 'Account created! Welcome to Side House.' : 'Logged in successfully!',
+            'redirect' => $user->isAdmin() ? route('admin.dashboard') : route('user.dashboard'),
+        ]);
+    }
+
+    /**
+     * Builds a unique username from a Google display name (falling back
+     * to the email local-part if no name claim came through) — lowercased,
+     * alnum/underscore only, with a numeric suffix appended if the base
+     * is already taken.
+     */
+    private function generateUniqueUsername(string $seed): string
+    {
+        $base = Str::of($seed)
+            ->before('@')
+            ->lower()
+            ->replaceMatches('/[^a-z0-9]+/', '_')
+            ->trim('_');
+
+        if ($base->isEmpty()) {
+            $base = Str::of('user');
+        }
+
+        $base = $base->limit(30, '');
+
+        $username = (string) $base;
+        $suffix = 1;
+
+        while (User::where('username', $username)->exists()) {
+            $suffix++;
+            $username = (string) $base . $suffix;
+        }
+
+        return $username;
     }
 
     public function logout(Request $request)

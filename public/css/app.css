@@ -19,10 +19,12 @@ body {
 /* Sidebar */
 .sidebar {
     position: fixed;
+    top: 0;
+    left: 0;
     width: 240px;
+    height: 100vh;
     background-color: #010409;
     color: #c9d1d9;
-    min-height: 100vh;
     display: flex;
     flex-direction: column;
     border-right: 1px solid #30363d;
@@ -47,6 +49,7 @@ body {
 .sidebar-nav {
     flex: 1;
     padding: 12px 12px;
+    overflow-y: auto;
 }
 
 .sidebar-nav a {
@@ -56,7 +59,7 @@ body {
     color: #d6d6d6;
     text-decoration: none;
     border-radius: 6px;
-    font-size: 1.2vw;
+    font-size: 14px;
     font-weight: 650;
 }
 
@@ -83,6 +86,7 @@ body {
     flex: 1;
     display: flex;
     flex-direction: column;
+    margin-left: 240px;
 }
 
 .topbar {
@@ -224,6 +228,41 @@ body {
     color: #f85149;
     font-size: 13px;
     margin-top: 4px;
+}
+
+/* Google sign-in button + "or" divider on login/register */
+.google-btn-wrap {
+    display: flex;
+    justify-content: center;
+    min-height: 44px;
+    margin-bottom: 4px;
+    opacity: 1;
+    transition: opacity 0.15s ease;
+}
+
+.google-btn-wrap-loading {
+    opacity: 0.5;
+    pointer-events: none;
+}
+
+.auth-divider {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 18px 0;
+    color: #6e7681;
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+}
+
+.auth-divider::before,
+.auth-divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background-color: #21262d;
 }
 
 /* Animated background particles */
@@ -533,10 +572,13 @@ body {
     .main {
         flex: 1;
         min-height: 0;
+        margin-left: 0;
     }
 
     .sidebar {
+        position: static;
         width: 100%;
+        height: auto;
         min-height: 0;
         flex-direction: row;
         align-items: center;

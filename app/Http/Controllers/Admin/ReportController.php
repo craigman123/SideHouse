@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Booking;
 use App\Models\BookingEquipment;
+use App\Models\RequestLog;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Carbon;
@@ -75,6 +76,164 @@ class ReportController extends Controller
             'by_court' => $this->incomeByCourt(),
             'trend' => $this->incomeTrend($period),
         ]);
+    }
+
+    /**
+     * JSON data for the "System Health" panel — DB health, server
+     * health, traffic, and users online. Kept as a separate endpoint
+     * from data() and polled on its own faster timer by
+     * admin-reports.js, since this doesn't depend on the period filter
+     * and staying current matters more here than for the income charts.
+     */
+    public function system(): JsonResponse
+    {
+        return response()->json([
+            'database' => $this->databaseHealth(),
+            'server' => $this->serverHealth(),
+            'traffic' => $this->trafficStats(),
+            'users_online' => $this->usersOnline(),
+        ]);
+    }
+
+    /**
+     * Connection status, DB size, and per-table row counts. The size
+     * and row counts use Postgres's system catalogs (pg_database_size,
+     * pg_stat_user_tables) — cheap because they read cached statistics
+     * rather than running COUNT(*) across every table, and they work
+     * without needing to know your table names up front. On any other
+     * driver those two fields just come back empty; status still
+     * reports accurately either way.
+     */
+    private function databaseHealth(): array
+    {
+        $status = 'down';
+        $size = null;
+        $tables = [];
+
+        try {
+            DB::select('select 1');
+            $status = 'up';
+
+            if (DB::getDriverName() === 'pgsql') {
+                $dbName = DB::getDatabaseName();
+
+                $size = DB::selectOne('select pg_size_pretty(pg_database_size(?)) as pretty', [$dbName])->pretty;
+
+                $tables = collect(DB::select(
+                    "select relname as name, n_live_tup as rows
+                     from pg_stat_user_tables
+                     order by n_live_tup desc
+                     limit 8"
+                ))->map(fn ($row) => [
+                    'name' => $row->name,
+                    'rows' => (int) $row->rows,
+                ])->all();
+            }
+        } catch (\Throwable $e) {
+            $status = 'down';
+        }
+
+        return [
+            'status' => $status,
+            'size' => $size,
+            'tables' => $tables,
+        ];
+    }
+
+    /**
+     * PHP/Laravel versions, disk usage, and this process's memory
+     * usage against its configured limit. Memory here is the PHP
+     * worker's own usage (there's no portable, extension-free way to
+     * read whole-machine RAM from PHP) — labelled as such on the page
+     * so it isn't mistaken for total server memory.
+     */
+    private function serverHealth(): array
+    {
+        $memoryLimitBytes = $this->parseIniSize((string) ini_get('memory_limit'));
+        $memoryUsedBytes = memory_get_usage(true);
+
+        $diskTotal = @disk_total_space(base_path()) ?: null;
+        $diskFree = @disk_free_space(base_path()) ?: null;
+        $diskUsed = ($diskTotal !== null && $diskFree !== null) ? $diskTotal - $diskFree : null;
+
+        return [
+            'php_version' => PHP_VERSION,
+            'laravel_version' => app()->version(),
+            'memory' => [
+                'used_bytes' => $memoryUsedBytes,
+                'limit_bytes' => $memoryLimitBytes,
+                'used_percent' => $memoryLimitBytes > 0
+                    ? round(($memoryUsedBytes / $memoryLimitBytes) * 100, 1)
+                    : null,
+            ],
+            'disk' => [
+                'used_bytes' => $diskUsed,
+                'total_bytes' => $diskTotal,
+                'used_percent' => ($diskTotal && $diskUsed !== null)
+                    ? round(($diskUsed / $diskTotal) * 100, 1)
+                    : null,
+            ],
+        ];
+    }
+
+    /**
+     * Converts a php.ini-style size string ('512M', '1G', '-1') to a
+     * byte count. -1 (no limit) is passed through as-is.
+     */
+    private function parseIniSize(string $value): int
+    {
+        $value = trim($value);
+        if ($value === '' || $value === '-1') {
+            return -1;
+        }
+
+        $unit = strtolower(substr($value, -1));
+        $number = (int) $value;
+
+        return match ($unit) {
+            'g' => $number * 1024 * 1024 * 1024,
+            'm' => $number * 1024 * 1024,
+            'k' => $number * 1024,
+            default => (int) $value,
+        };
+    }
+
+    /**
+     * Request counts from request_logs (populated by the
+     * LogRequestTraffic middleware — see app/Http/Middleware).
+     */
+    private function trafficStats(): array
+    {
+        $now = now();
+
+        return [
+            'requests_today' => RequestLog::whereDate('created_at', $now->toDateString())->count(),
+            'requests_last_hour' => RequestLog::where('created_at', '>=', $now->copy()->subHour())->count(),
+            'unique_visitors_today' => RequestLog::whereDate('created_at', $now->toDateString())
+                ->distinct('ip_address')
+                ->count('ip_address'),
+        ];
+    }
+
+    /**
+     * Distinct logged-in users with a session active in the last 5
+     * minutes. Requires SESSION_DRIVER=database — returns 0 on any
+     * other driver rather than throwing, since file/cookie sessions
+     * have no central table to query.
+     */
+    private function usersOnline(): int
+    {
+        if (config('session.driver') !== 'database') {
+            return 0;
+        }
+
+        $threshold = now()->subMinutes(5)->getTimestamp();
+
+        return (int) DB::table(config('session.table', 'sessions'))
+            ->whereNotNull('user_id')
+            ->where('last_activity', '>=', $threshold)
+            ->distinct('user_id')
+            ->count('user_id');
     }
 
     /**

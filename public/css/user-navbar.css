@@ -250,7 +250,9 @@ svg {
     }
 
     .topbar {
+        display: flex;
         padding: 14px 16px;
+        align-items: flex-end;
     }
 
     .content {

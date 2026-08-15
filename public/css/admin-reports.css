@@ -280,6 +280,125 @@
     }
 }
 
+/* ---------- System health ---------- */
+
+.reports-title-sm {
+    font-size: 1.15rem;
+}
+
+.report-panel-grid-health {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.health-status-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 0;
+}
+
+.health-status-label {
+    font-size: 0.85rem;
+    color: var(--reports-muted, #6b7280);
+}
+
+.health-status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-size: 0.78rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.health-status-pill::before {
+    content: '';
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: currentColor;
+}
+
+.health-status-pill.status-up {
+    color: #10b981;
+    background: rgba(16, 185, 129, 0.12);
+}
+
+.health-status-pill.status-down {
+    color: #ef4444;
+    background: rgba(239, 68, 68, 0.12);
+}
+
+.health-stat-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 0;
+    border-top: 1px solid var(--reports-border, var(--main-border));
+    font-size: 0.85rem;
+}
+
+.health-stat-label {
+    color: var(--reports-muted, #6b7280);
+}
+
+.health-stat-value {
+    font-weight: 700;
+    color: var(--reports-text);
+}
+
+.health-progress {
+    width: 100%;
+    height: 6px;
+    border-radius: 999px;
+    background: var(--skeleton-base);
+    overflow: hidden;
+    margin-bottom: 4px;
+}
+
+.health-progress-bar {
+    height: 100%;
+    width: 0%;
+    background: #2563eb;
+    border-radius: 999px;
+    transition: width 0.3s ease;
+}
+
+.health-progress-bar.is-warning {
+    background: #f59e0b;
+}
+
+.health-progress-bar.is-critical {
+    background: #ef4444;
+}
+
+.health-table-list {
+    list-style: none;
+    margin: 4px 0 0;
+    padding: 0;
+}
+
+.health-table-list li {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 5px 0;
+    border-top: 1px solid var(--reports-border, var(--main-border));
+    font-size: 0.82rem;
+}
+
+.health-table-list li .table-name {
+    color: var(--reports-muted, #6b7280);
+}
+
+.health-table-list li .table-rows {
+    font-weight: 700;
+    color: var(--reports-text);
+}
+
 /* ---------- Responsive ---------- */
 
 @media (max-width: 1024px) {
@@ -293,7 +412,8 @@
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
-    .report-panel-grid {
+    .report-panel-grid,
+    .report-panel-grid-health {
         grid-template-columns: minmax(0, 1fr);
     }
 

@@ -15,6 +15,7 @@ return Application::configure(basePath: dirname(__DIR__))
             \App\Http\Middleware\PreventBackHistory::class,
         ]);
         $middleware->trustProxies(at: '*');
+        $middleware->append(\App\Http\Middleware\LogRequestTraffic::class);
 
         // These are hit by an external SMS-forwarding app, not a browser —
         // there's no session/CSRF token for it to send. The webhook is

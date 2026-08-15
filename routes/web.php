@@ -39,6 +39,8 @@ Route::post('/login', [AuthController::class, 'login'])->name('login.submit');
 Route::get('/register', [AuthController::class, 'showRegister'])->name('register');
 Route::post('/register', [AuthController::class, 'register'])->name('register.submit');
 
+Route::post('/auth/google', [AuthController::class, 'googleAuth'])->middleware('throttle:15,1')->name('auth.google');
+
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
 Route::middleware('auth')->group(function () {
@@ -70,6 +72,7 @@ Route::middleware('auth')->group(function () {
     // Reports
     Route::get('/reports', [ReportController::class, 'index'])->name('admin.reports.index');
     Route::get('/reports/data', [ReportController::class, 'data'])->name('admin.reports.data');
+    Route::get('/reports/system', [ReportController::class, 'system'])->name('admin.reports.system');
 
     // Configuration / Schedule
     Route::get('/admin/configuration', [ConfigurationController::class, 'index'])->name('admin.configuration.index');
