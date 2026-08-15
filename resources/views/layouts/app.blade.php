@@ -30,7 +30,7 @@
             <a href="{{ route('admin.equipment.availability') }}" class="{{ request()->routeIs('admin.equipment.availability') ? 'active' : '' }}">Equipment Availability</a>
 
             <label class="nav-label">Users</label>
-            <a href="#">Customers</a>
+            <a href="{{ route('admin.customers.index') }}" class="{{ request()->routeIs('admin.customers.*') ? 'active' : '' }}">Customers</a>
             <a href="{{ route('admin.announcements.index') }}" class="{{ request()->routeIs('admin.announcements.*') ? 'active' : '' }}">Announcements</a>
 
             <label class="nav-label">Audit Logs</label>

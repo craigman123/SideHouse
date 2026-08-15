@@ -1,6 +1,7 @@
 @extends('layouts.app')
 
-@section('title', 'Equipment Availability')
+@section('page-title', 'Equipment Availability')
+@section('title', 'Equipment Availability | Side House')
 
 @push('styles')
     <link rel="stylesheet" href="{{ asset('css/admin-equipment-availability.css') }}">

@@ -7,6 +7,7 @@ use App\Http\Controllers\Admin\AnnouncementController;
 use App\Http\Controllers\Admin\BookingController;
 use App\Http\Controllers\Admin\CourtController;
 use App\Http\Controllers\Admin\ConfigurationController;
+use App\Http\Controllers\Admin\CustomerController;
 use App\Http\Controllers\Admin\ReportController;
 use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\Guest\GuestBookingController;
@@ -63,6 +64,10 @@ Route::middleware('auth')->group(function () {
     Route::get('/announcements/create', [AnnouncementController::class, 'create'])->name('admin.announcements.create');
     Route::post('/announcements', [AnnouncementController::class, 'store'])->name('admin.announcements.store');
     Route::delete('/announcements/{announcement}', [AnnouncementController::class, 'destroy'])->name('admin.announcements.destroy');
+
+    // Customers
+    Route::get('/customers', [CustomerController::class, 'index'])->name('admin.customers.index');
+    Route::get('/customers/data', [CustomerController::class, 'data'])->name('admin.customers.data');
 
     // Profile
     Route::get('/admin/profile', [AdminProfileController::class, 'profile'])->name('admin.profile');
