@@ -164,6 +164,15 @@
             </div>
         </div>
 
+        <div class="report-panel">
+            <div class="report-panel-header">
+                <h2>Traffic (Last 24 Hours)</h2>
+            </div>
+            <div class="report-chart-wrap report-chart-wrap-wide">
+                <canvas id="trafficTrendChart" role="img" aria-label="Requests over the last 24 hours"></canvas>
+            </div>
+        </div>
+
         <div class="report-panel-grid report-panel-grid-health">
             <div class="report-panel">
                 <div class="report-panel-header">

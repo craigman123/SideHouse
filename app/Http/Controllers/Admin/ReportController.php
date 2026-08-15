@@ -212,7 +212,41 @@ class ReportController extends Controller
             'unique_visitors_today' => RequestLog::whereDate('created_at', $now->toDateString())
                 ->distinct('ip_address')
                 ->count('ip_address'),
+            'trend' => $this->trafficTrend(),
         ];
+    }
+
+    /**
+     * Rolling last-24-hours request count, bucketed by hour, for the
+     * traffic line graph. Grouped in PHP rather than a DB-specific hour
+     * extraction function — same reasoning as incomeTrend's hourly and
+     * monthly breakdowns above, keeps this portable across drivers.
+     */
+    private function trafficTrend(): array
+    {
+        $now = now();
+        $start = $now->copy()->subHours(23)->startOfHour();
+
+        $rows = RequestLog::where('created_at', '>=', $start)->select('created_at')->get();
+
+        $totals = array_fill(0, 24, 0);
+        foreach ($rows as $row) {
+            $hoursAgo = $start->diffInHours(Carbon::parse($row->created_at)->startOfHour());
+            if ($hoursAgo >= 0 && $hoursAgo < 24) {
+                $totals[$hoursAgo]++;
+            }
+        }
+
+        $out = [];
+        for ($i = 0; $i < 24; $i++) {
+            $bucketTime = $start->copy()->addHours($i);
+            $out[] = [
+                'label' => $bucketTime->format('g A'),
+                'count' => $totals[$i],
+            ];
+        }
+
+        return $out;
     }
 
     /**

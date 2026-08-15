@@ -31,6 +31,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const paymentMethodCanvas = document.getElementById('paymentMethodChart');
     const courtCanvas = document.getElementById('courtChart');
     const splitCanvas = document.getElementById('splitChart');
+    const trafficTrendCanvas = document.getElementById('trafficTrendChart');
 
     const paymentMethodEmpty = document.getElementById('paymentMethodEmpty');
     const courtEmpty = document.getElementById('courtEmpty');
@@ -45,6 +46,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let paymentMethodChart = null;
     let courtChart = null;
     let splitChart = null;
+    let trafficTrendChart = null;
 
     function formatCurrency(n) {
         const value = Number(n) || 0;
@@ -208,6 +210,54 @@ document.addEventListener('DOMContentLoaded', () => {
         summaryPaidBookings.textContent = summary.paid_bookings.toLocaleString();
     }
 
+    // ---------- Traffic line chart ----------
+
+    function renderTrafficTrendChart(trend) {
+        const labels = trend.map((row) => row.label);
+        const data = trend.map((row) => row.count);
+
+        trafficTrendChart = destroyChart(trafficTrendChart);
+        trafficTrendChart = new Chart(trafficTrendCanvas, {
+            type: 'line',
+            data: {
+                labels,
+                datasets: [{
+                    label: 'Requests',
+                    data,
+                    borderColor: '#2563eb',
+                    backgroundColor: 'rgba(37, 99, 235, 0.12)',
+                    fill: true,
+                    tension: 0.35,
+                    pointRadius: 0,
+                    pointHoverRadius: 4,
+                    borderWidth: 2,
+                }],
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: (ctx) => `${ctx.parsed.y.toLocaleString()} requests`,
+                        },
+                    },
+                },
+                scales: {
+                    x: {
+                        ticks: { autoSkip: true, maxRotation: 0, maxTicksLimit: 8 },
+                        grid: { display: false },
+                    },
+                    y: {
+                        beginAtZero: true,
+                        ticks: { precision: 0 },
+                    },
+                },
+            },
+        });
+    }
+
     // ---------- System health ----------
 
     function renderSystem(sys) {
@@ -216,6 +266,7 @@ document.addEventListener('DOMContentLoaded', () => {
         summaryRequestsToday.textContent = sys.traffic.requests_today.toLocaleString();
         summaryRequestsHour.textContent = sys.traffic.requests_last_hour.toLocaleString();
         summaryUniqueVisitors.textContent = sys.traffic.unique_visitors_today.toLocaleString();
+        renderTrafficTrendChart(sys.traffic.trend);
 
         // Database
         const dbUp = sys.database.status === 'up';
