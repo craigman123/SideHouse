@@ -24,6 +24,21 @@ class ReportController extends Controller
     ];
 
     /**
+     * Selectable ranges for the traffic trend chart. Each maps to a
+     * total lookback window and a bucket size (both in minutes) — the
+     * bucket size is chosen so every range renders a readable number
+     * of points (12–30) rather than 1440 one-minute dots for the 24h
+     * view or a single lump for the 30m view.
+     */
+    private const TRAFFIC_RANGES = [
+        '30m' => ['minutes' => 30, 'bucket' => 1],
+        '1h' => ['minutes' => 60, 'bucket' => 2],
+        '2h' => ['minutes' => 120, 'bucket' => 5],
+        '10h' => ['minutes' => 600, 'bucket' => 20],
+        '24h' => ['minutes' => 1440, 'bucket' => 60],
+    ];
+
+    /**
      * Renders the report page shell. All chart data is fetched
      * client-side from data() so the period filter can refresh
      * the charts without a full page reload.
@@ -85,12 +100,17 @@ class ReportController extends Controller
      * admin-reports.js, since this doesn't depend on the period filter
      * and staying current matters more here than for the income charts.
      */
-    public function system(): JsonResponse
+    public function system(Request $request): JsonResponse
     {
+        $trafficRange = $request->query('traffic_range', '24h');
+        if (!array_key_exists($trafficRange, self::TRAFFIC_RANGES)) {
+            $trafficRange = '24h';
+        }
+
         return response()->json([
             'database' => $this->databaseHealth(),
             'server' => $this->serverHealth(),
-            'traffic' => $this->trafficStats(),
+            'traffic' => $this->trafficStats($trafficRange),
             'users_online' => $this->usersOnline(),
         ]);
     }
@@ -108,6 +128,8 @@ class ReportController extends Controller
     {
         $status = 'down';
         $size = null;
+        $sizeBytes = null;
+        $walBytes = null;
         $tables = [];
 
         try {
@@ -117,7 +139,24 @@ class ReportController extends Controller
             if (DB::getDriverName() === 'pgsql') {
                 $dbName = DB::getDatabaseName();
 
-                $size = DB::selectOne('select pg_size_pretty(pg_database_size(?)) as pretty', [$dbName])->pretty;
+                $row = DB::selectOne(
+                    'select pg_database_size(?) as bytes, pg_size_pretty(pg_database_size(?)) as pretty',
+                    [$dbName, $dbName]
+                );
+                $sizeBytes = (int) $row->bytes;
+                $size = $row->pretty;
+
+                // WAL size, if the connection's role has permission to
+                // list the WAL directory. Supabase's pooled/app roles
+                // usually don't have this — falls back to null rather
+                // than throwing, and the bar just skips that segment.
+                try {
+                    $walBytes = (int) DB::selectOne(
+                        'select coalesce(sum(size), 0) as bytes from pg_ls_waldir()'
+                    )->bytes;
+                } catch (\Throwable $e) {
+                    $walBytes = null;
+                }
 
                 $tables = collect(DB::select(
                     "select relname as name, n_live_tup as rows
@@ -133,9 +172,32 @@ class ReportController extends Controller
             $status = 'down';
         }
 
+        // Provisioned disk size for the Postgres instance. This mirrors
+        // Supabase's Settings > Infrastructure > Disk page (currently
+        // 2 GB there) — bump DB_DISK_CAPACITY_GB in .env if that's ever
+        // resized, since Postgres can't read its own disk allocation
+        // back from a normal connection.
+        $capacityGb = (float) env('DB_DISK_CAPACITY_GB', 2);
+        $capacityBytes = $capacityGb * 1024 * 1024 * 1024;
+
+        // "System" overhead (Postgres binaries, logs, temp files, etc.)
+        // isn't visible to any query at all — that's infra-level
+        // bookkeeping only Supabase's own backend sees. We don't fake
+        // a number for it; the frontend renders it as an explicit
+        // "not visible from here" segment instead of guessing.
+        $knownBytes = ($sizeBytes ?? 0) + ($walBytes ?? 0);
+        $availableBytes = $capacityBytes > 0 ? max(0, $capacityBytes - $knownBytes) : null;
+
         return [
             'status' => $status,
             'size' => $size,
+            'size_bytes' => $sizeBytes,
+            'wal_bytes' => $walBytes,
+            'capacity_bytes' => $capacityBytes,
+            'available_bytes' => $availableBytes,
+            'used_percent' => ($sizeBytes !== null && $capacityBytes > 0)
+                ? round(($sizeBytes / $capacityBytes) * 100, 1)
+                : null,
             'tables' => $tables,
         ];
     }
@@ -202,7 +264,7 @@ class ReportController extends Controller
      * Request counts from request_logs (populated by the
      * LogRequestTraffic middleware — see app/Http/Middleware).
      */
-    private function trafficStats(): array
+    private function trafficStats(string $range): array
     {
         $now = now();
 
@@ -212,36 +274,48 @@ class ReportController extends Controller
             'unique_visitors_today' => RequestLog::whereDate('created_at', $now->toDateString())
                 ->distinct('ip_address')
                 ->count('ip_address'),
-            'trend' => $this->trafficTrend(),
+            'range' => $range,
+            'trend' => $this->trafficTrend($range),
         ];
     }
 
     /**
-     * Rolling last-24-hours request count, bucketed by hour, for the
-     * traffic line graph. Grouped in PHP rather than a DB-specific hour
-     * extraction function — same reasoning as incomeTrend's hourly and
-     * monthly breakdowns above, keeps this portable across drivers.
+     * Rolling request count for the selected lookback window, bucketed
+     * per TRAFFIC_RANGES above. Grouped in PHP rather than a DB-specific
+     * date-bucketing function — same reasoning as incomeTrend's hourly
+     * and monthly breakdowns, keeps this portable across drivers.
      */
-    private function trafficTrend(): array
+    private function trafficTrend(string $range): array
     {
+        $config = self::TRAFFIC_RANGES[$range] ?? self::TRAFFIC_RANGES['24h'];
+        $totalMinutes = $config['minutes'];
+        $bucketMinutes = $config['bucket'];
+        $bucketCount = (int) ceil($totalMinutes / $bucketMinutes);
+
         $now = now();
-        $start = $now->copy()->subHours(23)->startOfHour();
+        $start = $now->copy()->subMinutes($bucketMinutes * $bucketCount);
 
         $rows = RequestLog::where('created_at', '>=', $start)->select('created_at')->get();
 
-        $totals = array_fill(0, 24, 0);
+        $totals = array_fill(0, $bucketCount, 0);
         foreach ($rows as $row) {
-            $hoursAgo = $start->diffInHours(Carbon::parse($row->created_at)->startOfHour());
-            if ($hoursAgo >= 0 && $hoursAgo < 24) {
-                $totals[$hoursAgo]++;
+            $minutesAgo = $start->diffInMinutes(Carbon::parse($row->created_at));
+            $bucket = (int) floor($minutesAgo / $bucketMinutes);
+            if ($bucket >= 0 && $bucket < $bucketCount) {
+                $totals[$bucket]++;
             }
         }
 
+        // Sub-hour buckets show a clock time (e.g. "2:05 PM"); hour-or-
+        // larger buckets show just the hour, matching the existing 24h
+        // chart's "g A" label style.
+        $labelFormat = $bucketMinutes < 60 ? 'g:i A' : 'g A';
+
         $out = [];
-        for ($i = 0; $i < 24; $i++) {
-            $bucketTime = $start->copy()->addHours($i);
+        for ($i = 0; $i < $bucketCount; $i++) {
+            $bucketTime = $start->copy()->addMinutes($bucketMinutes * $i);
             $out[] = [
-                'label' => $bucketTime->format('g A'),
+                'label' => $bucketTime->format($labelFormat),
                 'count' => $totals[$i],
             ];
         }

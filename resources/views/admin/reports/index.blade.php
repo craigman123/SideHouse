@@ -7,7 +7,8 @@
 --}}
 @extends('layouts.app')
 
-@section('title', 'Income Reports')
+@section('title', 'Income Reports | Side House')
+@section('page-title', 'Income Reports')
 
 @push('styles')
     <link rel="stylesheet" href="{{ asset('css/admin-reports.css') }}">
@@ -165,11 +166,18 @@
         </div>
 
         <div class="report-panel">
-            <div class="report-panel-header">
-                <h2>Traffic (Last 24 Hours)</h2>
+            <div class="report-panel-header report-panel-header-with-select">
+                <h2 id="trafficPanelTitle">Traffic (Last 24 Hours)</h2>
+                <select id="trafficRangeSelect" class="reports-period-select" aria-label="Traffic range">
+                    <option value="30m">30 Min</option>
+                    <option value="1h">1 Hour</option>
+                    <option value="2h">2 Hours</option>
+                    <option value="10h">10 Hours</option>
+                    <option value="24h" selected>24 Hours</option>
+                </select>
             </div>
             <div class="report-chart-wrap report-chart-wrap-wide">
-                <canvas id="trafficTrendChart" role="img" aria-label="Requests over the last 24 hours"></canvas>
+                <canvas id="trafficTrendChart" role="img" aria-label="Requests over the selected time range"></canvas>
             </div>
         </div>
 
@@ -186,6 +194,17 @@
                     <span class="health-stat-label">Database Size</span>
                     <span class="health-stat-value" id="dbSize">—</span>
                 </div>
+                <div class="disk-segment-bar" id="dbSegmentBar">
+                    <div class="disk-segment disk-segment-database" id="segDatabase"></div>
+                    <div class="disk-segment disk-segment-wal" id="segWal"></div>
+                    <div class="disk-segment disk-segment-system" id="segSystem"></div>
+                </div>
+                <ul class="disk-segment-legend">
+                    <li><span class="legend-dot legend-dot-database"></span>Database</li>
+                    <li><span class="legend-dot legend-dot-wal"></span>WAL</li>
+                    <li><span class="legend-dot legend-dot-system"></span>System <span class="legend-note">(not visible from app)</span></li>
+                    <li><span class="legend-dot legend-dot-available"></span>Available space</li>
+                </ul>
                 <ul class="health-table-list" id="dbTableList"></ul>
             </div>
 

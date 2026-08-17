@@ -5,6 +5,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const reportsUrl = page.dataset.reportsUrl;
     const systemUrl = page.dataset.systemUrl;
     const periodSelect = document.getElementById('periodSelect');
+    const trafficRangeSelect = document.getElementById('trafficRangeSelect');
+    const trafficPanelTitle = document.getElementById('trafficPanelTitle');
     const errorEl = document.getElementById('reportsError');
 
     const summaryTotalIncome = document.getElementById('summaryTotalIncome');
@@ -42,6 +44,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const PALETTE = ['#2563eb', '#f59e0b', '#10b981', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899', '#84cc16'];
 
     let currentPeriod = 'month';
+    let currentTrafficRange = '24h';
+    const TRAFFIC_RANGE_LABELS = {
+        '30m': 'Last 30 Minutes',
+        '1h': 'Last 1 Hour',
+        '2h': 'Last 2 Hours',
+        '10h': 'Last 10 Hours',
+        '24h': 'Last 24 Hours',
+    };
     let trendChart = null;
     let paymentMethodChart = null;
     let courtChart = null;
@@ -67,6 +77,34 @@ document.addEventListener('DOMContentLoaded', () => {
         barEl.style.width = `${value}%`;
         barEl.classList.toggle('is-warning', value >= 70 && value < 90);
         barEl.classList.toggle('is-critical', value >= 90);
+    }
+
+    // Paints the segmented Database/WAL/System/Available bar under
+    // "Database Size", mirroring Supabase's own Infrastructure > Disk
+    // page. Widths are percentages of total capacity. "System" segment
+    // is intentionally left at 0 width — that figure isn't obtainable
+    // from a normal Postgres connection, so we don't fake it; the
+    // legend note makes that explicit instead.
+    function renderDiskSegments(db) {
+        const segDatabase = document.getElementById('segDatabase');
+        const segWal = document.getElementById('segWal');
+        const segSystem = document.getElementById('segSystem');
+        if (!segDatabase || !segWal || !segSystem) return;
+
+        const capacity = db.capacity_bytes;
+        if (!capacity) {
+            segDatabase.style.width = '0%';
+            segWal.style.width = '0%';
+            segSystem.style.width = '0%';
+            return;
+        }
+
+        const pct = (bytes) => `${Math.max(0, Math.min(100, ((bytes || 0) / capacity) * 100))}%`;
+
+        segDatabase.style.width = pct(db.size_bytes);
+        segWal.style.width = db.wal_bytes != null ? pct(db.wal_bytes) : '0%';
+        // No real "system" figure available — kept at 0 on purpose.
+        segSystem.style.width = '0%';
     }
 
     function setError(show) {
@@ -267,13 +305,43 @@ document.addEventListener('DOMContentLoaded', () => {
         summaryRequestsHour.textContent = sys.traffic.requests_last_hour.toLocaleString();
         summaryUniqueVisitors.textContent = sys.traffic.unique_visitors_today.toLocaleString();
         renderTrafficTrendChart(sys.traffic.trend);
+        if (trafficPanelTitle) {
+            trafficPanelTitle.textContent = `Traffic (${TRAFFIC_RANGE_LABELS[sys.traffic.range] || 'Last 24 Hours'})`;
+        }
 
         // Database
         const dbUp = sys.database.status === 'up';
         dbStatusPill.textContent = dbUp ? 'Up' : 'Down';
         dbStatusPill.classList.toggle('status-up', dbUp);
         dbStatusPill.classList.toggle('status-down', !dbUp);
-        dbSize.textContent = sys.database.size || '—';
+        // "X GB used of Y GB" (matches Supabase's own Infrastructure >
+        // Disk phrasing) instead of the raw pg_database_size pretty
+        // string. This "used" figure is just the database's own size —
+        // it won't exactly match Supabase's dashboard number, since
+        // that also includes WAL + system overhead that isn't
+        // queryable through a normal Postgres connection.
+        if (sys.database.size_bytes != null && sys.database.capacity_bytes) {
+            const usedGb = (sys.database.size_bytes / (1024 ** 3)).toFixed(2).replace(/\.00$/, '');
+            const capGb = (sys.database.capacity_bytes / (1024 ** 3)).toFixed(0);
+            dbSize.textContent = `${usedGb} GB used of ${capGb} GB`;
+        } else {
+            // "X GB used of Y GB" (matches Supabase's own Infrastructure >
+        // Disk phrasing) instead of the raw pg_database_size pretty
+        // string. This "used" figure is your DB + WAL where available —
+        // System overhead is Supabase infra-level and isn't visible to
+        // a normal Postgres connection, so it's never included here.
+        const db = sys.database;
+        if (db.size_bytes != null && db.capacity_bytes) {
+            const usedGb = (db.size_bytes / (1024 ** 3)).toFixed(2).replace(/\.00$/, '');
+            const capGb = (db.capacity_bytes / (1024 ** 3)).toFixed(0);
+            dbSize.textContent = `${usedGb} GB used of ${capGb} GB`;
+        } else {
+            dbSize.textContent = db.size || '—';
+        }
+
+        renderDiskSegments(db);
+        }
+        setProgressBar(document.getElementById('dbSizeBar'), sys.database.used_percent);
 
         dbTableList.innerHTML = '';
         (sys.database.tables || []).forEach((t) => {
@@ -302,7 +370,8 @@ document.addEventListener('DOMContentLoaded', () => {
     async function loadSystem() {
         if (!systemUrl) return;
         try {
-            const res = await fetch(systemUrl, { headers: { Accept: 'application/json' } });
+            const url = `${systemUrl}?traffic_range=${encodeURIComponent(currentTrafficRange)}`;
+            const res = await fetch(url, { headers: { Accept: 'application/json' } });
             if (!res.ok) return;
             const data = await res.json();
             renderSystem(data);
@@ -346,6 +415,14 @@ document.addEventListener('DOMContentLoaded', () => {
         periodSelect.addEventListener('change', () => {
             currentPeriod = periodSelect.value;
             loadReports(currentPeriod);
+        });
+    }
+
+    if (trafficRangeSelect) {
+        currentTrafficRange = trafficRangeSelect.value;
+        trafficRangeSelect.addEventListener('change', () => {
+            currentTrafficRange = trafficRangeSelect.value;
+            loadSystem();
         });
     }
 
