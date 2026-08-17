@@ -9,11 +9,18 @@ use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Mail;
 
 /**
- * Emails guests roughly an hour before their confirmed booking starts,
- * using the address they verified via Google Sign-In at booking time
+ * Emails guests roughly an hour before their paid booking starts, using
+ * the address they verified via Google Sign-In at booking time
  * (Booking::email — see GuestBookingController::verifyGoogleIdToken()).
- * Only confirmed bookings get a reminder; pending/cancelled ones don't,
- * since a pending booking might not even be a real reservation yet.
+ * Only paid bookings get a reminder; pending/cancelled ones don't, since
+ * a pending booking might not even be a real reservation yet.
+ *
+ * NOTE: this previously filtered on status 'confirmed', but guest
+ * bookings never reach that status — GuestBookingController moves them
+ * from 'pending' straight to 'paid' (see updateReference()'s
+ * `$booking->update(['status' => 'paid', 'confirmed_at' => now()])`).
+ * That meant this query always matched zero rows and no guest ever got
+ * an email reminder. Fixed to match the status bookings actually use.
  *
  * Runs frequently (every 5 minutes — see routes/console.php) and sends
  * to any confirmed booking whose start time has entered the reminder
@@ -34,14 +41,15 @@ use Illuminate\Support\Facades\Mail;
  * this command; flagging it here in case reminders for overnight slots
  * look wrong.
  *
- * Register in routes/console.php:
- *   Schedule::command('bookings:send-reminders')->everyFiveMinutes();
+ * Register in routes/console.php (alongside SendBookingReminders' own
+ * in-app command — each needs its own name, see that file's note):
+ *   Schedule::command('bookings:send-email-reminders')->everyFiveMinutes();
  */
 class SendUpcomingBookingReminders extends Command
 {
-    protected $signature = 'bookings:send-reminders';
+    protected $signature = 'bookings:send-email-reminders';
 
-    protected $description = 'Email guests roughly one hour before their confirmed booking starts';
+    protected $description = 'Email guests roughly one hour before their paid booking starts';
 
     // How far ahead of the start time a booking enters the reminder
     // window. Must stay well above the scheduler's run interval
@@ -53,7 +61,7 @@ class SendUpcomingBookingReminders extends Command
     {
         $sent = 0;
 
-        Booking::where('status', 'confirmed')
+        Booking::where('status', 'paid')
             ->whereNull('reminder_sent_at')
             ->whereNotNull('email')
             ->whereDate('date', '>=', now()->toDateString())

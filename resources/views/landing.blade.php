@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Side House Paddlers</title>
+    <title>Side House Paddlers | Guest</title>
     <link rel="stylesheet" href="{{ asset('css/app.css') }}">
     <link rel="stylesheet" href="{{ asset('css/dashboard.css') }}">
     <link rel="stylesheet" href="{{ asset('css/user-dashboard.css') }}">
@@ -275,7 +275,7 @@
 
                 <div class="faq-item">
                     <button type="button" class="faq-question" aria-expanded="false">
-                        <span>What equipment can we rent?</span>
+                        <span>Is there any equipment that I can rent?</span>
                         <svg class="faq-chevron" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
                             <path d="M6 9l6 6 6-6" />
                         </svg>
@@ -296,7 +296,7 @@
                     </button>
                     <div class="faq-answer-wrap">
                         <div class="faq-answer">
-                            <p>We currently accept GCash.</p>
+                            <p>We currently accept GCash and Landbank payments.</p>
                         </div>
                     </div>
                 </div>
