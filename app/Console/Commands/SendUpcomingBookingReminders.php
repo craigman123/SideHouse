@@ -69,7 +69,10 @@ class SendUpcomingBookingReminders extends Command
             ->with('court')
             ->get()
             ->each(function (Booking $booking) use (&$sent) {
-                $start = Carbon::parse($booking->date . ' ' . $booking->start_time);
+                $start = Carbon::parse(
+                    $booking->date->format('Y-m-d') . ' ' . $booking->start_time,
+                    'Asia/Manila'
+                );
 
                 // Not yet inside the reminder window, or already
                 // started/passed — leave reminder_sent_at null so a
