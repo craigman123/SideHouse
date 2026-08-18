@@ -19,6 +19,21 @@ use App\Http\Controllers\Webhooks\GcashWebhookController;
 use App\Http\Controllers\Webhooks\LandbankWebhookController;
 use App\Http\Controllers\Admin\EquipmentAvailabilityController;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Artisan;
+
+Route::get('/cron/run-reminders', function (\Illuminate\Http\Request $request) {
+    abort_unless($request->query('token') === config('services.cron_secret.secret'), 403);
+
+    Artisan::call('schedule:run');
+    Artisan::call('queue:work', [
+        '--stop-when-empty' => true,
+        '--tries' => 3,
+        '--backoff' => 30,
+    ]);
+
+    return response('ok');
+});
+
 
 Route::get('/', [GuestBookingController::class, 'landing'])->name('landing');
 

@@ -48,4 +48,8 @@ return [
         'secret' => env('LANDBANK_SMS_WEBHOOK_SECRET'),
     ],
 
+    'cron_secret' => [
+        'secret' => env('CRON_SECRET'),
+    ],
+
 ];
