@@ -2,11 +2,10 @@
 
 namespace App\Console\Commands;
 
-use App\Mail\BookingReminderMail;
+use App\Jobs\SendBookingReminderEmail;
 use App\Models\Booking;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\Mail;
 
 /**
  * Emails guests roughly an hour before their paid booking starts, using
@@ -88,15 +87,14 @@ class SendUpcomingBookingReminders extends Command
                 }
 
                 try {
-                    Mail::to($booking->email)->send(new BookingReminderMail($booking));
-                    $booking->update(['reminder_sent_at' => now()]);
+                    // Just dispatch the job – do NOT mark reminder_sent_at here
+                    SendBookingReminderEmail::dispatch($booking);
+
                     $sent++;
-                    $this->info("Sent reminder for booking #{$booking->id} ({$booking->email}).");
+                    $this->info("Dispatched reminder job for booking #{$booking->id} ({$booking->email}).");
                 } catch (\Throwable $e) {
-                    // Don't mark reminder_sent_at on failure — leave it
-                    // null so the next run retries instead of silently
-                    // losing the reminder.
-                    $this->error("Failed to send reminder for booking #{$booking->id}: {$e->getMessage()}");
+                    // Leave reminder_sent_at null so the next run can try again
+                    $this->error("Failed to dispatch reminder for booking #{$booking->id}: {$e->getMessage()}");
                 }
             });
 
