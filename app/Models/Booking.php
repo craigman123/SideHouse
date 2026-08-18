@@ -33,6 +33,7 @@ class Booking extends Model
         'amount'       => 'decimal:2',
         'expires_at'   => 'datetime',
         'confirmed_at' => 'datetime',
+        'reminder_sent_at' => 'datetime',
     ];
 
     public function user()
