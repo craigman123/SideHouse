@@ -24,6 +24,7 @@ class Booking extends Model
         'poll_token',
         'expires_at',
         'confirmed_at',
+        'reminder_sent_at',
         'status',
     ];
 
