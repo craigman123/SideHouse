@@ -4,11 +4,12 @@ namespace App\Mail;
 
 use App\Models\Booking;
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
+use Illuminate\Mail\Mailables\Content;
+use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
 
-class BookingReminderMail extends Mailable implements ShouldQueue
+class BookingReminderMail extends Mailable
 {
     use Queueable, SerializesModels;
 
@@ -16,16 +17,16 @@ class BookingReminderMail extends Mailable implements ShouldQueue
     {
     }
 
-    public function envelope()
+    public function envelope(): Envelope
     {
-        return new \Illuminate\Mail\Mailables\Envelope(
+        return new Envelope(
             subject: 'Your court is booked in about an hour — Side House Paddlers',
         );
     }
 
-    public function content()
+    public function content(): Content
     {
-        return new \Illuminate\Mail\Mailables\Content(
+        return new Content(
             view: 'emails.booking-reminder',
         );
     }
