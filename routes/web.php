@@ -25,7 +25,10 @@ use Illuminate\Support\Facades\Route;
 Route::get('/cron/run-reminders', function (Request $request) {
     abort_unless($request->query('token') === config('services.cron_secret.secret'), 403);
 
-    Artisan::call('schedule:run');
+    Artisan::call('bookings:expire-unconfirmed-gcash');
+    Artisan::call('bookings:expire-unconfirmed-landbank');
+    Artisan::call('bookings:send-in-app-reminders');
+    Artisan::call('bookings:send-email-reminders');
     Artisan::call('queue:work', [
         '--stop-when-empty' => true,
         '--max-time' => 20,
