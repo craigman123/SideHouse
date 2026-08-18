@@ -5,24 +5,27 @@ use App\Http\Controllers\Admin\Admin_DashboardController;
 use App\Http\Controllers\Admin\AdminProfileController;
 use App\Http\Controllers\Admin\AnnouncementController;
 use App\Http\Controllers\Admin\BookingController;
-use App\Http\Controllers\Admin\CourtController;
 use App\Http\Controllers\Admin\ConfigurationController;
+use App\Http\Controllers\Admin\CourtController;
 use App\Http\Controllers\Admin\CustomerController;
+use App\Http\Controllers\Admin\EquipmentAvailabilityController;
 use App\Http\Controllers\Admin\ReportController;
 use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\Guest\GuestBookingController;
+use App\Http\Controllers\User\FeedbackController;
 use App\Http\Controllers\User\NotificationController;
 use App\Http\Controllers\User\User_UserController;
 use App\Http\Controllers\User\UserDashboardController;
-use App\Http\Controllers\User\FeedbackController;
 use App\Http\Controllers\Webhooks\GcashWebhookController;
 use App\Http\Controllers\Webhooks\LandbankWebhookController;
-use App\Http\Controllers\Admin\EquipmentAvailabilityController;
-use Illuminate\Support\Facades\Route;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Route;
 
-Route::get('/cron/run-reminders', function (\Illuminate\Http\Request $request) {
+Route::get('/cron/run-reminders', function (Request $request) {
     abort_unless($request->query('token') === config('services.cron_secret.secret'), 403);
+
+    Artisan::call('queue:retry', ['id' => ['all']]);
 
     Artisan::call('schedule:run');
     Artisan::call('queue:work', [
