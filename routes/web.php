@@ -31,7 +31,7 @@ Route::get('/cron/run-reminders', function (Request $request) {
     Artisan::call('queue:work', [
         '--stop-when-empty' => true,
         '--tries' => 3,
-        '--backoff' => 30,
+        '--backoff' => 60,
     ]);
 
     return response('ok');
