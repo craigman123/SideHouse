@@ -9,6 +9,7 @@ use App\Models\BookingSlot;
 use App\Models\Court;
 use App\Models\CourtClosure;
 use App\Models\Equipment;
+use App\Models\PaymentReference as PaymentReferenceModel;
 use App\Models\UnmatchedPayment;
 use App\Support\ActivityLogger;
 use App\Support\BookingHours;
@@ -259,7 +260,7 @@ class GuestBookingController extends Controller
             return response()->json(['bookings' => []]);
         }
 
-        $bookings = Booking::with(['court', 'equipment'])
+        $bookings = Booking::with(['court', 'equipment', 'paymentReferences'])
             ->where(function ($q) use ($phoneReady, $emailReady, $email, $digits) {
                 // Both fields can be filled in at once — treated as "match
                 // either", not "match both", since a guest might only
@@ -293,8 +294,8 @@ class GuestBookingController extends Controller
                 'time'       => Carbon::parse($booking->start_time)->format('g:i A') . ' – ' . Carbon::parse($booking->end_time)->format('g:i A'),
                 'status'     => $booking->status,
                 'amount'     => (float) $booking->amount,
-                'payment'    => $booking->payment_method,
-                'reference'  => $this->maskReference($booking->gcash_reference_number),
+                'payment'    => $booking->paymentReferences->first()?->payment_method ?? $booking->payment_method,
+                'reference'  => $this->maskReference($booking->paymentReferences->first()?->gcash_reference_number ?? $booking->gcash_reference_number),
                 'equipment'  => $booking->equipment->map(fn ($line) => [
                     'name'     => $equipmentNames[$line->equipment_id] ?? 'Item',
                     'quantity' => $line->quantity,
@@ -368,7 +369,7 @@ class GuestBookingController extends Controller
             // controller for the selected payment_method is the only
             // thing that actually confirms payment, from the real SMS
             // receipt.
-            'payment_reference' => ['required', 'string', 'max:50'],
+            'payment_reference' => ['required', 'string', 'min:6', 'max:50'],
         ]);
 
         if (BookingHours::isClosed((int) $validated['court_id'], $validated['date'])) {
@@ -584,21 +585,17 @@ class GuestBookingController extends Controller
                     'start_time'     => $envelopeStart->format('H:i:s'),
                     'end_time'       => $envelopeEnd->format('H:i:s'),
                     'amount'         => $amount,
-                    'payment_method' => $validated['payment_method'],
-                    // Column name is legacy from GCash-only days, but
-                    // it's a plain varchar used for the guest-entered
-                    // reference number regardless of which method
-                    // (GCash, Landbank...) was selected — no need to
-                    // rename it in the DB.
-                    'gcash_reference_number' => $validated['payment_reference'],
                     'poll_token'     => $pollToken,
                     'expires_at'     => $expiresAt,
-                    // If a parked payment was just claimed, this booking
-                    // is paid the instant it's created — no need to
-                    // wait on a webhook that already fired and isn't
-                    // coming again for this transfer.
                     'status'         => $claimedPayment ? 'paid' : 'pending',
                     'confirmed_at'   => $claimedPayment ? now() : null,
+                ]);
+
+                // Create payment reference record
+                $booking->paymentReferences()->create([
+                    'payment_reference' => $validated['payment_reference'],
+                    'payment_method' => $validated['payment_method'],
+                    'price' => (string) $amount,
                 ]);
 
                 if ($claimedPayment) {
@@ -650,7 +647,7 @@ class GuestBookingController extends Controller
             actor: null,
             subject: $booking,
             properties: [
-                'payment_method' => $booking->payment_method,
+                'payment_method' => $validated['payment_method'],
                 'amount'         => $booking->amount,
                 'status'         => $booking->status,
             ],
@@ -669,7 +666,7 @@ class GuestBookingController extends Controller
                     "%s's payment for %s was confirmed automatically (matched an existing %s payment).",
                     $booking->customer_name,
                     $court->name,
-                    ucfirst($booking->payment_method),
+                    ucfirst($validated['payment_method']),
                 ),
                 actor: null,
                 subject: $booking,
@@ -779,7 +776,18 @@ class GuestBookingController extends Controller
                 return ['status' => $booking->status, 'already_resolved' => true];
             }
 
-            $booking->update(['gcash_reference_number' => $validated['payment_reference']]);
+            // Update the payment reference record
+            $paymentRef = $booking->paymentReferences()->first();
+            if ($paymentRef) {
+                $paymentRef->update(['payment_reference' => $validated['payment_reference']]);
+            } else {
+                // Fallback: create one if it doesn't exist (shouldn't happen normally)
+                $booking->paymentReferences()->create([
+                    'payment_reference' => $validated['payment_reference'],
+                    'payment_method' => $booking->payment_method ?? 'gcash',
+                    'price' => (string) $booking->amount,
+                ]);
+            }
 
             // Same rule as store()'s retroactive claim and both webhook
             // controllers: reference number is the only thing that can
@@ -829,7 +837,8 @@ class GuestBookingController extends Controller
                 ! empty($result['already_resolved']) => "This booking is no longer pending, so its reference number can't be changed.",
                 default => "Reference number updated — we'll keep watching for a match.",
             },
-        ], ! empty($result['already_resolved']) ? 422 : 200);
+            ! empty($result['already_resolved']) ? 422 : 200,
+        ]);
     }
 
     /**

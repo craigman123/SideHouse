@@ -1,6 +1,7 @@
 @extends('layouts.app')
 
-@section('title', 'Configuration')
+@section('title', 'Configuration | Side House')
+@section('page-title', 'Configuration')
     
 @push('styles')
     <link rel="stylesheet" href="{{ asset('css/admin-schedule.css') }}">

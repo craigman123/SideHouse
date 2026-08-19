@@ -17,8 +17,6 @@ return new class extends Migration
             $table->date('date');
             $table->time('start_time');
             $table->time('end_time');
-            $table->string('payment_proof_path')->nullable();
-            $table->string('gcash_reference_number')->nullable();
             $table->timestamp('confirmed_at')->nullable();
             $table->timestamp('expires_at')->nullable();
             $table->string('poll_token')->nullable()->unique();

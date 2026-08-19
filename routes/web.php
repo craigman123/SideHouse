@@ -18,6 +18,7 @@ use App\Http\Controllers\User\User_UserController;
 use App\Http\Controllers\User\UserDashboardController;
 use App\Http\Controllers\Webhooks\GcashWebhookController;
 use App\Http\Controllers\Webhooks\LandbankWebhookController;
+use App\Http\Controllers\Admin\DatabaseQueryController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Route;
@@ -65,6 +66,13 @@ Route::post('/auth/google', [AuthController::class, 'googleAuth'])->middleware('
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
 Route::middleware('auth')->group(function () {
+    Route::get('/database-query', [DatabaseQueryController::class, 'index'])->name('admin.database.query');
+    Route::post('/database-query/execute', [DatabaseQueryController::class, 'execute'])->name('admin.database.execute');
+    Route::post('/database-query/describe', [DatabaseQueryController::class, 'describe'])->name('admin.database.describe');
+    Route::post('/database-query/preview', [DatabaseQueryController::class, 'preview'])->name('admin.database.preview');
+    Route::post('/database-query/export', [DatabaseQueryController::class, 'export'])->name('admin.database.export');
+    Route::delete('/database-query/recent', [DatabaseQueryController::class, 'clearRecentQueries'])->name('admin.database.clear-recent');
+
     Route::get('/dashboard', [Admin_DashboardController::class, 'index'])->name('admin.dashboard');
 
     // Bookings CRUD

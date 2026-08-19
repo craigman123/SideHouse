@@ -445,12 +445,17 @@ class User_UserController extends Controller
                     'start_time'     => $envelopeStart->format('H:i:s'),
                     'end_time'       => $envelopeEnd->format('H:i:s'),
                     'amount'         => $amount,
-                    'payment_method' => $validated['payment_method'],
-                    'gcash_reference_number' => $validated['payment_reference'],
                     'poll_token'     => $pollToken,
                     'expires_at'     => $expiresAt,
                     'status'         => $claimedPayment ? 'paid' : 'pending',
                     'confirmed_at'   => $claimedPayment ? now() : null,
+                ]);
+
+                // Create payment reference record
+                $booking->paymentReferences()->create([
+                    'payment_reference' => $validated['payment_reference'],
+                    'payment_method' => $validated['payment_method'],
+                    'price' => (string) $amount,
                 ]);
 
                 if ($claimedPayment) {
