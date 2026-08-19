@@ -146,7 +146,7 @@
                     size: 'large',
                     text: 'continue_with',
                     shape: 'pill',
-                    width: 300,
+                    width: 270,
                 });
             }
 

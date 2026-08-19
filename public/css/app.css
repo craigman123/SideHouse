@@ -675,3 +675,9 @@ body {
         font-size: 12px;
     }
 }
+
+@media (max-width: 360px) {
+    .auth-box {
+        max-width: 290px;
+    }
+}

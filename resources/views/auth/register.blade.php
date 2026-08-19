@@ -150,7 +150,7 @@
                     size: 'large',
                     text: 'signup_with',
                     shape: 'pill',
-                    width: 300,
+                    width: 270,
                 });
             }
 
