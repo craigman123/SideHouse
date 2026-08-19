@@ -465,6 +465,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // rolls a time earlier than open_hour forward a day relative to
     // whatever `date` it's given. Set on the first slot picked, cleared
     // once selectedSlots empties out again.
+    const slotSessions = new Map(); // slot key -> the booking `date` it belongs to
     let activeSessionDate = null;
     let selectedPayment = null;
     let bookedRanges = [];
@@ -889,6 +890,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function resetBookingState() {
         selectedDate = null;
         selectedSlots = [];
+        slotSessions.clear();
         activeSessionDate = null;
         selectedPayment = null;
         bookedRanges = [];
@@ -967,7 +969,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // activeSessionDate (not selectedDate) — same reasoning as the
             // final booking submit below.
             const params = new URLSearchParams({ date: activeSessionDate || selectedDate });
-            selectedSlots.forEach((timeStr) => params.append('slots[]', timeStr));
+            selectedSlots.forEach((key) => params.append('slots[]', keyTime(key)));
             const res = await fetch(`${equipmentUrl}?${params.toString()}`, { headers: { Accept: 'application/json' } });
             const data = await res.json();
             const freshCatalog = data.equipment || [];
@@ -1078,6 +1080,7 @@ document.addEventListener('DOMContentLoaded', () => {
     async function selectDate(dateStr, btn) {
         selectedDate = dateStr;
         selectedSlots = [];
+        slotSessions.clear();
         activeSessionDate = null;
 
         calendarGrid.querySelectorAll('.calendar-day').forEach((el) => el.classList.remove('selected'));
@@ -1212,12 +1215,37 @@ document.addEventListener('DOMContentLoaded', () => {
     // `sessionDate` is what actually gets submitted as the booking's
     // `date` if a row in this run gets picked — see activeSessionDate's
     // comment above for why that can differ from selectedDate.
+
+    // ---------- Date-aware slot selection ----------
+    // Selections are stored as "YYYY-MM-DD HH:MM" keys (the slot's REAL
+    // calendar date + clock time) instead of bare times, so an overnight
+    // session that crosses midnight keeps each hour attached to the day
+    // it actually falls on, and the same clock hour on two different days
+    // can never be confused for one another.
+    const slotKey = (dateStr, timeStr) => `${dateStr} ${timeStr}`;
+    const keyDate = (key) => key.slice(0, 10);
+    const keyTime = (key) => key.slice(11);
+    const keyStamp = (key) => new Date(`${keyDate(key)}T${keyTime(key)}:00`).getTime();
+    const sortSlotKeys = () => selectedSlots.sort((a, b) => keyStamp(a) - keyStamp(b));
+
+    // "11PM", "12AM", "1:30AM" — compact 12-hour label.
+    function formatCompactTime(timeStr) {
+        const [h, m] = timeStr.split(':').map(Number);
+        const period = h >= 12 ? 'PM' : 'AM';
+        const hour12 = h % 12 === 0 ? 12 : h % 12;
+        return m === 0 ? `${hour12}${period}` : `${hour12}:${pad(m)}${period}`;
+    }
+
+    function formatLongDate(dateStr, withYear) {
+        return new Date(`${dateStr}T00:00:00`).toLocaleDateString('en-US',
+            withYear
+                ? { month: 'long', day: 'numeric', year: 'numeric' }
+                : { month: 'long', day: 'numeric' });
+    }
+
     function renderTimeSlotBlock(startMin, endMin, sessionDate) {
-        // Once a slot's been picked, the OTHER block (the other side of
-        // the closed gap) gets locked — a single booking can't span a
-        // closed period, since that's really two separate sessions as
-        // far as the backend (and the court) is concerned.
-        const blockLocked = activeSessionDate !== null && activeSessionDate !== sessionDate;
+        // Slots stay pickable on every block and every day — the only
+        // limit is MAX_DURATION, enforced in toggleSlot().
 
         for (let totalMin = startMin; totalMin + STEP_MINUTES <= endMin; totalMin += STEP_MINUTES) {
             const h = Math.floor(totalMin / 60);
@@ -1226,8 +1254,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const booked = isSlotBookedAt(totalMin);
             const past = isSlotPastAt(selectedDate, timeStr);
-            const unavailable = booked || past || blockLocked;
-            const isSelected = selectedSlots.includes(timeStr);
+            const unavailable = booked || past;
+            const isSelected = selectedSlots.includes(slotKey(selectedDate, timeStr));
 
             const row = document.createElement('div');
             row.className = 'time-slot-row' + (isSelected ? ' selected' : '') + (unavailable ? ' disabled' : '');
@@ -1250,8 +1278,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 priceLabel.textContent = 'Booked';
             } else if (past) {
                 priceLabel.textContent = 'Past';
-            } else if (blockLocked) {
-                priceLabel.textContent = '—';
             } else {
                 priceLabel.textContent = `₱${slotPrice().toLocaleString()}`;
             }
@@ -1263,9 +1289,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 toggle.disabled = true;
                 row.dataset.tooltip = booked
                     ? 'Reserved — already booked by another player'
-                    : past
-                        ? 'This time has already passed'
-                        : "Clear your current selection first — a booking can't span the closed hours";
+                    : 'This time has already passed';
             } else {
                 toggle.setAttribute('aria-pressed', String(isSelected));
                 toggle.addEventListener('click', () => toggleSlot(timeStr, sessionDate));
@@ -1306,19 +1330,24 @@ document.addEventListener('DOMContentLoaded', () => {
     // just a single continuous start+duration range — but they do all
     // have to belong to the same session (see activeSessionDate).
     function toggleSlot(timeStr, sessionDate) {
-        const idx = selectedSlots.indexOf(timeStr);
+        const key = slotKey(selectedDate, timeStr);
+        const idx = selectedSlots.indexOf(key);
 
         if (idx >= 0) {
             selectedSlots.splice(idx, 1);
-            if (selectedSlots.length === 0) activeSessionDate = null;
+            slotSessions.delete(key);
+            activeSessionDate = selectedSlots.length === 0
+                ? null
+                : slotSessions.get(selectedSlots[0]) || null;
         } else {
             if (selectedSlots.length >= MAX_DURATION) {
-                showToast(`You can book up to ${MAX_DURATION} hour${MAX_DURATION === 1 ? '' : 's'} per booking.`, 'error');
+                showToast(`You can book up to ${(MAX_DURATION * STEP_MINUTES / 60)} hour${(MAX_DURATION * STEP_MINUTES / 60) === 1 ? '' : 's'} per booking.`, 'error');
                 return;
             }
-            selectedSlots.push(timeStr);
-            activeSessionDate = sessionDate;
-            selectedSlots.sort((a, b) => timeToMinutes(a) - timeToMinutes(b));
+            selectedSlots.push(key);
+            slotSessions.set(key, sessionDate);
+            sortSlotKeys();
+            activeSessionDate = slotSessions.get(selectedSlots[0]) || sessionDate;
         }
 
         renderTimeSlots();
@@ -1352,7 +1381,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         try {
             const params = new URLSearchParams({ date: activeSessionDate || selectedDate });
-            selectedSlots.forEach((timeStr) => params.append('slots[]', timeStr));
+            selectedSlots.forEach((key) => params.append('slots[]', keyTime(key)));
             const url = `${equipmentUrl}?${params.toString()}`;
 
             // Same min-delay pattern as the time-slot skeleton — keeps the
@@ -1526,21 +1555,21 @@ document.addEventListener('DOMContentLoaded', () => {
     // Groups selected hours into contiguous ranges for a compact summary
     // — e.g. [16:00, 17:00, 20:00] displays as "4:00 PM – 6:00 PM, 8:00 PM
     // – 9:00 PM" instead of listing every hour separately.
-    function formatSelectedSlotsSummary(separator = ', ') {
+    // "August 19, 2026 11PM - 12AM || August 20 1AM - 2AM | 6AM - 7AM"
+    // Contiguous hours collapse into one range (even across midnight),
+    // ranges are grouped under the calendar day they start on, and only
+    // the first day carries the year.
+    function formatSelectedSlotsSummary(separator = ' | ', dateSeparator = ' || ') {
         if (selectedSlots.length === 0) return '';
+
+        sortSlotKeys();
 
         const ranges = [];
         let rangeStart = selectedSlots[0];
         let rangeEnd = selectedSlots[0];
 
-        // All of selectedSlots belongs to one session/block (toggleSlot
-        // enforces that), so plain minutes-since-midnight is safe here —
-        // no open-hour-relative wraparound needed.
         for (let i = 1; i < selectedSlots.length; i++) {
-            const prevSinceOpen = timeToMinutes(rangeEnd);
-            const curSinceOpen = timeToMinutes(selectedSlots[i]);
-
-            if (curSinceOpen === prevSinceOpen + STEP_MINUTES) {
+            if (keyStamp(selectedSlots[i]) === keyStamp(rangeEnd) + STEP_MINUTES * 60000) {
                 rangeEnd = selectedSlots[i];
             } else {
                 ranges.push([rangeStart, rangeEnd]);
@@ -1550,11 +1579,20 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         ranges.push([rangeStart, rangeEnd]);
 
-        return ranges.map(([start, end]) => {
-            const endMin = (timeToMinutes(end) + STEP_MINUTES) % 1440;
-            const endTimeStr = `${pad(Math.floor(endMin / 60))}:${pad(endMin % 60)}`;
-            return `${formatTime(start)} – ${formatTime(endTimeStr)}`;
-        }).join(separator);
+        const groups = [];
+        ranges.forEach(([start, end]) => {
+            const endDate = new Date(keyStamp(end) + STEP_MINUTES * 60000);
+            const endStr = `${pad(endDate.getHours())}:${pad(endDate.getMinutes())}`;
+            const label = `${formatCompactTime(keyTime(start))} - ${formatCompactTime(endStr)}`;
+            const day = keyDate(start);
+            const group = groups.find((g) => g.date === day);
+            if (group) group.ranges.push(label);
+            else groups.push({ date: day, ranges: [label] });
+        });
+
+        return groups
+            .map((g, i) => `${formatLongDate(g.date, i === 0)} ${g.ranges.join(separator)}`)
+            .join(dateSeparator);
     }
 
     function updateSummary() {
@@ -1642,8 +1680,8 @@ document.addEventListener('DOMContentLoaded', () => {
         // The session's own opening date, not necessarily the picker page
         // the guest was looking at — see activeSessionDate's declaration.
         formData.append('date', activeSessionDate || selectedDate);
-        selectedSlots.forEach((timeStr, i) => {
-            formData.append(`slots[${i}]`, timeStr);
+        selectedSlots.forEach((key, i) => {
+            formData.append(`slots[${i}]`, keyTime(key));
         });
         formData.append('payment_method', selectedPayment);
         formData.append('guest_name', guestNameInput.value.trim());
@@ -1706,6 +1744,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 showToast(data.message || 'That slot is no longer available.', 'error');
 
                 selectedSlots = [];
+        slotSessions.clear();
                 activeSessionDate = null;
 
                 closePaymentModal();
