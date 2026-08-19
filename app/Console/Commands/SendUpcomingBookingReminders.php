@@ -29,6 +29,15 @@ use Illuminate\Console\Command;
  * tick. reminder_sent_at is what actually prevents duplicates, not the
  * run cadence.
  *
+ * A booking only qualifies once it's status=paid, confirmed_at is set,
+ * has an email, and reminder_sent_at is still null. reminder_sent_at is
+ * only written by SendBookingReminderEmail AFTER the email actually
+ * sends successfully — so if a send fails (SMTP/API error, timeout,
+ * etc.), the row stays null and this command will pick it up again on
+ * the very next 5-minute tick, on top of the job's own 3 built-in
+ * retries. Effectively: keep retrying every 5 minutes until it sends,
+ * or until the booking's start time passes (isPast() below stops it).
+ *
  * CAVEAT: like monthlyStats() in GuestBookingController, this assumes
  * Booking::date is the true calendar date of the start time. For an
  * overnight booking whose selected hour rolled past midnight (handled
@@ -61,6 +70,7 @@ class SendUpcomingBookingReminders extends Command
         $sent = 0;
 
         Booking::where('status', 'paid')
+            ->whereNotNull('confirmed_at')
             ->whereNull('reminder_sent_at')
             ->whereNotNull('email')
             ->whereDate('date', '>=', now()->toDateString())

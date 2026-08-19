@@ -4,8 +4,8 @@ namespace App\Console\Commands;
 
 use App\Mail\BookingReminderMail;
 use App\Models\Booking;
+use App\Support\BrevoMailer;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\Mail;
 
 /**
  * Sends a booking reminder email immediately for a given booking ID,
@@ -37,7 +37,7 @@ class TestReminderMail extends Command
         }
 
         try {
-            Mail::to($booking->email)->send(new BookingReminderMail($booking));
+            BrevoMailer::send($booking->email, $booking->customer_name, new BookingReminderMail($booking));
             $this->info("Sent test reminder for booking #{$booking->id} to {$booking->email}.");
             $this->info('Note: this did NOT set reminder_sent_at, so it will not interfere with the real cron logic.');
         } catch (\Throwable $e) {

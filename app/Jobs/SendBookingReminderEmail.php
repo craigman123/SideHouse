@@ -4,12 +4,12 @@ namespace App\Jobs;
 
 use App\Mail\BookingReminderMail;
 use App\Models\Booking;
+use App\Support\BrevoMailer;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\Mail;
 use Throwable;
 
 class SendBookingReminderEmail implements ShouldQueue
@@ -30,7 +30,11 @@ class SendBookingReminderEmail implements ShouldQueue
             return;
         }
 
-        Mail::to($this->booking->email)->send(new BookingReminderMail($this->booking));
+        BrevoMailer::send(
+            $this->booking->email,
+            $this->booking->customer_name,
+            new BookingReminderMail($this->booking),
+        );
 
         // Only mark as sent AFTER the email actually went out successfully
         $this->booking->update(['reminder_sent_at' => now()]);

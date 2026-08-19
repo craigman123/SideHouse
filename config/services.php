@@ -52,4 +52,8 @@ return [
         'secret' => env('CRON_SECRET'),
     ],
 
+    'brevo' => [
+        'key' => env('BREVO_API_KEY'),
+    ],
+
 ];
