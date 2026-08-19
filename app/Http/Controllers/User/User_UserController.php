@@ -183,27 +183,33 @@ class User_UserController extends Controller
             'date'     => ['required', 'date'],
         ]);
 
-        $bookings = Booking::where('court_id', $validated['court_id'])
+        // Spots are looked up by their OWN date (booking_slots.date), not
+        // the parent booking's envelope date — matches GuestBookingController
+        // so overnight tail slots still show as booked on the next day.
+        $slots = \App\Models\BookingSlot::where('date', $validated['date'])
+            ->whereHas('booking', function ($q) use ($validated) {
+                $q->where('court_id', $validated['court_id'])
+                    ->where('status', '!=', 'cancelled');
+            })
+            ->get(['start_time', 'end_time']);
+
+        $booked = $slots->map(fn ($slot) => [
+            'start' => substr($slot->start_time, 0, 5),
+            'end'   => substr($slot->end_time, 0, 5),
+        ])->all();
+
+        // Legacy bookings with no slot rows fall back to envelope on booking.date.
+        $legacyBookings = Booking::where('court_id', $validated['court_id'])
             ->where('date', $validated['date'])
             ->where('status', '!=', 'cancelled')
-            ->with('slots')
-            ->get(['id', 'start_time', 'end_time']);
+            ->whereDoesntHave('slots')
+            ->get(['start_time', 'end_time']);
 
-        $booked = [];
-        foreach ($bookings as $booking) {
-            if ($booking->slots->isNotEmpty()) {
-                foreach ($booking->slots as $slot) {
-                    $booked[] = [
-                        'start' => substr($slot->start_time, 0, 5),
-                        'end'   => substr($slot->end_time, 0, 5),
-                    ];
-                }
-            } else {
-                $booked[] = [
-                    'start' => substr($booking->start_time, 0, 5),
-                    'end'   => substr($booking->end_time, 0, 5),
-                ];
-            }
+        foreach ($legacyBookings as $booking) {
+            $booked[] = [
+                'start' => substr($booking->start_time, 0, 5),
+                'end'   => substr($booking->end_time, 0, 5),
+            ];
         }
 
         return response()->json(['booked' => $booked]);
@@ -355,17 +361,21 @@ class User_UserController extends Controller
                 Court::where('id', $court->id)->lockForUpdate()->first();
 
                 foreach ($slotWindows as [$slotStart, $slotEnd]) {
-                    $slotConflict = \App\Models\BookingSlot::whereHas('booking', function ($q) use ($court, $validated) {
+                    // Check against the SLOT's own real calendar date (handles
+                    // overnight tail slots rolled forward by addDay()).
+                    $slotDateStr = $slotStart->toDateString();
+
+                    $slotConflict = \App\Models\BookingSlot::whereHas('booking', function ($q) use ($court) {
                             $q->where('court_id', $court->id)
-                                ->where('date', $validated['date'])
                                 ->where('status', '!=', 'cancelled');
                         })
+                        ->where('date', $slotDateStr)
                         ->where('start_time', '<', $slotEnd->format('H:i:s'))
                         ->where('end_time', '>', $slotStart->format('H:i:s'))
                         ->exists();
 
                     $legacyConflict = Booking::where('court_id', $court->id)
-                        ->where('date', $validated['date'])
+                        ->where('date', $slotDateStr)
                         ->where('status', '!=', 'cancelled')
                         ->whereDoesntHave('slots')
                         ->where('start_time', '<', $slotEnd->format('H:i:s'))
@@ -388,7 +398,7 @@ class User_UserController extends Controller
                     }
 
                     $minAvailable = collect($slotWindows)
-                        ->map(fn ($w) => $item->availableStock($validated['date'], $w[0]->format('H:i:s'), $w[1]->format('H:i:s')))
+                        ->map(fn ($w) => $item->availableStock($w[0]->toDateString(), $w[0]->format('H:i:s'), $w[1]->format('H:i:s')))
                         ->min();
 
                     if ($line['quantity'] > $minAvailable) {
@@ -456,6 +466,7 @@ class User_UserController extends Controller
 
                 foreach ($slotWindows as [$start, $end]) {
                     $booking->slots()->create([
+                        'date'       => $start->toDateString(),
                         'start_time' => $start->format('H:i:s'),
                         'end_time'   => $end->format('H:i:s'),
                         'price'      => $slotPrice,

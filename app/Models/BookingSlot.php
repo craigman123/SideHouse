@@ -11,12 +11,14 @@ class BookingSlot extends Model
 
     protected $fillable = [
         'booking_id',
+        'date',
         'start_time',
         'end_time',
         'price',
     ];
 
     protected $casts = [
+        'date'  => 'date',
         'price' => 'decimal:2',
     ];
 

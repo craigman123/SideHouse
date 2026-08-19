@@ -752,8 +752,13 @@ document.addEventListener('DOMContentLoaded', () => {
     // calendar buttons.
     async function changeDateInModal(dateStr) {
         selectedDate = dateStr;
-        selectedSlots = [];
-        activeSessionDate = null;
+        // Intentionally keep selectedSlots + activeSessionDate across
+        // day-to-day navigation in the time picker. That way a guest can
+        // pick e.g. 11 PM–12 AM on Aug 19 and 12 AM–1 AM on Aug 20 (both
+        // belonging to the same overnight session) without losing the
+        // first selection when they flip to the next calendar day.
+        // Selections are still cleared when picking a fresh date from the
+        // calendar, on full reset, or after a conflict error.
 
         if (timePickerDateLabel) timePickerDateLabel.textContent = formatDate(dateStr);
         updateDayNavState();

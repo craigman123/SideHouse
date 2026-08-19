@@ -432,8 +432,9 @@ document.addEventListener('DOMContentLoaded', () => {
             if (next < todayStr()) return;
             if (!isDateClosed(next)) {
                 selectedDate = next;
-                selectedSlots = [];
-                activeSessionDate = null;
+                // Keep selectedSlots + activeSessionDate so overnight
+                // selections (e.g. 11 PM on the 19th + 12 AM on the 20th)
+                // survive flipping between the two calendar days.
                 changeDateInModal(next);
                 return;
             }
@@ -444,8 +445,10 @@ document.addEventListener('DOMContentLoaded', () => {
     timePickerNextDay?.addEventListener('click', () => shiftSelectedDate(1));
 
     async function changeDateInModal(dateStr) {
-        selectedSlots = [];
-        activeSessionDate = null;
+        // Intentionally keep selectedSlots + activeSessionDate across
+        // day-to-day navigation. Selections are still cleared when
+        // picking a fresh date from the calendar, on full reset, or
+        // after a conflict error.
         renderTimePickerDateLabel();
         updateDayNavState();
         renderTimeSlotSkeleton();
@@ -658,10 +661,10 @@ document.addEventListener('DOMContentLoaded', () => {
         let rangeEnd = selectedSlots[0];
 
         for (let i = 1; i < selectedSlots.length; i++) {
-            const prevSinceOpen = minutesSinceOpen(rangeEnd);
-            const curSinceOpen = minutesSinceOpen(selectedSlots[i]);
+            const prevMin = timeToMinutes(rangeEnd);
+            const curMin = timeToMinutes(selectedSlots[i]);
 
-            if (curSinceOpen === prevSinceOpen + STEP_MINUTES) {
+            if (curMin === prevMin + STEP_MINUTES) {
                 rangeEnd = selectedSlots[i];
             } else {
                 ranges.push([rangeStart, rangeEnd]);
@@ -669,6 +672,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 rangeEnd = selectedSlots[i];
             }
         }
+
         ranges.push([rangeStart, rangeEnd]);
 
         return ranges.map(([start, end]) => {
@@ -697,7 +701,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         try {
             const params = new URLSearchParams();
-            params.append('date', selectedDate);
+            // equipment load
+            params.append('date', activeSessionDate || selectedDate);
             selectedSlots.forEach((timeStr) => params.append('slots[]', timeStr));
 
             const res = await fetch(`${equipmentUrl}?${params.toString()}`, { headers: { Accept: 'application/json' } });
@@ -983,7 +988,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function updateSummary() {
-        summaryDate.textContent = formatDate(selectedDate);
+        // updateSummary
+        summaryDate.textContent = formatDate(activeSessionDate || selectedDate);
         summaryTime.textContent = formatSelectedSlotsSummary();
         summaryPayment.textContent = selectedPayment ? PAYMENT_LABELS[selectedPayment] : '—';
 
@@ -1063,7 +1069,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 },
                 body: JSON.stringify({
                     court_id: selectedCourt.id,
-                    date: selectedDate,
+                    date: activeSessionDate || selectedDate,
                     slots: selectedSlots,
                     payment_method: selectedPayment,
                     contact_number: contactNumberInput.value.trim(),
