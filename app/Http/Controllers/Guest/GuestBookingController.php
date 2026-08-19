@@ -129,27 +129,40 @@ class GuestBookingController extends Controller
             'date'     => ['required', 'date'],
         ]);
 
-        $bookings = Booking::where('court_id', $validated['court_id'])
+        // Slots are looked up by their OWN date now, not the parent
+        // booking's envelope date — a tail slot from an overnight booking
+        // that started the day before (e.g. a 6 AM slot booked as part of
+        // "yesterday's" 4 PM–close session) still needs to show as booked
+        // when a guest checks today's availability, even though the
+        // parent Booking's own `date` column is yesterday.
+        $slots = BookingSlot::where('date', $validated['date'])
+            ->whereHas('booking', function ($q) use ($validated) {
+                $q->where('court_id', $validated['court_id'])
+                    ->where('status', '!=', 'cancelled');
+            })
+            ->get(['start_time', 'end_time']);
+
+        $booked = $slots->map(fn ($slot) => [
+            'start' => substr($slot->start_time, 0, 5),
+            'end'   => substr($slot->end_time, 0, 5),
+        ])->all();
+
+        // Legacy bookings made before booking_slots existed have no slot
+        // rows at all — fall back to their envelope on booking.date,
+        // same as before. These predate the overnight-rollover bug fix
+        // entirely, so their date is whatever was originally (possibly
+        // incorrectly) stored.
+        $legacyBookings = Booking::where('court_id', $validated['court_id'])
             ->where('date', $validated['date'])
             ->where('status', '!=', 'cancelled')
-            ->with('slots')
-            ->get(['id', 'start_time', 'end_time']);
+            ->whereDoesntHave('slots')
+            ->get(['start_time', 'end_time']);
 
-        $booked = [];
-        foreach ($bookings as $booking) {
-            if ($booking->slots->isNotEmpty()) {
-                foreach ($booking->slots as $slot) {
-                    $booked[] = [
-                        'start' => substr($slot->start_time, 0, 5),
-                        'end'   => substr($slot->end_time, 0, 5),
-                    ];
-                }
-            } else {
-                $booked[] = [
-                    'start' => substr($booking->start_time, 0, 5),
-                    'end'   => substr($booking->end_time, 0, 5),
-                ];
-            }
+        foreach ($legacyBookings as $booking) {
+            $booked[] = [
+                'start' => substr($booking->start_time, 0, 5),
+                'end'   => substr($booking->end_time, 0, 5),
+            ];
         }
 
         // Lets the picker show "Closed" for a date instead of just an
@@ -443,17 +456,28 @@ class GuestBookingController extends Controller
                 Court::where('id', $court->id)->lockForUpdate()->first();
 
                 foreach ($slotWindows as [$slotStart, $slotEnd]) {
-                    $slotConflict = BookingSlot::whereHas('booking', function ($q) use ($court, $validated) {
+                    // Check against the SLOT's own real calendar date, not
+                    // the single date the guest's form submitted. A tail
+                    // slot rolled forward by the addDay() logic above
+                    // (e.g. a 6 AM slot on an overnight-open court) really
+                    // happens on the next calendar day — conflicts have to
+                    // be checked against that true date, or two guests
+                    // could double-book the same real hour if one of them
+                    // is looking at it from "yesterday's" tab and the
+                    // other from "today's".
+                    $slotDateStr = $slotStart->toDateString();
+
+                    $slotConflict = BookingSlot::whereHas('booking', function ($q) use ($court) {
                             $q->where('court_id', $court->id)
-                                ->where('date', $validated['date'])
                                 ->where('status', '!=', 'cancelled');
                         })
+                        ->where('date', $slotDateStr)
                         ->where('start_time', '<', $slotEnd->format('H:i:s'))
                         ->where('end_time', '>', $slotStart->format('H:i:s'))
                         ->exists();
 
                     $legacyConflict = Booking::where('court_id', $court->id)
-                        ->where('date', $validated['date'])
+                        ->where('date', $slotDateStr)
                         ->where('status', '!=', 'cancelled')
                         ->whereDoesntHave('slots')
                         ->where('start_time', '<', $slotEnd->format('H:i:s'))
@@ -492,7 +516,7 @@ class GuestBookingController extends Controller
                     }
 
                     $minAvailable = collect($slotWindows)
-                        ->map(fn ($w) => $item->availableStock($validated['date'], $w[0]->format('H:i:s'), $w[1]->format('H:i:s')))
+                        ->map(fn ($w) => $item->availableStock($w[0]->toDateString(), $w[0]->format('H:i:s'), $w[1]->format('H:i:s')))
                         ->min();
 
                     if ($line['quantity'] > $minAvailable) {
@@ -586,6 +610,7 @@ class GuestBookingController extends Controller
 
                 foreach ($slotWindows as [$start, $end]) {
                     $booking->slots()->create([
+                        'date'       => $start->toDateString(),
                         'start_time' => $start->format('H:i:s'),
                         'end_time'   => $end->format('H:i:s'),
                         'price'      => $slotPrice,

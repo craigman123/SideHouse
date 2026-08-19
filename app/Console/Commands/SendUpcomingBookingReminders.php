@@ -38,16 +38,13 @@ use Illuminate\Console\Command;
  * retries. Effectively: keep retrying every 5 minutes until it sends,
  * or until the booking's start time passes (isPast() below stops it).
  *
- * CAVEAT: like monthlyStats() in GuestBookingController, this assumes
- * Booking::date is the true calendar date of the start time. For an
- * overnight booking whose selected hour rolled past midnight (handled
- * in GuestBookingController::store() by pushing that slot's Carbon
- * instance forward a day), the stored `date` column still holds the
- * originally-requested date, not the shifted one — so a post-midnight
- * slot's computed start time here could be off by a day. This is a
- * pre-existing quirk in how bookings are stored, not something new to
- * this command; flagging it here in case reminders for overnight slots
- * look wrong.
+ * FIXED: previously assumed Booking::date/start_time was the true
+ * calendar date+time — for an overnight booking whose selected hour
+ * rolled past midnight, that stored envelope could be a day off (see
+ * migration 2026_08_20_000000_add_date_to_booking_slots_table). Now
+ * uses each slot's own real `date` column (booking_slots) to find the
+ * booking's true earliest upcoming start time, so overnight bookings
+ * get reminded (and stop being reminded once truly past) correctly.
  *
  * Register in routes/console.php (alongside SendBookingReminders' own
  * in-app command — each needs its own name, see that file's note):
@@ -69,10 +66,32 @@ class SendUpcomingBookingReminders extends Command
     {
         $sent = 0;
 
-        Booking::where('status', 'paid')
+        $base = Booking::where('status', 'paid')
             ->whereNotNull('confirmed_at')
             ->whereNull('reminder_sent_at')
-            ->whereNotNull('email')
+            ->whereNotNull('email');
+
+        // Modern bookings — real per-slot dates via booking_slots.date.
+        (clone $base)
+            ->whereHas('slots', function ($q) {
+                $q->whereDate('date', '>=', now()->toDateString())
+                    ->whereDate('date', '<=', now()->addDay()->toDateString());
+            })
+            ->with(['court', 'slots'])
+            ->get()
+            ->each(fn (Booking $booking) => $this->maybeRemind(
+                $booking,
+                $this->earliestUpcomingSlotStart($booking),
+                $sent,
+            ));
+
+        // Legacy bookings made before booking_slots existed at all — no
+        // slot rows to check, fall back to the envelope columns exactly
+        // as this command always did. Fine for these because they predate
+        // the overnight-rollover fix entirely and were never split across
+        // a real vs. stored date to begin with.
+        (clone $base)
+            ->whereDoesntHave('slots')
             ->whereDate('date', '>=', now()->toDateString())
             ->whereDate('date', '<=', now()->addDay()->toDateString())
             ->with('court')
@@ -82,30 +101,7 @@ class SendUpcomingBookingReminders extends Command
                     $booking->date->format('Y-m-d') . ' ' . $booking->start_time,
                     'Asia/Manila'
                 );
-
-                // Not yet inside the reminder window, or already
-                // started/passed — leave reminder_sent_at null so a
-                // later run can still pick it up (or skip it forever
-                // once it's in the past, which is fine: nobody needs a
-                // reminder for a slot that already happened).
-                // diffInMinutes() is unsigned here on purpose — Carbon's
-                // signed-diff convention differs enough between versions
-                // that it's not worth relying on; isPast() covers the
-                // "already happened" side explicitly instead.
-                if ($start->isPast() || now()->diffInMinutes($start) > self::REMINDER_LEAD_MINUTES) {
-                    return;
-                }
-
-                try {
-                    // Just dispatch the job – do NOT mark reminder_sent_at here
-                    SendBookingReminderEmail::dispatch($booking);
-
-                    $sent++;
-                    $this->info("Dispatched reminder job for booking #{$booking->id} ({$booking->email}).");
-                } catch (\Throwable $e) {
-                    // Leave reminder_sent_at null so the next run can try again
-                    $this->error("Failed to dispatch reminder for booking #{$booking->id}: {$e->getMessage()}");
-                }
+                $this->maybeRemind($booking, $start, $sent);
             });
 
         if ($sent === 0) {
@@ -113,5 +109,56 @@ class SendUpcomingBookingReminders extends Command
         }
 
         return self::SUCCESS;
+    }
+
+    /**
+     * The earliest slot on this booking that hasn't started yet — a
+     * booking can have several slots (possibly spanning midnight), and
+     * once every one of them is in the past there's nothing left to
+     * remind about.
+     */
+    private function earliestUpcomingSlotStart(Booking $booking): ?Carbon
+    {
+        $now = now('Asia/Manila');
+
+        return $booking->slots
+            ->map(fn ($slot) => Carbon::parse(
+                $slot->date->format('Y-m-d') . ' ' . $slot->start_time,
+                'Asia/Manila'
+            ))
+            ->filter(fn (Carbon $start) => $start->gt($now))
+            ->sort()
+            ->first();
+    }
+
+    private function maybeRemind(Booking $booking, ?Carbon $start, int &$sent): void
+    {
+        if ($start === null) {
+            // Nothing upcoming left on this booking.
+            return;
+        }
+
+        // Not yet inside the reminder window, or already started/passed —
+        // leave reminder_sent_at null so a later run can still pick it up
+        // (or skip it forever once it's in the past, which is fine:
+        // nobody needs a reminder for a slot that already happened).
+        // diffInMinutes() is unsigned here on purpose — Carbon's
+        // signed-diff convention differs enough between versions that
+        // it's not worth relying on; isPast() covers the "already
+        // happened" side explicitly instead.
+        if ($start->isPast() || now()->diffInMinutes($start) > self::REMINDER_LEAD_MINUTES) {
+            return;
+        }
+
+        try {
+            // Just dispatch the job – do NOT mark reminder_sent_at here
+            SendBookingReminderEmail::dispatch($booking);
+
+            $sent++;
+            $this->info("Dispatched reminder job for booking #{$booking->id} ({$booking->email}).");
+        } catch (\Throwable $e) {
+            // Leave reminder_sent_at null so the next run can try again
+            $this->error("Failed to dispatch reminder for booking #{$booking->id}: {$e->getMessage()}");
+        }
     }
 }
