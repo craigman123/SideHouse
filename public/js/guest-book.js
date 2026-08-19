@@ -1180,17 +1180,13 @@ document.addEventListener('DOMContentLoaded', () => {
         const endH = Math.floor(endMin / 60);
         const endM = endMin % 60;
 
-        const startPeriod = startH >= 12 ? 'PM' : 'AM';
-        const endPeriod = endH >= 12 ? 'PM' : 'AM';
-        const startHour12 = startH % 12 === 0 ? 12 : startH % 12;
-        const endHour12 = endH % 12 === 0 ? 12 : endH % 12;
+        const formatPart = (h, m) => {
+            const period = h >= 12 ? 'PM' : 'AM';
+            const hour12 = h % 12 === 0 ? 12 : h % 12;
+            return `${hour12}:${pad(m)}${period}`;
+        };
 
-        const startLabel = `${startHour12}:${pad(startM)}`;
-        const endLabel = `${endHour12}:${pad(endM)} ${endPeriod}`;
-
-        return startPeriod === endPeriod
-            ? `${startLabel} - ${endLabel}`
-            : `${startLabel} ${startPeriod} - ${endLabel}`;
+        return `${formatPart(startH, startM)} - ${formatPart(endH, endM)}`;
     }
 
     // 12-hour "4:00 PM" style label for a bare hour (0-23), used only by
@@ -1206,7 +1202,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function appendClosedDivider() {
         const divider = document.createElement('div');
         divider.className = 'time-slot-closed-divider';
-        divider.textContent = `Closes at ${formatHourLabel(CLOSE_HOUR)} · Opens at ${formatHourLabel(OPEN_HOUR)}`;
+        divider.innerHTML = `<p class="time-slot-closed-divider-label">Closes</p> at ${formatHourLabel(CLOSE_HOUR)} · <p class="time-slot-open-divider-label">Opens</p> at ${formatHourLabel(OPEN_HOUR)}`;
         timeSlotGrid.appendChild(divider);
     }
 

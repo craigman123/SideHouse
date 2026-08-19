@@ -533,7 +533,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function appendClosedDivider() {
         const divider = document.createElement('div');
         divider.className = 'time-slot-closed-divider';
-        divider.textContent = `Closes at ${formatHourLabel(CLOSE_HOUR)} · Opens at ${formatHourLabel(OPEN_HOUR)}`;
+        divider.innerHTML = `<p class="time-slot-closed-divider-label">Closes</p> at ${formatHourLabel(CLOSE_HOUR)} · <p class="time-slot-open-divider-label">Opens</p> at ${formatHourLabel(OPEN_HOUR)}`;
         timeSlotGrid.appendChild(divider);
     }
 
@@ -592,7 +592,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const label = document.createElement('span');
             label.className = 'time-slot-row-time';
-            label.textContent = formatTime(timeStr);
+            label.textContent = formatSlotRange(totalMin);
 
             const toggle = document.createElement('button');
             toggle.type = 'button';
@@ -1013,6 +1013,24 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // ---------- Summary + validation ----------
+
+    // "1:00 - 2:00 PM" / "11:00 PM - 12:00 AM" — the slot's own span, using
+    // the business setting's step size so 30-min steps read correctly too.
+    function formatSlotRange(totalMin) {
+        const endMin = (totalMin + STEP_MINUTES) % 1440;
+        const startH = Math.floor(totalMin / 60);
+        const startM = totalMin % 60;
+        const endH = Math.floor(endMin / 60);
+        const endM = endMin % 60;
+
+        const formatPart = (h, m) => {
+            const period = h >= 12 ? 'PM' : 'AM';
+            const hour12 = h % 12 === 0 ? 12 : h % 12;
+            return `${hour12}:${pad(m)}${period}`;
+        };
+
+        return `${formatPart(startH, startM)} - ${formatPart(endH, endM)}`;
+    }
 
     function formatTime(timeStr) {
         const [h, m] = timeStr.split(':').map(Number);

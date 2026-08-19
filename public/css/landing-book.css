@@ -1565,8 +1565,19 @@ a.footer-contact:hover {
 
 .time-slot-closed-divider {
     text-align: center;
+    display: flex;
+    gap: 5px;
+    justify-content: center;
     color: #8b949e;
-    font-size: 12px;
+    font-size: 16px;
     font-weight: bold;
     margin: 20px 0;
+    font-style: italic;
+}
+
+@media (max-width: 450px) {
+    .time-slot-closed-divider {
+        margin: 10px 0;
+        font-size: 12px;
+    }
 }

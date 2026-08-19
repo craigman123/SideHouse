@@ -77,18 +77,14 @@ class User_UserController extends Controller
             ->values();
 
         return view('user.bookings.book', [
-            'courts'         => $courts,
             'userName'       => auth()->user()->name,
-            // Prefills the contact-number step in book.js when set — see
-            // User::phone_number, editable from the profile page. Empty
-            // string (not null) so the blade attribute never renders the
-            // literal word "null".
             'userPhone'      => auth()->user()->phone_number ?? '',
-            'openHour'       => self::OPEN_HOUR,
-            'closeHour'      => self::CLOSE_HOUR,
-            'minDuration'    => self::MIN_DURATION_SLOTS,
-            'maxDuration'    => self::MAX_DURATION_SLOTS,
-            'stepMinutes'    => self::BOOKING_STEP_MINUTES,
+            'courts'         => $courts,
+            'openHour'       => BookingHours::openHour(),
+            'closeHour'      => BookingHours::closeHour(),
+            'minDuration'    => BookingHours::minDurationHours(),
+            'maxDuration'    => BookingHours::maxDurationHours(),
+            'stepMinutes'    => BookingHours::stepMinutes(),
             'closedWeekdays' => BookingHours::closedWeekdays(),
             'closureDates'   => $closureDates,
         ]);

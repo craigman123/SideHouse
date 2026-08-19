@@ -257,6 +257,16 @@
     color: #f0f6fc;
 }
 
+.time-slot-closed-divider-label {
+    font-weight: 700;
+    color: #a30000;
+}
+
+.time-slot-open-divider-label {
+    font-weight: 700;
+    color: #11ac00;
+}
+
 .loading-text {
     color: #6e7681;
     font-size: 13px;
