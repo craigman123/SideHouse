@@ -46,15 +46,14 @@ document.addEventListener('DOMContentLoaded', () => {
         return false;
     }
 
-    // Slot must start at least 1 hour from now.
-    function isSlotPast(timeStr) {
-        if (!selectedDate) return false;
+    // Slot must start at least 1 hour from now. dateStr is the row's own
+    // real calendar date — every row on a picker page is a real hour on
+    // `selectedDate` itself now (see renderTimeSlots), whether it's the
+    // tail of last night's session or the start of today's.
+    function isSlotPastAt(dateStr, timeStr) {
         const [h, m] = timeStr.split(':').map(Number);
-        const slotDate = new Date(`${selectedDate}T00:00:00`);
+        const slotDate = new Date(`${dateStr}T00:00:00`);
         slotDate.setHours(h, m, 0, 0);
-        if (OVERNIGHT && h * 60 + m < OPEN_HOUR * 60) {
-            slotDate.setDate(slotDate.getDate() + 1);
-        }
         return slotDate.getTime() <= Date.now() + 60 * 60 * 1000;
     }
 
@@ -149,6 +148,11 @@ document.addEventListener('DOMContentLoaded', () => {
     let calendarCursor = new Date();
     let selectedDate = null;
     let selectedSlots = []; // e.g. ['16:00', '17:00'], always sorted
+    // The real `date` submitted with the booking — the session's own
+    // opening date, which for an overnight court can differ from
+    // selectedDate (the picker page being viewed). See guest-book.js for
+    // the fuller rationale; mirrored here for the signed-in flow.
+    let activeSessionDate = null;
     let selectedPayment = null;
     let bookedRanges = [];
     let equipmentCatalog = [];
@@ -231,6 +235,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function resetBookingState() {
         selectedDate = null;
         selectedSlots = [];
+        activeSessionDate = null;
         selectedPayment = null;
         bookedRanges = [];
         equipmentSelection = {};
@@ -395,6 +400,7 @@ document.addEventListener('DOMContentLoaded', () => {
     async function selectDate(dateStr) {
         selectedDate = dateStr;
         selectedSlots = [];
+        activeSessionDate = null;
 
         closeBookingModal();
         openTimePickerModal();
@@ -427,6 +433,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!isDateClosed(next)) {
                 selectedDate = next;
                 selectedSlots = [];
+                activeSessionDate = null;
                 changeDateInModal(next);
                 return;
             }
@@ -438,6 +445,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function changeDateInModal(dateStr) {
         selectedSlots = [];
+        activeSessionDate = null;
         renderTimePickerDateLabel();
         updateDayNavState();
         renderTimeSlotSkeleton();
@@ -484,20 +492,23 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // ---------- Time slots (multi-select hours) ----------
 
-    function minutesSinceOpen(timeStr) {
-        const [h, m] = timeStr.split(':').map(Number);
-        let mins = h * 60 + m - OPEN_HOUR * 60;
-        if (mins < 0) mins += 1440;
-        return mins;
+    function timeToMinutes(t) {
+        const [h, m] = t.split(':').map(Number);
+        return h * 60 + m;
     }
 
-    function isSlotBooked(slotSinceOpen) {
-        const slotEnd = slotSinceOpen + STEP_MINUTES;
+    // Every row rendered for a picker page is a real hour ON that page's
+    // selectedDate, and bookedRanges came from fetchAvailability(selectedDate)
+    // — which already keys off booking_slots' own real `date` column — so
+    // this can compare plain minutes-since-midnight directly, no
+    // open-hour-relative wraparound needed. A range's end of "00:00" means
+    // midnight/end-of-day (1440), not the very start of the day.
+    function isSlotBookedAt(totalMin) {
+        const slotEnd = totalMin + STEP_MINUTES;
         return bookedRanges.some((r) => {
-            const rangeStart = minutesSinceOpen(r.start);
-            let rangeEnd = minutesSinceOpen(r.end);
-            if (rangeEnd <= rangeStart) rangeEnd += 1440;
-            return slotSinceOpen < rangeEnd && slotEnd > rangeStart;
+            const rangeStart = timeToMinutes(r.start);
+            const rangeEnd = timeToMinutes(r.end) || 1440;
+            return totalMin < rangeEnd && slotEnd > rangeStart;
         });
     }
 
@@ -513,24 +524,6 @@ document.addEventListener('DOMContentLoaded', () => {
         return `${hour12}:00 ${period}`;
     }
 
-    // "August 19" style label for a date-group header.
-    function formatGroupDate(dateStr) {
-        const d = new Date(`${dateStr}T00:00:00`);
-        return d.toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
-    }
-
-    // Groups the picker by the REAL calendar date each row starts on —
-    // not just "the selected date" — since an overnight window (e.g. open
-    // 4 PM, close 7 AM) has rows that start after midnight and so truly
-    // belong to the next day. See guest-book.js for the fuller rationale;
-    // this mirrors it for the signed-in booking flow.
-    function appendDateHeader(dateStr) {
-        const header = document.createElement('div');
-        header.className = 'time-slot-date-header';
-        header.textContent = formatGroupDate(dateStr);
-        timeSlotGrid.appendChild(header);
-    }
-
     function appendClosedDivider() {
         const divider = document.createElement('div');
         divider.className = 'time-slot-closed-divider';
@@ -538,33 +531,26 @@ document.addEventListener('DOMContentLoaded', () => {
         timeSlotGrid.appendChild(divider);
     }
 
-    function renderTimeSlots() {
-        timeSlotGrid.innerHTML = '';
+    // Builds one contiguous run of hourly rows from startMin up to (but
+    // not including) endMin, all real times on `selectedDate` itself.
+    // `sessionDate` is what actually gets submitted as the booking's
+    // `date` if a row in this run gets picked — see activeSessionDate's
+    // comment above for why that can differ from selectedDate.
+    function renderTimeSlotBlock(startMin, endMin, sessionDate) {
+        // Once a slot's been picked, the OTHER block (the other side of
+        // the closed gap) gets locked — a single booking can't span a
+        // closed period, since that's really two separate sessions as
+        // far as the backend (and the court) is concerned.
+        const blockLocked = activeSessionDate !== null && activeSessionDate !== sessionDate;
 
-        const spanMinutes = OVERNIGHT ? (24 - OPEN_HOUR + CLOSE_HOUR) * 60 : (CLOSE_HOUR - OPEN_HOUR) * 60;
-        const lastStart = spanMinutes - STEP_MINUTES;
-
-        const rolloverOffset = OVERNIGHT ? (24 - OPEN_HOUR) * 60 : null;
-        let currentGroupDate = null;
-
-        for (let offset = 0; offset <= lastStart; offset += STEP_MINUTES) {
-            const totalMin = (OPEN_HOUR * 60 + offset) % 1440;
+        for (let totalMin = startMin; totalMin + STEP_MINUTES <= endMin; totalMin += STEP_MINUTES) {
             const h = Math.floor(totalMin / 60);
             const m = totalMin % 60;
             const timeStr = `${pad(h)}:${pad(m)}`;
 
-            const rowDate = (OVERNIGHT && offset >= rolloverOffset)
-                ? addDaysToDateStr(selectedDate, 1)
-                : selectedDate;
-
-            if (rowDate !== currentGroupDate) {
-                appendDateHeader(rowDate);
-                currentGroupDate = rowDate;
-            }
-
-            const booked = isSlotBooked(offset);
-            const past = isSlotPast(timeStr);
-            const unavailable = booked || past;
+            const booked = isSlotBookedAt(totalMin);
+            const past = isSlotPastAt(selectedDate, timeStr);
+            const unavailable = booked || past || blockLocked;
             const isSelected = selectedSlots.includes(timeStr);
 
             // The row itself is just a container — the time label on the
@@ -591,6 +577,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 priceLabel.textContent = 'Booked';
             } else if (past) {
                 priceLabel.textContent = 'Past';
+            } else if (blockLocked) {
+                priceLabel.textContent = '—';
             } else {
                 priceLabel.textContent = `₱${slotPrice().toLocaleString()}`;
             }
@@ -602,10 +590,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 toggle.disabled = true;
                 row.dataset.tooltip = booked
                     ? 'Reserved — already booked by another player'
-                    : 'This time has already passed';
+                    : past
+                        ? 'This time has already passed'
+                        : "Clear your current selection first — a booking can't span the closed hours";
             } else {
                 toggle.setAttribute('aria-pressed', String(isSelected));
-                toggle.addEventListener('click', () => toggleSlot(timeStr));
+                toggle.addEventListener('click', () => toggleSlot(timeStr, sessionDate));
             }
 
             row.appendChild(label);
@@ -613,29 +603,47 @@ document.addEventListener('DOMContentLoaded', () => {
 
             timeSlotGrid.appendChild(row);
         }
+    }
 
-        if (OVERNIGHT) {
+    function renderTimeSlots() {
+        timeSlotGrid.innerHTML = '';
+        if (!selectedDate) return;
+
+        // The session that opened the PREVIOUS calendar day and is still
+        // running past midnight into this one (e.g. viewing Aug 20's page
+        // shows the 1-7 AM tail of the session Aug 19 opened at 4 PM).
+        // Only real if the business was actually open the day before.
+        const tailSessionDate = OVERNIGHT ? addDaysToDateStr(selectedDate, -1) : null;
+        const hasTail = OVERNIGHT && !isDateClosed(tailSessionDate);
+
+        if (hasTail) {
+            renderTimeSlotBlock(0, CLOSE_HOUR * 60, tailSessionDate);
             appendClosedDivider();
         }
+
+        // The session selectedDate opens itself, running from open_hour
+        // up to (but not past) midnight — anything past midnight belongs
+        // to tomorrow's page as ITS tail block, not this one.
+        renderTimeSlotBlock(OPEN_HOUR * 60, OVERNIGHT ? 1440 : CLOSE_HOUR * 60, selectedDate);
     }
 
-    function timeToMinutes(t) {
-        const [h, m] = t.split(':').map(Number);
-        return h * 60 + m;
-    }
-
-    function toggleSlot(timeStr) {
+    // Toggles one hour on or off. Selected hours don't need to be
+    // contiguous, but they do all have to belong to the same session
+    // (see activeSessionDate).
+    function toggleSlot(timeStr, sessionDate) {
         const idx = selectedSlots.indexOf(timeStr);
 
         if (idx !== -1) {
             selectedSlots.splice(idx, 1);
+            if (selectedSlots.length === 0) activeSessionDate = null;
         } else {
             if (selectedSlots.length >= MAX_DURATION) {
                 showToast(`You can book up to ${MAX_DURATION * STEP_MINUTES / 60} hours per booking.`, 'error');
                 return;
             }
             selectedSlots.push(timeStr);
-            selectedSlots.sort((a, b) => minutesSinceOpen(a) - minutesSinceOpen(b));
+            activeSessionDate = sessionDate;
+            selectedSlots.sort((a, b) => timeToMinutes(a) - timeToMinutes(b));
         }
 
         renderTimeSlots();
@@ -1091,6 +1099,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 showToast(data.message || 'That slot is no longer available.', 'error');
 
                 selectedSlots = [];
+                activeSessionDate = null;
 
                 closePaymentModal();
                 bookedRanges = await fetchAvailability(selectedDate);
