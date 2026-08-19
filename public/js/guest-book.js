@@ -1167,17 +1167,69 @@ document.addEventListener('DOMContentLoaded', () => {
             : `${startLabel} ${startPeriod} - ${endLabel}`;
     }
 
+    // 12-hour "4:00 PM" style label for a bare hour (0-23), used only by
+    // the closed-divider row — formatSlotRange handles the actual slot
+    // rows and needs the fuller start+end range, this just needs a single
+    // clock time.
+    function formatHourLabel(hour) {
+        const period = hour >= 12 ? 'PM' : 'AM';
+        const hour12 = hour % 12 === 0 ? 12 : hour % 12;
+        return `${hour12}:00 ${period}`;
+    }
+
+    // "August 19" style label for a date-group header.
+    function formatGroupDate(dateStr) {
+        const d = new Date(`${dateStr}T00:00:00`);
+        return d.toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
+    }
+
+    // Groups the picker by the REAL calendar date each row starts on —
+    // not just "the selected date" — since an overnight window (e.g. open
+    // 4 PM, close 7 AM) has rows that start after midnight and so truly
+    // belong to the next day. A date header marks each new day, and a
+    // divider marks where the business's daily window actually ends, so a
+    // guest scanning the list can tell "closes at 7 AM" from "picking up
+    // again tomorrow at 4 PM" rather than seeing one undifferentiated
+    // block of hours.
+    function appendDateHeader(dateStr) {
+        const header = document.createElement('div');
+        header.className = 'time-slot-date-header';
+        header.textContent = formatGroupDate(dateStr);
+        timeSlotGrid.appendChild(header);
+    }
+
+    function appendClosedDivider() {
+        const divider = document.createElement('div');
+        divider.className = 'time-slot-closed-divider';
+        divider.textContent = `Closes at ${formatHourLabel(CLOSE_HOUR)} · Opens at ${formatHourLabel(OPEN_HOUR)}`;
+        timeSlotGrid.appendChild(divider);
+    }
+
     function renderTimeSlots() {
         timeSlotGrid.innerHTML = '';
 
         const spanMinutes = OVERNIGHT ? (24 - OPEN_HOUR + CLOSE_HOUR) * 60 : (CLOSE_HOUR - OPEN_HOUR) * 60;
         const lastStart = spanMinutes - STEP_MINUTES;
 
+        // Minutes-since-open at which the clock wraps past midnight onto
+        // the next calendar day — only meaningful for an overnight window.
+        const rolloverOffset = OVERNIGHT ? (24 - OPEN_HOUR) * 60 : null;
+        let currentGroupDate = null;
+
         for (let offset = 0; offset <= lastStart; offset += STEP_MINUTES) {
             const totalMin = (OPEN_HOUR * 60 + offset) % 1440;
             const h = Math.floor(totalMin / 60);
             const m = totalMin % 60;
             const timeStr = `${pad(h)}:${pad(m)}`;
+
+            const rowDate = (OVERNIGHT && offset >= rolloverOffset)
+                ? addDaysToDateStr(selectedDate, 1)
+                : selectedDate;
+
+            if (rowDate !== currentGroupDate) {
+                appendDateHeader(rowDate);
+                currentGroupDate = rowDate;
+            }
 
             const booked = isSlotBooked(offset);
             const past = isSlotPast(timeStr);
@@ -1229,6 +1281,12 @@ document.addEventListener('DOMContentLoaded', () => {
             row.appendChild(toggle);
 
             timeSlotGrid.appendChild(row);
+        }
+
+        // Trailing "closes at / opens at" note after the last row, so it's
+        // clear the window ends there rather than the list just stopping.
+        if (OVERNIGHT) {
+            appendClosedDivider();
         }
     }
 
