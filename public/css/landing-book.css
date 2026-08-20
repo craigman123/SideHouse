@@ -429,6 +429,8 @@ html {
     color: #c9d1d9;
     line-height: 1.5;
     word-break: break-word;
+    overflow: auto;
+    height: 60px;
 }
 
 .time-picker-fee-ranges.is-empty {

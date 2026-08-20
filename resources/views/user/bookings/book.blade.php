@@ -23,6 +23,7 @@
             data-equipment-url="{{ route('book.equipment-availability') }}"
             data-store-url="{{ route('book.store') }}"
             data-status-url-template="{{ route('book.status', ['booking' => '__ID__']) }}"
+            data-waiting-url-template="{{ route('book.waiting', ['booking' => '__ID__']) }}"
             data-cancel-url-template="{{ route('user.bookings.cancel', ['booking' => '__ID__']) }}"
             data-open-hour="{{ $openHour }}"
             data-close-hour="{{ $closeHour }}"

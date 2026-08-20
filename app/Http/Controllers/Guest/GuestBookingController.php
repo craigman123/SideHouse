@@ -183,24 +183,27 @@ class GuestBookingController extends Controller
      * Active equipment plus how many of each are actually free across
      * every hour the guest has selected so far, so the rental step can
      * grey out sold-out items instead of just listing raw stock totals.
-     * Selected hours no longer have to be contiguous, so this takes the
-     * *minimum* available count across all of them — the item needs to
-     * be free for each hour requested, not just one.
+     * Selected hours no longer have to be contiguous OR on the same
+     * date, so this takes the *minimum* available count across every
+     * one of them — the item needs to be free for each real date+hour
+     * requested, not just one.
+     *
+     * `slots.*` is now "Y-m-d H:i" (real date + time), matching store()
+     * — see that method's docblock for why.
      */
     public function equipmentAvailability(Request $request)
     {
         $validated = $request->validate([
-            'date'    => ['required', 'date'],
             'slots'   => ['required', 'array', 'min:1'],
-            'slots.*' => ['required', 'date_format:H:i', 'distinct'],
+            'slots.*' => ['required', 'date_format:Y-m-d H:i', 'distinct'],
         ]);
 
         $stepMinutes = BookingHours::stepMinutes();
 
-        $windows = collect($validated['slots'])->map(function ($time) use ($stepMinutes) {
-            $start = Carbon::parse($time);
+        $windows = collect($validated['slots'])->map(function ($key) use ($stepMinutes) {
+            $start = Carbon::parse($key);
             $end   = $start->copy()->addMinutes($stepMinutes);
-            return [$start->format('H:i:s'), $end->format('H:i:s')];
+            return [$start->toDateString(), $start->format('H:i:s'), $end->format('H:i:s')];
         });
 
         $equipment = Equipment::where('status', 'active')
@@ -209,9 +212,9 @@ class GuestBookingController extends Controller
             ->get();
 
         return response()->json([
-            'equipment' => $equipment->map(function ($item) use ($validated, $windows) {
+            'equipment' => $equipment->map(function ($item) use ($windows) {
                 $available = $windows
-                    ->map(fn ($w) => $item->availableStock($validated['date'], $w[0], $w[1]))
+                    ->map(fn ($w) => $item->availableStock($w[0], $w[1], $w[2]))
                     ->min();
 
                 return [
@@ -260,7 +263,7 @@ class GuestBookingController extends Controller
             return response()->json(['bookings' => []]);
         }
 
-        $bookings = Booking::with(['court', 'equipment', 'paymentReferences'])
+        $bookings = Booking::with(['court', 'equipment', 'paymentReference'])
             ->where(function ($q) use ($phoneReady, $emailReady, $email, $digits) {
                 // Both fields can be filled in at once — treated as "match
                 // either", not "match both", since a guest might only
@@ -294,8 +297,8 @@ class GuestBookingController extends Controller
                 'time'       => Carbon::parse($booking->start_time)->format('g:i A') . ' – ' . Carbon::parse($booking->end_time)->format('g:i A'),
                 'status'     => $booking->status,
                 'amount'     => (float) $booking->amount,
-                'payment'    => $booking->paymentReferences->first()?->payment_method ?? $booking->payment_method,
-                'reference'  => $this->maskReference($booking->paymentReferences->first()?->gcash_reference_number ?? $booking->gcash_reference_number),
+                'payment'    => $booking->paymentReference?->payment_method ?? $booking->payment_method,
+                'reference'  => $this->maskReference($booking->paymentReference?->gcash_reference_number ?? $booking->gcash_reference_number),
                 'equipment'  => $booking->equipment->map(fn ($line) => [
                     'name'     => $equipmentNames[$line->equipment_id] ?? 'Item',
                     'quantity' => $line->quantity,
@@ -327,30 +330,230 @@ class GuestBookingController extends Controller
         return substr($reference, 0, 4) . '***' . substr($reference, -2);
     }
 
+    /**
+     * Turns a flat list of "Y-m-d H:i" slot keys into groups keyed by
+     * distinct calendar date, each holding that date's [start, end]
+     * Carbon window pairs sorted in order — and validates every slot
+     * along the way (falls within operating hours for its real or
+     * overnight-rollover session, and each date's slot count is within
+     * the configured min/max duration and isn't closed). Shared by
+     * store() (which needs this to actually create the bookings) and
+     * paymentPage() (which needs the same validated shape purely to
+     * render an accurate summary before anything is created) so the two
+     * can never drift out of sync on what counts as a valid selection.
+     *
+     * Throws RuntimeException with a guest-facing message on any
+     * validation failure — callers decide how to surface that (a 422
+     * JSON response from store(), a redirect with a flash error from
+     * paymentPage()).
+     *
+     * @param  array<string>  $slotKeys  Each "Y-m-d H:i", as sent by the client.
+     * @return array<string, array<array{0: Carbon, 1: Carbon}>>
+     */
+    private function resolveSlotGroups(int $courtId, array $slotKeys): array
+    {
+        $openHour    = BookingHours::openHour();
+        $closeHour   = BookingHours::closeHour();
+        $stepMinutes = BookingHours::stepMinutes();
+        $overnight   = $closeHour <= $openHour;
+
+        // Every slot's real calendar date + time, parsed straight from
+        // what the frontend sent — no more guessing which direction to
+        // roll a bare time, since the true date already came from the
+        // client (book.js/guest-book.js pick it directly off the
+        // calendar day the guest clicked).
+        $slotWindows = [];
+        foreach ($slotKeys as $key) {
+            $start = Carbon::createFromFormat('Y-m-d H:i', $key);
+            $end   = $start->copy()->addMinutes($stepMinutes);
+
+            // A slot can legitimately belong to either the session that
+            // opens ON its own calendar date, or — for an overnight
+            // court only — the tail end of the session that opened the
+            // day before and runs past midnight into it.
+            $sameDayOpen  = $start->copy()->startOfDay()->setTime($openHour, 0);
+            $sameDayClose = $overnight
+                ? $sameDayOpen->copy()->addDay()->setTime($closeHour, 0)
+                : $start->copy()->startOfDay()->setTime($closeHour, 0);
+            $withinSameDaySession = $start->gte($sameDayOpen) && $end->lte($sameDayClose);
+
+            $withinPrevDaySession = false;
+            if ($overnight) {
+                $prevDayOpen  = $sameDayOpen->copy()->subDay();
+                $prevDayClose = $prevDayOpen->copy()->addDay()->setTime($closeHour, 0);
+                $withinPrevDaySession = $start->gte($prevDayOpen) && $end->lte($prevDayClose);
+            }
+
+            if (! $withinSameDaySession && ! $withinPrevDaySession) {
+                throw new \RuntimeException("The {$start->format('M j, Y g:i A')} slot falls outside operating hours.");
+            }
+
+            $slotWindows[] = [$start, $end];
+        }
+
+        usort($slotWindows, fn ($a, $b) => $a[0]->lt($b[0]) ? -1 : 1);
+
+        // One group per distinct real calendar date — this is what
+        // becomes one Booking row each, all sharing one payment.
+        $groups = [];
+        foreach ($slotWindows as $window) {
+            $groups[$window[0]->toDateString()][] = $window;
+        }
+        ksort($groups);
+
+        // Same min/max duration rule as before, just checked per date
+        // now instead of against the whole multi-date selection.
+        $minSlotsPerDate = max(1, (int) ceil(BookingHours::minDurationHours() * 60 / $stepMinutes));
+        $maxSlotsPerDate = max(1, (int) floor(BookingHours::maxDurationHours() * 60 / $stepMinutes));
+
+        foreach ($groups as $dateStr => $windows) {
+            if (count($windows) < $minSlotsPerDate || count($windows) > $maxSlotsPerDate) {
+                throw new \RuntimeException(
+                    "Please select between {$minSlotsPerDate} and {$maxSlotsPerDate} hour(s) for "
+                        . Carbon::parse($dateStr)->format('M j, Y') . '.'
+                );
+            }
+
+            if (BookingHours::isClosed($courtId, $dateStr)) {
+                throw new \RuntimeException('This court is closed on ' . Carbon::parse($dateStr)->format('M j, Y') . '.');
+            }
+        }
+
+        return $groups;
+    }
+
+    /**
+     * Full-page replacement for the old "Almost Done" modal (guest info +
+     * payment method + Confirm) — reached from the equipment step's
+     * Continue button instead of opening a modal, so refreshing this page
+     * (or a stray backdrop click, back before this) can't silently wipe
+     * out the guest's date/time/equipment picks the way the old modal's
+     * click-outside-to-close could. Nothing is persisted server-side yet
+     * at this point — the guest's picks travel here as query params and
+     * go straight back out in the page's own form; store() below is still
+     * the only place a Booking actually gets created.
+     *
+     * Re-validates the slot selection with the exact same rules store()
+     * enforces (via resolveSlotGroups()) purely so this page can render
+     * an accurate summary/total — it is NOT the source of truth for
+     * conflicts or stock, both of which store() re-checks itself under
+     * lockForUpdate() at final submit. A guest can still land here with a
+     * technically valid selection that someone else grabs a moment later;
+     * that's handled the same way it always was, by store() returning a
+     * 422 and the page's script bouncing back to the calendar.
+     */
+    public function paymentPage(Request $request)
+    {
+        $validated = $request->validate([
+            'court_id'             => ['required', 'integer', 'exists:courts,id'],
+            'date'                 => ['required', 'date'],
+            'slots'                => ['required', 'array', 'min:1'],
+            'slots.*'              => ['required', 'date_format:Y-m-d H:i', 'distinct'],
+            'equipment'            => ['array'],
+            'equipment.*.id'       => ['required_with:equipment', 'integer', 'exists:equipment,id'],
+            'equipment.*.quantity' => ['required_with:equipment', 'integer', 'min:1', 'max:20'],
+        ]);
+
+        $court = Court::findOrFail($validated['court_id']);
+
+        try {
+            $groups = $this->resolveSlotGroups((int) $validated['court_id'], $validated['slots']);
+        } catch (\RuntimeException $e) {
+            return redirect()->route('landing')->with('error', $e->getMessage());
+        }
+
+        $stepMinutes    = BookingHours::stepMinutes();
+        $slotPrice      = $court->hourly_rate * ($stepMinutes / 60);
+        $totalSlotCount = collect($groups)->sum(fn ($windows) => count($windows));
+        $courtAmount    = round($slotPrice * $totalSlotCount, 2);
+
+        // Resolved purely for display (name/price/subtotal) — quantities
+        // aren't re-checked against live stock here on purpose; see the
+        // docblock above for why store() staying the sole authority is
+        // fine.
+        $equipmentLines = collect($validated['equipment'] ?? []);
+        $catalog = $equipmentLines->isNotEmpty()
+            ? Equipment::whereIn('id', $equipmentLines->pluck('id'))->get()->keyBy('id')
+            : collect();
+
+        $resolvedEquipment = $equipmentLines
+            ->map(function ($line) use ($catalog) {
+                $item = $catalog->get($line['id']);
+                if (! $item) {
+                    return null;
+                }
+
+                return [
+                    'id'       => $item->id,
+                    'name'     => $item->name,
+                    'price'    => (float) $item->price,
+                    'quantity' => (int) $line['quantity'],
+                    'subtotal' => round($item->price * $line['quantity'], 2),
+                ];
+            })
+            ->filter()
+            ->values();
+
+        $equipmentAmount = round($resolvedEquipment->sum('subtotal'), 2);
+        $totalAmount     = round($courtAmount + $equipmentAmount, 2);
+
+        $dateSummaries = [];
+        foreach ($groups as $dateStr => $windows) {
+            $start = $windows[0][0];
+            $end   = $windows[count($windows) - 1][1];
+            $dateSummaries[] = Carbon::parse($dateStr)->format('M j, Y') . ', '
+                . $start->format('g:i A') . '–' . $end->format('g:i A');
+        }
+
+        return view('guest_payment', [
+            'court'              => $court,
+            'courtId'            => $court->id,
+            'date'               => $validated['date'],
+            'slots'              => $validated['slots'],
+            'dateSummaries'      => $dateSummaries,
+            'equipmentLines'     => $resolvedEquipment,
+            'courtAmount'        => $courtAmount,
+            'equipmentAmount'    => $equipmentAmount,
+            'totalAmount'        => $totalAmount,
+            'storeUrl'           => route('guest.book.store'),
+            'waitingUrlTemplate' => route('guest.book.waiting', ['booking' => '__ID__']),
+            'landingUrl'         => route('landing'),
+            'googleClientId'     => config('services.google.client_id'),
+        ]);
+    }
+
+    /**
+     * Creates one Booking per distinct calendar date the guest selected,
+     * all sharing a single PaymentReference — a guest who books Aug 19
+     * and Aug 20 in the same checkout pays once, and gets 2 Booking rows
+     * (each with its own booking_slots and its own reminder_sent_at) both
+     * pointing at that one payment. See App\Models\PaymentReference.
+     *
+     * `slots.*` is "Y-m-d H:i" — the slot's real calendar date + time —
+     * instead of a bare time. This is the actual fix for "can't book
+     * separate dates at once": previously only a bare time was sent, so
+     * the same clock hour on two different real dates collided on the
+     * `distinct` validation rule below even though they weren't actually
+     * the same slot.
+     */
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'court_id'       => ['required', 'integer', 'exists:courts,id'],
-            'date'           => ['required', 'date', 'after_or_equal:today'],
-            // Individual selected slots instead of a single start_time +
-            // duration — no longer required to be contiguous (e.g. 4–5 PM
-            // and 9–10 PM in the same booking is valid). Min/max are slot
-            // *counts* derived from the configured hours and step length.
-            'slots'          => [
-                'required',
-                'array',
-                'min:' . max(1, (int) ceil(BookingHours::minDurationHours() * 60 / BookingHours::stepMinutes())),
-                'max:' . max(1, (int) floor(BookingHours::maxDurationHours() * 60 / BookingHours::stepMinutes())),
-            ],
-            'slots.*'        => ['required', 'date_format:H:i', 'distinct'],
+            'court_id' => ['required', 'integer', 'exists:courts,id'],
+            // Kept as a sanity anchor (must not be in the past) and as a
+            // fallback label — the slot dates below are what's actually
+            // authoritative for what gets booked.
+            'date' => ['required', 'date', 'after_or_equal:today'],
+            'slots'          => ['required', 'array', 'min:1', 'max:60'],
+            'slots.*'        => ['required', 'date_format:Y-m-d H:i', 'distinct'],
             // GCash and Landbank are the guest payment methods — the QR
             // code / account number is static (same one for every
             // booking), so nothing here proves payment on its own.
             // GcashWebhookController / LandbankWebhookController are what
             // actually confirm it, by matching the amount (and the
             // reference number below, when there's more than one
-            // same-amount booking pending at once) against the SMS receipt
-            // for whichever method was selected.
+            // same-amount checkout pending at once) against the SMS
+            // receipt for whichever method was selected.
             'payment_method' => ['required', 'in:gcash,landbank'],
             'guest_name'     => ['required', 'string', 'max:255'],
             // Loose on purpose (7–30 digits/spaces/dashes/parens/+) since
@@ -364,19 +567,12 @@ class GuestBookingController extends Controller
             'equipment.*.id'       => ['required_with:equipment', 'integer', 'exists:equipment,id'],
             'equipment.*.quantity' => ['required_with:equipment', 'integer', 'min:1', 'max:20'],
             // Guest-entered, so never trusted on its own — it's only used
-            // to disambiguate when two pending bookings share the exact
-            // same amount at the same time. The matching webhook
-            // controller for the selected payment_method is the only
-            // thing that actually confirms payment, from the real SMS
-            // receipt.
+            // to disambiguate when two pending checkouts share the exact
+            // same total amount. The matching webhook controller for the
+            // selected payment_method is the only thing that actually
+            // confirms payment, from the real SMS receipt.
             'payment_reference' => ['required', 'string', 'min:6', 'max:50'],
         ]);
-
-        if (BookingHours::isClosed((int) $validated['court_id'], $validated['date'])) {
-            return response()->json([
-                'message' => 'This court is closed on the selected date.',
-            ], 422);
-        }
 
         $guestEmail = $this->verifyGoogleIdToken($validated['google_id_token']);
         if ($guestEmail === null) {
@@ -387,136 +583,72 @@ class GuestBookingController extends Controller
 
         $court = Court::findOrFail($validated['court_id']);
 
-        $openHour    = BookingHours::openHour();
-        $closeHour   = BookingHours::closeHour();
-        $stepMinutes = BookingHours::stepMinutes();
-
-        // Same overnight-wrap handling as before (open can be later
-        // in the clock than close, e.g. 4 PM to 7 AM), just applied
-        // per selected hour now instead of to a single start/end pair.
-        $overnight = $closeHour <= $openHour;
-        $open  = Carbon::parse($validated['date'])->setTime($openHour, 0);
-        $close = Carbon::parse($validated['date'])->setTime($closeHour, 0);
-        if ($overnight) {
-            $close->addDay();
+        try {
+            $groups = $this->resolveSlotGroups((int) $validated['court_id'], $validated['slots']);
+        } catch (\RuntimeException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
         }
 
-        $slotWindows = [];
-        foreach ($validated['slots'] as $time) {
-            $start = Carbon::parse($validated['date'] . ' ' . $time);
-
-            // A clock time earlier than open belongs to the tail end
-            // of the previous night's window (e.g. 2 AM when open is
-            // 4 PM) — push it a day forward so it lands inside [$open, $close].
-            if ($overnight && $start->lt($open)) {
-                $start->addDay();
-            }
-
-            $end = $start->copy()->addMinutes($stepMinutes);
-
-            if (! ($start->gte($open) && $end->lte($close))) {
-                return response()->json([
-                    'message' => "The {$time} slot falls outside operating hours.",
-                ], 422);
-            }
-
-            $slotWindows[] = [$start, $end];
-        }
-
-        // Sort chronologically so the envelope stored on the booking row
-        // itself (still date/start_time/end_time, for the admin dashboard
-        // and stats chart) reflects the true earliest-to-latest range even
-        // when the selected hours wrap past midnight.
-        usort($slotWindows, fn ($a, $b) => $a[0]->lt($b[0]) ? -1 : 1);
-        $envelopeStart = $slotWindows[0][0];
-        $envelopeEnd   = $slotWindows[count($slotWindows) - 1][1];
-
-        $slotPrice = $court->hourly_rate * ($stepMinutes / 60);
-
-        // Unique per booking so the guest's status/cancel links can't be
-        // guessed from the booking id alone.
-        do {
-            $pollToken = Str::random(40);
-        } while (Booking::where('poll_token', $pollToken)->exists());
+        $stepMinutes    = BookingHours::stepMinutes();
+        $slotPrice      = $court->hourly_rate * ($stepMinutes / 60);
+        $totalSlotCount = collect($groups)->sum(fn ($windows) => count($windows));
 
         $expiresAt = now()->addMinutes(PaymentWindows::BOOKING_EXPIRY_MINUTES);
 
         try {
-            $booking = DB::transaction(function () use ($validated, $court, $envelopeStart, $envelopeEnd, $slotWindows, $slotPrice, $guestEmail, $pollToken, $expiresAt) {
-                // Lock the court row for the rest of this transaction.
-                // There's nothing to lock on the *slot* itself yet — it
-                // may not have any rows at all — so this locks the court
-                // instead: a second concurrent booking attempt for the
-                // same court has to wait right here until this whole
-                // check-then-insert sequence commits or rolls back.
-                // Without this, two guests confirming the same 2 PM slot
-                // within milliseconds of each other could both pass the
-                // conflict check below before either one's insert lands,
-                // and both would succeed — a real double-booking neither
-                // of them would see until it's too late.
+            $result = DB::transaction(function () use (
+                $validated, $court, $groups, $slotPrice, $totalSlotCount,
+                $guestEmail, $expiresAt
+            ) {
+                // Lock the court row for the rest of this transaction —
+                // see the original single-date version of this method
+                // for the full race-condition reasoning. Still needed
+                // here for exactly the same reason, just covering every
+                // date group instead of one.
                 Court::where('id', $court->id)->lockForUpdate()->first();
 
-                foreach ($slotWindows as [$slotStart, $slotEnd]) {
-                    // Check against the SLOT's own real calendar date, not
-                    // the single date the guest's form submitted. A tail
-                    // slot rolled forward by the addDay() logic above
-                    // (e.g. a 6 AM slot on an overnight-open court) really
-                    // happens on the next calendar day — conflicts have to
-                    // be checked against that true date, or two guests
-                    // could double-book the same real hour if one of them
-                    // is looking at it from "yesterday's" tab and the
-                    // other from "today's".
-                    $slotDateStr = $slotStart->toDateString();
+                foreach ($groups as $dateStr => $windows) {
+                    foreach ($windows as [$slotStart, $slotEnd]) {
+                        $slotConflict = BookingSlot::whereHas('booking', function ($q) use ($court) {
+                                $q->where('court_id', $court->id)
+                                    ->where('status', '!=', 'cancelled');
+                            })
+                            ->where('date', $dateStr)
+                            ->where('start_time', '<', $slotEnd->format('H:i:s'))
+                            ->where('end_time', '>', $slotStart->format('H:i:s'))
+                            ->exists();
 
-                    $slotConflict = BookingSlot::whereHas('booking', function ($q) use ($court) {
-                            $q->where('court_id', $court->id)
-                                ->where('status', '!=', 'cancelled');
-                        })
-                        ->where('date', $slotDateStr)
-                        ->where('start_time', '<', $slotEnd->format('H:i:s'))
-                        ->where('end_time', '>', $slotStart->format('H:i:s'))
-                        ->exists();
+                        $legacyConflict = Booking::where('court_id', $court->id)
+                            ->where('date', $dateStr)
+                            ->where('status', '!=', 'cancelled')
+                            ->whereDoesntHave('slots')
+                            ->where('start_time', '<', $slotEnd->format('H:i:s'))
+                            ->where('end_time', '>', $slotStart->format('H:i:s'))
+                            ->exists();
 
-                    $legacyConflict = Booking::where('court_id', $court->id)
-                        ->where('date', $slotDateStr)
-                        ->where('status', '!=', 'cancelled')
-                        ->whereDoesntHave('slots')
-                        ->where('start_time', '<', $slotEnd->format('H:i:s'))
-                        ->where('end_time', '>', $slotStart->format('H:i:s'))
-                        ->exists();
-
-                    if ($slotConflict || $legacyConflict) {
-                        // Caught just below — turned into the same 422
-                        // the guest would've gotten if this had been
-                        // caught before the transaction even started.
-                        throw new \RuntimeException('That slot was just taken. Please pick another time.');
+                        if ($slotConflict || $legacyConflict) {
+                            throw new \RuntimeException('That slot was just taken. Please pick another time.');
+                        }
                     }
                 }
 
-                // Re-check equipment stock inside the same lock — the
-                // browser only showed what was available a moment ago;
-                // this is the check that actually counts. An item has to
-                // be free for every selected hour, not just one, so take
-                // the minimum available across all of them.
+                // Equipment stock re-checked inside the same lock, across
+                // EVERY selected hour on EVERY selected date — an item
+                // has to be free for all of them, not just one, so take
+                // the minimum available across the whole multi-date
+                // selection.
                 $equipmentLines = collect($validated['equipment'] ?? []);
                 $resolvedEquipment = [];
+                $allWindows = collect($groups)->flatten(1);
 
                 foreach ($equipmentLines as $line) {
-                    // Locked directly (not just findOrFail) so the stock
-                    // check below stays race-safe on its own — right now
-                    // there's only one court, so the court lock above
-                    // already happens to serialize this too, but that
-                    // protection would silently disappear the moment a
-                    // second court exists, since equipment isn't scoped
-                    // to a court. Locking the equipment row itself makes
-                    // this correct regardless of how many courts there are.
                     $item = Equipment::where('id', $line['id'])->lockForUpdate()->first();
 
                     if ($item === null) {
                         throw new \RuntimeException('One of the selected rental items no longer exists.');
                     }
 
-                    $minAvailable = collect($slotWindows)
+                    $minAvailable = $allWindows
                         ->map(fn ($w) => $item->availableStock($w[0]->toDateString(), $w[0]->format('H:i:s'), $w[1]->format('H:i:s')))
                         ->min();
 
@@ -527,38 +659,24 @@ class GuestBookingController extends Controller
                     $resolvedEquipment[] = ['item' => $item, 'quantity' => $line['quantity']];
                 }
 
-                $courtAmount = $slotPrice * count($slotWindows);
+                $courtAmount = $slotPrice * $totalSlotCount;
                 $equipmentAmount = collect($resolvedEquipment)
                     ->sum(fn ($line) => $line['item']->price * $line['quantity']);
-                $amount = round($courtAmount + $equipmentAmount, 2);
+                $totalAmount = round($courtAmount + $equipmentAmount, 2);
 
                 // A guest can pay via the QR code before finishing this
                 // form — if that SMS already arrived, GcashWebhookController
-                // (or LandbankWebhookController) couldn't find a pending
-                // booking to attach it to yet and parked it as an
-                // UnmatchedPayment instead. Claim it now, retroactively,
+                // (or LandbankWebhookController) couldn't find a matching
+                // payment_reference to attach it to yet and parked it as
+                // an UnmatchedPayment instead. Claim it now, retroactively,
                 // the same way the webhook itself would've matched it:
                 // require the guest-typed reference number to match the
-                // parked payment's real reference number. There is
-                // deliberately no "only one candidate, so it must be
-                // them" fallback — amount alone (court pricing is round
-                // numbers, so same-amount collisions are common) is not
-                // proof of payment, and without a hard reference-number
-                // requirement a guest who types a made-up reference could
-                // race a real payer and get their booking marked paid
-                // using someone else's payment before that payer even
-                // finishes the form. A guest who mistyped their own real
-                // reference number just stays pending and needs staff to
-                // resolve it manually — worse UX, but a typo is
-                // recoverable and a stolen payment is not.
-                //
-                // lockForUpdate() here for the same reason as the
-                // equipment lock above — without it, two concurrent
-                // store() calls with the same amount could both claim the
-                // same parked payment.
+                // parked payment's real reference number. See the webhook
+                // controllers for why there's deliberately no
+                // "only one candidate at this amount" fallback.
                 $unmatchedCandidates = UnmatchedPayment::unmatched()
                     ->where('payment_method', $validated['payment_method'])
-                    ->where('amount', $amount)
+                    ->where('amount', $totalAmount)
                     ->where('created_at', '>=', now()->subMinutes(PaymentWindows::claimWindowMinutes($validated['payment_method'])))
                     ->orderBy('created_at')
                     ->lockForUpdate()
@@ -575,114 +693,153 @@ class GuestBookingController extends Controller
                         : null;
                 }
 
-                $booking = Booking::create([
-                    'user_id'        => null,
-                    'customer_name'  => $validated['guest_name'],
-                    'contact_number' => $validated['guest_contact'],
-                    'email'          => $guestEmail,
-                    'court_id'       => $court->id,
-                    'date'           => $validated['date'],
-                    'start_time'     => $envelopeStart->format('H:i:s'),
-                    'end_time'       => $envelopeEnd->format('H:i:s'),
-                    'amount'         => $amount,
-                    'poll_token'     => $pollToken,
-                    'expires_at'     => $expiresAt,
-                    'status'         => $claimedPayment ? 'paid' : 'pending',
-                    'confirmed_at'   => $claimedPayment ? now() : null,
-                ]);
+                $isPaid = (bool) $claimedPayment;
 
-                // Create payment reference record
-                $booking->paymentReferences()->create([
+                // One shared payment for the whole checkout, however many
+                // dates it covers.
+                $paymentReference = PaymentReferenceModel::create([
                     'payment_reference' => $validated['payment_reference'],
-                    'payment_method' => $validated['payment_method'],
-                    'price' => (string) $amount,
+                    'payment_method'    => $validated['payment_method'],
+                    'amount'            => $totalAmount,
+                    'confirmed_at'      => $isPaid ? now() : null,
                 ]);
 
                 if ($claimedPayment) {
                     $claimedPayment->update([
-                        'matched_booking_id' => $booking->id,
-                        'matched_at'         => now(),
+                        'matched_payment_reference_id' => $paymentReference->id,
+                        'matched_at'                   => now(),
                     ]);
                 }
 
-                foreach ($slotWindows as [$start, $end]) {
-                    $booking->slots()->create([
-                        'date'       => $start->toDateString(),
-                        'start_time' => $start->format('H:i:s'),
-                        'end_time'   => $end->format('H:i:s'),
-                        'price'      => $slotPrice,
+                $bookings = [];
+                $isFirstGroup = true;
+
+                foreach ($groups as $dateStr => $windows) {
+                    $envelopeStart = $windows[0][0];
+                    $envelopeEnd   = $windows[count($windows) - 1][1];
+                    $dateAmount    = round($slotPrice * count($windows), 2);
+
+                    $booking = Booking::create([
+                        'user_id'              => null,
+                        'customer_name'        => $validated['guest_name'],
+                        'contact_number'       => $validated['guest_contact'],
+                        'email'                => $guestEmail,
+                        'court_id'             => $court->id,
+                        'payment_reference_id' => $paymentReference->id,
+                        'date'                 => $dateStr,
+                        'start_time'           => $envelopeStart->format('H:i:s'),
+                        'end_time'             => $envelopeEnd->format('H:i:s'),
+                        // Equipment cost is billed entirely on the
+                        // earliest date's booking (see below) rather than
+                        // split across dates — keeps "amount" additions
+                        // across all bookings under one payment equal to
+                        // the total actually charged, without having to
+                        // invent a per-date equipment split the guest
+                        // never chose.
+                        'amount'               => $isFirstGroup ? round($dateAmount + ($totalAmount - $courtAmount), 2) : $dateAmount,
+                        'poll_token'           => (function () {
+                            do {
+                                $token = Str::random(40);
+                            } while (Booking::where('poll_token', $token)->exists());
+                            return $token;
+                        })(),
+                        'expires_at'           => $expiresAt,
+                        'status'               => $isPaid ? 'paid' : 'pending',
+                        'confirmed_at'         => $isPaid ? now() : null,
                     ]);
+
+                    foreach ($windows as [$start, $end]) {
+                        $booking->slots()->create([
+                            'date'       => $start->toDateString(),
+                            'start_time' => $start->format('H:i:s'),
+                            'end_time'   => $end->format('H:i:s'),
+                            'price'      => $slotPrice,
+                        ]);
+                    }
+
+                    if ($isFirstGroup) {
+                        foreach ($resolvedEquipment as $line) {
+                            $booking->equipment()->create([
+                                'equipment_id' => $line['item']->id,
+                                'quantity'     => $line['quantity'],
+                                'price_each'   => $line['item']->price,
+                            ]);
+                        }
+                    }
+
+                    $bookings[] = $booking;
+                    $isFirstGroup = false;
                 }
 
-                foreach ($resolvedEquipment as $line) {
-                    $booking->equipment()->create([
-                        'equipment_id' => $line['item']->id,
-                        'quantity'     => $line['quantity'],
-                        'price_each'   => $line['item']->price,
-                    ]);
-                }
-
-                return $booking;
+                return [
+                    'bookings'         => $bookings,
+                    'paymentReference' => $paymentReference,
+                    'isPaid'           => $isPaid,
+                ];
             });
         } catch (\RuntimeException $e) {
             return response()->json(['message' => $e->getMessage()], 422);
         }
 
-        // Logged after the transaction commits, not inside it — a booking
-        // that gets rolled back (slot conflict, stock conflict, etc.)
-        // should never leave a log entry behind. actor is explicitly null
-        // (never auth()->user()) since this is always a guest, unauthenticated
-        // action; subject is the booking itself so it shows up as
-        // "Booking #<id>" in the admin activity log.
-        ActivityLogger::log(
-            'booking.created',
-            sprintf(
-                '%s booked %s on %s from %s to %s.',
-                $booking->customer_name,
-                $court->name,
-                Carbon::parse($booking->date)->format('M d, Y'),
-                Carbon::parse($booking->start_time)->format('g:i A'),
-                Carbon::parse($booking->end_time)->format('g:i A'),
-            ),
-            actor: null,
-            subject: $booking,
-            properties: [
-                'payment_method' => $validated['payment_method'],
-                'amount'         => $booking->amount,
-                'status'         => $booking->status,
-            ],
-        );
+        [$bookings, $isPaid] = [$result['bookings'], $result['isPaid']];
 
-        // The booking can already be 'paid' at creation time if it just
-        // claimed a payment that arrived (and got parked as an
-        // UnmatchedPayment) before the guest finished this form — see the
-        // $claimedPayment logic above. Worth its own log line since "paid
-        // the instant it was created" is a distinct, useful thing to see
-        // in the audit trail, separate from "booked".
-        if ($booking->status === 'paid') {
+        // Logged after the transaction commits, not inside it — a
+        // checkout that gets rolled back (slot conflict, stock conflict,
+        // etc.) should never leave a log entry behind. One log line per
+        // date booked.
+        foreach ($bookings as $booking) {
             ActivityLogger::log(
-                'booking.paid',
+                'booking.created',
                 sprintf(
-                    "%s's payment for %s was confirmed automatically (matched an existing %s payment).",
+                    '%s booked %s on %s from %s to %s.',
                     $booking->customer_name,
                     $court->name,
-                    ucfirst($validated['payment_method']),
+                    Carbon::parse($booking->date)->format('M d, Y'),
+                    Carbon::parse($booking->start_time)->format('g:i A'),
+                    Carbon::parse($booking->end_time)->format('g:i A'),
                 ),
                 actor: null,
                 subject: $booking,
-                properties: ['amount' => $booking->amount],
+                properties: [
+                    'payment_method' => $validated['payment_method'],
+                    'amount'         => $booking->amount,
+                    'status'         => $booking->status,
+                ],
             );
+
+            if ($isPaid) {
+                ActivityLogger::log(
+                    'booking.paid',
+                    sprintf(
+                        "%s's payment for %s was confirmed automatically (matched an existing %s payment).",
+                        $booking->customer_name,
+                        $court->name,
+                        ucfirst($validated['payment_method']),
+                    ),
+                    actor: null,
+                    subject: $booking,
+                    properties: ['amount' => $booking->amount],
+                );
+            }
         }
 
         return response()->json([
-            'message'    => $booking->status === 'paid'
+            'message'    => $isPaid
                 ? 'Booking confirmed! We matched it to a payment that already came in.'
                 : 'Booking submitted! Waiting for GCash to confirm your payment.',
-            'booking'    => $booking,
-            'booking_id' => $booking->id,
-            'poll_token' => $booking->poll_token,
-            'expires_at' => $booking->expires_at?->toIso8601String(),
-            'amount'     => $booking->amount,
+            'bookings'   => collect($bookings)->map(fn ($b) => [
+                'booking_id' => $b->id,
+                'date'       => $b->date->toDateString(),
+                'poll_token' => $b->poll_token,
+                'amount'     => $b->amount,
+            ]),
+            // Backwards-compatible top-level fields mirroring the FIRST
+            // booking, for any older frontend code that hasn't been
+            // updated yet to read the `bookings` array above.
+            'booking_id' => $bookings[0]->id,
+            'poll_token' => $bookings[0]->poll_token,
+            'expires_at' => $bookings[0]->expires_at?->toIso8601String(),
+            'amount'     => $result['paymentReference']->amount,
         ]);
     }
 
@@ -706,10 +863,44 @@ class GuestBookingController extends Controller
     }
 
     /**
+     * Full-page replacement for the old "waiting for GCash/Landbank
+     * payment" modal. A modal could be dismissed by accident (the only
+     * button in it both closed the modal AND cancelled the booking —
+     * there was no way to "just close" it), and any JS-only countdown/
+     * polling state was lost on refresh. This page has none of those
+     * problems: it's seeded fresh from the database on every load/
+     * refresh, closing the tab or hitting back does nothing destructive,
+     * and the single "Cancel booking" button is unambiguous about what
+     * it does. Same poll_token gate as status()/cancel() — no session
+     * needed, since guests have none.
+     */
+    public function waiting(Request $request, Booking $booking)
+    {
+        $token = (string) $request->query('token', '');
+
+        if ($token === '' || ! $booking->poll_token || ! hash_equals($booking->poll_token, $token)) {
+            abort(403);
+        }
+
+        $booking->load('court');
+
+        return view('payment-waiting', [
+            'booking'    => $booking,
+            'token'      => $token,
+            'statusUrl'  => route('guest.book.status', ['booking' => $booking->id]),
+            'cancelUrl'  => route('guest.book.cancel', ['booking' => $booking->id]),
+            'landingUrl' => route('landing'),
+        ]);
+    }
+
+    /**
      * Lets the guest give up on a pending GCash payment and release the
      * slot early, instead of waiting out the full confirmation window.
      * Only works while the booking is still pending — once GCash confirms
-     * it (or it's already cancelled/expired) this is a no-op.
+     * it (or it's already cancelled/expired) this is a no-op. Cancels
+     * only THIS booking (this one date) — a sibling booking sharing the
+     * same payment_reference from the same multi-date checkout is
+     * unaffected, since the guest may still want the other date(s).
      */
     public function cancel(Request $request, Booking $booking)
     {
@@ -746,8 +937,15 @@ class GuestBookingController extends Controller
      * expire" or "cancel and start the whole booking over" — the slot
      * and everything else about the booking stays exactly as-is, only
      * the reference number (and the retroactive payment match it
-     * unlocks) changes. A no-op once the booking is already
-     * paid/cancelled/expired — see the already_resolved branch below.
+     * unlocks) changes.
+     *
+     * Updates the SHARED payment_reference row, not just this one
+     * booking — if this booking came from a multi-date checkout, every
+     * sibling booking under the same payment gets the corrected
+     * reference too, and a match here confirms all of them at once
+     * (they were always one payment, not several). A no-op once the
+     * payment is already confirmed/cancelled — see the already_resolved
+     * branch below.
      */
     public function updateReference(Request $request, Booking $booking)
     {
@@ -765,8 +963,7 @@ class GuestBookingController extends Controller
             // Re-fetch under lockForUpdate() rather than trusting the
             // route-bound $booking — same reasoning as the webhook
             // controllers' status re-check: without this, a webhook
-            // confirming (or ExpireUnconfirmedGcashBookings/
-            // ExpireUnconfirmedLandbankBookings cancelling) this exact
+            // confirming (or an expire command cancelling) this exact
             // booking between the check below and the update at the
             // bottom could get silently clobbered by this request, or
             // vice versa.
@@ -776,39 +973,49 @@ class GuestBookingController extends Controller
                 return ['status' => $booking->status, 'already_resolved' => true];
             }
 
-            // Update the payment reference record
-            $paymentRef = $booking->paymentReferences()->first();
-            if ($paymentRef) {
-                $paymentRef->update(['payment_reference' => $validated['payment_reference']]);
-            } else {
-                // Fallback: create one if it doesn't exist (shouldn't happen normally)
-                $booking->paymentReferences()->create([
-                    'payment_reference' => $validated['payment_reference'],
-                    'payment_method' => $booking->payment_method ?? 'gcash',
-                    'price' => (string) $booking->amount,
-                ]);
+            $paymentReference = PaymentReferenceModel::where('id', $booking->payment_reference_id)
+                ->lockForUpdate()
+                ->first();
+
+            if ($paymentReference === null) {
+                // Shouldn't happen — every booking created by store()
+                // gets one in the same transaction — but fail safe
+                // rather than fatal if it ever does.
+                return ['status' => $booking->status, 'already_resolved' => true];
             }
+
+            $paymentReference->update(['payment_reference' => $validated['payment_reference']]);
 
             // Same rule as store()'s retroactive claim and both webhook
             // controllers: reference number is the only thing that can
             // confirm a match. No "only one candidate at this amount"
-            // fallback — see those three for why.
+            // fallback — see those for why.
             $normalizedRef = PaymentReference::normalize($validated['payment_reference']);
             $claimedPayment = null;
 
-            if ($normalizedRef !== '') {
+            if ($normalizedRef !== '' && $paymentReference->confirmed_at === null) {
                 $claimedPayment = UnmatchedPayment::unmatched()
-                    ->where('payment_method', $booking->payment_method)
-                    ->where('amount', $booking->amount)
-                    ->where('created_at', '>=', now()->subMinutes(PaymentWindows::claimWindowMinutes($booking->payment_method)))
+                    ->where('payment_method', $paymentReference->payment_method)
+                    ->where('amount', $paymentReference->amount)
+                    ->where('created_at', '>=', now()->subMinutes(PaymentWindows::claimWindowMinutes($paymentReference->payment_method)))
                     ->lockForUpdate()
                     ->get()
                     ->first(fn ($p) => PaymentReference::normalize((string) $p->reference_number) === $normalizedRef);
             }
 
             if ($claimedPayment) {
-                $booking->update(['status' => 'paid', 'confirmed_at' => now()]);
-                $claimedPayment->update(['matched_booking_id' => $booking->id, 'matched_at' => now()]);
+                $paymentReference->update(['confirmed_at' => now()]);
+                $claimedPayment->update([
+                    'matched_payment_reference_id' => $paymentReference->id,
+                    'matched_at'                   => now(),
+                ]);
+
+                $paymentReference->bookings()->where('status', 'pending')->update([
+                    'status'       => 'paid',
+                    'confirmed_at' => now(),
+                ]);
+
+                $booking->refresh();
             }
 
             return ['status' => $booking->status];

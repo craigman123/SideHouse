@@ -3,10 +3,10 @@
 namespace App\Http\Controllers\Webhooks;
 
 use App\Http\Controllers\Controller;
-use App\Models\Booking;
+use App\Models\PaymentReference;
 use App\Models\UnmatchedPayment;
 use App\Support\ActivityLogger;
-use App\Support\PaymentReference;
+use App\Support\PaymentReference as PaymentReferenceNormalizer;
 use App\Support\PaymentWindows;
 use App\Support\WebhookAuth;
 use Illuminate\Http\Request;
@@ -19,6 +19,12 @@ use Illuminate\Support\Facades\Log;
  * your GCash for Business merchant QR. This is the only thing that
  * actually confirms a guest's payment — the screenshot/reference number
  * the guest types into the booking form is never trusted on its own.
+ *
+ * Matches against payment_reference now, not bookings directly — see
+ * App\Models\PaymentReference. One payment_reference row can cover
+ * several bookings (a guest who booked more than one date in the same
+ * checkout), so a confirmed match here cascades 'paid' to every booking
+ * linked to that payment_reference, not just one.
  *
  * Setup checklist (none of this is in the codebase — it's account/device
  * config):
@@ -91,15 +97,15 @@ class GcashWebhookController extends Controller
         }
 
         [$amount, $refNumber] = $parsed;
-        $normalizedRef = $refNumber !== null ? PaymentReference::normalize($refNumber) : null;
+        $normalizedRef = $refNumber !== null ? PaymentReferenceNormalizer::normalize($refNumber) : null;
 
         $result = DB::transaction(function () use ($amount, $refNumber, $normalizedRef, $matchWindow, $rawMessage) {
             // lockForUpdate() here closes the same race the expire-command
-            // could otherwise cause: without it, ExpireUnconfirmedGcashBookings
-            // could flip a candidate to 'cancelled' between this query and
-            // the update below, and we'd happily mark a cancelled booking
-            // 'paid'.
-            $candidates = Booking::where('status', 'pending')
+            // could otherwise cause: without it, an expire command could
+            // flip a candidate's bookings to 'cancelled' between this
+            // query and the update below, and we'd happily mark a
+            // cancelled booking's payment confirmed.
+            $candidates = PaymentReference::whereNull('confirmed_at')
                 ->where('payment_method', 'gcash')
                 ->where('amount', $amount)
                 ->where('created_at', '>=', now()->subMinutes($matchWindow))
@@ -111,11 +117,12 @@ class GcashWebhookController extends Controller
                 // Don't just log and drop this — the guest may pay (and
                 // this SMS may arrive) before they've finished typing
                 // their name/contact and hitting "Confirm Booking". Park
-                // it here so GuestBookingController::store() can claim it
-                // retroactively the moment a matching booking actually
-                // gets created. raw_message is pruned after a short time
-                // by the payments:prune-raw-sms scheduled command — see
-                // App\Console\Commands\PruneUnmatchedPaymentMessages.
+                // it here so GuestBookingController::store() /
+                // User_UserController::storeBooking() can claim it
+                // retroactively the moment a matching payment_reference
+                // actually gets created. raw_message is pruned after a
+                // short time by the payments:prune-raw-sms scheduled
+                // command — see App\Console\Commands\PruneUnmatchedPaymentMessages.
                 UnmatchedPayment::create([
                     'payment_method'   => 'gcash',
                     'amount'           => $amount,
@@ -133,61 +140,73 @@ class GcashWebhookController extends Controller
             // if that ever changes.
             //
             // Reference number is the ONLY thing that confirms which
-            // booking this is — there's deliberately no "only one
+            // payment this is — there's deliberately no "only one
             // candidate at this amount, so it must be them" fallback.
-            // Court pricing is round numbers, so two unrelated bookings
-            // landing on the same amount is common, not rare; auto-
-            // confirming on amount alone would let a stranger who typed a
-            // made-up reference number get matched to someone else's real
-            // payment. A mismatched reference stays unmatched — the guest
-            // can fix a typo from the booking's "waiting for payment"
-            // screen, which re-attempts this same match.
-            $booking = ($normalizedRef !== null && $normalizedRef !== '')
-                ? $candidates->first(fn ($b) => PaymentReference::normalize((string) $b->gcash_reference_number) === $normalizedRef)
+            // Court pricing is round numbers, so two unrelated checkouts
+            // landing on the same total amount is common, not rare;
+            // auto-confirming on amount alone would let a stranger who
+            // typed a made-up reference number get matched to someone
+            // else's real payment. A mismatched reference stays
+            // unmatched — the guest can fix a typo from the booking's
+            // "waiting for payment" screen, which re-attempts this same
+            // match.
+            $paymentReference = ($normalizedRef !== null && $normalizedRef !== '')
+                ? $candidates->first(fn ($p) => PaymentReferenceNormalizer::normalize((string) $p->payment_reference) === $normalizedRef)
                 : null;
 
-            if ($booking === null) {
+            if ($paymentReference === null) {
                 return ['status' => 'ambiguous', 'candidate_ids' => $candidates->pluck('id')->all()];
             }
 
-            // Re-check status under the lock. lockForUpdate() on the
-            // query above already serializes this against a second,
-            // concurrent handleSms() call for the same amount — this
-            // guard is specifically for the expire-command race: the
-            // booking could have already been cancelled by
-            // ExpireUnconfirmedGcashBookings in between being selected
-            // above (it was still 'pending' then, hence matched the
-            // where()) and this line.
-            if ($booking->status !== 'pending') {
-                return ['status' => 'already_resolved', 'booking_id' => $booking->id];
+            // Re-check under the lock — same reasoning as the booking
+            // re-check used to have: lockForUpdate() above already
+            // serializes concurrent handleSms() calls, but a different
+            // process (e.g. an expire command, or updateReference())
+            // could have confirmed or invalidated this payment_reference
+            // between it being selected above and this line.
+            if ($paymentReference->confirmed_at !== null) {
+                return ['status' => 'already_resolved', 'payment_reference_id' => $paymentReference->id];
             }
 
             // Belt-and-suspenders: refuse to let the same reference
-            // number confirm a second booking. The matching logic above
-            // shouldn't be able to reach this given normal traffic, but
-            // it's cheap insurance against a future change to that logic
-            // accidentally allowing it. Bounded to the last day of paid
-            // bookings rather than the whole table.
+            // number confirm a second payment. Bounded to the last day
+            // rather than the whole table.
             if ($normalizedRef !== null && $normalizedRef !== '') {
-                $alreadyUsed = Booking::where('payment_method', 'gcash')
-                    ->where('status', 'paid')
-                    ->where('id', '!=', $booking->id)
+                $alreadyUsed = PaymentReference::where('payment_method', 'gcash')
+                    ->whereNotNull('confirmed_at')
+                    ->where('id', '!=', $paymentReference->id)
                     ->where('created_at', '>=', now()->subDay())
                     ->get(['id', 'gcash_reference_number'])
-                    ->contains(fn ($b) => PaymentReference::normalize((string) $b->gcash_reference_number) === $normalizedRef);
+                    ->contains(fn ($p) => PaymentReferenceNormalizer::normalize((string) $p->gcash_reference_number) === $normalizedRef);
 
                 if ($alreadyUsed) {
-                    return ['status' => 'duplicate_reference', 'booking_id' => $booking->id];
+                    return ['status' => 'duplicate_reference', 'payment_reference_id' => $paymentReference->id];
                 }
             }
 
-            $booking->update([
-                'status'       => 'paid',
-                'confirmed_at' => now(),
-                'gcash_reference_number' => $refNumber ?? $booking->gcash_reference_number,
+            $paymentReference->update([
+                'confirmed_at'            => now(),
+                'gcash_reference_number'  => $refNumber ?? $paymentReference->gcash_reference_number,
             ]);
 
-            return ['status' => 'confirmed', 'booking_id' => $booking->id];
+            // Cascade to every booking that shares this payment — the
+            // guest paid once for however many dates they picked in that
+            // checkout, so all of them get confirmed together.
+            $bookingIds = $paymentReference->bookings()
+                ->where('status', 'pending')
+                ->pluck('id');
+
+            $paymentReference->bookings()->where('status', 'pending')->update([
+                'status'                 => 'paid',
+                'confirmed_at'           => now(),
+                'gcash_reference_number' => $refNumber,
+            ]);
+
+            return [
+                'status'               => 'confirmed',
+                'payment_reference_id' => $paymentReference->id,
+                'booking_ids'          => $bookingIds->all(),
+            ];
         });
 
         if (in_array($result['status'], ['no_match', 'ambiguous', 'already_resolved', 'duplicate_reference'], true)) {
@@ -201,9 +220,7 @@ class GcashWebhookController extends Controller
         // explicitly null since this request has no authenticated user —
         // it's an incoming webhook, not a guest or staff action.
         if ($result['status'] === 'confirmed') {
-            $booking = Booking::find($result['booking_id']);
-
-            if ($booking) {
+            foreach (\App\Models\Booking::whereIn('id', $result['booking_ids'])->get() as $booking) {
                 ActivityLogger::log(
                     'booking.paid',
                     sprintf(
@@ -243,7 +260,7 @@ class GcashWebhookController extends Controller
 
         $refNumber = null;
         if (preg_match('/Ref\.?\s*No\.?\s*[:.]?\s*([\d\s]{6,20})/i', $message, $refMatch)) {
-            $refNumber = PaymentReference::normalize($refMatch[1]);
+            $refNumber = PaymentReferenceNormalizer::normalize($refMatch[1]);
         }
 
         return [$amount, $refNumber];

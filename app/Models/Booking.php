@@ -15,6 +15,7 @@ class Booking extends Model
         'contact_number',
         'email',
         'court_id',
+        'payment_reference_id',
         'date',
         'start_time',
         'end_time',
@@ -51,6 +52,15 @@ class Booking extends Model
         return $this->hasMany(BookingEquipment::class);
     }
 
+    // Every booking created by store()/storeBooking() now has exactly one
+    // shared payment (possibly shared with sibling bookings from the same
+    // checkout, if the guest picked several different dates at once). See
+    // App\Models\PaymentReference.
+    public function paymentReference()
+    {
+        return $this->belongsTo(PaymentReference::class, 'payment_reference_id');
+    }
+
     // Only present for bookings made through the multi-slot picker.
     // Older/duration-based bookings (e.g. the signed-in user flow) have
     // no rows here — code that reads this must fall back to the
@@ -58,6 +68,17 @@ class Booking extends Model
     public function slots()
     {
         return $this->hasMany(BookingSlot::class);
+    }
+
+    // A booking with no linked payment was never legitimately created by
+    // the normal checkout flow (store()/storeBooking() always create the
+    // payment_reference row in the same DB transaction as the booking
+    // itself, so a committed booking without one shouldn't happen). Used
+    // by the bookings:cancel-orphaned-unpaid safeguard command as the
+    // definition of "this has no payment attached".
+    public function hasPayment(): bool
+    {
+        return $this->payment_reference_id !== null;
     }
 
     public function scopeStatus($query, $status)

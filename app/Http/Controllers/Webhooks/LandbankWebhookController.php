@@ -3,10 +3,10 @@
 namespace App\Http\Controllers\Webhooks;
 
 use App\Http\Controllers\Controller;
-use App\Models\Booking;
+use App\Models\PaymentReference;
 use App\Models\UnmatchedPayment;
 use App\Support\ActivityLogger;
-use App\Support\PaymentReference;
+use App\Support\PaymentReference as PaymentReferenceNormalizer;
 use App\Support\PaymentWindows;
 use App\Support\WebhookAuth;
 use Illuminate\Http\Request;
@@ -20,6 +20,9 @@ use Illuminate\Support\Facades\Log;
  * pattern as GcashWebhookController — this is the only thing that
  * actually confirms a guest's payment; the reference number the guest
  * types into the booking form is never trusted on its own.
+ *
+ * Matches against payment_reference now, not bookings directly — see
+ * App\Models\PaymentReference and GcashWebhookController's docblock.
  *
  * Setup checklist (none of this is in the codebase — it's account/device
  * config):
@@ -91,10 +94,10 @@ class LandbankWebhookController extends Controller
         }
 
         [$amount, $refNumber] = $parsed;
-        $normalizedRef = $refNumber !== null ? PaymentReference::normalize($refNumber) : null;
+        $normalizedRef = $refNumber !== null ? PaymentReferenceNormalizer::normalize($refNumber) : null;
 
         $result = DB::transaction(function () use ($amount, $refNumber, $normalizedRef, $matchWindow, $rawMessage) {
-            $candidates = Booking::where('status', 'pending')
+            $candidates = PaymentReference::whereNull('confirmed_at')
                 ->where('payment_method', 'landbank')
                 ->where('amount', $amount)
                 ->where('created_at', '>=', now()->subMinutes($matchWindow))
@@ -103,8 +106,8 @@ class LandbankWebhookController extends Controller
                 ->get();
 
             if ($candidates->isEmpty()) {
-                // Park it so a booking created moments later can still
-                // claim it — see the matching comment in
+                // Park it so a payment_reference created moments later can
+                // still claim it — see the matching comment in
                 // GcashWebhookController. raw_message is pruned after a
                 // short time by payments:prune-raw-sms.
                 UnmatchedPayment::create([
@@ -118,7 +121,7 @@ class LandbankWebhookController extends Controller
             }
 
             // Reference number is the ONLY thing that confirms which
-            // booking this is — deliberately no "only one candidate at
+            // payment this is — deliberately no "only one candidate at
             // this amount" fallback. Court pricing is round numbers, so
             // same-amount collisions are common; auto-confirming on
             // amount alone would let a stranger who typed a made-up
@@ -126,40 +129,53 @@ class LandbankWebhookController extends Controller
             // payment before the real payer even finishes the form. A
             // mismatched reference stays unmatched — recoverable
             // manually by staff; a stolen payment is not.
-            $booking = ($normalizedRef !== null && $normalizedRef !== '')
-                ? $candidates->first(fn ($b) => PaymentReference::normalize((string) $b->gcash_reference_number) === $normalizedRef)
+            $paymentReference = ($normalizedRef !== null && $normalizedRef !== '')
+                ? $candidates->first(fn ($p) => PaymentReferenceNormalizer::normalize((string) $p->payment_reference) === $normalizedRef)
                 : null;
 
-            if ($booking === null) {
+            if ($paymentReference === null) {
                 return ['status' => 'ambiguous', 'candidate_ids' => $candidates->pluck('id')->all()];
             }
 
             // See GcashWebhookController for why this re-check exists —
             // covers the expire-command race specifically.
-            if ($booking->status !== 'pending') {
-                return ['status' => 'already_resolved', 'booking_id' => $booking->id];
+            if ($paymentReference->confirmed_at !== null) {
+                return ['status' => 'already_resolved', 'payment_reference_id' => $paymentReference->id];
             }
 
             if ($normalizedRef !== null && $normalizedRef !== '') {
-                $alreadyUsed = Booking::where('payment_method', 'landbank')
-                    ->where('status', 'paid')
-                    ->where('id', '!=', $booking->id)
+                $alreadyUsed = PaymentReference::where('payment_method', 'landbank')
+                    ->whereNotNull('confirmed_at')
+                    ->where('id', '!=', $paymentReference->id)
                     ->where('created_at', '>=', now()->subDay())
                     ->get(['id', 'gcash_reference_number'])
-                    ->contains(fn ($b) => PaymentReference::normalize((string) $b->gcash_reference_number) === $normalizedRef);
+                    ->contains(fn ($p) => PaymentReferenceNormalizer::normalize((string) $p->gcash_reference_number) === $normalizedRef);
 
                 if ($alreadyUsed) {
-                    return ['status' => 'duplicate_reference', 'booking_id' => $booking->id];
+                    return ['status' => 'duplicate_reference', 'payment_reference_id' => $paymentReference->id];
                 }
             }
 
-            $booking->update([
-                'status'       => 'paid',
-                'confirmed_at' => now(),
-                'gcash_reference_number' => $refNumber ?? $booking->gcash_reference_number,
+            $paymentReference->update([
+                'confirmed_at'           => now(),
+                'gcash_reference_number' => $refNumber ?? $paymentReference->gcash_reference_number,
             ]);
 
-            return ['status' => 'confirmed', 'booking_id' => $booking->id];
+            $bookingIds = $paymentReference->bookings()
+                ->where('status', 'pending')
+                ->pluck('id');
+
+            $paymentReference->bookings()->where('status', 'pending')->update([
+                'status'                 => 'paid',
+                'confirmed_at'           => now(),
+                'gcash_reference_number' => $refNumber,
+            ]);
+
+            return [
+                'status'               => 'confirmed',
+                'payment_reference_id' => $paymentReference->id,
+                'booking_ids'          => $bookingIds->all(),
+            ];
         });
 
         if (in_array($result['status'], ['no_match', 'ambiguous', 'already_resolved', 'duplicate_reference'], true)) {
@@ -169,9 +185,7 @@ class LandbankWebhookController extends Controller
         // See GcashWebhookController for why this is only logged on
         // 'confirmed' and outside the transaction.
         if ($result['status'] === 'confirmed') {
-            $booking = Booking::find($result['booking_id']);
-
-            if ($booking) {
+            foreach (\App\Models\Booking::whereIn('id', $result['booking_ids'])->get() as $booking) {
                 ActivityLogger::log(
                     'booking.paid',
                     sprintf(
@@ -212,7 +226,7 @@ class LandbankWebhookController extends Controller
 
         $refNumber = null;
         if (preg_match('/Ref\.?\s*(?:No\.?|Number)?\s*[:.]?\s*([\d\s]{6,20})/i', $message, $refMatch)) {
-            $refNumber = PaymentReference::normalize($refMatch[1]);
+            $refNumber = PaymentReferenceNormalizer::normalize($refMatch[1]);
         }
 
         return [$amount, $refNumber];

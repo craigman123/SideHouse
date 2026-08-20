@@ -44,6 +44,10 @@ Route::get('/', [GuestBookingController::class, 'landing'])->name('landing');
 
 Route::get('/book/monthly-stats', [GuestBookingController::class, 'monthlyStats'])->name('guest.book.monthly-stats');
 Route::get('/guest/bookings/{booking}/status', [GuestBookingController::class, 'status'])->name('guest.book.status');
+// Full-page "waiting for payment" step — replaces the old modal so a
+// refresh, closed tab, or accidental back/forward doesn't cancel the
+// booking. See GuestBookingController::waiting()'s docblock.
+Route::get('/guest/bookings/{booking}/waiting', [GuestBookingController::class, 'waiting'])->name('guest.book.waiting');
 Route::get('/guest/bookings/search', [GuestBookingController::class, 'search'])->name('guest.book.search');
 Route::post('/guest/bookings/{booking}/cancel', [GuestBookingController::class, 'cancel'])->name('guest.book.cancel');
 Route::put('/guest/bookings/{booking}/reference', [GuestBookingController::class, 'updateReference'])->name('guest.book.update-reference');
@@ -53,6 +57,11 @@ Route::post('/webhooks/landbank-sms', [LandbankWebhookController::class, 'handle
 // Guest booking (no login required)
 Route::get('/guest-book/availability', [GuestBookingController::class, 'availability'])->name('guest.book.availability');
 Route::get('/guest-book/equipment-availability', [GuestBookingController::class, 'equipmentAvailability'])->name('guest.book.equipment-availability');
+// Full-page "guest info + payment method" step — replaces the old
+// "Almost Done" modal so a refresh or stray backdrop click can't lose
+// the guest's date/time/equipment picks. See
+// GuestBookingController::paymentPage()'s docblock.
+Route::get('/guest-book/payment', [GuestBookingController::class, 'paymentPage'])->name('guest.book.payment');
 Route::post('/guest-book', [GuestBookingController::class, 'store'])->name('guest.book.store');
 
 Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
@@ -130,6 +139,9 @@ Route::middleware('auth')->group(function () {
     Route::get('/book/availability', [User_UserController::class, 'availability'])->name('book.availability');
     Route::get('/book/equipment-availability', [User_UserController::class, 'equipmentAvailability'])->name('book.equipment-availability');
     Route::get('/book/bookings/{booking}/status', [User_UserController::class, 'bookingStatus'])->name('book.status');
+    // Full-page "waiting for payment" step — see
+    // User_UserController::waitingForPayment()'s docblock.
+    Route::get('/book/bookings/{booking}/waiting', [User_UserController::class, 'waitingForPayment'])->name('book.waiting');
     Route::post('/book', [User_UserController::class, 'storeBooking'])->name('book.store');
 
     // Booking history

@@ -308,8 +308,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const availabilityUrl = grid.dataset.availabilityUrl;
     const equipmentUrl = grid.dataset.equipmentUrl;
+    const paymentUrl = grid.dataset.paymentUrl;
     const storeUrl = grid.dataset.storeUrl;
     const statusUrlTemplate = grid.dataset.statusUrlTemplate;
+    const waitingUrlTemplate = grid.dataset.waitingUrlTemplate;
 
     const OPEN_HOUR = parseInt(grid.dataset.openHour, 10);
     const CLOSE_HOUR = parseInt(grid.dataset.closeHour, 10);
@@ -969,7 +971,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // activeSessionDate (not selectedDate) — same reasoning as the
             // final booking submit below.
             const params = new URLSearchParams({ date: activeSessionDate || selectedDate });
-            selectedSlots.forEach((key) => params.append('slots[]', keyTime(key)));
+            selectedSlots.forEach((key) => params.append('slots[]', key));
             const res = await fetch(`${equipmentUrl}?${params.toString()}`, { headers: { Accept: 'application/json' } });
             const data = await res.json();
             const freshCatalog = data.equipment || [];
@@ -998,8 +1000,22 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
-            closeEquipmentModal();
-            openPaymentModal();
+            // Full-page redirect instead of opening the "Almost Done"
+            // modal — see GuestBookingController::paymentPage()'s
+            // docblock. The guest's picks travel via query params; if
+            // they come back with the browser's Back button, bfcache
+            // restores this exact page (selectedSlots, equipmentSelection,
+            // etc. all still in memory) rather than reloading it fresh.
+            const paymentParams = new URLSearchParams({
+                court_id: selectedCourt.id,
+                date: activeSessionDate || selectedDate,
+            });
+            selectedSlots.forEach((key) => paymentParams.append('slots[]', key));
+            Object.entries(equipmentSelection).forEach(([id, quantity], i) => {
+                paymentParams.append(`equipment[${i}][id]`, id);
+                paymentParams.append(`equipment[${i}][quantity]`, quantity);
+            });
+            window.location.href = `${paymentUrl}?${paymentParams.toString()}`;
         } catch (err) {
             console.error(err);
             showToast("Couldn't confirm equipment availability. Please try again.", 'error');
@@ -1377,7 +1393,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         try {
             const params = new URLSearchParams({ date: activeSessionDate || selectedDate });
-            selectedSlots.forEach((key) => params.append('slots[]', keyTime(key)));
+            selectedSlots.forEach((key) => params.append('slots[]', key));
             const url = `${equipmentUrl}?${params.toString()}`;
 
             // Same min-delay pattern as the time-slot skeleton — keeps the
@@ -1677,7 +1693,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // the guest was looking at — see activeSessionDate's declaration.
         formData.append('date', activeSessionDate || selectedDate);
         selectedSlots.forEach((key, i) => {
-            formData.append(`slots[${i}]`, keyTime(key));
+            formData.append(`slots[${i}]`, key);
         });
         formData.append('payment_method', selectedPayment);
         formData.append('guest_name', guestNameInput.value.trim());
@@ -1764,11 +1780,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 showToast('Payment already matched — you\'re all set!', 'success');
                 finishBookingReset();
             } else {
-                // courtPaymentModal stays open (underneath the wait modal,
-                // which layers on top since it comes later in the DOM) —
-                // it's only closed once the webhook actually detects the
-                // payment, inside finishBookingReset() below.
-                watchPaymentConfirmation(data.booking_id, data.poll_token, data.expires_at, `₱${Number(data.amount).toFixed(2)}`, selectedPayment);
+                // Full-page redirect instead of opening a modal — see
+                // GuestBookingController::waiting()'s docblock. Nothing
+                // here can accidentally cancel the booking: closing the
+                // tab, hitting back, or refreshing this next page all
+                // leave it exactly as-is.
+                const waitingUrl = waitingUrlTemplate.replace('__ID__', data.booking_id)
+                    + `?token=${encodeURIComponent(data.poll_token)}`;
+                window.location.href = waitingUrl;
             }
         } catch (err) {
             console.error(err);
@@ -1803,6 +1822,26 @@ document.addEventListener('DOMContentLoaded', () => {
         toast.querySelector('.toast-close').addEventListener('click', remove);
         setTimeout(remove, 4000);
     }
+
+    // The payment page redirects here (rather than trying to patch its
+    // own state) when store() comes back with a slot/stock conflict, or
+    // when the payment was already matched before the guest even hit
+    // Confirm — see paymentPage()'s docblock and the payment page's own
+    // confirmBooking handler.
+    (function showRedirectToast() {
+        const params = new URLSearchParams(window.location.search);
+        const errorMsg = params.get('booking_error');
+        const successMsg = params.get('booking_success');
+        if (!errorMsg && !successMsg) return;
+
+        showToast(errorMsg || successMsg, errorMsg ? 'error' : 'success');
+
+        params.delete('booking_error');
+        params.delete('booking_success');
+        const cleanQuery = params.toString();
+        const cleanUrl = window.location.pathname + (cleanQuery ? `?${cleanQuery}` : '') + window.location.hash;
+        window.history.replaceState({}, '', cleanUrl);
+    })();
 
     // Render the calendar immediately — it's inline on the page now,
     // not behind a click or a modal.

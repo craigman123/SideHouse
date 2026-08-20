@@ -7,6 +7,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const storeUrl = grid.dataset.storeUrl;
     const statusUrlTemplate = grid.dataset.statusUrlTemplate;
     const cancelUrlTemplate = grid.dataset.cancelUrlTemplate;
+    const waitingUrlTemplate = grid.dataset.waitingUrlTemplate;
     const userPhone = grid.dataset.userPhone || '';
 
     const OPEN_HOUR = parseInt(grid.dataset.openHour, 10);
@@ -1183,7 +1184,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 showToast('Payment already matched — you\'re all set!', 'success');
                 finishBookingReset();
             } else {
-                watchPaymentConfirmation(data.booking_id, data.expires_at, `₱${Number(data.amount).toFixed(2)}`, selectedPayment);
+                // Full-page redirect instead of opening a modal — see
+                // User_UserController::waitingForPayment()'s docblock.
+                window.location.href = waitingUrlTemplate.replace('__ID__', data.booking_id);
             }
         } catch (err) {
             console.error(err);
