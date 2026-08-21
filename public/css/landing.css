@@ -2,6 +2,10 @@ body {
     display: block;
 }
 
+#waitActions {
+    justify-content: center;
+}
+
 .landing-wrapper {
     position: relative;
     overflow: hidden;

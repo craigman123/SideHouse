@@ -492,6 +492,7 @@ class User_UserController extends Controller
                         'email'                => $user->email,
                         'court_id'             => $court->id,
                         'payment_reference_id' => $paymentReference->id,
+                        'payment_method'       => $validated['payment_method'],
                         'date'                 => $dateStr,
                         'start_time'           => $envelopeStart->format('H:i:s'),
                         'end_time'             => $envelopeEnd->format('H:i:s'),

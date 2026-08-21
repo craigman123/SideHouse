@@ -6,22 +6,34 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Waiting for Payment | Side House Paddlers</title>
     <link rel="stylesheet" href="{{ asset('css/app.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/book.css') }}">
     <link rel="stylesheet" href="{{ asset('css/landing.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/courts.css') }}">
     <link rel="stylesheet" href="{{ asset('css/landing-book.css') }}">
     <link rel="icon" type="image/png" href="{{ asset('images/tab_icon.png') }}">
 </head>
 <body>
 
+        
     <div class="landing-wrapper" style="align-items: center; justify-content: center;">
+        <div class="bg-particle"></div>
+        <div class="bg-particle"></div>
+        <div class="bg-particle"></div>
+        <div class="bg-particle"></div>
+        <div class="bg-particle"></div>
+        <div class="bg-particle"></div>
+        <div class="bg-particle"></div>
+        <div class="bg-particle"></div>
 
         <div
             class="modal-box"
             id="waitingBox"
-            style="position: static; max-width: 420px; width: 100%;"
+            style="position: relative; max-width: 420px; width: 100%; z-index: 1;"
             data-booking-id="{{ $booking->id }}"
             data-token="{{ $token }}"
             data-status-url="{{ $statusUrl }}"
             data-cancel-url="{{ $cancelUrl }}"
+            data-reference-url="{{ $referenceUrl }}"
             data-landing-url="{{ $landingUrl }}"
             data-initial-status="{{ $booking->status }}"
             data-expires-at="{{ $booking->expires_at?->toIso8601String() }}"
@@ -62,11 +74,41 @@
             </div>
 
             <div class="modal-actions" id="waitActions" @if ($booking->status !== 'pending') style="display:none;" @endif>
+                <button type="button" class="btn btn-secondary" id="waitCorrectReferenceBtn">Correct reference</button>
+                <button type="button" class="btn btn-secondary" id="waitCancelAndEditBtn">Cancel &amp; edit booking</button>
                 <button type="button" class="btn btn-secondary" id="waitCancelBtn">Cancel Booking</button>
+            </div>
+
+            <div class="booking-section" id="waitReferenceEditor" hidden>
+                <label class="gcash-wait-status" for="waitReferenceInput">Correct payment reference number</label>
+                <input type="text" id="waitReferenceInput" class="payment-ref-input" autocomplete="off">
+                <p class="payment-proof-note">Use this if you already paid but entered the wrong reference. Your booking remains held while we check the corrected number.</p>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-secondary" id="waitReferenceCancelBtn">Keep current reference</button>
+                    <button type="button" class="btn btn-primary" id="waitReferenceSaveBtn">Save reference</button>
+                </div>
             </div>
 
             <div class="modal-actions" id="waitDoneActions" @if ($booking->status === 'pending') style="display:none;" @endif>
                 <a href="{{ $landingUrl }}" class="btn btn-primary">Back to Home</a>
+            </div>
+        </div>
+    </div>
+
+    {{-- Confirmation modal for "Cancel & edit booking" — replaces the native
+         window.confirm() with something that matches the rest of the site. --}}
+    <div class="modal-overlay" id="cancelEditConfirmModal">
+        <div class="modal-box modal-box-confirm">
+            <div class="modal-header">
+                <h3>Cancel &amp; Edit Booking?</h3>
+            </div>
+            <div class="modal-confirm-body">
+                <p>This cancels your unpaid booking and takes you back to edit your time or equipment.</p>
+                <p class="modal-confirm-warning">Don't do this if you've already paid — your payment may still be on its way to being matched.</p>
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-secondary" id="cancelEditConfirmNo">Keep Booking</button>
+                <button type="button" class="btn btn-primary" id="cancelEditConfirmYes">Yes, Cancel &amp; Edit</button>
             </div>
         </div>
     </div>
@@ -76,6 +118,7 @@
             const box = document.getElementById('waitingBox');
             const statusUrl = box.dataset.statusUrl + '?token=' + encodeURIComponent(box.dataset.token);
             const cancelUrl = box.dataset.cancelUrl + '?token=' + encodeURIComponent(box.dataset.token);
+            const referenceUrl = box.dataset.referenceUrl + '?token=' + encodeURIComponent(box.dataset.token);
             const expiresAt = box.dataset.expiresAt ? new Date(box.dataset.expiresAt).getTime() : null;
 
             const titleEl = document.getElementById('waitTitle');
@@ -86,6 +129,15 @@
             const actionsEl = document.getElementById('waitActions');
             const doneActionsEl = document.getElementById('waitDoneActions');
             const cancelBtn = document.getElementById('waitCancelBtn');
+            const cancelAndEditBtn = document.getElementById('waitCancelAndEditBtn');
+            const correctReferenceBtn = document.getElementById('waitCorrectReferenceBtn');
+            const referenceEditor = document.getElementById('waitReferenceEditor');
+            const referenceInput = document.getElementById('waitReferenceInput');
+            const referenceSaveBtn = document.getElementById('waitReferenceSaveBtn');
+            const referenceCancelBtn = document.getElementById('waitReferenceCancelBtn');
+            const cancelEditConfirmModal = document.getElementById('cancelEditConfirmModal');
+            const cancelEditConfirmYes = document.getElementById('cancelEditConfirmYes');
+            const cancelEditConfirmNo = document.getElementById('cancelEditConfirmNo');
 
             let pollTimer = null;
             let countdownTimer = null;
@@ -110,6 +162,7 @@
                 spinnerEl.style.display = 'none';
                 countdownRow.style.display = 'none';
                 actionsEl.style.display = 'none';
+                referenceEditor.hidden = true;
                 doneActionsEl.style.display = '';
 
                 if (status === 'paid') {
@@ -164,6 +217,89 @@
                     console.error(err);
                     cancelBtn.disabled = false;
                     cancelBtn.textContent = 'Cancel Booking';
+                }
+            });
+
+            correctReferenceBtn?.addEventListener('click', () => {
+                referenceEditor.hidden = false;
+                referenceInput.focus();
+            });
+
+            referenceCancelBtn?.addEventListener('click', () => {
+                referenceEditor.hidden = true;
+                referenceInput.value = '';
+            });
+
+            referenceSaveBtn?.addEventListener('click', async () => {
+                const reference = referenceInput.value.trim();
+                if (!reference) {
+                    referenceInput.focus();
+                    return;
+                }
+
+                referenceSaveBtn.disabled = true;
+                try {
+                    const res = await fetch(referenceUrl, {
+                        method: 'PUT',
+                        headers: {
+                            Accept: 'application/json',
+                            'Content-Type': 'application/json',
+                            ...csrfHeaders(),
+                        },
+                        body: JSON.stringify({ payment_reference: reference }),
+                    });
+                    const data = await res.json().catch(() => ({}));
+                    if (!res.ok) throw new Error(data.message || 'Could not update the reference.');
+
+                    referenceEditor.hidden = true;
+                    referenceInput.value = '';
+                    if (data.status === 'paid') {
+                        showResolved('paid');
+                    } else {
+                        statusEl.textContent = 'Reference updated. We are still waiting for the payment confirmation.';
+                    }
+                } catch (err) {
+                    console.error(err);
+                    statusEl.textContent = err.message || 'Could not update the reference. Please try again.';
+                } finally {
+                    referenceSaveBtn.disabled = false;
+                }
+            });
+
+            // ---------- Cancel & edit booking (custom confirm modal) ----------
+
+            function openCancelEditConfirm() {
+                cancelEditConfirmModal.classList.add('open');
+            }
+
+            function closeCancelEditConfirm() {
+                cancelEditConfirmModal.classList.remove('open');
+            }
+
+            cancelAndEditBtn?.addEventListener('click', () => {
+                openCancelEditConfirm();
+            });
+
+            cancelEditConfirmNo?.addEventListener('click', closeCancelEditConfirm);
+
+            cancelEditConfirmModal?.addEventListener('click', (e) => {
+                if (e.target === cancelEditConfirmModal) closeCancelEditConfirm();
+            });
+
+            cancelEditConfirmYes?.addEventListener('click', async () => {
+                closeCancelEditConfirm();
+                cancelAndEditBtn.disabled = true;
+                try {
+                    const res = await fetch(cancelUrl, { method: 'POST', headers: { Accept: 'application/json', ...csrfHeaders() } });
+                    const data = await res.json().catch(() => ({}));
+                    if (data.status === 'paid') {
+                        showResolved('paid');
+                        return;
+                    }
+                    window.location.href = box.dataset.landingUrl + '?resume_booking=1';
+                } catch (err) {
+                    console.error(err);
+                    cancelAndEditBtn.disabled = false;
                 }
             });
         })();

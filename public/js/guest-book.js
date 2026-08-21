@@ -475,6 +475,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let equipmentSelection = {}; // { [equipmentId]: quantity }
     let googleIdToken = null; // raw JWT from Google — sent as-is, verified server-side
     let googleEmail = ''; // decoded from the token, for display only (never trusted on its own)
+    const CHECKOUT_DRAFT_KEY = 'sidehouse_guest_checkout_draft';
 
     const pad = (n) => n.toString().padStart(2, '0');
     const todayStr = () => new Date().toISOString().slice(0, 10);
@@ -672,6 +673,12 @@ document.addEventListener('DOMContentLoaded', () => {
         if (gcashRefInput) gcashRefInput.value = '';
         if (landbankRefInput) landbankRefInput.value = '';
         resetBookingState();
+        if (restoreCheckoutDraft()) {
+            renderCalendar();
+            openEquipmentModal();
+            return;
+        }
+
         renderCalendar();
     }
 
@@ -887,7 +894,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     })();
 
-    guestEmailChangeBtn.addEventListener('click', clearGoogleSignIn);
+    guestEmailChangeBtn?.addEventListener('click', clearGoogleSignIn);
 
     function resetBookingState() {
         selectedDate = null;
@@ -898,9 +905,48 @@ document.addEventListener('DOMContentLoaded', () => {
         bookedRanges = [];
         equipmentSelection = {};
         calendarCursor = new Date();
-        paymentGrid.querySelectorAll('.payment-btn').forEach((el) => el.classList.remove('selected'));
+        paymentGrid?.querySelectorAll('.payment-btn').forEach((el) => el.classList.remove('selected'));
         syncPaymentQrPanels();
         closeTimePickerModal();
+    }
+
+    function restoreCheckoutDraft() {
+        const params = new URLSearchParams(window.location.search);
+        if (params.get('resume_booking') !== '1') return false;
+
+        try {
+            const draft = JSON.parse(sessionStorage.getItem(CHECKOUT_DRAFT_KEY) || 'null');
+            if (!draft || String(draft.courtId) !== String(selectedCourt?.id)
+                || typeof draft.date !== 'string' || !Array.isArray(draft.slots)
+                || !Array.isArray(draft.equipment)) {
+                return false;
+            }
+
+            const validSlots = draft.slots.filter((slot) => typeof slot === 'string' && /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/.test(slot));
+            if (validSlots.length === 0) return false;
+
+            selectedDate = draft.date;
+            activeSessionDate = draft.date;
+            selectedSlots = validSlots.sort();
+            selectedSlots.forEach((slot) => slotSessions.set(slot, draft.date));
+            equipmentSelection = draft.equipment.reduce((selection, item) => {
+                const id = Number(item?.id);
+                const quantity = Number(item?.quantity);
+                if (Number.isInteger(id) && Number.isInteger(quantity) && quantity > 0) {
+                    selection[id] = quantity;
+                }
+                return selection;
+            }, {});
+            calendarCursor = new Date(`${draft.date}T00:00:00`);
+
+            params.delete('resume_booking');
+            const cleanUrl = `${window.location.pathname}${params.toString() ? `?${params}` : ''}${window.location.hash}`;
+            window.history.replaceState({}, '', cleanUrl);
+            return true;
+        } catch (err) {
+            console.warn('Could not restore booking draft.', err);
+            return false;
+        }
     }
 
     // ---------- Wire up the (only) court from the database ----------
@@ -908,6 +954,31 @@ document.addEventListener('DOMContentLoaded', () => {
     // its details come straight from data-court-* on #bookNow, and the
     // calendar renders immediately since it's inline on the page, not
     // behind a click or a modal.
+    // Re-opens the time picker on the previously-selected date, with the
+    // guest's slots and equipment already restored by restoreCheckoutDraft()
+    // — used when a guest comes back via "Back to equipment" or "Cancel &
+    // edit booking" (both redirect here with ?resume_booking=1). Deliberately
+    // does NOT reset selectedSlots/slotSessions the way selectDate() does,
+    // since those are exactly what we're restoring.
+    async function resumeToTimePicker() {
+        renderCalendar(); // marks selectedDate's cell .selected
+        if (timePickerDateLabel) timePickerDateLabel.textContent = formatDate(selectedDate);
+        updateDayNavState();
+        openTimePickerModal();
+        renderTimeSlotSkeleton();
+
+        const MIN_SKELETON_MS = 300;
+        const [ranges] = await Promise.all([
+            fetchAvailability(selectedDate),
+            new Promise((resolve) => setTimeout(resolve, MIN_SKELETON_MS)),
+        ]);
+
+        bookedRanges = ranges;
+        renderTimeSlots();
+        updateTimePickerFee();
+        showToast('Picking up where you left off — your time and equipment are still saved.', 'success');
+    }
+
     function initBooking() {
         if (!grid.dataset.courtId) return; // no active courts — nothing to wire up
 
@@ -921,6 +992,12 @@ document.addEventListener('DOMContentLoaded', () => {
         };
 
         resetBookingState();
+
+        if (restoreCheckoutDraft()) {
+            resumeToTimePicker();
+            return;
+        }
+
         renderCalendar();
     }
 
@@ -936,8 +1013,8 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('backToCalendar').addEventListener('click', closeTimePickerModal);
     document.getElementById('backToCalendar2').addEventListener('click', closeTimePickerModal);
 
-    document.getElementById('courtPaymentModalClose').addEventListener('click', closePaymentModal);
-    paymentModal.addEventListener('click', (e) => {
+    document.getElementById('courtPaymentModalClose')?.addEventListener('click', closePaymentModal);
+    paymentModal?.addEventListener('click', (e) => {
         if (e.target === paymentModal) closePaymentModal();
     });
 
@@ -1025,11 +1102,11 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    document.getElementById('backToEquipment').addEventListener('click', () => {
+    document.getElementById('backToEquipment')?.addEventListener('click', () => {
         closePaymentModal();
         openEquipmentModal();
     });
-    document.getElementById('backToEquipment2').addEventListener('click', () => {
+    document.getElementById('backToEquipment2')?.addEventListener('click', () => {
         closePaymentModal();
         openEquipmentModal();
     });
@@ -1536,7 +1613,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // ---------- Payment method ----------
 
-    paymentGrid.addEventListener('click', (e) => {
+    paymentGrid?.addEventListener('click', (e) => {
         const btn = e.target.closest('.payment-btn');
         if (!btn || btn.disabled) return;
 
@@ -1658,7 +1735,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // ---------- Confirm ----------
 
-    confirmBtn.addEventListener('click', async () => {
+    confirmBtn?.addEventListener('click', async () => {
         const missing = getMissingGuestRequirements();
         if (missing.length > 0) {
             showToast(`Please provide ${formatList(missing)} to continue.`, 'error');

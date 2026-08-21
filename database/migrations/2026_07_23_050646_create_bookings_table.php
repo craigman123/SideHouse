@@ -11,7 +11,6 @@ return new class extends Migration
         Schema::create('bookings', function (Blueprint $table) {
             $table->id();
             $table->string('customer_name');
-            $table->string('contact_number');
             $table->string('email')->nullable();
             $table->unsignedBigInteger('court_id')->nullable();
             $table->date('date');

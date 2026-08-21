@@ -31,6 +31,33 @@
     let selectedPayment = null;
     let googleIdToken = null;
     let googleEmail = null;
+    const CHECKOUT_DRAFT_KEY = 'sidehouse_guest_checkout_draft';
+
+    // Keep only non-sensitive booking choices. This lets the waiting page
+    // return an unpaid checkout to the equipment step without relying on
+    // bfcache, while never storing the Google token or payment reference.
+    function saveCheckoutDraft() {
+        try {
+            sessionStorage.setItem(CHECKOUT_DRAFT_KEY, JSON.stringify({
+                courtId: String(courtId),
+                date,
+                slots,
+                equipment: equipmentPayload,
+            }));
+        } catch (err) {
+            console.warn('Could not save booking draft.', err);
+        }
+    }
+
+    function clearCheckoutDraft() {
+        try {
+            sessionStorage.removeItem(CHECKOUT_DRAFT_KEY);
+        } catch (err) {
+            console.warn('Could not clear booking draft.', err);
+        }
+    }
+
+    saveCheckoutDraft();
 
     // ---------- CSRF ----------
 
@@ -197,8 +224,13 @@
     // hard reload of it. See GuestBookingController::paymentPage()'s
     // docblock.
 
-    document.getElementById('backToEquipment').addEventListener('click', () => history.back());
-    document.getElementById('backToEquipment2').addEventListener('click', () => history.back());
+    function returnToEquipment() {
+        saveCheckoutDraft();
+        window.location.href = `${landingUrl}?resume_booking=1`;
+    }
+
+    document.getElementById('backToEquipment').addEventListener('click', returnToEquipment);
+    document.getElementById('backToEquipment2').addEventListener('click', returnToEquipment);
 
     // ---------- Confirm ----------
 
@@ -312,6 +344,7 @@
             }
 
             if (data.booking && data.booking.status === 'paid') {
+                clearCheckoutDraft();
                 const params = new URLSearchParams({
                     booking_success: 'Payment already matched — you\'re all set!',
                 });

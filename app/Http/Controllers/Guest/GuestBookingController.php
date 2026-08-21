@@ -726,6 +726,7 @@ class GuestBookingController extends Controller
                         'email'                => $guestEmail,
                         'court_id'             => $court->id,
                         'payment_reference_id' => $paymentReference->id,
+                        'payment_method'       => $validated['payment_method'],
                         'date'                 => $dateStr,
                         'start_time'           => $envelopeStart->format('H:i:s'),
                         'end_time'             => $envelopeEnd->format('H:i:s'),
@@ -889,6 +890,7 @@ class GuestBookingController extends Controller
             'token'      => $token,
             'statusUrl'  => route('guest.book.status', ['booking' => $booking->id]),
             'cancelUrl'  => route('guest.book.cancel', ['booking' => $booking->id]),
+            'referenceUrl' => route('guest.book.update-reference', ['booking' => $booking->id]),
             'landingUrl' => route('landing'),
         ]);
     }

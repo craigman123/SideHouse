@@ -9,7 +9,7 @@
     <link rel="stylesheet" href="{{ asset('css/book.css') }}">
     <link rel="stylesheet" href="{{ asset('css/landing.css') }}">
     <link rel="stylesheet" href="{{ asset('css/landing-book.css') }}">
-    <link rel="stylesheet" href="{{ asset('css/payment.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/courts.css') }}">
     <script src="{{ asset('js/payment.js') }}" defer></script>
     <link rel="icon" type="image/png" href="{{ asset('images/tab_icon.png') }}">
     <script src="https://accounts.google.com/gsi/client" async defer></script>
@@ -29,7 +29,7 @@
         <div
             class="modal-box modal-box-lg modal-box-scrollable"
             id="paymentPage"
-            style="position: static; margin: 40px auto;"
+            style="position: relative; margin: 40px auto; z-index: 1;"
             data-court-id="{{ $courtId }}"
             data-date="{{ $date }}"
             data-slots='@json($slots)'
@@ -73,12 +73,18 @@
                 <div class="booking-section">
                     <p class="booking-section-label">How will you pay?</p>
                     <div class="payment-grid" id="paymentGrid">
-                        <button type="button" class="payment-btn" data-method="gcash">
+                        <button type="button" class="payment-btn payment-btn-gcash" data-method="gcash">
+                            <span class="payment-btn-icon">
+                                <img src="{{ asset('images/gcash.png') }}" alt="Gcash logo">
+                            </span>
                             <span class="payment-btn-title">GCash</span>
                             <span class="payment-btn-sub">Scan the QR code through Gcash to pay</span>
                         </button>
 
-                        <button type="button" class="payment-btn" data-method="landbank">
+                        <button type="button" class="payment-btn payment-btn-landbank" data-method="landbank">
+                            <span class="payment-btn-icon">
+                                <img src="{{ asset('images/lanbak.png') }}" alt="Landbank logo">
+                            </span>
                             <span class="payment-btn-title">Landbank</span>
                             <span class="payment-btn-sub">Pay via InstaPay by scanning the QR code</span>
                         </button>
@@ -130,6 +136,7 @@
                 </div>
 
                 <div class="booking-summary" id="bookingSummary">
+                    <p class="booking-summary-title">Booking Summary</p>
                     @foreach ($dateSummaries as $line)
                         <p>{{ $line }}</p>
                     @endforeach

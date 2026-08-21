@@ -42,10 +42,12 @@ return [
 
     'gcash_sms' => [
         'secret' => env('GCASH_SMS_WEBHOOK_SECRET'),
+        'allowed_ips' => env('GCASH_SMS_ALLOWED_IPS'),
     ],
 
     'landbank_sms' => [
         'secret' => env('LANDBANK_SMS_WEBHOOK_SECRET'),
+        'allowed_ips' => env('LANDBANK_SMS_ALLOWED_IPS'),
     ],
 
     'cron_secret' => [

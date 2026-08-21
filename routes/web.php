@@ -51,8 +51,10 @@ Route::get('/guest/bookings/{booking}/waiting', [GuestBookingController::class, 
 Route::get('/guest/bookings/search', [GuestBookingController::class, 'search'])->name('guest.book.search');
 Route::post('/guest/bookings/{booking}/cancel', [GuestBookingController::class, 'cancel'])->name('guest.book.cancel');
 Route::put('/guest/bookings/{booking}/reference', [GuestBookingController::class, 'updateReference'])->name('guest.book.update-reference');
-Route::post('/webhooks/gcash-sms', [GcashWebhookController::class, 'handleSms']);
-Route::post('/webhooks/landbank-sms', [LandbankWebhookController::class, 'handleSms']);
+Route::post('/webhooks/gcash-sms', [GcashWebhookController::class, 'handleSms'])
+    ->middleware('throttle:30,1');
+Route::post('/webhooks/landbank-sms', [LandbankWebhookController::class, 'handleSms'])
+    ->middleware('throttle:30,1');
 
 // Guest booking (no login required)
 Route::get('/guest-book/availability', [GuestBookingController::class, 'availability'])->name('guest.book.availability');

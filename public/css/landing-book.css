@@ -592,7 +592,7 @@ html {
 
 .guest-info-grid {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    width: 100%;
     gap: 12px;
     margin-bottom: 4px;
 }
@@ -1582,4 +1582,203 @@ a.footer-contact:hover {
         margin: 10px 0;
         font-size: 12px;
     }
+}
+/* ---------- Payment page polish (guest_payment.blade.php) ----------
+   Everything below is scoped under #paymentPage so it only touches the
+   "Confirm & Pay" page and can't leak into the equipment/time-picker
+   modals on the landing page, which share some of the same class names
+   (.booking-section, .payment-grid, etc). Deliberately reuses the same
+   color tokens and card language as landing.css's .feature-card grid
+   instead of introducing a new palette. */
+
+#paymentPage .booking-section {
+    background-color: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 12px;
+    padding: 20px 22px;
+}
+
+#paymentPage .booking-section + .booking-section {
+    margin-top: 16px;
+}
+
+#paymentPage .booking-section-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: #3fb950;
+    margin: 0 0 14px;
+}
+
+#paymentPage .booking-section-label::before {
+    content: '';
+    width: 14px;
+    height: 1.5px;
+    background-color: #3fb950;
+    flex-shrink: 0;
+}
+
+#paymentPage .guest-email-block {
+    margin-top: 18px;
+    padding-top: 16px;
+    border-top: 1px solid #21262d;
+}
+
+/* Payment method buttons — same treatment as the landing page's
+   .feature-card grid: colored top border + icon + hover lift. */
+#paymentPage .payment-btn {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    width: 100%;
+    background-color: #0d1117;
+    border: 1px solid #30363d;
+    border-top: 3px solid #30363d;
+    border-radius: 10px;
+    padding: 16px 16px 14px;
+    text-align: left;
+    color: #f0f6fc;
+    cursor: pointer;
+    transition: border-color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+#paymentPage .payment-btn:hover {
+    transform: translateY(-2px);
+    border-color: #3fb950;
+}
+
+#paymentPage .payment-btn-gcash { border-top-color: #3fb950; }
+#paymentPage .payment-btn-landbank { border-top-color: #0051ff; }
+
+#paymentPage .payment-btn.selected {
+    border-color: #3fb950;
+    box-shadow: 0 0 0 3px rgba(63, 185, 80, 0.15);
+    transform: translateY(-2px);
+}
+
+#paymentPage .payment-btn-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    line-height: 1;
+    margin-bottom: 4px;
+    width: 40px;
+    height: 40px;
+}
+
+#paymentPage .payment-btn-icon img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 10px;
+}
+
+#paymentPage .payment-btn-title {
+    font-size: 15px;
+    font-weight: 800;
+    color: #f0f6fc;
+}
+
+#paymentPage .payment-btn.selected .payment-btn-title {
+    color: #3fb950;
+}
+
+#paymentPage .payment-btn-sub {
+    font-size: 12.5px;
+    color: #8b949e;
+    line-height: 1.4;
+}
+
+/* Booking summary — same gold "exclusive" top-border treatment as the
+   landing page's featured card, since this is the final review before
+   paying. */
+#paymentPage .booking-summary {
+    background-color: #161b22;
+    border: 1px solid #30363d;
+    border-top: 3px solid #d4a017;
+    border-radius: 12px;
+    padding: 20px 22px;
+    margin-top: 16px;
+}
+
+#paymentPage .booking-summary-title {
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: #d4a017;
+    margin: 0 0 12px;
+    padding: 0;
+    border: none;
+}
+
+#paymentPage .booking-summary p {
+    font-size: 14px;
+    color: #8b949e;
+    margin: 0;
+    padding: 7px 0;
+    border-bottom: 1px solid #21262d;
+}
+
+#paymentPage .booking-summary strong {
+    color: #f0f6fc;
+    font-weight: 700;
+}
+
+#paymentPage .booking-summary-total {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-top: 6px !important;
+    padding-top: 14px !important;
+    border-bottom: none !important;
+    border-top: 1px solid #30363d;
+    font-size: 14px;
+    font-weight: 700;
+    color: #f0f6fc;
+}
+
+#paymentPage .booking-summary-total strong {
+    font-size: 22px;
+    color: #3fb950;
+}
+
+@media (max-width: 480px) {
+    #paymentPage .booking-section,
+    #paymentPage .booking-summary {
+        padding: 16px;
+    }
+}
+
+/* ---------- Cancel & edit confirm modal (payment-waiting.blade.php) ---------- */
+
+#cancelEditConfirmModal .modal-box-confirm {
+    max-width: 380px;
+}
+
+#cancelEditConfirmModal .modal-confirm-body {
+    padding: 4px 24px 4px;
+    text-align: center;
+}
+
+#cancelEditConfirmModal .modal-confirm-body p {
+    margin: 0 0 12px;
+    font-size: 13.5px;
+    line-height: 1.5;
+    color: #8b949e;
+}
+
+#cancelEditConfirmModal .modal-confirm-warning {
+    color: #f0b429;
+    font-weight: 600;
+}
+
+#cancelEditConfirmModal .modal-confirm-body p:last-child {
+    margin-bottom: 0;
 }

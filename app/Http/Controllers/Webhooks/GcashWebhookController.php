@@ -62,7 +62,7 @@ class GcashWebhookController extends Controller
         }
 
         $validated = $request->validate([
-            'message' => ['required', 'string'],
+            'message' => ['required', 'string', 'max:10000'],
         ]);
 
         $rawMessage = $validated['message'];
