@@ -53,12 +53,17 @@
             <div class="gcash-wait-body">
                 <div class="gcash-wait-spinner" id="waitSpinner" aria-hidden="true" @if ($booking->status !== 'pending') style="display:none;" @endif></div>
 
-                <p class="gcash-wait-amount">
-                    <strong>{{ $booking->court->name ?? 'Court' }}</strong>
-                    — {{ \Carbon\Carbon::parse($booking->date)->format('M j, Y') }},
-                    {{ \Carbon\Carbon::parse($booking->start_time)->format('g:i A') }}–{{ \Carbon\Carbon::parse($booking->end_time)->format('g:i A') }}
-                </p>
-                <p class="gcash-wait-amount">Amount: <strong>₱{{ number_format($booking->amount, 2) }}</strong></p>
+                @foreach ($siblingBookings as $b)
+                    <p class="gcash-wait-amount">
+                        <strong>{{ $b->court->name ?? 'Court' }}</strong>
+                        — {{ \Carbon\Carbon::parse($b->date)->format('M j, Y') }},
+                        {{ \Carbon\Carbon::parse($b->start_time)->format('g:i A') }}–{{ \Carbon\Carbon::parse($b->end_time)->format('g:i A') }}
+                        — ₱{{ number_format($b->amount, 2) }}
+                    </p>
+                @endforeach
+
+                <p class="gcash-wait-amount">Total: <strong>₱{{ number_format($totalAmount, 2) }}</strong></p>
+
                 <p class="gcash-wait-status" id="waitStatus">
                     @if ($booking->status === 'paid')
                         Your payment was confirmed — see you on the court!

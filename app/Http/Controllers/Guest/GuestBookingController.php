@@ -885,13 +885,27 @@ class GuestBookingController extends Controller
 
         $booking->load('court');
 
+        // A multi-date checkout shares one payment_reference across several
+        // Booking rows (see PaymentReference's docblock) — pull every sibling
+        // under the same payment so the waiting page shows everything the
+        // guest is paying for, not just the one date this particular booking
+        // row happens to be.
+        $siblingBookings = Booking::where('payment_reference_id', $booking->payment_reference_id)
+            ->orderBy('date')
+            ->with('court')
+            ->get();
+
+        $paymentReference = PaymentReferenceModel::find($booking->payment_reference_id);
+
         return view('payment-waiting', [
-            'booking'    => $booking,
-            'token'      => $token,
-            'statusUrl'  => route('guest.book.status', ['booking' => $booking->id]),
-            'cancelUrl'  => route('guest.book.cancel', ['booking' => $booking->id]),
-            'referenceUrl' => route('guest.book.update-reference', ['booking' => $booking->id]),
-            'landingUrl' => route('landing'),
+            'booking'         => $booking,
+            'siblingBookings' => $siblingBookings,
+            'totalAmount'     => $paymentReference->amount ?? $siblingBookings->sum('amount'),
+            'token'           => $token,
+            'statusUrl'       => route('guest.book.status', ['booking' => $booking->id]),
+            'cancelUrl'       => route('guest.book.cancel', ['booking' => $booking->id]),
+            'referenceUrl'    => route('guest.book.update-reference', ['booking' => $booking->id]),
+            'landingUrl'      => route('landing'),
         ]);
     }
 
