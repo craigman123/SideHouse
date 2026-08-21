@@ -75,7 +75,6 @@
 
             <div class="modal-actions" id="waitActions" @if ($booking->status !== 'pending') style="display:none;" @endif>
                 <button type="button" class="btn btn-secondary" id="waitCorrectReferenceBtn">Correct reference</button>
-                <button type="button" class="btn btn-secondary" id="waitCancelAndEditBtn">Cancel &amp; edit booking</button>
                 <button type="button" class="btn btn-secondary" id="waitCancelBtn">Cancel Booking</button>
             </div>
 
@@ -91,24 +90,6 @@
 
             <div class="modal-actions" id="waitDoneActions" @if ($booking->status === 'pending') style="display:none;" @endif>
                 <a href="{{ $landingUrl }}" class="btn btn-primary">Back to Home</a>
-            </div>
-        </div>
-    </div>
-
-    {{-- Confirmation modal for "Cancel & edit booking" — replaces the native
-         window.confirm() with something that matches the rest of the site. --}}
-    <div class="modal-overlay" id="cancelEditConfirmModal">
-        <div class="modal-box modal-box-confirm">
-            <div class="modal-header">
-                <h3>Cancel &amp; Edit Booking?</h3>
-            </div>
-            <div class="modal-confirm-body">
-                <p>This cancels your unpaid booking and takes you back to edit your time or equipment.</p>
-                <p class="modal-confirm-warning">Don't do this if you've already paid — your payment may still be on its way to being matched.</p>
-            </div>
-            <div class="modal-actions">
-                <button type="button" class="btn btn-secondary" id="cancelEditConfirmNo">Keep Booking</button>
-                <button type="button" class="btn btn-primary" id="cancelEditConfirmYes">Yes, Cancel &amp; Edit</button>
             </div>
         </div>
     </div>
@@ -129,15 +110,11 @@
             const actionsEl = document.getElementById('waitActions');
             const doneActionsEl = document.getElementById('waitDoneActions');
             const cancelBtn = document.getElementById('waitCancelBtn');
-            const cancelAndEditBtn = document.getElementById('waitCancelAndEditBtn');
             const correctReferenceBtn = document.getElementById('waitCorrectReferenceBtn');
             const referenceEditor = document.getElementById('waitReferenceEditor');
             const referenceInput = document.getElementById('waitReferenceInput');
             const referenceSaveBtn = document.getElementById('waitReferenceSaveBtn');
             const referenceCancelBtn = document.getElementById('waitReferenceCancelBtn');
-            const cancelEditConfirmModal = document.getElementById('cancelEditConfirmModal');
-            const cancelEditConfirmYes = document.getElementById('cancelEditConfirmYes');
-            const cancelEditConfirmNo = document.getElementById('cancelEditConfirmNo');
 
             let pollTimer = null;
             let countdownTimer = null;
@@ -266,42 +243,6 @@
                 }
             });
 
-            // ---------- Cancel & edit booking (custom confirm modal) ----------
-
-            function openCancelEditConfirm() {
-                cancelEditConfirmModal.classList.add('open');
-            }
-
-            function closeCancelEditConfirm() {
-                cancelEditConfirmModal.classList.remove('open');
-            }
-
-            cancelAndEditBtn?.addEventListener('click', () => {
-                openCancelEditConfirm();
-            });
-
-            cancelEditConfirmNo?.addEventListener('click', closeCancelEditConfirm);
-
-            cancelEditConfirmModal?.addEventListener('click', (e) => {
-                if (e.target === cancelEditConfirmModal) closeCancelEditConfirm();
-            });
-
-            cancelEditConfirmYes?.addEventListener('click', async () => {
-                closeCancelEditConfirm();
-                cancelAndEditBtn.disabled = true;
-                try {
-                    const res = await fetch(cancelUrl, { method: 'POST', headers: { Accept: 'application/json', ...csrfHeaders() } });
-                    const data = await res.json().catch(() => ({}));
-                    if (data.status === 'paid') {
-                        showResolved('paid');
-                        return;
-                    }
-                    window.location.href = box.dataset.landingUrl + '?resume_booking=1';
-                } catch (err) {
-                    console.error(err);
-                    cancelAndEditBtn.disabled = false;
-                }
-            });
         })();
     </script>
 </body>

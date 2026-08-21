@@ -155,6 +155,24 @@ class GcashWebhookController extends Controller
                 : null;
 
             if ($paymentReference === null) {
+                // No candidate's reference number matches this SMS —
+                // whether because none of them have a ref at all yet, or
+                // because this payment simply isn't for any currently
+                // pending booking (it just happens to share an amount
+                // with one). Either way it's not confirmable right now,
+                // so park it the same as the no-candidates case above:
+                // GuestBookingController::store() / a later correction
+                // to a booking's reference can still claim it
+                // retroactively. Without this, a same-amount collision
+                // caused a real payment to be silently dropped — no
+                // record anywhere, unrecoverable.
+                UnmatchedPayment::create([
+                    'payment_method'   => 'gcash',
+                    'amount'           => $amount,
+                    'reference_number' => $refNumber,
+                    'raw_message'      => $rawMessage,
+                ]);
+
                 return ['status' => 'ambiguous', 'candidate_ids' => $candidates->pluck('id')->all()];
             }
 

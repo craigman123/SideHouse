@@ -134,6 +134,17 @@ class LandbankWebhookController extends Controller
                 : null;
 
             if ($paymentReference === null) {
+                // See GcashWebhookController for why this is parked
+                // rather than dropped — a same-amount collision with an
+                // unrelated pending booking must not cause a real
+                // payment to vanish with no record anywhere.
+                UnmatchedPayment::create([
+                    'payment_method'   => 'landbank',
+                    'amount'           => $amount,
+                    'reference_number' => $refNumber,
+                    'raw_message'      => $rawMessage,
+                ]);
+
                 return ['status' => 'ambiguous', 'candidate_ids' => $candidates->pluck('id')->all()];
             }
 
