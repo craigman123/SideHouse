@@ -564,6 +564,16 @@ body {
     .nav-links {
         display: none;
     }
+
+    /* Show mobile overlay/menu as soon as the hamburger toggle appears,
+       so the dropdown isn't stuck at display:none between 769px-950px */
+    .nav-mobile-overlay {
+        display: block;
+    }
+
+    .nav-mobile-menu {
+        display: block;
+    }
 }
 
 @media (max-width: 768px) {
