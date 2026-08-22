@@ -45,7 +45,7 @@
                 <tbody>
                     @forelse ($bookings as $booking)
                         @php
-                            $isCancellable = $booking->status !== 'cancelled'
+                            $isCancellable = $booking->status === 'pending'
                                 && $booking->date->copy()->startOfDay()->gte(today());
                         @endphp
                         <tr
@@ -61,7 +61,11 @@
                             </td>
                             <td>&#8369;{{ number_format($booking->amount, 0) }}</td>
                             <td class="cell-muted">
-                                {{ $booking->payment_method === 'ewallet' ? 'E-Wallet' : 'Pay on Arrival' }}
+                                {{ match ($booking->payment_method) {
+                                    'gcash' => 'GCash',
+                                    'landbank' => 'Landbank',
+                                    default => ucfirst($booking->payment_method ?? 'Unknown'),
+                                } }}
                             </td>
                             <td>
                                 <span class="status status-{{ $booking->status === 'paid' ? 'paid' : ($booking->status === 'cancelled' ? 'cancelled' : 'pending') }}">

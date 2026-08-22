@@ -144,6 +144,7 @@ Route::middleware('auth')->group(function () {
     // Full-page "waiting for payment" step — see
     // User_UserController::waitingForPayment()'s docblock.
     Route::get('/book/bookings/{booking}/waiting', [User_UserController::class, 'waitingForPayment'])->name('book.waiting');
+    Route::put('/book/bookings/{booking}/reference', [User_UserController::class, 'updateReference'])->name('book.update-reference');
     Route::post('/book', [User_UserController::class, 'storeBooking'])->name('book.store');
 
     // Booking history

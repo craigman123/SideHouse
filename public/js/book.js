@@ -742,11 +742,23 @@ document.addEventListener('DOMContentLoaded', () => {
 
         try {
             const params = new URLSearchParams();
-            // equipment load
+            // equipment load — backend validates slots.* as Y-m-d H:i,
+            // so the full key has to go, not just the time portion.
+            // (Previously sent keyTime(key), e.g. "23:00" — that always
+            // failed date_format validation, the endpoint 422'd, and
+            // this silently rendered as "no equipment" below since the
+            // response was never checked for res.ok.)
             params.append('date', activeSessionDate || selectedDate);
-            selectedSlots.forEach((key) => params.append('slots[]', keyTime(key)));
+            selectedSlots.forEach((key) => params.append('slots[]', key));
 
             const res = await fetch(`${equipmentUrl}?${params.toString()}`, { headers: { Accept: 'application/json' } });
+
+            if (!res.ok) {
+                console.error('equipment load failed', res.status, await res.text().catch(() => ''));
+                equipmentGrid.innerHTML = '<p class="loading-text">Couldn\'t load equipment right now.</p>';
+                return;
+            }
+
             const data = await res.json();
             equipmentCatalog = data.equipment || [];
             renderEquipment();
@@ -1129,7 +1141,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 body: JSON.stringify({
                     court_id: selectedCourt.id,
                     date: activeSessionDate || selectedDate,
-                    slots: selectedSlots.map(keyTime),
+                    slots: selectedSlots,
                     payment_method: selectedPayment,
                     contact_number: contactNumberInput.value.trim(),
                     payment_reference: getActiveRefInput()?.value.trim() || '',

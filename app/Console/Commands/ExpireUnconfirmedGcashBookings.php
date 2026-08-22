@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Models\Booking;
 use App\Support\NotificationService;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Frees up court slots held by GCash bookings that were never confirmed —
@@ -34,14 +35,45 @@ class ExpireUnconfirmedGcashBookings extends Command
 
     public function handle(): int
     {
-        $expired = Booking::where('status', 'pending')
+        // This is only the CANDIDATE list — a booking's actual status is
+        // re-checked under lockForUpdate() per-row below, not trusted
+        // from this query. Without that, GcashWebhookController::handleSms()
+        // (which does lock and re-check) could confirm a booking's
+        // payment in the gap between this query running and the
+        // ->update(['status' => 'cancelled']) call that used to follow
+        // it directly — silently cancelling a booking that had just been
+        // paid for.
+        $candidateIds = Booking::where('status', 'pending')
             ->where('payment_method', 'gcash')
             ->whereNotNull('expires_at')
             ->where('expires_at', '<', now())
-            ->get();
+            ->pluck('id');
 
-        foreach ($expired as $booking) {
-            $booking->update(['status' => 'cancelled']);
+        $expiredCount = 0;
+
+        foreach ($candidateIds as $id) {
+            $booking = DB::transaction(function () use ($id) {
+                $booking = Booking::where('id', $id)->lockForUpdate()->first();
+
+                // Re-check under the lock: the webhook (or a manual
+                // admin action) may have confirmed, cancelled, or
+                // otherwise moved this booking on since the query above.
+                if ($booking === null || $booking->status !== 'pending') {
+                    return null;
+                }
+
+                if ($booking->expires_at === null || $booking->expires_at->isFuture()) {
+                    return null;
+                }
+
+                $booking->update(['status' => 'cancelled']);
+
+                return $booking;
+            });
+
+            if ($booking === null) {
+                continue;
+            }
 
             NotificationService::bookingStatus(
                 $booking->user_id,
@@ -51,9 +83,10 @@ class ExpireUnconfirmedGcashBookings extends Command
             );
 
             $this->info("Expired booking #{$booking->id} (no matching GCash payment within the window).");
+            $expiredCount++;
         }
 
-        if ($expired->isEmpty()) {
+        if ($expiredCount === 0) {
             $this->info('No unconfirmed GCash bookings to expire.');
         }
 

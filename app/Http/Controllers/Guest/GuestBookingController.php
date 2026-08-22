@@ -367,6 +367,18 @@ class GuestBookingController extends Controller
             $start = Carbon::createFromFormat('Y-m-d H:i', $key);
             $end   = $start->copy()->addMinutes($stepMinutes);
 
+            // The top-level `date` field is only validated as
+            // today-or-later — it's a fallback label, not authoritative
+            // (see this method's docblock). Each slot carries its own
+            // real calendar date, so each one needs its own past-date
+            // check too, or a request with a future `date` but a
+            // crafted past `slots.*` entry would sail through the
+            // operating-hours check below and book an already-elapsed
+            // hour.
+            if ($start->lt(now())) {
+                throw new \RuntimeException("The {$start->format('M j, Y g:i A')} slot has already passed.");
+            }
+
             // A slot can legitimately belong to either the session that
             // opens ON its own calendar date, or — for an overnight
             // court only — the tail end of the session that opened the

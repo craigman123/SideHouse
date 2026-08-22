@@ -22,11 +22,11 @@ use Illuminate\Validation\Rule;
 
 class User_UserController extends Controller
 {
-    // Kept in sync with GuestBookingController's constants on purpose —
-    // same court, same operating hours.
-    private const OPEN_HOUR = 16;
-    private const CLOSE_HOUR = 7;
-    private const BOOKING_STEP_MINUTES = 30;
+    // Operating hours, step length, and min/max duration now come from
+    // BookingHours (backed by the business_settings table) everywhere in
+    // this controller, matching GuestBookingController — this used to
+    // keep its own hardcoded copy of these values, which meant an admin
+    // changing the schedule silently desynced the two booking flows.
 
     public function dashboard()
     {
@@ -112,8 +112,24 @@ class User_UserController extends Controller
      * Cancel a booking. Route-model-bound, but we still verify ownership
      * explicitly rather than relying on the route alone. Also doubles as
      * the "give up on a pending GCash/Landbank payment" action the
-     * checkout's waiting modal calls — it's a no-op unless the booking
-     * is still pending or otherwise cancellable, so it's safe to reuse.
+     * checkout's waiting modal calls.
+     *
+     * Only a 'pending' booking can be cancelled here — a 'paid' booking
+     * has confirmed revenue behind it, and cancelling it without going
+     * through an actual refund/cancellation-policy decision would make
+     * that revenue vanish from reports with no refund record anywhere.
+     * If a paid booking genuinely needs cancelling, that has to go
+     * through staff (Admin\BookingController), not this self-service
+     * endpoint.
+     *
+     * Locked and re-checked under a transaction rather than trusting the
+     * route-bound $booking — GcashWebhookController::handleSms() /
+     * LandbankWebhookController::handleSms() could confirm this exact
+     * booking's payment between the page loading and this click landing,
+     * and without the lock a 'pending' check here could pass a beat
+     * before the webhook's own update, then still cancel a booking that
+     * had just been paid for.
+     *
      * Cancels only THIS booking (this one date) — a sibling booking
      * sharing the same payment_reference from the same multi-date
      * checkout is unaffected.
@@ -122,13 +138,29 @@ class User_UserController extends Controller
     {
         abort_unless($booking->user_id === auth()->id(), 403);
 
-        if ($booking->status === 'cancelled') {
-            return response()->json([
-                'message' => 'This booking is already cancelled.',
-            ], 422);
+        $result = DB::transaction(function () use ($booking) {
+            $locked = Booking::where('id', $booking->id)->lockForUpdate()->first();
+
+            if ($locked->status !== 'pending') {
+                return ['ok' => false, 'status' => $locked->status];
+            }
+
+            $locked->update(['status' => 'cancelled']);
+
+            return ['ok' => true, 'booking' => $locked];
+        });
+
+        if (! $result['ok']) {
+            $message = match ($result['status']) {
+                'paid' => 'This booking is already paid and confirmed. Cancelling a paid booking requires a refund — please contact us directly.',
+                'cancelled' => 'This booking is already cancelled.',
+                default => 'This booking can no longer be cancelled.',
+            };
+
+            return response()->json(['message' => $message], 422);
         }
 
-        $booking->update(['status' => 'cancelled']);
+        $booking = $result['booking'];
 
         ActivityLogger::log(
             'booking.cancelled',
@@ -186,14 +218,115 @@ class User_UserController extends Controller
 
         $paymentReference = \App\Models\PaymentReference::find($booking->payment_reference_id);
 
-        return view('user.payment-waiting', [
-            'booking'         => $booking,
-            'siblingBookings' => $siblingBookings,
-            'totalAmount'     => $paymentReference->amount ?? $siblingBookings->sum('amount'),
-            'statusUrl'       => route('book.status', ['booking' => $booking->id]),
-            'cancelUrl'       => route('user.bookings.cancel', ['booking' => $booking->id]),
-            'bookUrl'         => route('book.index'),
+        return view('user.bookings.payment-waiting', [
+            'booking'            => $booking,
+            'userName'           => auth()->user()->name,
+            'siblingBookings'    => $siblingBookings,
+            'totalAmount'        => $paymentReference->amount ?? $siblingBookings->sum('amount'),
+            'currentReference'   => $paymentReference->payment_reference ?? '',
+            'statusUrl'          => route('book.status', ['booking' => $booking->id]),
+            'cancelUrl'          => route('user.bookings.cancel', ['booking' => $booking->id]),
+            'updateReferenceUrl' => route('book.update-reference', ['booking' => $booking->id]),
+            'bookUrl'            => route('book.index'),
         ]);
+    }
+
+    /**
+     * Lets the signed-in user fix a typo'd reference number on their own
+     * still-pending booking — the equivalent of
+     * GuestBookingController::updateReference(), but ownership-gated via
+     * auth() instead of a poll_token, since there's a session here. Same
+     * locking/re-check/retroactive-match behavior; see that method's
+     * docblock for the full reasoning. Updates the SHARED payment_reference
+     * row, so every sibling booking from the same multi-date checkout
+     * gets the correction (and a match confirms all of them at once).
+     */
+    public function updateReference(Request $request, Booking $booking)
+    {
+        abort_unless($booking->user_id === auth()->id(), 403);
+
+        $validated = $request->validate([
+            'payment_reference' => ['required', 'string', 'max:50'],
+        ]);
+
+        $result = DB::transaction(function () use ($booking, $validated) {
+            $locked = Booking::where('id', $booking->id)->lockForUpdate()->first();
+
+            if ($locked->status !== 'pending') {
+                return ['status' => $locked->status, 'already_resolved' => true];
+            }
+
+            $paymentReference = PaymentReferenceModel::where('id', $locked->payment_reference_id)
+                ->lockForUpdate()
+                ->first();
+
+            if ($paymentReference === null) {
+                // Shouldn't happen — every booking created by
+                // storeBooking() gets one in the same transaction — but
+                // fail safe rather than fatal if it ever does.
+                return ['status' => $locked->status, 'already_resolved' => true];
+            }
+
+            $paymentReference->update(['payment_reference' => $validated['payment_reference']]);
+
+            // Same rule as storeBooking()'s retroactive claim and both
+            // webhook controllers: reference number is the only thing
+            // that can confirm a match. No "only one candidate at this
+            // amount" fallback — see those for why.
+            $normalizedRef = PaymentReference::normalize($validated['payment_reference']);
+            $claimedPayment = null;
+
+            if ($normalizedRef !== '' && $paymentReference->confirmed_at === null) {
+                $claimedPayment = UnmatchedPayment::unmatched()
+                    ->where('payment_method', $paymentReference->payment_method)
+                    ->where('amount', $paymentReference->amount)
+                    ->where('created_at', '>=', now()->subMinutes(PaymentWindows::claimWindowMinutes($paymentReference->payment_method)))
+                    ->lockForUpdate()
+                    ->get()
+                    ->first(fn ($p) => PaymentReference::normalize((string) $p->reference_number) === $normalizedRef);
+            }
+
+            if ($claimedPayment) {
+                $paymentReference->update(['confirmed_at' => now()]);
+                $claimedPayment->update([
+                    'matched_payment_reference_id' => $paymentReference->id,
+                    'matched_at'                   => now(),
+                ]);
+
+                $paymentReference->bookings()->where('status', 'pending')->update([
+                    'status'       => 'paid',
+                    'confirmed_at' => now(),
+                ]);
+
+                $locked->refresh();
+            }
+
+            return ['status' => $locked->status];
+        });
+
+        if ($result['status'] === 'paid') {
+            $booking->refresh();
+
+            ActivityLogger::log(
+                'booking.paid',
+                sprintf(
+                    "%s's payment for %s was confirmed after they corrected their reference number.",
+                    auth()->user()->name,
+                    $booking->court?->name ?? 'a court',
+                ),
+                subject: $booking,
+                properties: ['amount' => $booking->amount],
+            );
+        }
+
+        return response()->json([
+            'status'  => $result['status'],
+            'message' => match (true) {
+                $result['status'] === 'paid' => 'Payment matched! Your booking is confirmed.',
+                ! empty($result['already_resolved']) => "This booking is no longer pending, so its reference number can't be changed.",
+                default => "Reference number updated — we'll keep watching for a match.",
+            },
+        ], ! empty($result['already_resolved']) ? 422 : 200);
     }
 
     /**
@@ -258,9 +391,11 @@ class User_UserController extends Controller
             'slots.*' => ['required', 'date_format:Y-m-d H:i', 'distinct'],
         ]);
 
-        $windows = collect($validated['slots'])->map(function ($key) {
+        $stepMinutes = BookingHours::stepMinutes();
+
+        $windows = collect($validated['slots'])->map(function ($key) use ($stepMinutes) {
             $start = Carbon::parse($key);
-            $end   = $start->copy()->addMinutes(self::BOOKING_STEP_MINUTES);
+            $end   = $start->copy()->addMinutes($stepMinutes);
             return [$start->toDateString(), $start->format('H:i:s'), $end->format('H:i:s')];
         });
 
@@ -310,15 +445,25 @@ class User_UserController extends Controller
         $court = Court::findOrFail($validated['court_id']);
         $user  = auth()->user();
 
-        $openHour    = self::OPEN_HOUR;
-        $closeHour   = self::CLOSE_HOUR;
-        $stepMinutes = self::BOOKING_STEP_MINUTES;
+        $openHour    = BookingHours::openHour();
+        $closeHour   = BookingHours::closeHour();
+        $stepMinutes = BookingHours::stepMinutes();
         $overnight   = $closeHour <= $openHour;
 
         $slotWindows = [];
         foreach ($validated['slots'] as $key) {
             $start = Carbon::createFromFormat('Y-m-d H:i', $key);
             $end   = $start->copy()->addMinutes($stepMinutes);
+
+            // The top-level `date` field is only validated as
+            // today-or-later, and each slot carries its own real
+            // calendar date — see GuestBookingController::resolveSlotGroups()
+            // for why each one needs its own past-date check too.
+            if ($start->lt(now())) {
+                return response()->json([
+                    'message' => "The {$start->format('M j, Y g:i A')} slot has already passed.",
+                ], 422);
+            }
 
             $sameDayOpen  = $start->copy()->startOfDay()->setTime($openHour, 0);
             $sameDayClose = $overnight
@@ -350,8 +495,11 @@ class User_UserController extends Controller
         }
         ksort($groups);
 
-        $minSlotsPerDate = 2; // 1hr min, matching the old MIN_DURATION_SLOTS
-        $maxSlotsPerDate = 6; // 3hr max, matching the old MAX_DURATION_SLOTS
+        // Same formula as GuestBookingController::resolveSlotGroups() —
+        // derived from the admin-configured min/max duration rather than
+        // a fixed 1–3hr range, so the two flows agree on what's bookable.
+        $minSlotsPerDate = max(1, (int) ceil(BookingHours::minDurationHours() * 60 / $stepMinutes));
+        $maxSlotsPerDate = max(1, (int) floor(BookingHours::maxDurationHours() * 60 / $stepMinutes));
 
         foreach ($groups as $dateStr => $windows) {
             if (count($windows) < $minSlotsPerDate || count($windows) > $maxSlotsPerDate) {
@@ -662,8 +810,14 @@ class User_UserController extends Controller
 
         $user = auth()->user();
 
+        // Only pending bookings get auto-cancelled here — same rule
+        // cancelBooking() enforces for the self-service cancel button.
+        // A 'paid' booking has confirmed revenue behind it; cancelling it
+        // without an actual refund/cancellation-policy decision would
+        // make that revenue vanish from reports with no refund record.
+        // Those have to go through staff (Admin\BookingController).
         Booking::where('user_id', $user->user_id)
-            ->where('status', '!=', 'cancelled')
+            ->where('status', 'pending')
             ->where('date', '>=', today())
             ->update(['status' => 'cancelled']);
 

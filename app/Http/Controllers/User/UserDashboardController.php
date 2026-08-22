@@ -18,6 +18,7 @@ class UserDashboardController extends Controller
             ->where('date', '>=', today())
             ->orderBy('date')
             ->orderBy('start_time')
+            ->where('status', 'paid')
             ->get();
 
         $recentBookings = Booking::where('user_id', $userInfo->user_id)

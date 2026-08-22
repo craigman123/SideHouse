@@ -49,6 +49,10 @@ return [
         'secret' => env('LANDBANK_SMS_WEBHOOK_SECRET'),
         'allowed_ips' => env('LANDBANK_SMS_ALLOWED_IPS'),
     ],
+    
+    'sms_webhook' => [
+        'log_raw' => env('SMS_WEBHOOK_LOG_RAW', false),
+    ],
 
     'cron_secret' => [
         'secret' => env('CRON_SECRET'),

@@ -771,6 +771,12 @@
 .guest-info-item input.field-invalid {
     border-color: #f85149;
 }
+#waitReferenceInput {
+    width: 100%;
+    font-size: 16px;
+    font-weight: bolder;
+    max-height: 50px;
+}
 
 @media (max-width: 480px) {
     .guest-info-grid {
