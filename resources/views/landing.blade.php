@@ -29,7 +29,7 @@
         {{-- Updated navigation with search bar --}}
         <nav class="landing-nav">
             <div class="nav-left">
-                <img src="{{ asset('images/tab_icon.png') }}" alt="Side House" class="nav-logo">
+                <img src="{{ asset('images/tab_icon.png') }}" alt="Side House" class="nav-logo" loading="lazy">
                 <strong class="nav-title-landing">Side House Paddlers</strong>
             </div>
 

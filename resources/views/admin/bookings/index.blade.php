@@ -6,13 +6,28 @@
 @push('styles')
     <link rel="stylesheet" href="{{ asset('css/dashboard.css') }}">
     <link rel="stylesheet" href="{{ asset('css/bookings.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/admin-bookings-board.css') }}">
 @endpush
 
 @section('content')
 
-    {{-- Filters --}}
-    <div class="panel filters-panel">
-        <form method="GET" action="{{ route('bookings.index') }}" class="filters-form">
+    <div class="bookings-workspace" id="bookingsWorkspace">
+        <div class="bookings-view-tabs" role="tablist" aria-label="Bookings views">
+            <button type="button" class="bookings-view-tab is-active" role="tab" aria-selected="true" aria-controls="bookingListView" data-bookings-view="list">
+                Booking list
+            </button>
+            <button type="button" class="bookings-view-tab" role="tab" aria-selected="false" aria-controls="courtBoardView" data-bookings-view="board">
+                Daily court board
+            </button>
+            <button type="button" class="bookings-view-tab" role="tab" aria-selected="false" aria-controls="courtMonthView" data-bookings-view="month">
+                Month view
+            </button>
+        </div>
+
+        <section id="bookingListView" class="bookings-view-panel" role="tabpanel">
+            {{-- Existing filters and table are intentionally kept in this view. --}}
+            <div class="panel filters-panel">
+                <form method="GET" action="{{ route('bookings.index') }}" class="filters-form">
 
             <div class="filter-group">
                 <label for="search">Customer</label>
@@ -39,15 +54,14 @@
                 <a href="{{ route('bookings.index') }}" class="btn-clear">Clear</a>
             </div>
 
-        </form>
-    </div>
+                </form>
+            </div>
 
-    {{-- Bookings Table --}}
-    <div class="panel">
-        <h2>All Bookings <span class="count-badge">{{ $bookings->total() }}</span></h2>
+            <div class="panel">
+                <h2>All Bookings <span class="count-badge">{{ $bookings->total() }}</span></h2>
 
-        <div class="table-responsive">
-            <table>
+                <div class="table-responsive">
+                    <table>
                 <thead>
                     <tr>
                         <th>Customer</th>
@@ -78,16 +92,79 @@
                         </tr>
                     @endforelse
                 </tbody>
-            </table>
-        </div>
+                    </table>
+                </div>
 
-        {{-- Pagination --}}
-        <p style="text-align: center">Showing {{ $bookings->firstItem() }} to {{ $bookings->lastItem() }} of {{ $bookings->total() }} results</p>
-        @if ($bookings->hasPages())
-            <div class="pagination-wrapper">
-                {{ $bookings->links() }}
+                <p style="text-align: center">Showing {{ $bookings->firstItem() }} to {{ $bookings->lastItem() }} of {{ $bookings->total() }} results</p>
+                @if ($bookings->hasPages())
+                    <div class="pagination-wrapper">
+                        {{ $bookings->links() }}
+                    </div>
+                @endif
             </div>
-        @endif
+        </section>
+
+        <section id="courtBoardView" class="bookings-view-panel" role="tabpanel" hidden>
+            <div class="panel court-board-panel">
+                <div class="court-board-toolbar">
+                    <div>
+                        <p class="court-board-eyebrow">Operations view</p>
+                        <h2>Daily court board</h2>
+                        <p class="court-board-subtitle">Live view of bookings, closures, and rented equipment.</p>
+                    </div>
+                    <div class="court-board-controls" aria-label="Choose board date">
+                        <button type="button" class="court-board-nav" data-board-date="previous" aria-label="Previous day">‹</button>
+                        <input type="date" id="courtBoardDate" value="{{ now()->toDateString() }}" min="{{ now()->subDay()->toDateString() }}" max="{{ now()->addMonths(6)->toDateString() }}">
+                        <button type="button" class="court-board-nav" data-board-date="next" aria-label="Next day">›</button>
+                        <button type="button" class="btn-clear court-board-today" data-board-date="today">Today</button>
+                    </div>
+                </div>
+
+                <div class="court-board-legend" aria-label="Booking status legend">
+                    <span><i class="legend-dot legend-paid"></i>Paid</span>
+                    <span><i class="legend-dot legend-pending"></i>Pending</span>
+                    <span><i class="legend-dot legend-cancelled"></i>Cancelled</span>
+                    <span><i class="legend-dot legend-closure"></i>Closure</span>
+                </div>
+
+                <div id="courtBoardSummary" class="court-board-summary" aria-live="polite"></div>
+                <div id="courtBoard" class="court-board" aria-live="polite"></div>
+            </div>
+        </section>
+        <section id="courtMonthView" class="bookings-view-panel" role="tabpanel" hidden>
+            <div class="panel court-board-panel">
+                <div class="court-board-toolbar">
+                    <div>
+                        <p class="court-board-eyebrow">Operations view</p>
+                        <h2>Month calendar</h2>
+                        <p class="court-board-subtitle">Every booking for the month, laid out by date and time.</p>
+                    </div>
+                    <div class="court-board-controls" aria-label="Choose calendar month">
+                        <button type="button" class="court-board-nav" data-month-nav="previous" aria-label="Previous month">‹</button>
+                        <input type="month" id="courtMonthInput" value="{{ now()->format('Y-m') }}">
+                        <button type="button" class="court-board-nav" data-month-nav="next" aria-label="Next month">›</button>
+                        <button type="button" class="btn-clear court-board-today" data-month-nav="today">This month</button>
+                    </div>
+                </div>
+
+                <div class="court-board-legend" aria-label="Booking status legend">
+                    <span><i class="legend-dot legend-paid"></i>Paid</span>
+                    <span><i class="legend-dot legend-pending"></i>Pending</span>
+                    <span><i class="legend-dot legend-cancelled"></i>Cancelled</span>
+                    <span><i class="legend-dot legend-closure"></i>Closure</span>
+                </div>
+
+                <div id="courtMonthSummary" class="court-board-summary" aria-live="polite"></div>
+                <div class="court-month-scroll">
+                    <div id="courtMonthGrid" class="court-month-grid" aria-live="polite"></div>
+                </div>
+            </div>
+        </section>
     </div>
 
 @endsection
+
+@push('scripts')
+    <script id="courtBoardData" type="application/json">@json(['bookings' => $courtBoardBookings, 'closures' => $courtBoardClosures, 'courts' => $courts])</script>
+    <script src="{{ asset('js/admin-bookings-board.js') }}" defer></script>
+@endpush
