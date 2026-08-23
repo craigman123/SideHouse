@@ -5,12 +5,21 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Waiting for Payment | Side House Paddlers</title>
+    <link rel="stylesheet" href="{{ asset('css/app.css') }}">
     <link rel="stylesheet" href="{{ asset('css/payment-waiting.css') }}">
     <link rel="icon" type="image/png" href="{{ asset('images/tab_icon.png') }}">
 </head>
 <body class="wt-body">
 
     <div class="wt-toast-container" id="toastContainer"></div>
+    <div class="bg-particle"></div>
+        <div class="bg-particle"></div>
+        <div class="bg-particle"></div>
+        <div class="bg-particle"></div>
+        <div class="bg-particle"></div>
+        <div class="bg-particle"></div>
+        <div class="bg-particle"></div>
+        <div class="bg-particle"></div>
 
     <div
         class="wt-shell"
@@ -22,7 +31,6 @@
         data-status-url="{{ $statusUrl }}"
         data-cancel-url="{{ $cancelUrl }}"
         data-cancel-all-url="{{ $cancelAllUrl }}"
-        data-reference-url="{{ $referenceUrl }}"
         data-landing-url="{{ $landingUrl }}"
     >
         <a href="{{ $landingUrl }}" class="wt-back">&larr; Back to home</a>
@@ -76,20 +84,6 @@
                     <span class="wt-total-label">Total</span>
                     <span class="wt-total-amount">&#8369;{{ number_format($totalAmount, 2) }}</span>
                 </div>
-
-                {{--
-                    Optional fallback: lets the guest correct a mistyped
-                    reference number if your webhook ever needs a manual
-                    nudge. Delete this block (and the matching JS/route)
-                    if QR Ph confirmation is fully automatic in your flow.
-                --}}
-                <button type="button" class="wt-ref-toggle" id="refToggle">
-                    Payment not going through? Enter reference manually
-                </button>
-                <form class="wt-ref-form" id="refForm">
-                    <input type="text" class="wt-input" id="refInput" placeholder="Payment reference number" maxlength="50">
-                    <button type="submit">Submit</button>
-                </form>
             </div>
 
             <div class="wt-section">

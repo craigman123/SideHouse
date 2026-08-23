@@ -46,6 +46,15 @@ class PaymongoQrPhController extends Controller
         $amountCentavos = (int) round($booking->amount * 100);
         $secretKey = config('services.paymongo.secret');
 
+        if (!$secretKey) {
+            // Http::withBasicAuth()'s $username param is strictly typed
+            // string — passing null here throws an uncaught TypeError,
+            // which is what was surfacing as a bare, message-less 500 on
+            // the client instead of a real error. Catch it here instead.
+            Log::error('PayMongo secret key is not configured (services.paymongo.secret / PAYMONGO_SECRET_KEY).');
+            return response()->json(['message' => 'Payment is not configured yet. Please contact the venue.'], 502);
+        }
+
         $intentResponse = Http::withBasicAuth($secretKey, '')
             ->post(self::API_BASE . '/payment_intents', [
                 'data' => [

@@ -9,7 +9,6 @@
     const statusUrl    = box.dataset.statusUrl;
     const cancelUrl    = box.dataset.cancelUrl;
     const cancelAllUrl = box.dataset.cancelAllUrl;
-    const referenceUrl = box.dataset.referenceUrl;
     const landingUrl   = box.dataset.landingUrl;
 
     // TODO(Craig): confirm this matches PaymongoQrPhController::createQr()'s
@@ -172,44 +171,6 @@
 
     renderCountdown();
     timerHandle = setInterval(renderCountdown, 1000);
-
-    // ---------- Reference correction (optional fallback) ----------
-
-    const refToggleEl = document.getElementById('refToggle');
-    const refFormEl    = document.getElementById('refForm');
-    const refInputEl   = document.getElementById('refInput');
-
-    refToggleEl?.addEventListener('click', () => {
-        refFormEl.classList.toggle('is-open');
-    });
-
-    refFormEl?.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const value = refInputEl.value.trim();
-        if (!value) return;
-
-        try {
-            const res = await fetch(`${referenceUrl}?token=${encodeURIComponent(token)}`, {
-                method: 'POST',
-                headers: {
-                    Accept: 'application/json',
-                    'Content-Type': 'application/json',
-                    ...csrfHeaders(),
-                },
-                body: JSON.stringify({ payment_reference: value }),
-            });
-
-            const data = await res.json().catch(() => ({}));
-            showToast(data.message || 'Reference updated.', res.ok ? 'success' : 'error');
-
-            if (data.status === 'paid') {
-                setTimeout(pollStatus, 500);
-            }
-        } catch (err) {
-            console.error(err);
-            showToast('Something went wrong. Please try again.', 'error');
-        }
-    });
 
     // ---------- Cancel actions ----------
 
