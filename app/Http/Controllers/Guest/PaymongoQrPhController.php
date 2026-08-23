@@ -216,7 +216,16 @@ class PaymongoQrPhController extends Controller
 
         parse_str(str_replace(',', '&', $signatureHeader), $parts);
         $timestamp = $parts['t'] ?? null;
-        $signature = $parts['li'] ?? ($parts['te'] ?? null); // 'te' in Test Mode, 'li' in Live Mode
+        $signature = $parts['li'] ?? ($parts['te'] ?? null);
+
+        Log::info('PayMongo webhook debug', [
+            'raw_header' => $signatureHeader,
+            'parsed_parts' => $parts,
+            'timestamp' => $timestamp,
+            'signature_found' => $signature,
+            'secret_set' => !empty($webhookSecret),
+            'secret_length' => strlen((string) $webhookSecret),
+        ]);
 
         if (!$timestamp || !$signature || !$webhookSecret) {
             return false;
@@ -224,6 +233,12 @@ class PaymongoQrPhController extends Controller
 
         $signedPayload = "{$timestamp}.{$payload}";
         $expectedSignature = hash_hmac('sha256', $signedPayload, $webhookSecret);
+
+        Log::info('PayMongo webhook signature compare', [
+            'expected' => $expectedSignature,
+            'received' => $signature,
+            'match' => hash_equals($expectedSignature, $signature),
+        ]);
 
         return hash_equals($expectedSignature, $signature);
     }
