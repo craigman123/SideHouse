@@ -9,7 +9,9 @@
     <link rel="stylesheet" href="{{ asset('css/book.css') }}">
     <link rel="stylesheet" href="{{ asset('css/landing.css') }}">
     <link rel="stylesheet" href="{{ asset('css/landing-book.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/courts.css') }}">
     <script src="{{ asset('js/payment.js') }}" defer></script>
+    <link rel="icon" type="image/png" href="{{ asset('images/tab_icon.png') }}">
     <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 <body>
