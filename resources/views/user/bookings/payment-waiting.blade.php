@@ -26,6 +26,8 @@
             data-book-url="{{ $bookUrl }}"
             data-initial-status="{{ $booking->status }}"
             data-expires-at="{{ $booking->expires_at?->toIso8601String() }}"
+            data-payment-method="{{ $booking->payment_method }}"
+            data-qrph-create-url="{{ route('guest.book.payment.qrph') }}"
         >
             <h2 id="waitTitle">
                 @if ($booking->status === 'paid')
@@ -51,6 +53,24 @@
 
                 <p class="gcash-wait-amount">Total: <strong>₱{{ number_format($totalAmount, 2) }}</strong></p>
 
+                {{-- QR Ph: unlike gcash/maya (static QR shown earlier, on
+                the payment-method page), this QR is generated dynamically
+                right here, right now, tied to this exact booking_id — see
+                user-waiting.js's requestQrPhCode(). Hidden entirely for
+                gcash/maya bookings, and hidden once status leaves 'pending'. --}}
+                <div
+                    class="payment-qr-panel"
+                    id="qrphWaitPanel"
+                    @if ($booking->payment_method !== 'qrph' || $booking->status !== 'pending') style="display:none;" @endif
+                >
+                    <p class="payment-qr-instructions">Scan with GCash, Maya, or any QR Ph-enabled banking app. The amount is already filled in — no reference number needed.</p>
+                    <div class="payment-qr-image-wrap">
+                        <p id="qrphWaitLoading">Generating your QR code…</p>
+                        <img id="qrphWaitImage" alt="Scan to pay via QR Ph" class="payment-qr-image" hidden>
+                    </div>
+                    <p class="payment-qr-fallback" id="qrphWaitError" hidden>Could not generate a QR code. <button type="button" id="qrphWaitRetry" class="btn btn-secondary">Try again</button></p>
+                </div>
+
                 <p class="gcash-wait-status" id="waitStatus">
                     @if ($booking->status === 'paid')
                         Your payment was confirmed — see you on the court!
@@ -69,7 +89,7 @@
                 <button type="button" class="btn btn-secondary" id="waitCancelBtn">Cancel Booking</button>
             </div>
 
-            <div class="gcash-wait-reference" id="waitReferenceBox" @if ($booking->status !== 'pending') style="display:none;" @endif>
+            <div class="gcash-wait-reference" id="waitReferenceBox" @if ($booking->payment_method === 'qrph' || $booking->status !== 'pending') style="display:none;" @endif>
                 <label for="waitReferenceInput">Typo'd your reference number? Fix it here:</label>
                 <div class="modal-actions">
                     <input

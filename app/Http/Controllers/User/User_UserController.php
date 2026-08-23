@@ -434,12 +434,12 @@ class User_UserController extends Controller
             'date'           => ['required', 'date', 'after_or_equal:today'],
             'slots'          => ['required', 'array', 'min:1', 'max:60'],
             'slots.*'        => ['required', 'date_format:Y-m-d H:i', 'distinct'],
-            'payment_method' => ['required', 'in:gcash,maya'],
+            'payment_method' => ['required', 'in:gcash,maya,qrph'],
             'contact_number' => ['required', 'string', 'max:30', 'regex:/^[0-9+\-\s()]{7,30}$/'],
             'equipment'            => ['array'],
             'equipment.*.id'       => ['required_with:equipment', 'integer', 'exists:equipment,id'],
             'equipment.*.quantity' => ['required_with:equipment', 'integer', 'min:1', 'max:20'],
-            'payment_reference' => ['required', 'string', 'max:50'],
+            'payment_reference' => ['required_unless:payment_method,qrph', 'nullable', 'string', 'max:50'],
         ]);
 
         $court = Court::findOrFail($validated['court_id']);
@@ -604,26 +604,30 @@ class User_UserController extends Controller
                 // itself would've matched it: the user-typed reference
                 // number must match the parked payment's real reference
                 // number.
-                $unmatchedCandidates = UnmatchedPayment::unmatched()
-                    ->where('payment_method', $validated['payment_method'])
-                    ->where('amount', $totalAmount)
-                    ->where('created_at', '>=', now()->subMinutes(PaymentWindows::claimWindowMinutes($validated['payment_method'])))
-                    ->orderBy('created_at')
-                    ->lockForUpdate()
-                    ->get();
-
+                $isQrph = $validated['payment_method'] === 'qrph';
+ 
                 $claimedPayment = null;
-                if ($unmatchedCandidates->isNotEmpty()) {
-                    $normalizedRef = PaymentReference::normalize($validated['payment_reference']);
-
-                    $claimedPayment = $normalizedRef !== ''
-                        ? $unmatchedCandidates->first(function ($p) use ($normalizedRef) {
-                            return PaymentReference::normalize((string) $p->reference_number) === $normalizedRef;
-                        })
-                        : null;
+                if (!$isQrph) {
+                    $unmatchedCandidates = UnmatchedPayment::unmatched()
+                        ->where('payment_method', $validated['payment_method'])
+                        ->where('amount', $totalAmount)
+                        ->where('created_at', '>=', now()->subMinutes(PaymentWindows::claimWindowMinutes($validated['payment_method'])))
+                        ->orderBy('created_at')
+                        ->lockForUpdate()
+                        ->get();
+                
+                    if ($unmatchedCandidates->isNotEmpty()) {
+                        $normalizedRef = PaymentReference::normalize($validated['payment_reference']);
+                
+                        $claimedPayment = $normalizedRef !== ''
+                            ? $unmatchedCandidates->first(function ($p) use ($normalizedRef) {
+                                return PaymentReference::normalize((string) $p->reference_number) === $normalizedRef;
+                            })
+                            : null;
+                    }
                 }
-
-                $isPaid = (bool) $claimedPayment;
+                
+                $isPaid = (bool) $claimedPayment; 
 
                 $paymentReference = PaymentReferenceModel::create([
                     'payment_reference' => $validated['payment_reference'],

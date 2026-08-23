@@ -126,7 +126,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const summaryTotal = document.getElementById('summaryTotal');
     const confirmBtn = document.getElementById('confirmBooking');
 
-    const PAYMENT_LABELS = { gcash: 'GCash', maya: 'Maya' };
+    const PAYMENT_LABELS = { gcash: 'GCash', maya: 'Maya', qrph: 'QR Ph' };
     const QR_PANELS = { gcash: gcashQrPanel, maya: mayaQrPanel };
     const REF_INPUTS = { gcash: gcashRefInput, maya: mayaRefInput };
     const PROOF_BLOCKS = { gcash: gcashProofBlock, maya: mayaProofBlock };
@@ -1090,7 +1090,9 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!contactNumberInput.value.trim()) missing.push('a contact number');
         if (!selectedPayment) missing.push('a payment method');
         const activeRefInput = getActiveRefInput();
-        if (selectedPayment && !(activeRefInput && activeRefInput.value.trim())) {
+        // qrph has no typed reference at all — the QR itself carries the
+        // amount/identity, so this requirement only applies to gcash/maya.
+        if (selectedPayment && selectedPayment !== 'qrph' && !(activeRefInput && activeRefInput.value.trim())) {
             missing.push(`your ${PAYMENT_LABELS[selectedPayment] || 'payment'} reference number`);
         }
         return missing;
@@ -1144,7 +1146,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     slots: selectedSlots,
                     payment_method: selectedPayment,
                     contact_number: contactNumberInput.value.trim(),
-                    payment_reference: getActiveRefInput()?.value.trim() || '',
+                    payment_reference: selectedPayment === 'qrph'
+                        ? null
+                        : (getActiveRefInput()?.value.trim() || ''),
                     equipment: equipmentPayload,
                 }),
             });

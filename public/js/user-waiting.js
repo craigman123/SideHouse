@@ -4,6 +4,9 @@
     const cancelUrl = box.dataset.cancelUrl;
     const updateReferenceUrl = box.dataset.updateReferenceUrl;
     const expiresAt = box.dataset.expiresAt ? new Date(box.dataset.expiresAt).getTime() : null;
+    const paymentMethod = box.dataset.paymentMethod;
+    const qrphCreateUrl = box.dataset.qrphCreateUrl;
+    const bookingId = box.dataset.bookingId;
 
     const titleEl = document.getElementById('waitTitle');
     const statusEl = document.getElementById('waitStatus');
@@ -17,6 +20,11 @@
     const actionsEl = document.getElementById('waitActions');
     const doneActionsEl = document.getElementById('waitDoneActions');
     const cancelBtn = document.getElementById('waitCancelBtn');
+    const qrphPanel = document.getElementById('qrphWaitPanel');
+    const qrphLoading = document.getElementById('qrphWaitLoading');
+    const qrphImage = document.getElementById('qrphWaitImage');
+    const qrphError = document.getElementById('qrphWaitError');
+    const qrphRetry = document.getElementById('qrphWaitRetry');
 
     let pollTimer = null;
     let countdownTimer = null;
@@ -42,6 +50,7 @@
         countdownRow.style.display = 'none';
         actionsEl.style.display = 'none';
         referenceBox.style.display = 'none';
+        if (qrphPanel) qrphPanel.style.display = 'none';
         doneActionsEl.style.display = '';
 
         if (status === 'paid') {
@@ -95,6 +104,42 @@
         poll();
     }
 
+    async function requestQrPhCode() {
+        if (!qrphPanel || paymentMethod !== 'qrph') return;
+
+        qrphLoading.hidden = false;
+        qrphImage.hidden = true;
+        qrphError.hidden = true;
+
+        try {
+            const res = await fetch(qrphCreateUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Accept: 'application/json',
+                    ...csrfHeaders(),
+                },
+                body: JSON.stringify({ booking_id: Number(bookingId) }),
+            });
+
+            const data = await res.json().catch(() => ({}));
+
+            if (!res.ok) {
+                throw new Error(data.message || 'Could not generate QR.');
+            }
+
+            qrphImage.src = data.qr_image_url;
+            qrphImage.hidden = false;
+            qrphLoading.hidden = true;
+        } catch (err) {
+            console.error(err);
+            qrphLoading.hidden = true;
+            qrphError.hidden = false;
+        }
+    }
+
+    qrphRetry?.addEventListener('click', requestQrPhCode);
+
     if (!resolved) {
         if (expiresAt) {
             countdownTimer = setInterval(() => {
@@ -117,6 +162,7 @@
                 handleExpiry();
             }
         }
+        requestQrPhCode();
         poll();
     }
 

@@ -7,26 +7,17 @@ use App\Models\Booking;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
 
 /**
- * Handles the PayMongo QR Ph flow for a booking:
+ * Handles the PayMongo QR Ph flow for a booking.
  *
- *   1. createQr()  — called via AJAX right after the guest picks "QR Ph" as
- *      their payment method (same moment gcashQrPanel/landbankQrPanel would
- *      normally open). Creates a PayMongo Payment Intent for the booking's
- *      amount, attaches the qrph payment method, and returns the QR image
- *      URL + expiry back to the frontend to render inline.
- *
- *   2. webhook()   — PayMongo POSTs here when the Payment Intent succeeds.
- *      We verify the signature, look up the booking by the payment_intent_id
- *      we stored on it, and mark it 'paid' — mirroring how your existing
- *      GcashWebhookController/LandbankWebhookController mark bookings paid,
- *      so watchPaymentConfirmation()'s polling picks it up unchanged.
- *
- * Env vars needed (add to .env once your mom's PayMongo account is verified):
- *   PAYMONGO_SECRET_KEY=sk_test_xxx      (server-side only, never expose)
- *   PAYMONGO_WEBHOOK_SECRET=whsk_xxx     (from Dashboard > Developers > Webhooks)
+ * IMPORTANT CHANGE FROM THE FIRST VERSION:
+ * createQr() now takes a booking_id, not a bare amount. The booking must
+ * already exist as 'pending' (created by storeBooking()/store() first,
+ * same as your gcash/maya flow creates a pending Booking before payment
+ * confirms). This endpoint just attaches a QR Ph Payment Intent to that
+ * existing booking and persists the intent id on it, so the webhook below
+ * has something exact to match against — no amount/reference guessing.
  */
 class PaymongoQrPhController extends Controller
 {
@@ -34,29 +25,27 @@ class PaymongoQrPhController extends Controller
 
     /**
      * POST /guest-book/payment/qrph
+     * Body: { booking_id: number }
      *
-     * Expects: booking amount context — adjust to however your flow already
-     * knows the total (e.g. re-derive server-side from slots/equipment
-     * rather than trusting a client-sent amount, same as your store() logic
-     * presumably already does for gcash/landbank).
+     * Called right after storeBooking()/store() returns a booking_id for a
+     * payment_method === 'qrph' booking. Re-derives the amount from the
+     * booking itself server-side — never trust a client-sent amount.
      */
     public function createQr(Request $request)
     {
         $validated = $request->validate([
-            // Whatever you use today to identify "this in-progress booking"
-            // before it's persisted — e.g. a draft/session key. If your
-            // flow only creates the Booking row inside store(), you may
-            // instead want to call createQr() *after* store() creates a
-            // 'pending' booking, passing booking_id here instead.
-            'amount' => ['required', 'numeric', 'min:1'],
-            'description' => ['nullable', 'string', 'max:255'],
+            'booking_id' => ['required', 'integer', 'exists:bookings,id'],
         ]);
 
-        $amountCentavos = (int) round($validated['amount'] * 100);
+        $booking = Booking::findOrFail($validated['booking_id']);
 
+        if ($booking->status !== 'pending') {
+            return response()->json(['message' => 'This booking is no longer awaiting payment.'], 409);
+        }
+
+        $amountCentavos = (int) round($booking->amount * 100);
         $secretKey = config('services.paymongo.secret');
 
-        // 1. Create the Payment Intent
         $intentResponse = Http::withBasicAuth($secretKey, '')
             ->post(self::API_BASE . '/payment_intents', [
                 'data' => [
@@ -64,11 +53,9 @@ class PaymongoQrPhController extends Controller
                         'amount' => $amountCentavos,
                         'currency' => 'PHP',
                         'payment_method_allowed' => ['qrph'],
-                        'description' => $validated['description'] ?? 'Side House Paddlers court booking',
+                        'description' => "Side House Paddlers — Booking #{$booking->id}",
                         'metadata' => [
-                            // Anything that helps you reconcile in the webhook —
-                            // e.g. a booking draft token you generate client-side.
-                            'source' => 'guest-book',
+                            'booking_id' => (string) $booking->id,
                         ],
                     ],
                 ],
@@ -83,15 +70,9 @@ class PaymongoQrPhController extends Controller
         $intentId = $intent['id'];
         $clientKey = $intent['attributes']['client_key'];
 
-        // 2. Create + attach a qrph Payment Method to that intent — this is
-        //    what actually generates the scannable QR code image.
         $methodResponse = Http::withBasicAuth($secretKey, '')
             ->post(self::API_BASE . '/payment_methods', [
-                'data' => [
-                    'attributes' => [
-                        'type' => 'qrph',
-                    ],
-                ],
+                'data' => ['attributes' => ['type' => 'qrph']],
             ]);
 
         if ($methodResponse->failed()) {
@@ -118,16 +99,17 @@ class PaymongoQrPhController extends Controller
 
         $attached = $attachResponse->json('data');
         $qrImageUrl = $attached['attributes']['next_action']['code']['image_url'] ?? null;
-        $qrExpiresAt = $attached['attributes']['next_action']['code']['expires_at'] ?? null; // unix timestamp
+        $qrExpiresAt = $attached['attributes']['next_action']['code']['expires_at'] ?? null;
 
         if (!$qrImageUrl) {
             Log::error('PayMongo attach succeeded but no QR image returned', ['body' => $attachResponse->body()]);
             return response()->json(['message' => 'Could not generate QR. Please try again.'], 502);
         }
 
-        // TODO: persist $intentId against your booking/draft row here so the
-        // webhook below can find it later, e.g.:
-        //   $booking->update(['payment_intent_id' => $intentId]);
+        // The critical line that was a TODO before — this is what lets the
+        // webhook below find the right booking by an exact id, no matching
+        // heuristics needed.
+        $booking->update(['payment_intent_id' => $intentId]);
 
         return response()->json([
             'payment_intent_id' => $intentId,
@@ -139,10 +121,12 @@ class PaymongoQrPhController extends Controller
     /**
      * POST /guest-book/payment/qrph/webhook
      *
-     * Register this URL in PayMongo Dashboard > Developers > Webhooks,
-     * subscribed to payment_intent.succeeded (and optionally
-     * payment_intent.payment_failed to auto-release the slot early instead
-     * of waiting for your existing expiry job).
+     * FIXED: your dashboard confirmed the real event name is
+     * "payment.paid", not "payment_intent.succeeded" — that was the bug
+     * silently swallowing every webhook call. A PayMongo `payment.paid`
+     * event's data.attributes.data is a Payment resource, which carries
+     * payment_intent_id in ITS attributes — one level deeper than the
+     * original code was looking.
      */
     public function webhook(Request $request)
     {
@@ -157,30 +141,61 @@ class PaymongoQrPhController extends Controller
         $event = json_decode($payload, true);
         $eventType = $event['data']['attributes']['type'] ?? null;
 
-        if ($eventType !== 'payment_intent.succeeded') {
-            // Ack anything else so PayMongo doesn't retry it forever.
+        if ($eventType === 'qrph.expired') {
+            return $this->handleExpired($event);
+        }
+
+        if ($eventType !== 'payment.paid') {
+            // Ack anything else (including events you haven't subscribed to
+            // but might receive anyway) so PayMongo doesn't keep retrying it.
             return response()->json(['message' => 'Ignored'], 200);
         }
 
-        $intentId = $event['data']['attributes']['data']['id'] ?? null;
+        $payment = $event['data']['attributes']['data'] ?? null;
+        $intentId = $payment['attributes']['payment_intent_id'] ?? null;
+
         if (!$intentId) {
+            Log::warning('PayMongo payment.paid webhook missing payment_intent_id', ['payload' => $payload]);
             return response()->json(['message' => 'Malformed payload'], 400);
         }
 
         $booking = Booking::where('payment_intent_id', $intentId)->first();
 
         if (!$booking) {
-            // Same "unmatched payment" situation your GcashWebhookController
-            // already handles — the payment arrived before/without a
-            // matching booking row. Mirror whatever UnmatchedPayment claim
-            // logic store() uses for gcash/landbank here if you want the
-            // same retroactive-match behavior for QR Ph.
-            Log::info('PayMongo webhook: no booking found for intent', ['intent_id' => $intentId]);
+            // Genuinely shouldn't happen in the qrph flow since the intent
+            // is only ever created for an existing booking — but log it
+            // rather than silently dropping it, in case of a race or a
+            // manually-created test intent.
+            Log::warning('PayMongo webhook: no booking found for intent', ['intent_id' => $intentId]);
             return response()->json(['message' => 'No matching booking'], 200);
         }
 
         if ($booking->status !== 'paid') {
-            $booking->update(['status' => 'paid']);
+            $booking->update([
+                'status' => 'paid',
+                'confirmed_at' => now(),
+            ]);
+        }
+
+        return response()->json(['message' => 'OK'], 200);
+    }
+
+    private function handleExpired(array $event)
+    {
+        $intentId = $event['data']['attributes']['data']['id'] ?? null;
+
+        if ($intentId) {
+            $booking = Booking::where('payment_intent_id', $intentId)
+                ->where('status', 'pending')
+                ->first();
+
+            // Leave the row alone — your existing
+            // bookings:expire-unconfirmed-* scheduled commands already
+            // sweep up stale pending bookings. This just logs it so you
+            // can see expired QR Ph attempts distinctly if useful later.
+            if ($booking) {
+                Log::info('PayMongo QR Ph expired for booking', ['booking_id' => $booking->id]);
+            }
         }
 
         return response()->json(['message' => 'OK'], 200);
@@ -190,12 +205,11 @@ class PaymongoQrPhController extends Controller
     {
         $webhookSecret = config('services.paymongo.webhook_secret');
 
-        // Paymongo-Signature header format: "t=timestamp,te=test_sig,li=live_sig"
         parse_str(str_replace(',', '&', $signatureHeader), $parts);
         $timestamp = $parts['t'] ?? null;
-        $signature = $parts['li'] ?? ($parts['te'] ?? null); // use 'te' while testing, 'li' once live
+        $signature = $parts['li'] ?? ($parts['te'] ?? null); // 'te' in Test Mode, 'li' in Live Mode
 
-        if (!$timestamp || !$signature) {
+        if (!$timestamp || !$signature || !$webhookSecret) {
             return false;
         }
 

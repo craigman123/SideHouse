@@ -97,7 +97,21 @@
                             <span class="payment-btn-sub">Scan the QR code through Maya to pay</span>
                         </button>
 
+                        <button type="button" class="payment-btn payment-btn-qrph" data-method="qrph">
+                            <span class="payment-btn-icon">
+                                <img src="{{ asset('images/qrph.png') }}" alt="QR Ph logo">
+                            </span>
+                            <span class="payment-btn-title">QR Ph</span>
+                            <span class="payment-btn-sub">Pay with GCash, Maya, or any bank via QR Ph — instant, no reference number needed</span>
+                        </button>
+
                     </div>
+
+                    {{-- No static QR panel for qrph — unlike gcash/maya, the
+                    QR is generated per-booking on the waiting page after
+                    this form is submitted, since PayMongoQrPhController::
+                    createQr() needs a real booking_id to attach the
+                    Payment Intent to. See payment-waiting.blade.php. --}}
 
                     <div class="payment-qr-panel" id="gcashQrPanel">
                         <p class="payment-qr-instructions">Scan this code in your GCash app to pay, then enter the reference number from the payment confirmation below.</p>

@@ -424,7 +424,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const summaryTotal = document.getElementById('summaryTotal');
     const confirmBtn = document.getElementById('confirmBooking');
 
-    const PAYMENT_LABELS = { gcash: 'GCash', maya: 'Maya' };
+    const PAYMENT_LABELS = { gcash: 'GCash', maya: 'Maya', qrph: 'QR Ph' };
 
     // Every current payment method (GCash, Maya) works the same way:
     // a QR panel opens under the selected button, and the backend
@@ -1778,7 +1778,9 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!googleIdToken) missing.push('an email address (sign in with Google)');
         if (!selectedPayment) missing.push('a payment method');
         const activeRefInput = getActiveRefInput();
-        if (selectedPayment && !(activeRefInput && activeRefInput.value.trim())) {
+        // qrph has no typed reference at all — the QR itself carries the
+        // amount/identity, so this requirement only applies to gcash/maya.
+        if (selectedPayment && selectedPayment !== 'qrph' && !(activeRefInput && activeRefInput.value.trim())) {
             missing.push(`your ${PAYMENT_LABELS[selectedPayment] || 'payment'} reference number`);
         }
         return missing;
