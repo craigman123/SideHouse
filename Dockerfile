@@ -26,6 +26,7 @@ RUN composer dump-autoload --optimize
 
 # Laravel needs writable storage and cache directories
 RUN mkdir -p storage/framework/{sessions,views,cache} storage/logs bootstrap/cache \
+    && chown -R www-data:www-data storage bootstrap/cache \
     && chmod -R 775 storage bootstrap/cache
 
 # nginx config: proxies everything to php-fpm on port 9000,
