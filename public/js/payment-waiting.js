@@ -35,28 +35,28 @@
         return {};
     }
 
-    // ---------- Toasts (matches payment.css's .pay-toast-* classes) ----------
+    // ---------- Toasts (matches payment-waiting.css's .wt-toast-* classes) ----------
 
     function showToast(message, type = 'success') {
         const toastContainer = document.getElementById('toastContainer');
         if (!toastContainer) return;
 
         const toast = document.createElement('div');
-        toast.className = `pay-toast pay-toast-${type}`;
+        toast.className = `wt-toast wt-toast-${type}`;
         toast.innerHTML = `
-            <span class="pay-toast-message"></span>
-            <button type="button" class="pay-toast-close" aria-label="Dismiss">&times;</button>
+            <span class="wt-toast-message"></span>
+            <button type="button" class="wt-toast-close" aria-label="Dismiss">&times;</button>
         `;
-        toast.querySelector('.pay-toast-message').textContent = message;
+        toast.querySelector('.wt-toast-message').textContent = message;
 
         toastContainer.appendChild(toast);
 
         const remove = () => {
-            toast.classList.add('pay-toast-out');
+            toast.classList.add('wt-toast-out');
             setTimeout(() => toast.remove(), 300);
         };
 
-        toast.querySelector('.pay-toast-close').addEventListener('click', remove);
+        toast.querySelector('.wt-toast-close').addEventListener('click', remove);
         setTimeout(remove, 4000);
     }
 
