@@ -32,7 +32,9 @@ Route::post('/guest-book/payment/qrph', [PaymongoQrPhController::class, 'createQ
 Route::post('/guest-book/payment/qrph/webhook', [PaymongoQrPhController::class, 'webhook'])
     ->name('guest.book.payment.qrph.webhook')
     ->withoutMiddleware(['web']);
- 
+
+Route::post('/guest/bookings/{booking}/update-reference', [GuestBookingController::class, 'updateReference'])
+    ->name('guest.book.update-reference');
 
 Route::get('/cron/run-reminders', function (Request $request) {
     abort_unless($request->query('token') === config('services.cron_secret.secret'), 403);

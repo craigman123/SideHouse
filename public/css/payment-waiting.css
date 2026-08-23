@@ -686,3 +686,196 @@
     padding: 20px;
     z-index: 1000;
 }
+
+/* ==========================================================================
+   Guest "waiting for payment" page — extends payment.css's --pay-* token
+   system. Load payment.css BEFORE this file so the --pay-* custom
+   properties and .pay-body / .pay-bg-glow / .pay-particles / .pay-shell /
+   .pay-card / .pay-toast-* base classes are already available. This file
+   only adds the pieces unique to the waiting step: the QR box, the
+   floating countdown pill, and the cancel actions.
+   ========================================================================== */
+
+/* ---------- QR panel ---------- */
+
+.pay-qr-standalone {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+    padding: 8px 0 4px;
+}
+
+.pay-qr-standalone-image-wrap {
+    width: 220px;
+    height: 220px;
+    border-radius: var(--pay-radius-md);
+    overflow: hidden;
+    background: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.pay-qr-standalone-image-wrap img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+.pay-qr-loading,
+.pay-qr-error {
+    font-size: 13.5px;
+    color: var(--pay-text-muted);
+    text-align: center;
+}
+
+.pay-qr-error { color: var(--pay-danger); }
+
+.pay-qr-retry {
+    background: none;
+    border: 1px solid var(--pay-border-strong);
+    color: var(--pay-text);
+    padding: 7px 16px;
+    border-radius: var(--pay-radius-sm);
+    font-size: 13px;
+    cursor: pointer;
+    margin-top: 6px;
+    transition: border-color 0.15s ease;
+}
+.pay-qr-retry:hover { border-color: var(--pay-accent); }
+
+.pay-qr-status-line {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: var(--pay-text-muted);
+}
+
+.pay-pulse-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--pay-money);
+    animation: pay-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes pay-pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: .4; transform: scale(.8); }
+}
+
+/* ---------- Booking summary rows (waiting page reuses .pay-line/.pay-total-row) ---------- */
+
+.pay-summary-list {
+    margin: 0 0 4px;
+}
+
+/* ---------- Reference correction fallback ---------- */
+
+.pay-ref-toggle {
+    background: none;
+    border: none;
+    color: var(--pay-text-faint);
+    font-size: 12.5px;
+    text-decoration: underline;
+    cursor: pointer;
+    padding: 0;
+    margin-top: 14px;
+}
+.pay-ref-toggle:hover { color: var(--pay-text-muted); }
+
+.pay-ref-form {
+    display: none;
+    gap: 8px;
+    margin-top: 10px;
+}
+.pay-ref-form.is-open { display: flex; }
+
+.pay-ref-form .pay-input { flex: 1; }
+
+.pay-ref-form button {
+    background: var(--pay-accent);
+    border: none;
+    color: #0d0a24;
+    font-weight: 600;
+    padding: 0 16px;
+    border-radius: var(--pay-radius-sm);
+    cursor: pointer;
+    font-size: 13.5px;
+}
+
+/* ---------- Cancel actions ---------- */
+
+.pay-cancel-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 22px;
+}
+
+.pay-btn-cancel,
+.pay-btn-cancel-all {
+    background: none;
+    border: 1px solid var(--pay-border-strong);
+    color: var(--pay-text-muted);
+    padding: 12px;
+    border-radius: var(--pay-radius-sm);
+    font-size: 14px;
+    cursor: pointer;
+    transition: border-color 0.15s ease, color 0.15s ease;
+}
+.pay-btn-cancel:hover,
+.pay-btn-cancel-all:hover {
+    border-color: var(--pay-danger);
+    color: var(--pay-danger);
+    background: var(--pay-danger-soft);
+}
+
+/* ---------- Floating countdown ---------- */
+
+.pay-float-timer {
+    position: fixed;
+    left: 50%;
+    bottom: 24px;
+    transform: translateX(-50%);
+    background: var(--pay-surface-raised);
+    border: 1px solid var(--pay-border-strong);
+    border-radius: 999px;
+    padding: 11px 22px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    box-shadow: var(--pay-shadow-card);
+    z-index: 50;
+    width: max-content;
+    max-width: calc(100% - 32px);
+    font-family: var(--pay-font-body);
+}
+
+.pay-float-timer.is-expiring {
+    border-color: var(--pay-danger);
+    box-shadow: 0 0 0 3px var(--pay-danger-soft), var(--pay-shadow-card);
+}
+
+.pay-float-timer-label {
+    font-size: 12px;
+    color: var(--pay-text-faint);
+}
+
+.pay-float-timer-value {
+    font-family: var(--pay-font-display);
+    font-variant-numeric: tabular-nums;
+    font-weight: 700;
+    font-size: 15px;
+    color: var(--pay-money-strong);
+}
+
+.pay-float-timer.is-expiring .pay-float-timer-value {
+    color: var(--pay-danger);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .pay-pulse-dot { animation: none; opacity: .7; }
+}
