@@ -16,7 +16,16 @@
 </head>
 <body>
     <div class="landing-wrapper">
-        <div class="modal-box modal-box-lg modal-box-scrollable" id="paymentPage"
+        <div class="bg-particle"></div>
+        <div class="bg-particle"></div>
+        <div class="bg-particle"></div>
+        <div class="bg-particle"></div>
+        <div class="bg-particle"></div>
+        <div class="bg-particle"></div>
+        <div class="bg-particle"></div>
+        <div class="bg-particle"></div>
+
+        <div class="modal-box modal-box-lg modal-box-scrollable" id="paymentPage" style="margin: auto;"
             data-court-id="{{ $courtId }}"
             data-date="{{ $date }}"
             data-slots='@json($slots)'

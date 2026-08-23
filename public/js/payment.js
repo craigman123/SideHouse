@@ -235,8 +235,6 @@
             return;
         }
         document.querySelector('.guest-email-block')?.classList.remove('guest-email-block-invalid');
-        gcashProofBlock?.classList.remove('payment-proof-invalid');
-        mayaProofBlock?.classList.remove('payment-proof-invalid');
 
         confirmBtn.disabled = true;
         const originalLabel = confirmBtn.textContent;
