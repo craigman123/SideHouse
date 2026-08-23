@@ -25,7 +25,7 @@
         <div class="bg-particle"></div>
         <div class="bg-particle"></div>
 
-        <div class="modal-box modal-box-lg modal-box-scrollable" id="paymentPage" style="margin: auto;"
+        <div class="modal-box modal-box-lg modal-box-scrollable" id="paymentPage" style="margin: auto; z-index: 2;">
             data-court-id="{{ $courtId }}"
             data-date="{{ $date }}"
             data-slots='@json($slots)'
@@ -65,7 +65,9 @@
                     <p class="payment-confidence-note">Your slot is held for {{ $paymentHoldMinutes }} minutes while you complete the QR Ph payment.</p>
                 </div>
             </div>
-            <div class="modal-actions"><button type="button" class="btn btn-secondary" id="backToEquipment2">Back</button><button type="button" class="btn btn-primary" id="confirmBooking">Confirm Booking</button></div>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-secondary" id="backToEquipment2">Back</button>
+                <button type="button" class="btn btn-primary" id="confirmBooking">Confirm Booking</button></div>
         </div>
     </div>
     <div id="toastContainer" class="toast-container"></div>
