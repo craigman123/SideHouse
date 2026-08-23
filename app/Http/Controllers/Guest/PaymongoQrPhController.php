@@ -139,8 +139,27 @@ class PaymongoQrPhController extends Controller
      */
     public function webhook(Request $request)
     {
-        $signatureHeader = $request->header('Paymongo-Signature', '');
+            $signatureHeader = $request->header('Paymongo-Signature', '');
         $payload = $request->getContent();
+
+        $webhookSecret = config('services.paymongo.webhook_secret');
+        parse_str(str_replace(',', '&', $signatureHeader), $parts);
+        $timestamp = $parts['t'] ?? null;
+        $signature = $parts['li'] ?? ($parts['te'] ?? null);
+
+        $signedPayload = "{$timestamp}.{$payload}";
+        $expected = $webhookSecret ? hash_hmac('sha256', $signedPayload, $webhookSecret) : null;
+
+        dd([
+            'raw_header' => $signatureHeader,
+            'parts' => $parts,
+            'timestamp' => $timestamp,
+            'signature_received' => $signature,
+            'secret_set' => !empty($webhookSecret),
+            'secret_preview' => $webhookSecret ? substr($webhookSecret, 0, 10) . '...' : null,
+            'expected_signature' => $expected,
+            'match' => $expected && $signature ? hash_equals($expected, $signature) : false,
+        ]);
 
         if (!$this->verifySignature($payload, $signatureHeader)) {
             Log::warning('PayMongo webhook signature mismatch');
