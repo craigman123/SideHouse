@@ -16,8 +16,6 @@ use App\Http\Controllers\User\FeedbackController;
 use App\Http\Controllers\User\NotificationController;
 use App\Http\Controllers\User\User_UserController;
 use App\Http\Controllers\User\UserDashboardController;
-use App\Http\Controllers\Webhooks\GcashWebhookController;
-use App\Http\Controllers\Webhooks\LandbankWebhookController;
 use App\Http\Controllers\Admin\DatabaseQueryController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
@@ -39,8 +37,7 @@ Route::post('/guest-book/payment/qrph/webhook', [PaymongoQrPhController::class, 
 Route::get('/cron/run-reminders', function (Request $request) {
     abort_unless($request->query('token') === config('services.cron_secret.secret'), 403);
 
-    Artisan::call('bookings:expire-unconfirmed-gcash');
-    Artisan::call('bookings:expire-unconfirmed-landbank');
+    Artisan::call('bookings:expire-unconfirmed-qrph');
     Artisan::call('bookings:send-in-app-reminders');
     Artisan::call('bookings:send-email-reminders');
     Artisan::call('queue:work', [
@@ -64,11 +61,6 @@ Route::get('/guest/bookings/{booking}/waiting', [GuestBookingController::class, 
 Route::get('/guest/bookings/search', [GuestBookingController::class, 'search'])->name('guest.book.search');
 Route::post('/guest/bookings/{booking}/cancel', [GuestBookingController::class, 'cancel'])->name('guest.book.cancel');
 Route::post('/guest/bookings/{booking}/cancel-all', [GuestBookingController::class, 'cancelAll'])->name('guest.book.cancel-all');
-Route::put('/guest/bookings/{booking}/reference', [GuestBookingController::class, 'updateReference'])->name('guest.book.update-reference');
-Route::post('/webhooks/gcash-sms', [GcashWebhookController::class, 'handleSms'])
-    ->middleware('throttle:30,1');
-Route::post('/webhooks/landbank-sms', [LandbankWebhookController::class, 'handleSms'])
-    ->middleware('throttle:30,1');
 
 // Guest booking (no login required)
 Route::get('/guest-book/availability', [GuestBookingController::class, 'availability'])->name('guest.book.availability');
@@ -158,7 +150,6 @@ Route::middleware('auth')->group(function () {
     // Full-page "waiting for payment" step — see
     // User_UserController::waitingForPayment()'s docblock.
     Route::get('/book/bookings/{booking}/waiting', [User_UserController::class, 'waitingForPayment'])->name('book.waiting');
-    Route::put('/book/bookings/{booking}/reference', [User_UserController::class, 'updateReference'])->name('book.update-reference');
     Route::post('/book', [User_UserController::class, 'storeBooking'])->name('book.store');
 
     // Booking history

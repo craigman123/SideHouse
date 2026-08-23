@@ -9,10 +9,8 @@ use App\Models\CourtClosure;
 use App\Models\Equipment;
 use App\Models\Membership;
 use App\Models\PaymentReference as PaymentReferenceModel;
-use App\Models\UnmatchedPayment;
 use App\Support\ActivityLogger;
 use App\Support\BookingHours;
-use App\Support\PaymentReference;
 use App\Support\PaymentWindows;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -223,110 +221,10 @@ class User_UserController extends Controller
             'userName'           => auth()->user()->name,
             'siblingBookings'    => $siblingBookings,
             'totalAmount'        => $paymentReference->amount ?? $siblingBookings->sum('amount'),
-            'currentReference'   => $paymentReference->payment_reference ?? '',
             'statusUrl'          => route('book.status', ['booking' => $booking->id]),
             'cancelUrl'          => route('user.bookings.cancel', ['booking' => $booking->id]),
-            'updateReferenceUrl' => route('book.update-reference', ['booking' => $booking->id]),
             'bookUrl'            => route('book.index'),
         ]);
-    }
-
-    /**
-     * Lets the signed-in user fix a typo'd reference number on their own
-     * still-pending booking — the equivalent of
-     * GuestBookingController::updateReference(), but ownership-gated via
-     * auth() instead of a poll_token, since there's a session here. Same
-     * locking/re-check/retroactive-match behavior; see that method's
-     * docblock for the full reasoning. Updates the SHARED payment_reference
-     * row, so every sibling booking from the same multi-date checkout
-     * gets the correction (and a match confirms all of them at once).
-     */
-    public function updateReference(Request $request, Booking $booking)
-    {
-        abort_unless($booking->user_id === auth()->id(), 403);
-
-        $validated = $request->validate([
-            'payment_reference' => ['required', 'string', 'max:50'],
-        ]);
-
-        $result = DB::transaction(function () use ($booking, $validated) {
-            $locked = Booking::where('id', $booking->id)->lockForUpdate()->first();
-
-            if ($locked->status !== 'pending') {
-                return ['status' => $locked->status, 'already_resolved' => true];
-            }
-
-            $paymentReference = PaymentReferenceModel::where('id', $locked->payment_reference_id)
-                ->lockForUpdate()
-                ->first();
-
-            if ($paymentReference === null) {
-                // Shouldn't happen — every booking created by
-                // storeBooking() gets one in the same transaction — but
-                // fail safe rather than fatal if it ever does.
-                return ['status' => $locked->status, 'already_resolved' => true];
-            }
-
-            $paymentReference->update(['payment_reference' => $validated['payment_reference']]);
-
-            // Same rule as storeBooking()'s retroactive claim and both
-            // webhook controllers: reference number is the only thing
-            // that can confirm a match. No "only one candidate at this
-            // amount" fallback — see those for why.
-            $normalizedRef = PaymentReference::normalize($validated['payment_reference']);
-            $claimedPayment = null;
-
-            if ($normalizedRef !== '' && $paymentReference->confirmed_at === null) {
-                $claimedPayment = UnmatchedPayment::unmatched()
-                    ->where('payment_method', $paymentReference->payment_method)
-                    ->where('amount', $paymentReference->amount)
-                    ->where('created_at', '>=', now()->subMinutes(PaymentWindows::claimWindowMinutes($paymentReference->payment_method)))
-                    ->lockForUpdate()
-                    ->get()
-                    ->first(fn ($p) => PaymentReference::normalize((string) $p->reference_number) === $normalizedRef);
-            }
-
-            if ($claimedPayment) {
-                $paymentReference->update(['confirmed_at' => now()]);
-                $claimedPayment->update([
-                    'matched_payment_reference_id' => $paymentReference->id,
-                    'matched_at'                   => now(),
-                ]);
-
-                $paymentReference->bookings()->where('status', 'pending')->update([
-                    'status'       => 'paid',
-                    'confirmed_at' => now(),
-                ]);
-
-                $locked->refresh();
-            }
-
-            return ['status' => $locked->status];
-        });
-
-        if ($result['status'] === 'paid') {
-            $booking->refresh();
-
-            ActivityLogger::log(
-                'booking.paid',
-                sprintf(
-                    "%s's payment for %s was confirmed after they corrected their reference number.",
-                    auth()->user()->name,
-                    $booking->court?->name ?? 'a court',
-                ),
-                subject: $booking,
-                properties: ['amount' => $booking->amount],
-            );
-        }
-
-        return response()->json([
-            'status'  => $result['status'],
-            'message' => match (true) {
-                $result['status'] === 'paid' => 'Payment matched! Your booking is confirmed.',
-                ! empty($result['already_resolved']) => "This booking is no longer pending, so its reference number can't be changed.",
-                default => "Reference number updated — we'll keep watching for a match.",
-            },
-        ], ! empty($result['already_resolved']) ? 422 : 200);
     }
 
     /**
@@ -434,12 +332,11 @@ class User_UserController extends Controller
             'date'           => ['required', 'date', 'after_or_equal:today'],
             'slots'          => ['required', 'array', 'min:1', 'max:60'],
             'slots.*'        => ['required', 'date_format:Y-m-d H:i', 'distinct'],
-            'payment_method' => ['required', 'in:gcash,maya,qrph'],
+            'payment_method' => ['nullable', 'in:qrph'],
             'contact_number' => ['required', 'string', 'max:30', 'regex:/^[0-9+\-\s()]{7,30}$/'],
             'equipment'            => ['array'],
             'equipment.*.id'       => ['required_with:equipment', 'integer', 'exists:equipment,id'],
             'equipment.*.quantity' => ['required_with:equipment', 'integer', 'min:1', 'max:20'],
-            'payment_reference' => ['required_unless:payment_method,qrph', 'nullable', 'string', 'max:50'],
         ]);
 
         $court = Court::findOrFail($validated['court_id']);
@@ -596,52 +493,14 @@ class User_UserController extends Controller
                     ->sum(fn ($line) => $line['item']->price * $line['quantity']);
                 $totalAmount = round($courtAmount + $equipmentAmount, 2);
 
-                // A user can pay via the QR code before finishing this
-                // form — if that SMS already arrived, the webhook
-                // controller couldn't find a matching payment_reference
-                // to attach it to yet and parked it as an
-                // UnmatchedPayment. Claim it now the same way the webhook
-                // itself would've matched it: the user-typed reference
-                // number must match the parked payment's real reference
-                // number.
-                $isQrph = $validated['payment_method'] === 'qrph';
- 
-                $claimedPayment = null;
-                if (!$isQrph) {
-                    $unmatchedCandidates = UnmatchedPayment::unmatched()
-                        ->where('payment_method', $validated['payment_method'])
-                        ->where('amount', $totalAmount)
-                        ->where('created_at', '>=', now()->subMinutes(PaymentWindows::claimWindowMinutes($validated['payment_method'])))
-                        ->orderBy('created_at')
-                        ->lockForUpdate()
-                        ->get();
-                
-                    if ($unmatchedCandidates->isNotEmpty()) {
-                        $normalizedRef = PaymentReference::normalize($validated['payment_reference']);
-                
-                        $claimedPayment = $normalizedRef !== ''
-                            ? $unmatchedCandidates->first(function ($p) use ($normalizedRef) {
-                                return PaymentReference::normalize((string) $p->reference_number) === $normalizedRef;
-                            })
-                            : null;
-                    }
-                }
-                
-                $isPaid = (bool) $claimedPayment; 
+                $isPaid = false;
 
                 $paymentReference = PaymentReferenceModel::create([
-                    'payment_reference' => $validated['payment_reference'],
-                    'payment_method'    => $validated['payment_method'],
+                    'payment_reference' => null,
+                    'payment_method'    => 'qrph',
                     'amount'            => $totalAmount,
                     'confirmed_at'      => $isPaid ? now() : null,
                 ]);
-
-                if ($claimedPayment) {
-                    $claimedPayment->update([
-                        'matched_payment_reference_id' => $paymentReference->id,
-                        'matched_at'                   => now(),
-                    ]);
-                }
 
                 $bookings = [];
                 $isFirstGroup = true;
@@ -658,7 +517,7 @@ class User_UserController extends Controller
                         'email'                => $user->email,
                         'court_id'             => $court->id,
                         'payment_reference_id' => $paymentReference->id,
-                        'payment_method'       => $validated['payment_method'],
+                        'payment_method'       => 'qrph',
                         'date'                 => $dateStr,
                         'start_time'           => $envelopeStart->format('H:i:s'),
                         'end_time'             => $envelopeEnd->format('H:i:s'),
@@ -722,7 +581,7 @@ class User_UserController extends Controller
                     'start_time'       => $booking->start_time,
                     'end_time'         => $booking->end_time,
                     'amount'           => $booking->amount,
-                    'payment_method'   => $validated['payment_method'],
+                    'payment_method'   => 'qrph',
                     'discount_percent' => $discountPercent,
                 ],
             );

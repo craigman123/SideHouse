@@ -10,10 +10,8 @@ use App\Models\Court;
 use App\Models\CourtClosure;
 use App\Models\Equipment;
 use App\Models\PaymentReference as PaymentReferenceModel;
-use App\Models\UnmatchedPayment;
 use App\Support\ActivityLogger;
 use App\Support\BookingHours;
-use App\Support\PaymentReference;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -559,21 +557,7 @@ class GuestBookingController extends Controller
             'date' => ['required', 'date', 'after_or_equal:today'],
             'slots'          => ['required', 'array', 'min:1', 'max:60'],
             'slots.*'        => ['required', 'date_format:Y-m-d H:i', 'distinct'],
-            // GCash and Maya are the SMS-confirmed guest payment methods —
-            // the QR code / account number is static (same one for every
-            // booking), so nothing here proves payment on its own.
-            // GcashWebhookController / MayaWebhookController are what
-            // actually confirm it, by matching the amount (and the
-            // reference number below, when there's more than one
-            // same-amount checkout pending at once) against the SMS
-            // receipt for whichever method was selected.
-            //
-            // qrph is different: PayMongoQrPhController generates a
-            // per-booking dynamic QR *after* this booking is created
-            // (pending), tied to it by payment_intent_id, and PayMongo's
-            // webhook confirms it deterministically — no static QR, no
-            // guest-typed reference, no amount-matching heuristics.
-            'payment_method' => ['required', 'in:gcash,maya,qrph'],
+            'payment_method' => ['nullable', 'in:qrph'],
             'guest_name'     => ['required', 'string', 'max:255'],
             // Loose on purpose (7–30 digits/spaces/dashes/parens/+) since
             // this needs to accept PH mobile numbers in several common
@@ -585,13 +569,6 @@ class GuestBookingController extends Controller
             'equipment'            => ['array'],
             'equipment.*.id'       => ['required_with:equipment', 'integer', 'exists:equipment,id'],
             'equipment.*.quantity' => ['required_with:equipment', 'integer', 'min:1', 'max:20'],
-            // Guest-entered, so never trusted on its own — it's only used
-            // to disambiguate when two pending checkouts share the exact
-            // same total amount. The matching webhook controller for the
-            // selected payment_method is the only thing that actually
-            // confirms payment, from the real SMS receipt. Not applicable
-            // to qrph, which has no typed reference at all.
-            'payment_reference' => ['required_unless:payment_method,qrph', 'nullable', 'string', 'min:6', 'max:50'],
         ]);
 
         $guestEmail = $this->verifyGoogleIdToken($validated['google_id_token']);
@@ -684,61 +661,16 @@ class GuestBookingController extends Controller
                     ->sum(fn ($line) => $line['item']->price * $line['quantity']);
                 $totalAmount = round($courtAmount + $equipmentAmount, 2);
 
-                // A guest can pay via the QR code before finishing this
-                // form — if that SMS already arrived, GcashWebhookController
-                // (or MayaWebhookController) couldn't find a matching
-                // payment_reference to attach it to yet and parked it as
-                // an UnmatchedPayment instead. Claim it now, retroactively,
-                // the same way the webhook itself would've matched it:
-                // require the guest-typed reference number to match the
-                // parked payment's real reference number. See the webhook
-                // controllers for why there's deliberately no
-                // "only one candidate at this amount" fallback.
-                //
-                // qrph skips all of this — it has no SMS, no reference
-                // number, and no way to have paid before this booking row
-                // exists (PayMongoQrPhController::createQr() requires a
-                // booking_id, which doesn't exist until right now).
-                $isQrph = $validated['payment_method'] === 'qrph';
-
-                $claimedPayment = null;
-                if (!$isQrph) {
-                    $unmatchedCandidates = UnmatchedPayment::unmatched()
-                        ->where('payment_method', $validated['payment_method'])
-                        ->where('amount', $totalAmount)
-                        ->where('created_at', '>=', now()->subMinutes(PaymentWindows::claimWindowMinutes($validated['payment_method'])))
-                        ->orderBy('created_at')
-                        ->lockForUpdate()
-                        ->get();
-
-                    if ($unmatchedCandidates->isNotEmpty()) {
-                        $normalizedGuestRef = PaymentReference::normalize($validated['payment_reference']);
-
-                        $claimedPayment = $normalizedGuestRef !== ''
-                            ? $unmatchedCandidates->first(function ($p) use ($normalizedGuestRef) {
-                                return PaymentReference::normalize((string) $p->reference_number) === $normalizedGuestRef;
-                            })
-                            : null;
-                    }
-                }
-
-                $isPaid = (bool) $claimedPayment; // always false for qrph — starts pending, webhook flips it
+                $isPaid = false;
 
                 // One shared payment for the whole checkout, however many
                 // dates it covers.
                 $paymentReference = PaymentReferenceModel::create([
-                    'payment_reference' => $isQrph ? null : $validated['payment_reference'],
-                    'payment_method'    => $validated['payment_method'],
+                    'payment_reference' => null,
+                    'payment_method'    => 'qrph',
                     'amount'            => $totalAmount,
                     'confirmed_at'      => $isPaid ? now() : null,
                 ]);
-
-                if ($claimedPayment) {
-                    $claimedPayment->update([
-                        'matched_payment_reference_id' => $paymentReference->id,
-                        'matched_at'                   => now(),
-                    ]);
-                }
 
                 $bookings = [];
                 $isFirstGroup = true;
@@ -755,7 +687,7 @@ class GuestBookingController extends Controller
                         'email'                => $guestEmail,
                         'court_id'             => $court->id,
                         'payment_reference_id' => $paymentReference->id,
-                        'payment_method'       => $validated['payment_method'],
+                        'payment_method'       => 'qrph',
                         'date'                 => $dateStr,
                         'start_time'           => $envelopeStart->format('H:i:s'),
                         'end_time'             => $envelopeEnd->format('H:i:s'),
@@ -831,32 +763,16 @@ class GuestBookingController extends Controller
                 actor: null,
                 subject: $booking,
                 properties: [
-                    'payment_method' => $validated['payment_method'],
+                    'payment_method' => 'qrph',
                     'amount'         => $booking->amount,
                     'status'         => $booking->status,
                 ],
             );
 
-            if ($isPaid) {
-                ActivityLogger::log(
-                    'booking.paid',
-                    sprintf(
-                        "%s's payment for %s was confirmed automatically (matched an existing %s payment).",
-                        $booking->customer_name,
-                        $court->name,
-                        ucfirst($validated['payment_method']),
-                    ),
-                    actor: null,
-                    subject: $booking,
-                    properties: ['amount' => $booking->amount],
-                );
-            }
         }
 
         return response()->json([
-            'message'    => $isPaid
-                ? 'Booking confirmed! We matched it to a payment that already came in.'
-                : 'Booking submitted! Waiting for GCash to confirm your payment.',
+            'message'    => 'Booking submitted! Generate your QR Ph code to complete payment.',
             'bookings'   => collect($bookings)->map(fn ($b) => [
                 'booking_id' => $b->id,
                 'date'       => $b->date->toDateString(),

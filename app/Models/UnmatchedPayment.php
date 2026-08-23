@@ -24,10 +24,8 @@ class UnmatchedPayment extends Model
         'matched_at' => 'datetime',
     ];
 
-    // Legacy — unused by current code, kept only so anything historical
-    // that still reads it doesn't break. New matches go through
-    // paymentReference() instead, since one SMS receipt can now confirm
-    // several bookings at once (see PaymentReference).
+    // Historical SMS-matching records only. QR Ph uses PayMongo payment
+    // intents, so no new rows should be created after the legacy removal.
     public function booking()
     {
         return $this->belongsTo(Booking::class, 'matched_booking_id');

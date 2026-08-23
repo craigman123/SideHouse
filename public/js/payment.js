@@ -1,5 +1,4 @@
 (function () {
-    const PAYMENT_LABELS = { gcash: 'GCash', maya: 'Maya' };
 
     const box = document.getElementById('paymentPage');
     const courtId = box.dataset.courtId;
@@ -19,17 +18,11 @@
     const guestEmailChangeBtn = document.getElementById('guestEmailChange');
     const guestEmailLabel = document.getElementById('guestEmailLabel');
     const paymentGrid = document.getElementById('paymentGrid');
-    const gcashQrPanel = document.getElementById('gcashQrPanel');
-    const gcashRefInput = document.getElementById('gcashRefNumber');
-    const gcashProofBlock = document.getElementById('gcashProofBlock');
-    const mayaQrPanel = document.getElementById('mayaQrPanel');
-    const mayaRefInput = document.getElementById('mayaRefNumber');
-    const mayaProofBlock = document.getElementById('mayaProofBlock');
     const summaryPayment = document.getElementById('summaryPayment');
     const confirmBtn = document.getElementById('confirmBooking');
     const checkoutSteps = document.querySelectorAll('[data-checkout-step]');
 
-    let selectedPayment = null;
+    const selectedPayment = 'qrph';
     let googleIdToken = null;
     let googleEmail = null;
     const CHECKOUT_DRAFT_KEY = 'sidehouse_guest_checkout_draft';
@@ -105,9 +98,7 @@
     // ---------- Payment method selection ----------
 
     function syncPaymentQrPanels() {
-        gcashQrPanel?.classList.toggle('open', selectedPayment === 'gcash');
-        mayaQrPanel?.classList.toggle('open', selectedPayment === 'maya');
-        summaryPayment.textContent = selectedPayment ? PAYMENT_LABELS[selectedPayment] : '—';
+        summaryPayment.textContent = 'QR Ph';
         if (selectedPayment) {
             checkoutSteps.forEach((step) => {
                 const stepNumber = Number(step.dataset.checkoutStep);
@@ -116,28 +107,6 @@
             });
         }
     }
-
-    function getActiveRefInput() {
-        if (selectedPayment === 'gcash') return gcashRefInput;
-        if (selectedPayment === 'maya') return mayaRefInput;
-        return null;
-    }
-
-    function getActiveProofBlock() {
-        if (selectedPayment === 'gcash') return gcashProofBlock;
-        if (selectedPayment === 'maya') return mayaProofBlock;
-        return null;
-    }
-
-    paymentGrid.querySelectorAll('.payment-btn').forEach((btn) => {
-        btn.addEventListener('click', () => {
-            selectedPayment = btn.dataset.method;
-            paymentGrid.querySelectorAll('.payment-btn').forEach((el) => {
-                el.classList.toggle('selected', el === btn);
-            });
-            syncPaymentQrPanels();
-        });
-    });
 
     syncPaymentQrPanels();
 
@@ -253,11 +222,6 @@
         if (!guestNameInput.value.trim()) missing.push('your name');
         if (!guestContactInput.value.trim()) missing.push('a contact number');
         if (!googleIdToken) missing.push('an email address (sign in with Google)');
-        if (!selectedPayment) missing.push('a payment method');
-        const activeRefInput = getActiveRefInput();
-        if (selectedPayment && !(activeRefInput && activeRefInput.value.trim())) {
-            missing.push(`your ${PAYMENT_LABELS[selectedPayment] || 'payment'} reference number`);
-        }
         return missing;
     }
 
@@ -268,11 +232,6 @@
             guestNameInput.classList.toggle('field-invalid', !guestNameInput.value.trim());
             guestContactInput.classList.toggle('field-invalid', !guestContactInput.value.trim());
             document.querySelector('.guest-email-block')?.classList.toggle('guest-email-block-invalid', !googleIdToken);
-            const invalidRefInput = getActiveRefInput();
-            getActiveProofBlock()?.classList.toggle(
-                'payment-proof-invalid',
-                !!selectedPayment && !(invalidRefInput && invalidRefInput.value.trim())
-            );
             return;
         }
         document.querySelector('.guest-email-block')?.classList.remove('guest-email-block-invalid');
@@ -289,14 +248,10 @@
         slots.forEach((key, i) => {
             formData.append(`slots[${i}]`, key);
         });
-        formData.append('payment_method', selectedPayment);
+        formData.append('payment_method', 'qrph');
         formData.append('guest_name', guestNameInput.value.trim());
         formData.append('guest_contact', guestContactInput.value.trim());
         formData.append('google_id_token', googleIdToken);
-        const submittedRefInput = getActiveRefInput();
-        if (submittedRefInput && submittedRefInput.value.trim()) {
-            formData.append('payment_reference', submittedRefInput.value.trim());
-        }
         equipmentPayload.forEach((item, i) => {
             formData.append(`equipment[${i}][id]`, item.id);
             formData.append(`equipment[${i}][quantity]`, item.quantity);
@@ -330,10 +285,6 @@
 
                     guestNameInput.classList.toggle('field-invalid', !!data.errors.guest_name);
                     guestContactInput.classList.toggle('field-invalid', !!data.errors.guest_contact);
-                    getActiveProofBlock()?.classList.toggle(
-                        'payment-proof-invalid',
-                        !!data.errors.payment_reference
-                    );
 
                     confirmBtn.disabled = false;
                     confirmBtn.textContent = originalLabel;

@@ -227,22 +227,6 @@
                 <div class="booking-section">
                     <p class="booking-section-label">How will you pay?</p>
                     <div class="payment-grid" id="paymentGrid">
-                        <button type="button" class="payment-btn payment-btn-gcash" data-method="gcash">
-                            <span class="payment-btn-icon">
-                                <img src="{{ asset('images/gcash.png') }}" alt="Gcash logo">
-                            </span>
-                            <span class="payment-btn-title">GCash</span>
-                            <span class="payment-btn-sub">Scan the QR code through GCash to pay</span>
-                        </button>
-
-                        <button type="button" class="payment-btn payment-btn-maya" data-method="maya">
-                            <span class="payment-btn-icon">
-                                <img src="{{ asset('images/pay-maya.png') }}" alt="Maya logo">
-                            </span>
-                            <span class="payment-btn-title">Maya</span>
-                            <span class="payment-btn-sub">Scan the QR code through Maya to pay</span>
-                        </button>
-
                         <button type="button" class="payment-btn payment-btn-qrph" data-method="qrph">
                             <span class="payment-btn-icon">
                                 <img src="{{ asset('images/qrph.png') }}" alt="QR Ph logo">

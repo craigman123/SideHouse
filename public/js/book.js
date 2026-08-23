@@ -106,12 +106,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const contactNumberInput = document.getElementById('contactNumber');
     const paymentGrid = document.getElementById('paymentGrid');
-    const gcashQrPanel = document.getElementById('gcashQrPanel');
-    const gcashRefInput = document.getElementById('gcashRefNumber');
-    const gcashProofBlock = document.getElementById('gcashProofBlock');
-    const mayaQrPanel = document.getElementById('mayaQrPanel');
-    const mayaRefInput = document.getElementById('mayaRefNumber');
-    const mayaProofBlock = document.getElementById('mayaProofBlock');
     const gcashWaitTitle = document.getElementById('gcashWaitTitle');
     const gcashWaitAmount = document.getElementById('gcashWaitAmount');
     const gcashWaitStatus = document.getElementById('gcashWaitStatus');
@@ -126,24 +120,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const summaryTotal = document.getElementById('summaryTotal');
     const confirmBtn = document.getElementById('confirmBooking');
 
-    const PAYMENT_LABELS = { gcash: 'GCash', maya: 'Maya', qrph: 'QR Ph' };
-    const QR_PANELS = { gcash: gcashQrPanel, maya: mayaQrPanel };
-    const REF_INPUTS = { gcash: gcashRefInput, maya: mayaRefInput };
-    const PROOF_BLOCKS = { gcash: gcashProofBlock, maya: mayaProofBlock };
-
-    function getActiveRefInput() {
-        return selectedPayment ? REF_INPUTS[selectedPayment] || null : null;
-    }
-
-    function getActiveProofBlock() {
-        return selectedPayment ? PROOF_BLOCKS[selectedPayment] || null : null;
-    }
-
-    function syncPaymentQrPanels() {
-        Object.entries(QR_PANELS).forEach(([method, panel]) => {
-            if (panel) panel.classList.toggle('open', selectedPayment === method);
-        });
-    }
 
     let selectedCourt = null;
     let calendarCursor = new Date();
@@ -155,7 +131,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // the fuller rationale; mirrored here for the signed-in flow.
     const slotSessions = new Map(); // slot key -> the booking `date` it belongs to
     let activeSessionDate = null;
-    let selectedPayment = null;
+    const selectedPayment = 'qrph';
     let bookedRanges = [];
     let equipmentCatalog = [];
     let equipmentSelection = {};
@@ -215,9 +191,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function openPaymentModal() {
-        selectedPayment = null;
-        paymentGrid.querySelectorAll('.payment-btn').forEach((el) => el.classList.remove('selected'));
-        syncPaymentQrPanels();
 
         // Prefill from the saved profile number, but only if the field is
         // still empty — never overwrite something the person already
@@ -239,7 +212,6 @@ document.addEventListener('DOMContentLoaded', () => {
         selectedSlots = [];
         slotSessions.clear();
         activeSessionDate = null;
-        selectedPayment = null;
         bookedRanges = [];
         equipmentSelection = {};
         calendarCursor = new Date();
@@ -864,20 +836,6 @@ document.addEventListener('DOMContentLoaded', () => {
         return parts.join(', ');
     }
 
-    // ---------- Payment method ----------
-
-    paymentGrid.addEventListener('click', (e) => {
-        const btn = e.target.closest('.payment-btn');
-        if (!btn || btn.disabled) return;
-
-        selectedPayment = btn.dataset.method;
-        paymentGrid.querySelectorAll('.payment-btn').forEach((el) => el.classList.remove('selected'));
-        btn.classList.add('selected');
-        syncPaymentQrPanels();
-
-        updateSummary();
-    });
-
     // ---------- Payment confirmation polling ----------
 
     const POLL_INTERVAL_MS = 4000;
@@ -1088,13 +1046,6 @@ document.addEventListener('DOMContentLoaded', () => {
     function getMissingPaymentRequirements() {
         const missing = [];
         if (!contactNumberInput.value.trim()) missing.push('a contact number');
-        if (!selectedPayment) missing.push('a payment method');
-        const activeRefInput = getActiveRefInput();
-        // qrph has no typed reference at all — the QR itself carries the
-        // amount/identity, so this requirement only applies to gcash/maya.
-        if (selectedPayment && selectedPayment !== 'qrph' && !(activeRefInput && activeRefInput.value.trim())) {
-            missing.push(`your ${PAYMENT_LABELS[selectedPayment] || 'payment'} reference number`);
-        }
         return missing;
     }
 
@@ -1111,11 +1062,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (missing.length > 0) {
             showToast(`Please provide ${formatList(missing)} to continue.`, 'error');
             contactNumberInput.classList.toggle('field-invalid', !contactNumberInput.value.trim());
-            const invalidRefInput = getActiveRefInput();
-            getActiveProofBlock()?.classList.toggle(
-                'payment-proof-invalid',
-                !!selectedPayment && !(invalidRefInput && invalidRefInput.value.trim())
-            );
             return;
         }
         gcashProofBlock?.classList.remove('payment-proof-invalid');
@@ -1144,11 +1090,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     court_id: selectedCourt.id,
                     date: activeSessionDate || selectedDate,
                     slots: selectedSlots,
-                    payment_method: selectedPayment,
+                    payment_method: 'qrph',
                     contact_number: contactNumberInput.value.trim(),
-                    payment_reference: selectedPayment === 'qrph'
-                        ? null
-                        : (getActiveRefInput()?.value.trim() || ''),
                     equipment: equipmentPayload,
                 }),
             });
@@ -1167,10 +1110,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     showToast(firstError || 'Please check the highlighted field.', 'error');
 
                     contactNumberInput.classList.toggle('field-invalid', !!data.errors.contact_number);
-                    getActiveProofBlock()?.classList.toggle(
-                        'payment-proof-invalid',
-                        !!data.errors.payment_reference
-                    );
 
                     confirmBtn.disabled = false;
                     confirmBtn.textContent = originalLabel;
