@@ -1,9 +1,10 @@
-FROM php:8.3-cli
+FROM php:8.3-fpm
 
-# Install system dependencies and PHP extensions
+# Install system dependencies, PHP extensions, and nginx
 RUN apt-get update && apt-get install -y \
     git \
     unzip \
+    nginx \
     libpq-dev \
     libzip-dev \
     && docker-php-ext-install pdo pdo_pgsql pgsql zip \
@@ -27,8 +28,16 @@ RUN composer dump-autoload --optimize
 RUN mkdir -p storage/framework/{sessions,views,cache} storage/logs bootstrap/cache \
     && chmod -R 775 storage bootstrap/cache
 
+# nginx config: proxies everything to php-fpm on port 9000,
+# listens on $PORT (Render sets this at runtime, default 10000 for local/dev)
+RUN rm -f /etc/nginx/sites-enabled/default
+COPY docker/nginx.conf /etc/nginx/conf.d/app.conf.template
+
+# Entrypoint script: substitutes $PORT into the nginx config,
+# then starts php-fpm and nginx together, and stops both if either dies
+COPY docker/start.sh /usr/local/bin/start.sh
+RUN chmod +x /usr/local/bin/start.sh
+
 EXPOSE 10000
 
-CMD php artisan config:clear && \
-    php artisan migrate --force && \
-    php -S 0.0.0.0:${PORT:-10000} -t public
+CMD ["/usr/local/bin/start.sh"]
