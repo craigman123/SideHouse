@@ -16,6 +16,7 @@ class Booking extends Model
         'email',
         'court_id',
         'payment_reference_id',
+        'payment_intent_id',
         'date',
         'start_time',
         'end_time',
