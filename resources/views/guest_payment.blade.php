@@ -25,7 +25,7 @@
         <div class="bg-particle"></div>
         <div class="bg-particle"></div>
 
-        <div class="modal-box modal-box-lg modal-box-scrollable" id="paymentPage" style="margin: auto; z-index: 2;">
+        <div class="modal-box modal-box-lg modal-box-scrollable" id="paymentPage" style="margin: auto; z-index: 2;"
             data-court-id="{{ $courtId }}"
             data-date="{{ $date }}"
             data-slots='@json($slots)'
