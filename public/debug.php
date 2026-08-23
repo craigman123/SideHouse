@@ -7,15 +7,15 @@ $app = require_once __DIR__ . '/../bootstrap/app.php';
 
 $kernel = $app->make(Illuminate\Contracts\Http\Kernel::class);
 
-try {
-    $request = Illuminate\Http\Request::capture();
-    $response = $kernel->handle($request);
+$request = Illuminate\Http\Request::capture();
+$response = $kernel->handle($request);
 
-    echo "STATUS: " . $response->getStatusCode() . "\n";
-    echo "CONTENT:\n" . $response->getContent();
-
-} catch (\Throwable $e) {
-    echo "ERROR: " . $e->getMessage() . "\n";
-    echo "FILE: " . $e->getFile() . " LINE: " . $e->getLine() . "\n";
-    echo "TRACE:\n" . $e->getTraceAsString();
+echo "STATUS: " . $response->getStatusCode() . "\n";
+echo "APP_DEBUG: " . (config('app.debug') ? 'true' : 'false') . "\n";
+echo "APP_KEY set: " . (config('app.key') ? 'yes' : 'no') . "\n";
+echo "CONTENT LENGTH: " . strlen($response->getContent()) . "\n";
+echo "CONTENT:\n" . $response->getContent();
+echo "\n\nHEADERS:\n";
+foreach ($response->headers->all() as $key => $val) {
+    echo "$key: " . implode(', ', $val) . "\n";
 }
