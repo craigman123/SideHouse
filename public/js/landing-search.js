@@ -17,6 +17,7 @@ document.addEventListener('DOMContentLoaded', function() {
         mobileOverlay.style.display = 'block';
         mobileMenu.classList.add('open');
         document.body.style.overflow = 'hidden';
+        navToggle.setAttribute('aria-expanded', 'true');
     }
 
     function closeMobileMenu() {
@@ -25,6 +26,7 @@ document.addEventListener('DOMContentLoaded', function() {
         mobileOverlay.style.display = 'none';
         mobileMenu.classList.remove('open');
         document.body.style.overflow = '';
+        navToggle.setAttribute('aria-expanded', 'false');
     }
 
     function toggleMobileMenu() {
@@ -56,7 +58,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     // ----- Active link highlighting based on scroll -----
-    const sections = ['home', 'features', 'faq', 'bookNow'];
+    const sections = ['home', 'bookNow', 'features', 'faq', 'getMore', 'findUs'];
     const allNavLinks = document.querySelectorAll('.nav-link');
 
     function updateActiveLink() {

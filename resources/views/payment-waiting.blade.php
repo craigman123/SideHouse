@@ -33,6 +33,7 @@
             data-token="{{ $token }}"
             data-status-url="{{ $statusUrl }}"
             data-cancel-url="{{ $cancelUrl }}"
+            data-cancel-all-url="{{ $cancelAllUrl }}"
             data-reference-url="{{ $referenceUrl }}"
             data-landing-url="{{ $landingUrl }}"
             data-initial-status="{{ $booking->status }}"
@@ -80,8 +81,15 @@
 
             <div class="modal-actions" id="waitActions" @if ($booking->status !== 'pending') style="display:none;" @endif>
                 <button type="button" class="btn btn-secondary" id="waitCorrectReferenceBtn">Correct reference</button>
-                <button type="button" class="btn btn-secondary" id="waitCancelBtn">Cancel Booking</button>
+                @if ($siblingBookings->count() > 1)
+                    <button type="button" class="btn btn-danger" id="waitCancelAllBtn">Cancel all {{ $siblingBookings->count() }} dates</button>
+                @else
+                    <button type="button" class="btn btn-danger" id="waitCancelBtn">Cancel booking</button>
+                @endif
             </div>
+            @if ($siblingBookings->count() > 1)
+                <p class="payment-proof-note">This was paid as one checkout, so cancelling releases all {{ $siblingBookings->count() }} dates together. Partial date cancellation is not available.</p>
+            @endif
 
             <div class="booking-section" id="waitReferenceEditor" hidden>
                 <label class="gcash-wait-status" for="waitReferenceInput">Correct payment reference number</label>
@@ -97,6 +105,20 @@
                 <a href="{{ $landingUrl }}" class="btn btn-primary">Back to Home</a>
             </div>
         </div>
+
+        <div class="modal-overlay" id="cancelConfirmModal" role="dialog" aria-modal="true" aria-labelledby="cancelConfirmTitle" aria-hidden="true">
+            <div class="modal-box modal-box-sm" role="document">
+                <div class="modal-header">
+                    <h3 id="cancelConfirmTitle">Cancel booking?</h3>
+                    <button type="button" class="modal-close" id="cancelConfirmClose" aria-label="Close">&times;</button>
+                </div>
+                <p class="modal-text" id="cancelConfirmMessage"></p>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-secondary" id="cancelConfirmKeep">Keep booking</button>
+                    <button type="button" class="btn btn-danger" id="cancelConfirmAction">Cancel booking</button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -104,6 +126,7 @@
             const box = document.getElementById('waitingBox');
             const statusUrl = box.dataset.statusUrl + '?token=' + encodeURIComponent(box.dataset.token);
             const cancelUrl = box.dataset.cancelUrl + '?token=' + encodeURIComponent(box.dataset.token);
+            const cancelAllUrl = box.dataset.cancelAllUrl + '?token=' + encodeURIComponent(box.dataset.token);
             const referenceUrl = box.dataset.referenceUrl + '?token=' + encodeURIComponent(box.dataset.token);
             const expiresAt = box.dataset.expiresAt ? new Date(box.dataset.expiresAt).getTime() : null;
 
@@ -115,6 +138,13 @@
             const actionsEl = document.getElementById('waitActions');
             const doneActionsEl = document.getElementById('waitDoneActions');
             const cancelBtn = document.getElementById('waitCancelBtn');
+            const cancelAllBtn = document.getElementById('waitCancelAllBtn');
+            const cancelConfirmModal = document.getElementById('cancelConfirmModal');
+            const cancelConfirmTitle = document.getElementById('cancelConfirmTitle');
+            const cancelConfirmMessage = document.getElementById('cancelConfirmMessage');
+            const cancelConfirmClose = document.getElementById('cancelConfirmClose');
+            const cancelConfirmKeep = document.getElementById('cancelConfirmKeep');
+            const cancelConfirmAction = document.getElementById('cancelConfirmAction');
             const correctReferenceBtn = document.getElementById('waitCorrectReferenceBtn');
             const referenceEditor = document.getElementById('waitReferenceEditor');
             const referenceInput = document.getElementById('waitReferenceInput');
@@ -124,6 +154,28 @@
             let pollTimer = null;
             let countdownTimer = null;
             let resolved = box.dataset.initialStatus !== 'pending';
+            let pendingCancellation = null;
+
+            function closeCancelConfirm() {
+                cancelConfirmModal.classList.remove('open');
+                cancelConfirmModal.setAttribute('aria-hidden', 'true');
+                pendingCancellation = null;
+            }
+
+            function openCancelConfirm(type) {
+                const isAllDates = type === 'all';
+                pendingCancellation = isAllDates
+                    ? { url: cancelAllUrl, button: cancelAllBtn, loadingLabel: 'Cancelling all…', idleLabel: 'Cancel all dates' }
+                    : { url: cancelUrl, button: cancelBtn, loadingLabel: 'Cancelling…', idleLabel: 'Cancel booking' };
+                cancelConfirmTitle.textContent = isAllDates ? 'Cancel all dates?' : 'Cancel booking?';
+                cancelConfirmMessage.textContent = isAllDates
+                    ? 'This payment covers every date in this checkout. Cancelling will release all pending dates and cannot be undone.'
+                    : 'This will release your pending booking and cannot be undone.';
+                cancelConfirmAction.textContent = isAllDates ? 'Cancel all dates' : 'Cancel booking';
+                cancelConfirmModal.classList.add('open');
+                cancelConfirmModal.setAttribute('aria-hidden', 'false');
+                cancelConfirmAction.focus();
+            }
 
             function csrfHeaders() {
                 const metaToken = document.querySelector('meta[name="csrf-token"]')?.content;
@@ -189,17 +241,38 @@
             }
 
             cancelBtn?.addEventListener('click', async () => {
-                cancelBtn.disabled = true;
-                cancelBtn.textContent = 'Cancelling…';
+                openCancelConfirm('single');
+            });
+
+            cancelAllBtn?.addEventListener('click', async () => {
+                openCancelConfirm('all');
+            });
+
+            cancelConfirmAction?.addEventListener('click', async () => {
+                if (!pendingCancellation) return;
+                const request = pendingCancellation;
+                request.button.disabled = true;
+                request.button.textContent = request.loadingLabel;
+                cancelConfirmAction.disabled = true;
                 try {
-                    const res = await fetch(cancelUrl, { method: 'POST', headers: { Accept: 'application/json', ...csrfHeaders() } });
+                    const res = await fetch(request.url, { method: 'POST', headers: { Accept: 'application/json', ...csrfHeaders() } });
                     const data = await res.json().catch(() => ({}));
+                    if (!res.ok) throw new Error(data.message || 'Could not cancel this booking.');
+                    closeCancelConfirm();
                     showResolved(data.status === 'paid' ? 'paid' : 'cancelled');
                 } catch (err) {
                     console.error(err);
-                    cancelBtn.disabled = false;
-                    cancelBtn.textContent = 'Cancel Booking';
+                    request.button.disabled = false;
+                    request.button.textContent = request.idleLabel;
+                    cancelConfirmAction.disabled = false;
+                    cancelConfirmMessage.textContent = err.message || 'Could not cancel the booking. Please try again.';
                 }
+            });
+
+            cancelConfirmClose?.addEventListener('click', closeCancelConfirm);
+            cancelConfirmKeep?.addEventListener('click', closeCancelConfirm);
+            cancelConfirmModal?.addEventListener('click', (event) => {
+                if (event.target === cancelConfirmModal) closeCancelConfirm();
             });
 
             correctReferenceBtn?.addEventListener('click', () => {

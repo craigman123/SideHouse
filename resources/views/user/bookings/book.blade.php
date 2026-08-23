@@ -227,15 +227,22 @@
                 <div class="booking-section">
                     <p class="booking-section-label">How will you pay?</p>
                     <div class="payment-grid" id="paymentGrid">
-                        <button type="button" class="payment-btn" data-method="gcash">
+                        <button type="button" class="payment-btn payment-btn-gcash" data-method="gcash">
+                            <span class="payment-btn-icon">
+                                <img src="{{ asset('images/gcash.png') }}" alt="Gcash logo">
+                            </span>
                             <span class="payment-btn-title">GCash</span>
                             <span class="payment-btn-sub">Scan the QR code through GCash to pay</span>
                         </button>
 
-                        <button type="button" class="payment-btn" data-method="landbank">
-                            <span class="payment-btn-title">Landbank</span>
-                            <span class="payment-btn-sub">Pay via InstaPay by scanning the QR code</span>
+                        <button type="button" class="payment-btn payment-btn-maya" data-method="maya">
+                            <span class="payment-btn-icon">
+                                <img src="{{ asset('images/pay-maya.png') }}" alt="Maya logo">
+                            </span>
+                            <span class="payment-btn-title">Maya</span>
+                            <span class="payment-btn-sub">Scan the QR code through Maya to pay</span>
                         </button>
+
                     </div>
 
                     <div class="payment-qr-panel" id="gcashQrPanel">
@@ -260,7 +267,30 @@
                         </div>
                     </div>
 
-                    <div class="payment-qr-panel" id="landbankQrPanel">
+                    <div class="payment-qr-panel" id="mayaQrPanel">
+                        <p class="payment-qr-instructions">Scan this code in your Maya app to pay, then enter the reference number from the payment confirmation below.</p>
+                        <div class="payment-qr-image-wrap">
+                            <img
+                                src="{{ asset('images/qr-image.png') }}"
+                                alt="Maya payment QR code"
+                                id="mayaQrImage"
+                                class="payment-qr-image"
+                                onerror="this.hidden=true; document.getElementById('mayaQrFallback').hidden=false;"
+                            >
+                            <div class="payment-qr-fallback" id="mayaQrFallback" hidden>
+                                <span>QR code coming soon</span>
+                            </div>
+                        </div>
+
+                        <div class="payment-proof-block" id="mayaProofBlock">
+                            <label for="mayaRefNumber" class="payment-proof-label">Maya Reference Number</label>
+                            <input type="text" id="mayaRefNumber" class="payment-ref-input" placeholder="e.g. 1234 567 890123" autocomplete="off">
+                            <p class="payment-proof-note">We confirm automatically the moment we receive the payment notification — usually within a minute or two. Your booking stays pending until then.</p>
+                        </div>
+                    </div>
+
+                    {{-- Landbank payments are temporarily unavailable. --}}
+                    {{-- <div class="payment-qr-panel" id="landbankQrPanel">
                         <p class="payment-qr-instructions">Scan this code with your Landbank app (or any InstaPay-enabled app) to pay, then enter the reference number from the transfer confirmation below.</p>
                         <div class="payment-qr-image-wrap">
                             <img
@@ -280,7 +310,7 @@
                             <input type="text" id="landbankRefNumber" class="payment-ref-input" placeholder="e.g. 1234 567 890123" autocomplete="off">
                             <p class="payment-proof-note">We confirm automatically the moment the transfer notifies us — usually within a minute or two. Your booking stays pending until then.</p>
                         </div>
-                    </div>
+                    </div> --}}
                 </div>
 
                 <div class="booking-summary" id="bookingSummary">

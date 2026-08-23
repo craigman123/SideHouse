@@ -31,7 +31,7 @@ class ExpireUnconfirmedGcashBookings extends Command
 {
     protected $signature = 'bookings:expire-unconfirmed-gcash';
 
-    protected $description = 'Cancel GCash bookings that passed their confirmation window without a matching payment';
+    protected $description = 'Cancel GCash and Maya bookings that passed their confirmation window without a matching payment';
 
     public function handle(): int
     {
@@ -44,7 +44,7 @@ class ExpireUnconfirmedGcashBookings extends Command
         // it directly — silently cancelling a booking that had just been
         // paid for.
         $candidateIds = Booking::where('status', 'pending')
-            ->where('payment_method', 'gcash')
+            ->whereIn('payment_method', ['gcash', 'maya'])
             ->whereNotNull('expires_at')
             ->where('expires_at', '<', now())
             ->pluck('id');
@@ -79,15 +79,15 @@ class ExpireUnconfirmedGcashBookings extends Command
                 $booking->user_id,
                 $booking->id,
                 'Booking expired',
-                'We never received a matching GCash payment in time, so this booking was cancelled and the slot released.',
+                'We never received a matching payment in time, so this booking was cancelled and the slot released.',
             );
 
-            $this->info("Expired booking #{$booking->id} (no matching GCash payment within the window).");
+            $this->info("Expired booking #{$booking->id} (no matching payment within the window).");
             $expiredCount++;
         }
 
         if ($expiredCount === 0) {
-            $this->info('No unconfirmed GCash bookings to expire.');
+            $this->info('No unconfirmed GCash or Maya bookings to expire.');
         }
 
         return self::SUCCESS;

@@ -38,9 +38,17 @@
             data-waiting-url-template="{{ $waitingUrlTemplate }}"
             data-landing-url="{{ $landingUrl }}"
             data-google-client-id="{{ $googleClientId }}"
+            data-payment-hold-minutes="{{ $paymentHoldMinutes }}"
         >
             <div class="modal-header payment-header">
                 <h3>Almost Done</h3>
+            </div>
+
+            <div class="booking-flow-progress booking-flow-progress-checkout" aria-label="Booking progress">
+                <span class="booking-flow-step complete" data-checkout-step="1"><b>1</b>Date &amp; time</span>
+                <span class="booking-flow-step complete" data-checkout-step="2"><b>2</b>Equipment</span>
+                <span class="booking-flow-step active" data-checkout-step="3"><b>3</b>Details</span>
+                <span class="booking-flow-step" data-checkout-step="4"><b>4</b>Payment</span>
             </div>
 
             <button type="button" class="modal-back" id="backToEquipment">&larr; Back to equipment</button>
@@ -81,13 +89,14 @@
                             <span class="payment-btn-sub">Scan the QR code through Gcash to pay</span>
                         </button>
 
-                        <button type="button" class="payment-btn payment-btn-landbank" data-method="landbank">
+                        <button type="button" class="payment-btn payment-btn-maya" data-method="maya">
                             <span class="payment-btn-icon">
-                                <img src="{{ asset('images/lanbak.png') }}" alt="Landbank logo">
+                                <img src="{{ asset('images/pay-maya.png') }}" alt="Maya logo">
                             </span>
-                            <span class="payment-btn-title">Landbank</span>
-                            <span class="payment-btn-sub">Pay via InstaPay by scanning the QR code</span>
+                            <span class="payment-btn-title">Maya</span>
+                            <span class="payment-btn-sub">Scan the QR code through Maya to pay</span>
                         </button>
+
                     </div>
 
                     <div class="payment-qr-panel" id="gcashQrPanel">
@@ -112,7 +121,30 @@
                         </div>
                     </div>
 
-                    <div class="payment-qr-panel" id="landbankQrPanel">
+                    <div class="payment-qr-panel" id="mayaQrPanel">
+                        <p class="payment-qr-instructions">Scan this code in your Maya app to pay, then enter the reference number from the payment confirmation below.</p>
+                        <div class="payment-qr-image-wrap">
+                            <img
+                                src="{{ asset('images/qr-image.png') }}"
+                                alt="Maya payment QR code"
+                                id="mayaQrImage"
+                                class="payment-qr-image"
+                                onerror="this.hidden=true; document.getElementById('mayaQrFallback').hidden=false;"
+                            >
+                            <div class="payment-qr-fallback" id="mayaQrFallback" hidden>
+                                <span>QR code coming soon</span>
+                            </div>
+                        </div>
+
+                        <div class="payment-proof-block" id="mayaProofBlock">
+                            <label for="mayaRefNumber" class="payment-proof-label">Maya Reference Number</label>
+                            <input type="text" id="mayaRefNumber" class="payment-ref-input" placeholder="e.g. 1234 567 890123" autocomplete="off">
+                            <p class="payment-proof-note">We confirm automatically the moment we receive the payment notification — usually within a minute or two. Your booking stays pending until then.</p>
+                        </div>
+                    </div>
+
+                    {{-- Landbank payments are temporarily unavailable. --}}
+                    {{-- <div class="payment-qr-panel" id="landbankQrPanel">
                         <p class="payment-qr-instructions">Scan this code with your Landbank app (or any InstaPay-enabled app) to pay, then enter the reference number from the transfer confirmation below.</p>
                         <div class="payment-qr-image-wrap">
                             <img
@@ -132,19 +164,23 @@
                             <input type="text" id="landbankRefNumber" class="payment-ref-input" placeholder="e.g. 1234 567 890123" autocomplete="off">
                             <p class="payment-proof-note">We confirm automatically the moment the transfer notifies us — usually within a minute or two. Your booking stays pending until then.</p>
                         </div>
-                    </div>
+                    </div> --}}
                 </div>
 
                 <div class="booking-summary" id="bookingSummary">
-                    <p class="booking-summary-title">Booking Summary</p>
+                    <p class="booking-summary-title">Final review</p>
                     @foreach ($dateSummaries as $line)
                         <p>{{ $line }}</p>
                     @endforeach
+                    <p>Court rental <strong>PHP {{ number_format($courtAmount, 2) }}</strong></p>
                     @if ($equipmentLines->isNotEmpty())
                         <p>Equipment: <strong>{{ $equipmentLines->map(fn ($l) => "{$l['name']} ×{$l['quantity']}")->implode(', ') }}</strong></p>
                     @endif
+                    <p>Equipment rental <strong>PHP {{ number_format($equipmentAmount, 2) }}</strong></p>
+                    <p>Member discount <strong>Not applied to guest bookings</strong></p>
                     <p>Payment: <strong id="summaryPayment">&mdash;</strong></p>
                     <p class="booking-summary-total">Total: <strong>₱{{ number_format($totalAmount, 2) }}</strong></p>
+                    <p class="payment-confidence-note"><strong>Your slot is held for {{ $paymentHoldMinutes }} minutes after confirmation.</strong> Enter the reference exactly as shown in your payment app. Confirmation usually arrives within a few minutes; if it is delayed, you can safely keep this page open while we check it automatically.</p>
                 </div>
             </div>
 

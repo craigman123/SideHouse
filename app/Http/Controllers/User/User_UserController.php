@@ -434,7 +434,7 @@ class User_UserController extends Controller
             'date'           => ['required', 'date', 'after_or_equal:today'],
             'slots'          => ['required', 'array', 'min:1', 'max:60'],
             'slots.*'        => ['required', 'date_format:Y-m-d H:i', 'distinct'],
-            'payment_method' => ['required', 'in:gcash,landbank'],
+            'payment_method' => ['required', 'in:gcash,maya'],
             'contact_number' => ['required', 'string', 'max:30', 'regex:/^[0-9+\-\s()]{7,30}$/'],
             'equipment'            => ['array'],
             'equipment.*.id'       => ['required_with:equipment', 'integer', 'exists:equipment,id'],

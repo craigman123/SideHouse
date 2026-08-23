@@ -527,6 +527,7 @@ class GuestBookingController extends Controller
             'courtAmount'        => $courtAmount,
             'equipmentAmount'    => $equipmentAmount,
             'totalAmount'        => $totalAmount,
+            'paymentHoldMinutes' => PaymentWindows::BOOKING_EXPIRY_MINUTES,
             'storeUrl'           => route('guest.book.store'),
             'waitingUrlTemplate' => route('guest.book.waiting', ['booking' => '__ID__']),
             'landingUrl'         => route('landing'),
@@ -566,7 +567,7 @@ class GuestBookingController extends Controller
             // reference number below, when there's more than one
             // same-amount checkout pending at once) against the SMS
             // receipt for whichever method was selected.
-            'payment_method' => ['required', 'in:gcash,landbank'],
+            'payment_method' => ['required', 'in:gcash,maya'],
             'guest_name'     => ['required', 'string', 'max:255'],
             // Loose on purpose (7–30 digits/spaces/dashes/parens/+) since
             // this needs to accept PH mobile numbers in several common
@@ -916,6 +917,7 @@ class GuestBookingController extends Controller
             'token'           => $token,
             'statusUrl'       => route('guest.book.status', ['booking' => $booking->id]),
             'cancelUrl'       => route('guest.book.cancel', ['booking' => $booking->id]),
+            'cancelAllUrl'    => route('guest.book.cancel-all', ['booking' => $booking->id]),
             'referenceUrl'    => route('guest.book.update-reference', ['booking' => $booking->id]),
             'landingUrl'      => route('landing'),
         ]);
@@ -938,6 +940,16 @@ class GuestBookingController extends Controller
             abort(403);
         }
 
+        $pendingSiblingCount = Booking::where('payment_reference_id', $booking->payment_reference_id)
+            ->where('status', 'pending')
+            ->count();
+
+        if ($pendingSiblingCount > 1) {
+            return response()->json([
+                'message' => 'This checkout includes multiple dates and must be cancelled all at once.',
+            ], 422);
+        }
+
         if ($booking->status === 'pending') {
             $booking->update(['status' => 'cancelled']);
 
@@ -957,6 +969,40 @@ class GuestBookingController extends Controller
         return response()->json([
             'status' => $booking->status,
         ]);
+    }
+
+    /** Cancel every still-pending date attached to this one checkout. */
+    public function cancelAll(Request $request, Booking $booking)
+    {
+        $token = (string) $request->query('token', '');
+
+        if ($token === '' || ! $booking->poll_token || ! hash_equals($booking->poll_token, $token)) {
+            abort(403);
+        }
+
+        $cancelled = 0;
+        DB::transaction(function () use ($booking, &$cancelled) {
+            $siblings = Booking::where('payment_reference_id', $booking->payment_reference_id)
+                ->where('status', 'pending')
+                ->lockForUpdate()
+                ->get();
+
+            foreach ($siblings as $sibling) {
+                $sibling->update(['status' => 'cancelled']);
+                $cancelled++;
+            }
+        });
+
+        if ($cancelled > 0) {
+            ActivityLogger::log(
+                'booking.cancelled_all',
+                sprintf('%s cancelled %d pending booking date(s) from one checkout.', $booking->customer_name, $cancelled),
+                actor: null,
+                subject: $booking,
+            );
+        }
+
+        return response()->json(['status' => 'cancelled', 'cancelled' => $cancelled]);
     }
 
     /**

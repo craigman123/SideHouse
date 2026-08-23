@@ -106,7 +106,10 @@ class GcashWebhookController extends Controller
             // query and the update below, and we'd happily mark a
             // cancelled booking's payment confirmed.
             $candidates = PaymentReference::whereNull('confirmed_at')
-                ->where('payment_method', 'gcash')
+                // Maya payments use the same QR Ph merchant QR, so the
+                // receiving GCash account sends this notification for
+                // both GCash and Maya payer apps.
+                ->whereIn('payment_method', ['gcash', 'maya'])
                 ->where('amount', $amount)
                 ->where('created_at', '>=', now()->subMinutes($matchWindow))
                 ->orderBy('created_at')
@@ -190,7 +193,7 @@ class GcashWebhookController extends Controller
             // number confirm a second payment. Bounded to the last day
             // rather than the whole table.
             if ($normalizedRef !== null && $normalizedRef !== '') {
-                $alreadyUsed = PaymentReference::where('payment_method', 'gcash')
+                $alreadyUsed = PaymentReference::whereIn('payment_method', ['gcash', 'maya'])
                     ->whereNotNull('confirmed_at')
                     ->where('id', '!=', $paymentReference->id)
                     ->where('created_at', '>=', now()->subDay())

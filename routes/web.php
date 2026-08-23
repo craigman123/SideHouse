@@ -22,6 +22,19 @@ use App\Http\Controllers\Admin\DatabaseQueryController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Guest\PaymongoQrPhController;
+ 
+Route::post('/guest-book/payment/qrph', [PaymongoQrPhController::class, 'createQr'])
+    ->name('guest.book.payment.qrph');
+ 
+// No CSRF/auth middleware on the webhook route — PayMongo calls this
+// server-to-server, it won't have your session cookie or CSRF token.
+// If your VerifyCsrfToken middleware applies globally, add this route's
+// URI to the $except array there instead of removing middleware here.
+Route::post('/guest-book/payment/qrph/webhook', [PaymongoQrPhController::class, 'webhook'])
+    ->name('guest.book.payment.qrph.webhook')
+    ->withoutMiddleware(['web']);
+ 
 
 Route::get('/cron/run-reminders', function (Request $request) {
     abort_unless($request->query('token') === config('services.cron_secret.secret'), 403);
@@ -50,6 +63,7 @@ Route::get('/guest/bookings/{booking}/status', [GuestBookingController::class, '
 Route::get('/guest/bookings/{booking}/waiting', [GuestBookingController::class, 'waiting'])->name('guest.book.waiting');
 Route::get('/guest/bookings/search', [GuestBookingController::class, 'search'])->name('guest.book.search');
 Route::post('/guest/bookings/{booking}/cancel', [GuestBookingController::class, 'cancel'])->name('guest.book.cancel');
+Route::post('/guest/bookings/{booking}/cancel-all', [GuestBookingController::class, 'cancelAll'])->name('guest.book.cancel-all');
 Route::put('/guest/bookings/{booking}/reference', [GuestBookingController::class, 'updateReference'])->name('guest.book.update-reference');
 Route::post('/webhooks/gcash-sms', [GcashWebhookController::class, 'handleSms'])
     ->middleware('throttle:30,1');

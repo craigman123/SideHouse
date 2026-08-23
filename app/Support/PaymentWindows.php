@@ -44,6 +44,7 @@ final class PaymentWindows
 
     private const MATCH_WINDOW_MINUTES = [
         'gcash'    => 40,
+        'maya'     => 40,
         'landbank' => 40,
     ];
 

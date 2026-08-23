@@ -406,9 +406,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const gcashQrPanel = document.getElementById('gcashQrPanel');
     const gcashRefInput = document.getElementById('gcashRefNumber');
     const gcashProofBlock = document.getElementById('gcashProofBlock');
-    const landbankQrPanel = document.getElementById('landbankQrPanel');
-    const landbankRefInput = document.getElementById('landbankRefNumber');
-    const landbankProofBlock = document.getElementById('landbankProofBlock');
+    const mayaQrPanel = document.getElementById('mayaQrPanel');
+    const mayaRefInput = document.getElementById('mayaRefNumber');
+    const mayaProofBlock = document.getElementById('mayaProofBlock');
     const gcashWaitModal = document.getElementById('gcashWaitModal');
     const gcashWaitTitle = document.getElementById('gcashWaitTitle');
     const gcashWaitAmount = document.getElementById('gcashWaitAmount');
@@ -424,17 +424,17 @@ document.addEventListener('DOMContentLoaded', () => {
     const summaryTotal = document.getElementById('summaryTotal');
     const confirmBtn = document.getElementById('confirmBooking');
 
-    const PAYMENT_LABELS = { gcash: 'GCash', landbank: 'Landbank' };
+    const PAYMENT_LABELS = { gcash: 'GCash', maya: 'Maya' };
 
-    // Every current payment method (GCash, Landbank) works the same way:
+    // Every current payment method (GCash, Maya) works the same way:
     // a QR panel opens under the selected button, and the backend
     // requires a guest-entered reference number regardless of which one
     // — see GuestBookingController::store()'s 'payment_reference' rule,
     // which is unconditionally 'required'. These maps let the rest of
     // the payment code stay generic instead of branching on method name.
-    const QR_PANELS = { gcash: gcashQrPanel, landbank: landbankQrPanel };
-    const REF_INPUTS = { gcash: gcashRefInput, landbank: landbankRefInput };
-    const PROOF_BLOCKS = { gcash: gcashProofBlock, landbank: landbankProofBlock };
+    const QR_PANELS = { gcash: gcashQrPanel, maya: mayaQrPanel };
+    const REF_INPUTS = { gcash: gcashRefInput, maya: mayaRefInput };
+    const PROOF_BLOCKS = { gcash: gcashProofBlock, maya: mayaProofBlock };
 
     function getActiveRefInput() {
         return selectedPayment ? REF_INPUTS[selectedPayment] || null : null;
@@ -476,6 +476,54 @@ document.addEventListener('DOMContentLoaded', () => {
     let googleIdToken = null; // raw JWT from Google — sent as-is, verified server-side
     let googleEmail = ''; // decoded from the token, for display only (never trusted on its own)
     const CHECKOUT_DRAFT_KEY = 'sidehouse_guest_checkout_draft';
+
+    const selectionDateTime = document.getElementById('selectionDateTime');
+    const selectionEquipment = document.getElementById('selectionEquipment');
+    const selectionTotal = document.getElementById('selectionTotal');
+    const equipmentSelectedTime = document.getElementById('equipmentSelectedTime');
+    const equipmentSelectedTotal = document.getElementById('equipmentSelectedTotal');
+
+    function updateBookingProgress(step) {
+        document.querySelectorAll('[data-booking-step]').forEach((item) => {
+            const itemStep = Number(item.dataset.bookingStep);
+            item.classList.toggle('active', itemStep === step);
+            item.classList.toggle('complete', itemStep < step);
+        });
+    }
+
+    function updateSelectionSummary() {
+        const equipmentLines = Object.entries(equipmentSelection)
+            .map(([id, quantity]) => {
+                const item = equipmentCatalog.find((candidate) => String(candidate.id) === String(id));
+                return item ? `${item.name} ×${quantity}` : null;
+            })
+            .filter(Boolean);
+        const equipmentTotal = Object.entries(equipmentSelection).reduce((total, [id, quantity]) => {
+            const item = equipmentCatalog.find((candidate) => String(candidate.id) === String(id));
+            return total + (item ? Number(item.price) * Number(quantity) : 0);
+        }, 0);
+        const total = slotPrice() * selectedSlots.length + equipmentTotal;
+
+        if (selectionDateTime && selectionEquipment && selectionTotal) {
+            if (!selectedSlots.length) {
+                selectionDateTime.textContent = 'Choose a date and time';
+            } else {
+                const labels = selectedSlots.map((key) => `${formatDate(key.slice(0, 10))} ${formatCompactTime(key.slice(11))}`);
+                selectionDateTime.textContent = labels.length <= 2
+                    ? labels.join(', ')
+                    : `${labels.length} hours selected across ${new Set(selectedSlots.map((key) => key.slice(0, 10))).size} date(s)`;
+            }
+            selectionEquipment.textContent = equipmentLines.length ? equipmentLines.join(', ') : 'None selected';
+            selectionTotal.textContent = `₱${total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        }
+
+        if (equipmentSelectedTime) {
+            equipmentSelectedTime.textContent = selectedSlots.length ? formatSelectedSlotsSummary(' | ') : 'No time selected';
+        }
+        if (equipmentSelectedTotal) {
+            equipmentSelectedTotal.textContent = `Current total: ₱${total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        }
+    }
 
     const pad = (n) => n.toString().padStart(2, '0');
     const todayStr = () => new Date().toISOString().slice(0, 10);
@@ -671,7 +719,7 @@ document.addEventListener('DOMContentLoaded', () => {
         clearGoogleSignIn();
         equipmentSelection = {};
         if (gcashRefInput) gcashRefInput.value = '';
-        if (landbankRefInput) landbankRefInput.value = '';
+        if (mayaRefInput) mayaRefInput.value = '';
         resetBookingState();
         if (restoreCheckoutDraft()) {
             renderCalendar();
@@ -698,6 +746,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function openEquipmentModal() {
+        updateBookingProgress(2);
         equipmentModal.classList.add('open');
         loadEquipment();
         syncNavVisibilityForModals();
@@ -709,6 +758,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function openTimePickerModal() {
+        updateBookingProgress(1);
         timePickerModal.classList.add('open');
         if (timeSlotGrid) timeSlotGrid.scrollTop = 0;
         syncNavVisibilityForModals();
@@ -787,6 +837,7 @@ document.addEventListener('DOMContentLoaded', () => {
         bookedRanges = ranges;
         renderTimeSlots();
         updateTimePickerFee();
+        updateSelectionSummary();
     }
 
 
@@ -907,6 +958,8 @@ document.addEventListener('DOMContentLoaded', () => {
         calendarCursor = new Date();
         paymentGrid?.querySelectorAll('.payment-btn').forEach((el) => el.classList.remove('selected'));
         syncPaymentQrPanels();
+        updateBookingProgress(1);
+        updateSelectionSummary();
         closeTimePickerModal();
     }
 
@@ -1441,6 +1494,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         renderTimeSlots();
         updateTimePickerFee();
+        updateSelectionSummary();
     }
 
     // Running fee shown under the hour list — collapses the selected
@@ -1485,6 +1539,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const data = await res.json();
             equipmentCatalog = data.equipment || [];
             renderEquipment();
+            updateSelectionSummary();
         } catch (err) {
             console.error(err);
             equipmentGrid.innerHTML = '<p class="loading-text">Couldn\'t load equipment right now.</p>';
@@ -1573,6 +1628,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (next === 0) delete equipmentSelection[item.id];
             else equipmentSelection[item.id] = next;
             renderEquipment();
+            updateSelectionSummary();
         });
 
         incBtn.addEventListener('click', () => {
@@ -1580,6 +1636,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (current >= item.available) return;
             equipmentSelection[item.id] = current + 1;
             renderEquipment();
+            updateSelectionSummary();
         });
 
         stepper.appendChild(decBtn);
@@ -1751,7 +1808,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         document.querySelector('.guest-email-block').classList.remove('guest-email-block-invalid');
         gcashProofBlock?.classList.remove('payment-proof-invalid');
-        landbankProofBlock?.classList.remove('payment-proof-invalid');
+        mayaProofBlock?.classList.remove('payment-proof-invalid');
 
         if (!selectedCourt || !selectedDate || selectedSlots.length < MIN_DURATION) return;
 

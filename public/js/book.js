@@ -109,9 +109,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const gcashQrPanel = document.getElementById('gcashQrPanel');
     const gcashRefInput = document.getElementById('gcashRefNumber');
     const gcashProofBlock = document.getElementById('gcashProofBlock');
-    const landbankQrPanel = document.getElementById('landbankQrPanel');
-    const landbankRefInput = document.getElementById('landbankRefNumber');
-    const landbankProofBlock = document.getElementById('landbankProofBlock');
+    const mayaQrPanel = document.getElementById('mayaQrPanel');
+    const mayaRefInput = document.getElementById('mayaRefNumber');
+    const mayaProofBlock = document.getElementById('mayaProofBlock');
     const gcashWaitTitle = document.getElementById('gcashWaitTitle');
     const gcashWaitAmount = document.getElementById('gcashWaitAmount');
     const gcashWaitStatus = document.getElementById('gcashWaitStatus');
@@ -126,10 +126,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const summaryTotal = document.getElementById('summaryTotal');
     const confirmBtn = document.getElementById('confirmBooking');
 
-    const PAYMENT_LABELS = { gcash: 'GCash', landbank: 'Landbank' };
-    const QR_PANELS = { gcash: gcashQrPanel, landbank: landbankQrPanel };
-    const REF_INPUTS = { gcash: gcashRefInput, landbank: landbankRefInput };
-    const PROOF_BLOCKS = { gcash: gcashProofBlock, landbank: landbankProofBlock };
+    const PAYMENT_LABELS = { gcash: 'GCash', maya: 'Maya' };
+    const QR_PANELS = { gcash: gcashQrPanel, maya: mayaQrPanel };
+    const REF_INPUTS = { gcash: gcashRefInput, maya: mayaRefInput };
+    const PROOF_BLOCKS = { gcash: gcashProofBlock, maya: mayaProofBlock };
 
     function getActiveRefInput() {
         return selectedPayment ? REF_INPUTS[selectedPayment] || null : null;
@@ -1021,7 +1021,7 @@ document.addEventListener('DOMContentLoaded', () => {
         contactNumberInput.value = userPhone || '';
         equipmentSelection = {};
         if (gcashRefInput) gcashRefInput.value = '';
-        if (landbankRefInput) landbankRefInput.value = '';
+        if (mayaRefInput) mayaRefInput.value = '';
         resetBookingState();
     }
 
@@ -1117,7 +1117,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
         gcashProofBlock?.classList.remove('payment-proof-invalid');
-        landbankProofBlock?.classList.remove('payment-proof-invalid');
+        mayaProofBlock?.classList.remove('payment-proof-invalid');
 
         if (!selectedCourt || !selectedDate || selectedSlots.length < MIN_DURATION) return;
 

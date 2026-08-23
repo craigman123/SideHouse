@@ -1591,6 +1591,93 @@ a.footer-contact:hover {
    color tokens and card language as landing.css's .feature-card grid
    instead of introducing a new palette. */
 
+/* ---------- Booking progress and persistent selection ---------- */
+
+.booking-flow-progress {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 8px;
+    margin: 0 0 18px;
+}
+
+.booking-flow-step {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    min-width: 0;
+    padding: 8px 6px;
+    border: 1px solid #30363d;
+    border-radius: 8px;
+    color: #8b949e;
+    font-size: 11px;
+    font-weight: 700;
+    text-align: center;
+}
+
+.booking-flow-step b {
+    display: grid;
+    place-items: center;
+    width: 18px;
+    height: 18px;
+    flex: 0 0 auto;
+    border-radius: 50%;
+    background: #30363d;
+    color: #c9d1d9;
+    font-size: 10px;
+}
+
+.booking-flow-step.active { border-color: #3fb950; color: #f0f6fc; background: rgba(63, 185, 80, .1); }
+.booking-flow-step.active b, .booking-flow-step.complete b { background: #238636; color: #fff; }
+.booking-flow-step.complete { color: #c9d1d9; }
+
+.booking-selection-summary {
+    position: sticky;
+    bottom: 16px;
+    z-index: 2;
+    margin-top: 18px;
+    padding: 14px 16px;
+    border: 1px solid #3fb950;
+    border-radius: 10px;
+    background: #161b22;
+    box-shadow: 0 10px 28px rgba(0, 0, 0, .28);
+}
+
+.booking-selection-summary-title { margin: 0 0 8px; color: #3fb950; font-size: 12px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
+.booking-selection-summary p:not(.booking-selection-summary-title) { display: flex; justify-content: space-between; gap: 16px; margin: 0; padding: 7px 0; border-top: 1px solid #21262d; color: #8b949e; font-size: 13px; }
+.booking-selection-summary strong { max-width: 65%; color: #f0f6fc; text-align: right; overflow-wrap: anywhere; }
+.booking-selection-summary .booking-selection-total { color: #f0f6fc; font-weight: 700; }
+.booking-selection-summary .booking-selection-total strong { color: #3fb950; font-size: 16px; }
+
+.booking-flow-progress-checkout { margin: 0 24px 12px; }
+
+.equipment-booking-recap {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin: 0 0 14px;
+    padding: 10px 12px;
+    border: 1px solid #30363d;
+    border-radius: 8px;
+    background: #0d1117;
+    color: #c9d1d9;
+    font-size: 12px;
+}
+
+.equipment-booking-recap span { overflow-wrap: anywhere; }
+.equipment-booking-recap strong { color: #3fb950; font-size: 13px; text-align: right; }
+
+.payment-confidence-note { margin-top: 14px !important; padding: 12px !important; border: 1px solid rgba(63, 185, 80, .4) !important; border-radius: 8px; background: rgba(63, 185, 80, .08); color: #c9d1d9 !important; font-size: 12px !important; line-height: 1.55; }
+.payment-confidence-note strong { color: #3fb950 !important; }
+
+@media (max-width: 480px) {
+    .booking-flow-progress { gap: 4px; }
+    .booking-flow-step { gap: 3px; padding: 7px 3px; font-size: 9px; }
+    .booking-flow-step b { width: 16px; height: 16px; font-size: 9px; }
+    .booking-flow-progress-checkout { margin: 0 16px 12px; }
+}
+
 #paymentPage .booking-section {
     background-color: #161b22;
     border: 1px solid #30363d;
@@ -1652,8 +1739,9 @@ a.footer-contact:hover {
     border-color: #3fb950;
 }
 
-#paymentPage .payment-btn-gcash { border-top-color: #3fb950; }
+#paymentPage .payment-btn-gcash { border-top-color: #2b4ea2; }
 #paymentPage .payment-btn-landbank { border-top-color: #0051ff; }
+#paymentPage .payment-btn-maya { border-top-color: #00ffa2; }
 
 #paymentPage .payment-btn.selected {
     border-color: #3fb950;
@@ -1673,7 +1761,6 @@ a.footer-contact:hover {
 }
 
 #paymentPage .payment-btn-icon img {
-    width: 100%;
     height: 100%;
     object-fit: cover;
     border-radius: 10px;

@@ -107,6 +107,19 @@ body {
     flex-wrap: wrap;
 }
 
+.hero-visit-details {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px 18px;
+    margin-top: 20px;
+    color: #8b949e;
+    font-size: 13px;
+}
+
+.hero-visit-details a { color: #3fb950; font-weight: 700; text-decoration: none; }
+.hero-visit-details a:hover { text-decoration: underline; }
+
 .btn-hero-primary {
     padding: 14px 32px;
     background-color: #238636;
@@ -259,5 +272,14 @@ body {
 
     .features {
         grid-template-columns: 1fr;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: .01ms !important;
+        animation-iteration-count: 1 !important;
+        scroll-behavior: auto !important;
+        transition-duration: .01ms !important;
     }
 }

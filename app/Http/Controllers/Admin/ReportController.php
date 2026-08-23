@@ -21,6 +21,7 @@ class ReportController extends Controller
     private const PAYMENT_LABELS = [
         'gcash' => 'GCash',
         'landbank' => 'Landbank',
+        'maya' => 'Maya',
     ];
 
     /**

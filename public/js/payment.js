@@ -1,5 +1,5 @@
 (function () {
-    const PAYMENT_LABELS = { gcash: 'GCash', landbank: 'Landbank' };
+    const PAYMENT_LABELS = { gcash: 'GCash', maya: 'Maya' };
 
     const box = document.getElementById('paymentPage');
     const courtId = box.dataset.courtId;
@@ -22,11 +22,12 @@
     const gcashQrPanel = document.getElementById('gcashQrPanel');
     const gcashRefInput = document.getElementById('gcashRefNumber');
     const gcashProofBlock = document.getElementById('gcashProofBlock');
-    const landbankQrPanel = document.getElementById('landbankQrPanel');
-    const landbankRefInput = document.getElementById('landbankRefNumber');
-    const landbankProofBlock = document.getElementById('landbankProofBlock');
+    const mayaQrPanel = document.getElementById('mayaQrPanel');
+    const mayaRefInput = document.getElementById('mayaRefNumber');
+    const mayaProofBlock = document.getElementById('mayaProofBlock');
     const summaryPayment = document.getElementById('summaryPayment');
     const confirmBtn = document.getElementById('confirmBooking');
+    const checkoutSteps = document.querySelectorAll('[data-checkout-step]');
 
     let selectedPayment = null;
     let googleIdToken = null;
@@ -104,20 +105,27 @@
     // ---------- Payment method selection ----------
 
     function syncPaymentQrPanels() {
-        gcashQrPanel.classList.toggle('open', selectedPayment === 'gcash');
-        landbankQrPanel.classList.toggle('open', selectedPayment === 'landbank');
+        gcashQrPanel?.classList.toggle('open', selectedPayment === 'gcash');
+        mayaQrPanel?.classList.toggle('open', selectedPayment === 'maya');
         summaryPayment.textContent = selectedPayment ? PAYMENT_LABELS[selectedPayment] : '—';
+        if (selectedPayment) {
+            checkoutSteps.forEach((step) => {
+                const stepNumber = Number(step.dataset.checkoutStep);
+                step.classList.toggle('active', stepNumber === 4);
+                step.classList.toggle('complete', stepNumber < 4);
+            });
+        }
     }
 
     function getActiveRefInput() {
         if (selectedPayment === 'gcash') return gcashRefInput;
-        if (selectedPayment === 'landbank') return landbankRefInput;
+        if (selectedPayment === 'maya') return mayaRefInput;
         return null;
     }
 
     function getActiveProofBlock() {
         if (selectedPayment === 'gcash') return gcashProofBlock;
-        if (selectedPayment === 'landbank') return landbankProofBlock;
+        if (selectedPayment === 'maya') return mayaProofBlock;
         return null;
     }
 
@@ -269,7 +277,7 @@
         }
         document.querySelector('.guest-email-block')?.classList.remove('guest-email-block-invalid');
         gcashProofBlock?.classList.remove('payment-proof-invalid');
-        landbankProofBlock?.classList.remove('payment-proof-invalid');
+        mayaProofBlock?.classList.remove('payment-proof-invalid');
 
         confirmBtn.disabled = true;
         const originalLabel = confirmBtn.textContent;

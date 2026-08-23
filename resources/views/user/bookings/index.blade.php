@@ -64,6 +64,7 @@
                                 {{ match ($booking->payment_method) {
                                     'gcash' => 'GCash',
                                     'landbank' => 'Landbank',
+                                    'maya' => 'Maya',
                                     default => ucfirst($booking->payment_method ?? 'Unknown'),
                                 } }}
                             </td>

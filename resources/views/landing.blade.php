@@ -36,7 +36,7 @@
             <div class="nav-center">
                 <div class="nav-links">
                     <a href="#" class="nav-link active">Home</a>
-                    <a href="#bookNow" class="nav-link">Rates</a>
+                    <a href="#bookNow" class="nav-link">Book a Court</a>
                     <a href="#features" class="nav-link">Features</a>
                     <a href="#faq" class="nav-link">FAQ</a>
                     <a href="#findUs" class="nav-link">Find Us</a>
@@ -67,7 +67,7 @@
         <div class="nav-mobile-panel">
             <div class="nav-links">
                 <a href="#" class="nav-link active">Home</a>
-                <a href="#bookNow" class="nav-link">Rates</a>
+                    <a href="#bookNow" class="nav-link">Book a Court</a>
                 <a href="#features" class="nav-link">Features</a>
                 <a href="#faq" class="nav-link">FAQ</a>
                 <a href="#findUs" class="nav-link">Find Us</a>
@@ -102,6 +102,12 @@
 
             <div class="hero-actions">
                 <a href="#bookNow" class="btn-hero-primary">Book Now</a>
+            </div>
+
+            <div class="hero-visit-details" aria-label="Venue details">
+                <span>Open {{ \Carbon\Carbon::createFromTime($openHour)->format('g A') }}–{{ \Carbon\Carbon::createFromTime($closeHour)->format('g A') }}</span>
+                <span>423 Tabay, Tunghaan, Minglanilla</span>
+                <a href="https://www.google.com/maps/dir/?api=1&destination=10.246043101731798,123.78949399013447" target="_blank" rel="noopener noreferrer">Get directions</a>
             </div>
 
             <a href="#bookNow" class="scroll-cue" aria-label="Scroll to booking">
@@ -151,6 +157,12 @@
                 <p class="empty-state">No courts available right now — check back soon.</p>
             @else
                 <div class="book-now-widget">
+                    <div class="booking-flow-progress" aria-label="Booking progress">
+                        <span class="booking-flow-step active" data-booking-step="1"><b>1</b>Date &amp; time</span>
+                        <span class="booking-flow-step" data-booking-step="2"><b>2</b>Equipment</span>
+                        <span class="booking-flow-step" data-booking-step="3"><b>3</b>Details</span>
+                        <span class="booking-flow-step" data-booking-step="4"><b>4</b>Payment</span>
+                    </div>
                     <div class="booking-section">
                         <p class="booking-section-label">Pick a date</p>
                         <div class="calendar">
@@ -165,6 +177,13 @@
                             <div class="calendar-grid" id="calendarGrid"></div>
                         </div>
                     </div>
+                    <aside class="booking-selection-summary" id="bookingSelectionSummary" aria-live="polite">
+                        <p class="booking-selection-summary-title">Your selection</p>
+                        <p><span>Court</span><strong id="selectionCourt">{{ $courts->first()->name }}</strong></p>
+                        <p><span>Date &amp; time</span><strong id="selectionDateTime">Choose a date and time</strong></p>
+                        <p><span>Equipment</span><strong id="selectionEquipment">None selected</strong></p>
+                        <p class="booking-selection-total"><span>Estimated total</span><strong id="selectionTotal">₱0.00</strong></p>
+                    </aside>
                 </div>
             @endif
         </section>
@@ -298,7 +317,7 @@
                     </button>
                     <div class="faq-answer-wrap">
                         <div class="faq-answer">
-                            <p>We currently accept GCash and Landbank payments.</p>
+                            <p>We currently accept GCash and Maya payments.</p>
                         </div>
                     </div>
                 </div>
@@ -319,9 +338,9 @@
             </div>
         </section>
 
-        <section class="member-cta fade-in">
+        <section class="member-cta fade-in" id="getMore">
             <div class="member-cta-inner">
-                <h2 id="getMore">Get More From Every Visit</h2>
+                <h2>Get More From Every Visit</h2>
                 <p>Create a free Side House account to view a detailed history of your bookings, rebook your favorite court and time slot in a single click, and unlock member-only perks like hourly rates discounts and discounted equipment rentals. It only takes a minute.</p>
                 <a href="{{ route('register') }}" class="btn-hero-primary">Create Your Account</a>
                 <p class="member-cta-sub">Already have an account? <a href="{{ route('login') }}">Log in</a></p>
@@ -460,6 +479,10 @@
             <button type="button" class="modal-back" id="backToBookingFromEquipment">&larr; Back to date &amp; time</button>
 
             <div class="modal-scroll-body">
+                <div class="equipment-booking-recap" aria-live="polite">
+                    <span id="equipmentSelectedTime">No time selected</span>
+                    <strong id="equipmentSelectedTotal">₱0.00</strong>
+                </div>
                 <div class="booking-section">
                     <p class="booking-section-label">Need a racket or paddle? (optional)</p>
                     <div class="equipment-grid" id="equipmentGrid">
