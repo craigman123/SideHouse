@@ -11,16 +11,16 @@ use App\Http\Controllers\Admin\CustomerController;
 use App\Http\Controllers\Admin\EquipmentAvailabilityController;
 use App\Http\Controllers\Admin\ReportController;
 use App\Http\Controllers\Auth\AuthController;
+use App\Http\Controllers\BookingCronController;
 use App\Http\Controllers\Guest\GuestBookingController;
+use App\Http\Controllers\Guest\PaymongoQrPhController;
 use App\Http\Controllers\User\FeedbackController;
 use App\Http\Controllers\User\NotificationController;
 use App\Http\Controllers\User\User_UserController;
 use App\Http\Controllers\User\UserDashboardController;
-use App\Http\Controllers\Admin\DatabaseQueryController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\Guest\PaymongoQrPhController;
 
 Route::middleware('throttle:10,1')->group(function () {
     Route::post('/guest-book', [GuestBookingController::class, 'store'])->name('guest.book.store');
@@ -39,20 +39,12 @@ Route::post('/guest-book/payment/qrph/webhook', [PaymongoQrPhController::class, 
 Route::post('/guest/bookings/{booking}/update-reference', [GuestBookingController::class, 'updateReference'])
     ->name('guest.book.update-reference');
 
-Route::get('/cron/run-reminders', function (Request $request) {
-    abort_unless($request->query('token') === config('services.cron_secret.secret'), 403);
+Route::get('/cron/expire-unconfirmed', [BookingCronController::class, 'expireUnconfirmed'])
+    ->middleware('cron.auth');
 
-    Artisan::call('bookings:expire-unconfirmed-qrph');
-    Artisan::call('bookings:send-in-app-reminders');
-    Artisan::call('bookings:send-email-reminders');
-    Artisan::call('queue:work', [
-        '--stop-when-empty' => true,
-        '--max-time' => 20,
-        '--tries' => 3,
-    ]);
-
-    return response('ok');
-});
+Route::get('/cron/run-reminders', [BookingCronController::class, 'runReminders'])
+    ->middleware('cron.auth')
+    ->middleware('throttle:30,1');
 
 
 Route::get('/', [GuestBookingController::class, 'landing'])->name('landing');
@@ -81,23 +73,20 @@ Route::get('/guest-book/payment', [GuestBookingController::class, 'paymentPage']
 // re-add a bare Route::post('/guest-book', ...) here.
 
 Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
-Route::post('/login', [AuthController::class, 'login'])->name('login.submit');
+Route::post('/login', [AuthController::class, 'login'])
+    ->middleware('throttle:login')
+    ->name('login.submit');
 
 Route::get('/register', [AuthController::class, 'showRegister'])->name('register');
-Route::post('/register', [AuthController::class, 'register'])->name('register.submit');
+Route::post('/register', [AuthController::class, 'register'])
+    ->middleware('throttle:register')
+    ->name('register.submit');
 
 Route::post('/auth/google', [AuthController::class, 'googleAuth'])->middleware('throttle:15,1')->name('auth.google');
 
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
 Route::middleware(['auth', 'admin'])->group(function () {
-    Route::get('/database-query', [DatabaseQueryController::class, 'index'])->name('admin.database.query');
-    Route::post('/database-query/execute', [DatabaseQueryController::class, 'execute'])->name('admin.database.execute');
-    Route::post('/database-query/describe', [DatabaseQueryController::class, 'describe'])->name('admin.database.describe');
-    Route::post('/database-query/preview', [DatabaseQueryController::class, 'preview'])->name('admin.database.preview');
-    Route::post('/database-query/export', [DatabaseQueryController::class, 'export'])->name('admin.database.export');
-    Route::delete('/database-query/recent', [DatabaseQueryController::class, 'clearRecentQueries'])->name('admin.database.clear-recent');
-
     Route::get('/dashboard', [Admin_DashboardController::class, 'index'])->name('admin.dashboard');
 
     // Bookings CRUD
@@ -147,7 +136,7 @@ Route::middleware(['auth', 'admin'])->group(function () {
 
 });
 
-Route::middleware('auth')->group(function () {
+Route::middleware(['auth', 'user'])->group(function () {
     Route::get('/my-dashboard', [UserDashboardController::class, 'index'])->name('user.dashboard');
 
     // Book a court

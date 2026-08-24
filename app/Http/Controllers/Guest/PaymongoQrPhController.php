@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Guest;
 use App\Http\Controllers\Controller;
 use App\Models\Booking;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -49,19 +50,43 @@ class PaymongoQrPhController extends Controller
             abort(403);
         }
 
-        if ($booking->status !== 'pending') {
-            return response()->json(['message' => 'This booking is no longer awaiting payment.'], 409);
-        }
+        // Atomically claim the booking before making any PayMongo calls.
+        // Two simultaneous requests both reading payment_intent_id as null
+        // used to both pass and both call out to PayMongo — this row lock
+        // + immediate claim write closes that window. We claim with a
+        // temporary sentinel (not a real intent id yet) so the webhook
+        // never matches against it accidentally, then overwrite it with
+        // the real intent id once PayMongo responds.
+        $claimToken = 'claiming:' . (string) \Illuminate\Support\Str::uuid();
 
-        if ($booking->payment_intent_id) {
-            // A QR was already generated for this booking. Don't create a
-            // second PayMongo intent — that would orphan the first one if
-            // the guest already scanned it.
+        $claimed = DB::transaction(function () use ($booking, $claimToken) {
+            $locked = Booking::where('id', $booking->id)->lockForUpdate()->first();
+
+            if ($locked->status !== 'pending' || $locked->payment_intent_id) {
+                return null;
+            }
+
+            $locked->update(['payment_intent_id' => $claimToken]);
+
+            return $locked;
+        });
+
+        if (!$claimed) {
+            $current = $booking->fresh();
+
+            if ($current->status !== 'pending') {
+                return response()->json(['message' => 'This booking is no longer awaiting payment.'], 409);
+            }
+
             return response()->json([
                 'message' => 'A payment QR already exists for this booking.',
-                'payment_intent_id' => $booking->payment_intent_id,
+                'payment_intent_id' => str_starts_with((string) $current->payment_intent_id, 'claiming:')
+                    ? null
+                    : $current->payment_intent_id,
             ], 409);
         }
+
+        $booking = $claimed;
 
         $amountCentavos = (int) round($booking->amount * 100);
         $secretKey = config('services.paymongo.secret');
@@ -72,10 +97,18 @@ class PaymongoQrPhController extends Controller
             // which is what was surfacing as a bare, message-less 500 on
             // the client instead of a real error. Catch it here instead.
             Log::error('PayMongo secret key is not configured (services.paymongo.secret / PAYMONGO_SECRET_KEY).');
+            $this->releaseClaim($booking, $claimToken);
             return response()->json(['message' => 'Payment is not configured yet. Please contact the venue.'], 502);
         }
 
+        // Deterministic idempotency key from the booking ID — if this
+        // request is retried (e.g. a client timeout followed by a retry)
+        // PayMongo will return the same intent instead of creating a
+        // second one, even outside of our own row-lock window.
+        $idempotencyKey = 'qrph-intent-' . $booking->id;
+
         $intentResponse = Http::withBasicAuth($secretKey, '')
+            ->withHeaders(['Idempotency-Key' => $idempotencyKey])
             ->post(self::API_BASE . '/payment_intents', [
                 'data' => [
                     'attributes' => [
@@ -95,6 +128,7 @@ class PaymongoQrPhController extends Controller
                 'status' => $intentResponse->status(),
                 'booking_id' => $booking->id,
             ]);
+            $this->releaseClaim($booking, $claimToken);
             return response()->json(['message' => 'Could not start payment. Please try again.'], 502);
         }
 
@@ -112,6 +146,7 @@ class PaymongoQrPhController extends Controller
                 'status' => $methodResponse->status(),
                 'booking_id' => $booking->id,
             ]);
+            $this->releaseClaim($booking, $claimToken);
             return response()->json(['message' => 'Could not start payment. Please try again.'], 502);
         }
 
@@ -133,6 +168,7 @@ class PaymongoQrPhController extends Controller
                 'booking_id' => $booking->id,
                 'intent_id' => $intentId,
             ]);
+            $this->releaseClaim($booking, $claimToken);
             return response()->json(['message' => 'Could not start payment. Please try again.'], 502);
         }
 
@@ -146,6 +182,7 @@ class PaymongoQrPhController extends Controller
                 'booking_id' => $booking->id,
                 'intent_id' => $intentId,
             ]);
+            $this->releaseClaim($booking, $claimToken);
             return response()->json(['message' => 'Could not generate QR. Please try again.'], 502);
         }
 
@@ -167,6 +204,21 @@ class PaymongoQrPhController extends Controller
      * A PayMongo `payment.paid` event's data.attributes.data is a Payment
      * resource, which carries payment_intent_id in ITS attributes — one
      * level deeper than a naive read of the event would expect.
+     *
+     * DEDUPE: durable, DB-backed instead of cache-based. The old
+     * Cache::add() approach marked an event "done" the instant it was
+     * first seen — before we knew processing actually succeeded. If
+     * anything threw partway through (a DB blip, an unexpected null),
+     * the event was permanently marked processed in cache even though the
+     * booking was never actually confirmed, and PayMongo's retry would
+     * just get swallowed as "Already processed" forever, with no record
+     * anything went wrong.
+     *
+     * Here the claim (insert/lock the events row) and the completion
+     * (mark it 'completed') are two separate writes. A crash in between
+     * leaves the row as 'processing' or 'failed' — visibly retryable, and
+     * durable across cache flushes/restarts — instead of silently lying
+     * about success.
      */
     public function webhook(Request $request)
     {
@@ -180,6 +232,7 @@ class PaymongoQrPhController extends Controller
 
         $event = json_decode($payload, true);
         $eventType = $event['data']['attributes']['type'] ?? null;
+        $eventId = $event['data']['id'] ?? null;
 
         if ($eventType === 'qrph.expired') {
             return $this->handleExpired($event);
@@ -191,50 +244,164 @@ class PaymongoQrPhController extends Controller
             return response()->json(['message' => 'Ignored'], 200);
         }
 
-        $payment = $event['data']['attributes']['data'] ?? null;
-        $intentId = $payment['attributes']['payment_intent_id'] ?? null;
-
-        if (!$intentId) {
-            Log::warning('PayMongo payment.paid webhook missing payment_intent_id', [
-                'event_id' => $event['data']['id'] ?? null,
-            ]);
+        if (!$eventId) {
+            Log::warning('PayMongo payment.paid webhook missing event id');
             return response()->json(['message' => 'Malformed payload'], 400);
         }
 
-        $booking = Booking::where('payment_intent_id', $intentId)->first();
+        $eventRowId = $this->claimWebhookEvent('paymongo', $eventId, $eventType, $payload);
 
-        if (!$booking) {
-            // Genuinely shouldn't happen in the qrph flow since the intent
-            // is only ever created for an existing booking — but log it
-            // rather than silently dropping it, in case of a race or a
-            // manually-created test intent.
-            Log::warning('PayMongo webhook: no booking found for intent', ['intent_id' => $intentId]);
-            return response()->json(['message' => 'No matching booking'], 200);
+        if ($eventRowId === null) {
+            // Row existed and was already 'completed' — a true retry of
+            // already-finished work. Ack and stop, nothing to do.
+            return response()->json(['message' => 'Already processed'], 200);
         }
 
-        // Atomic, guarded update: only ever transitions pending -> paid.
-        // This prevents a delayed/retried webhook from flipping a booking
-        // that's since been cancelled (or expired) back to paid.
-        $updated = Booking::where('id', $booking->id)
-            ->where('status', 'pending')
+        try {
+            $payment = $event['data']['attributes']['data'] ?? null;
+            $intentId = $payment['attributes']['payment_intent_id'] ?? null;
+
+            if (!$intentId) {
+                Log::warning('PayMongo payment.paid webhook missing payment_intent_id', [
+                    'event_id' => $eventId,
+                ]);
+                $this->markWebhookEvent($eventRowId, 'failed', 'Missing payment_intent_id');
+                return response()->json(['message' => 'Malformed payload'], 400);
+            }
+
+            $booking = Booking::where('payment_intent_id', $intentId)->first();
+
+            if (!$booking) {
+                // Genuinely shouldn't happen in the qrph flow since the intent
+                // is only ever created for an existing booking — but log it
+                // rather than silently dropping it, in case of a race or a
+                // manually-created test intent.
+                Log::warning('PayMongo webhook: no booking found for intent', ['intent_id' => $intentId]);
+                $this->markWebhookEvent($eventRowId, 'completed');
+                return response()->json(['message' => 'No matching booking'], 200);
+            }
+
+            // Never trust the webhook's status alone — confirm the amount and
+            // currency PayMongo actually collected match what this booking is
+            // supposed to cost before marking it paid. A mismatch here means
+            // either a bug or a tampered/forged event and must not silently
+            // confirm the booking.
+            $paidAmount = $payment['attributes']['amount'] ?? null;
+            $paidCurrency = $payment['attributes']['currency'] ?? null;
+            $expectedAmount = (int) round($booking->amount * 100);
+
+            if ($paidAmount !== $expectedAmount || $paidCurrency !== 'PHP') {
+                Log::error('PayMongo webhook amount/currency mismatch — booking NOT marked paid', [
+                    'booking_id' => $booking->id,
+                    'intent_id' => $intentId,
+                    'expected_amount' => $expectedAmount,
+                    'paid_amount' => $paidAmount,
+                    'paid_currency' => $paidCurrency,
+                ]);
+                $this->markWebhookEvent($eventRowId, 'failed', 'Amount/currency mismatch');
+                return response()->json(['message' => 'Amount mismatch'], 400);
+            }
+
+            // Atomic, guarded update: only ever transitions pending -> paid.
+            // This prevents a delayed/retried webhook from flipping a booking
+            // that's since been cancelled (or expired) back to paid.
+            $updated = Booking::where('id', $booking->id)
+                ->where('status', 'pending')
+                ->update([
+                    'status' => 'paid',
+                    'confirmed_at' => now(),
+                ]);
+
+            if (!$updated && $booking->status !== 'paid') {
+                // Booking existed but wasn't pending, and wasn't already paid
+                // either — a payment came in for a booking that's no longer
+                // valid (e.g. cancelled). Don't silently flip it; log it so it
+                // can be manually reviewed/refunded.
+                Log::warning('PayMongo payment.paid for non-pending booking', [
+                    'booking_id' => $booking->id,
+                    'current_status' => $booking->status,
+                    'intent_id' => $intentId,
+                ]);
+            }
+
+            $this->markWebhookEvent($eventRowId, 'completed');
+
+            return response()->json(['message' => 'OK'], 200);
+        } catch (\Throwable $e) {
+            $this->markWebhookEvent($eventRowId, 'failed', $e->getMessage());
+            Log::error('PayMongo webhook processing failed', [
+                'event_id' => $eventId,
+                'error' => $e->getMessage(),
+            ]);
+            throw $e; // 500 so PayMongo retries — row stays 'failed', not falsely 'completed'.
+        }
+    }
+
+    /**
+     * Claim a webhook event for processing in payment_webhook_events.
+     *
+     * Returns the row id to process, or null if the event was already
+     * fully completed (caller should just ack and stop).
+     *
+     * If a row exists but isn't 'completed' (a prior attempt died
+     * mid-flight), it's re-claimed for processing — safe because
+     * everything downstream is itself idempotent (guarded pending->paid
+     * update, amount check).
+     */
+    private function claimWebhookEvent(string $provider, string $eventId, ?string $eventType, string $payload): ?int
+    {
+        return DB::transaction(function () use ($provider, $eventId, $eventType, $payload) {
+            $existing = DB::table('payment_webhook_events')
+                ->where('provider', $provider)
+                ->where('event_id', $eventId)
+                ->lockForUpdate()
+                ->first();
+
+            if ($existing) {
+                if ($existing->status === 'completed') {
+                    return null;
+                }
+
+                DB::table('payment_webhook_events')
+                    ->where('id', $existing->id)
+                    ->update(['status' => 'processing', 'updated_at' => now()]);
+
+                return $existing->id;
+            }
+
+            return DB::table('payment_webhook_events')->insertGetId([
+                'provider' => $provider,
+                'event_id' => $eventId,
+                'event_type' => $eventType,
+                'status' => 'processing',
+                'payload' => $payload,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        });
+    }
+
+    private function markWebhookEvent(int $rowId, string $status, ?string $error = null): void
+    {
+        DB::table('payment_webhook_events')
+            ->where('id', $rowId)
             ->update([
-                'status' => 'paid',
-                'confirmed_at' => now(),
+                'status' => $status,
+                'error' => $error,
+                'updated_at' => now(),
             ]);
+    }
 
-        if (!$updated && $booking->status !== 'paid') {
-            // Booking existed but wasn't pending, and wasn't already paid
-            // either — a payment came in for a booking that's no longer
-            // valid (e.g. cancelled). Don't silently flip it; log it so it
-            // can be manually reviewed/refunded.
-            Log::warning('PayMongo payment.paid for non-pending booking', [
-                'booking_id' => $booking->id,
-                'current_status' => $booking->status,
-                'intent_id' => $intentId,
-            ]);
-        }
-
-        return response()->json(['message' => 'OK'], 200);
+    /**
+     * Undo an in-progress claim (see createQr()) after a failed PayMongo
+     * call, but only if it's still our claim — if another request or the
+     * webhook has since moved the booking on, leave it alone.
+     */
+    private function releaseClaim(Booking $booking, string $claimToken): void
+    {
+        Booking::where('id', $booking->id)
+            ->where('payment_intent_id', $claimToken)
+            ->update(['payment_intent_id' => null]);
     }
 
     private function handleExpired(array $event)
@@ -273,6 +440,17 @@ class PaymongoQrPhController extends Controller
         $signature = !empty($parts['li']) ? $parts['li'] : ($parts['te'] ?? null);
 
         if (!$timestamp || !$signature || !$webhookSecret) {
+            return false;
+        }
+
+        // Reject stale signed payloads. A valid-but-old signature could
+        // otherwise be replayed indefinitely by anyone who ever captured
+        // one (e.g. from logs, a proxy, or a compromised intermediary).
+        $skewSeconds = abs(time() - (int) $timestamp);
+        if ($skewSeconds > 300) {
+            Log::warning('PayMongo webhook signature rejected: timestamp outside allowed window', [
+                'skew_seconds' => $skewSeconds,
+            ]);
             return false;
         }
 

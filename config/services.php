@@ -44,6 +44,8 @@ return [
         'secret' => env('CRON_SECRET'),
     ],
 
+    'cron' => ['token' => env('CRON_TOKEN')],
+
     'brevo' => [
         'key' => env('BREVO_API_KEY'),
     ],

@@ -48,10 +48,12 @@ class AuthController extends Controller
             return redirect()->route('user.dashboard')->with('success', 'Logged in successfully!');
         }
 
+        // Don't log the raw submitted username — a typo'd password or
+        // email pasted into the username field would otherwise end up
+        // sitting in the activity log verbatim.
         ActivityLogger::log(
             'user.login_failed',
-            $credentials['username'] . ' failed to log in.',
-            subject: auth()->user(),
+            'Failed login attempt from ' . $request->ip() . '.',
         );
 
         return back()->withErrors(['username' => 'Invalid username or password.'])->onlyInput('username');
@@ -68,7 +70,7 @@ class AuthController extends Controller
             'name' => 'required|string|max:255',
             'username' => 'required|string|max:255|unique:users,username',
             'email' => 'required|string|email|max:255|unique:users,email',
-            'password' => 'required|min:6|confirmed',
+            'password' => 'required|min:12|confirmed',
         ]);
 
         $user = User::create([

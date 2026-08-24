@@ -16,6 +16,14 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
         $middleware->trustProxies(at: '*');
         $middleware->append(\App\Http\Middleware\LogRequestTraffic::class);
+        // Applied to every response (web and the unauthenticated webhook
+        // route alike) since headers like X-Content-Type-Options and
+        // X-Frame-Options are cheap to send everywhere and shouldn't be
+        // skipped just because a route opted out of the 'web' group.
+        $middleware->append(\App\Http\Middleware\SecurityHeaders::class);
+        $middleware->alias([
+            'cron.auth' => \App\Http\Middleware\VerifyCronToken::class,
+        ]);
 
         $middleware->alias([
             'admin' => \App\Http\Middleware\EnsureUserIsAdmin::class,
