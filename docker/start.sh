@@ -6,7 +6,9 @@ PORT="${PORT:-10000}"
 # Fill in the real port nginx should listen on
 sed "s/__PORT__/${PORT}/" /etc/nginx/conf.d/app.conf.template > /etc/nginx/conf.d/app.conf
 
+php artisan route:clear
 php artisan config:clear
+php artisan cache:clear
 php artisan migrate --force
 
 # Start php-fpm in the background
