@@ -88,7 +88,16 @@ class PaymongoQrPhController extends Controller
 
         $booking = $claimed;
 
-        $amountCentavos = (int) round($booking->amount * 100);
+        // Use the full PaymentReference total so multi-date checkouts
+        // generate a QR for the correct combined amount.
+        $paymentReference = $booking->paymentReference;
+
+        if (!$paymentReference) {
+            $this->releaseClaim($booking, $claimToken);
+            return response()->json(['message' => 'Payment reference missing for this booking.'], 422);
+        }
+
+        $amountCentavos = (int) round($paymentReference->amount * 100);
         $secretKey = config('services.paymongo.secret');
 
         if (!$secretKey) {
@@ -115,7 +124,7 @@ class PaymongoQrPhController extends Controller
                         'amount' => $amountCentavos,
                         'currency' => 'PHP',
                         'payment_method_allowed' => ['qrph'],
-                        'description' => "Side House Paddlers — Booking #{$booking->id}",
+                        'description' => "Side House Paddlers — Payment #{$paymentReference->id}",
                         'metadata' => [
                             'booking_id' => (string) $booking->id,
                         ],
@@ -272,27 +281,30 @@ class PaymongoQrPhController extends Controller
             $booking = Booking::where('payment_intent_id', $intentId)->first();
 
             if (!$booking) {
-                // Genuinely shouldn't happen in the qrph flow since the intent
-                // is only ever created for an existing booking — but log it
-                // rather than silently dropping it, in case of a race or a
-                // manually-created test intent.
                 Log::warning('PayMongo webhook: no booking found for intent', ['intent_id' => $intentId]);
                 $this->markWebhookEvent($eventRowId, 'completed');
                 return response()->json(['message' => 'No matching booking'], 200);
             }
 
-            // Never trust the webhook's status alone — confirm the amount and
-            // currency PayMongo actually collected match what this booking is
-            // supposed to cost before marking it paid. A mismatch here means
-            // either a bug or a tampered/forged event and must not silently
-            // confirm the booking.
+            $paymentReference = $booking->paymentReference;
+
+            if (!$paymentReference) {
+                Log::error('PayMongo webhook: booking has no payment_reference', [
+                    'booking_id' => $booking->id,
+                    'intent_id' => $intentId,
+                ]);
+                $this->markWebhookEvent($eventRowId, 'failed', 'Missing payment_reference');
+                return response()->json(['message' => 'Missing payment reference'], 400);
+            }
+
+            // Validate against the full PaymentReference total (supports multi-date)
             $paidAmount = $payment['attributes']['amount'] ?? null;
             $paidCurrency = $payment['attributes']['currency'] ?? null;
-            $expectedAmount = (int) round($booking->amount * 100);
+            $expectedAmount = (int) round($paymentReference->amount * 100);
 
             if ($paidAmount !== $expectedAmount || $paidCurrency !== 'PHP') {
-                Log::error('PayMongo webhook amount/currency mismatch — booking NOT marked paid', [
-                    'booking_id' => $booking->id,
+                Log::error('PayMongo webhook amount/currency mismatch — bookings NOT marked paid', [
+                    'payment_reference_id' => $paymentReference->id,
                     'intent_id' => $intentId,
                     'expected_amount' => $expectedAmount,
                     'paid_amount' => $paidAmount,
@@ -302,29 +314,25 @@ class PaymongoQrPhController extends Controller
                 return response()->json(['message' => 'Amount mismatch'], 400);
             }
 
-            // Atomic, guarded update: only ever transitions pending -> paid.
-            // This prevents a delayed/retried webhook from flipping a booking
-            // that's since been cancelled (or expired) back to paid.
-            $updated = Booking::where('id', $booking->id)
+            // Mark ALL pending bookings under this PaymentReference as paid
+            $updatedCount = Booking::where('payment_reference_id', $paymentReference->id)
                 ->where('status', 'pending')
                 ->update([
                     'status' => 'paid',
                     'confirmed_at' => now(),
                 ]);
 
-            if (!$updated && $booking->status !== 'paid') {
-                // Booking existed but wasn't pending, and wasn't already paid
-                // either — a payment came in for a booking that's no longer
-                // valid (e.g. cancelled). Don't silently flip it; log it so it
-                // can be manually reviewed/refunded.
-                Log::warning('PayMongo payment.paid for non-pending booking', [
-                    'booking_id' => $booking->id,
-                    'current_status' => $booking->status,
+            // Also confirm the PaymentReference itself
+            if ($updatedCount > 0 && !$paymentReference->isConfirmed()) {
+                $paymentReference->update(['confirmed_at' => now()]);
+            }
+
+            if ($updatedCount === 0) {
+                Log::warning('PayMongo payment.paid but no pending bookings found', [
+                    'payment_reference_id' => $paymentReference->id,
                     'intent_id' => $intentId,
                 ]);
             }
-
-            $this->markWebhookEvent($eventRowId, 'completed');
 
             return response()->json(['message' => 'OK'], 200);
         } catch (\Throwable $e) {

@@ -27,6 +27,9 @@ class User extends Authenticatable
         'password',
         'role',
         'phone_number',
+        'mfa_enabled',
+        'mfa_secret',
+        'mfa_recovery_codes',
     ];
 
     /**
@@ -37,6 +40,11 @@ class User extends Authenticatable
     protected $hidden = [
         'password',
         'remember_token',
+    ];
+
+    protected $casts = [
+        'mfa_enabled' => 'boolean',
+        'mfa_recovery_codes' => 'array',
     ];
 
     /**
@@ -50,6 +58,11 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
         ];
+    }
+
+    public function hasMfaEnabled(): bool
+    {
+        return $this->mfa_enabled && !empty($this->mfa_secret);
     }
 
     public function isAdmin(): bool

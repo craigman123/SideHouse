@@ -24,6 +24,9 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'cron.auth' => \App\Http\Middleware\VerifyCronToken::class,
             'admin'     => \App\Http\Middleware\EnsureUserIsAdmin::class,
+            'cron.auth'   => \App\Http\Middleware\VerifyCronToken::class,
+            'admin'       => \App\Http\Middleware\EnsureUserIsAdmin::class,
+            'admin.mfa'   => \App\Http\Middleware\EnsureAdminMfa::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

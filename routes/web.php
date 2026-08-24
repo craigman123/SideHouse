@@ -11,6 +11,7 @@ use App\Http\Controllers\Admin\CustomerController;
 use App\Http\Controllers\Admin\EquipmentAvailabilityController;
 use App\Http\Controllers\Admin\ReportController;
 use App\Http\Controllers\Auth\AuthController;
+use App\Http\Controllers\Auth\MfaController;
 use App\Http\Controllers\BookingCronController;
 use App\Http\Controllers\Guest\GuestBookingController;
 use App\Http\Controllers\Guest\PaymongoQrPhController;
@@ -86,7 +87,18 @@ Route::post('/auth/google', [AuthController::class, 'googleAuth'])->middleware('
 
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
-Route::middleware(['auth', 'admin'])->group(function () {
+
+// =================================== MFA ROUTES =====================================
+Route::middleware('auth')->group(function () {
+    Route::get('/mfa/setup', [MfaController::class, 'setup'])->name('mfa.setup');
+    Route::post('/mfa/setup/init', [MfaController::class, 'initSetup'])->name('mfa.setup.init');
+    Route::post('/mfa/enable', [MfaController::class, 'enable'])->name('mfa.enable');
+    Route::get('/mfa/challenge', [MfaController::class, 'challenge'])->name('mfa.challenge');
+    Route::post('/mfa/verify', [MfaController::class, 'verify'])->name('mfa.verify');
+});
+
+// =================================== ADMIN ROUTES =====================================
+Route::middleware(['auth', 'admin', 'admin.mfa'])->group(function () {
     Route::get('/dashboard', [Admin_DashboardController::class, 'index'])->name('admin.dashboard');
 
     // Bookings CRUD
@@ -136,6 +148,8 @@ Route::middleware(['auth', 'admin'])->group(function () {
 
 });
 
+
+// =====================================   USER ROUTES    =====================================
 Route::middleware(['auth', 'user'])->group(function () {
     Route::get('/my-dashboard', [UserDashboardController::class, 'index'])->name('user.dashboard');
 

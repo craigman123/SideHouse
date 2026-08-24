@@ -25,38 +25,58 @@ class AuthController extends Controller
             'password' => 'required',
         ]);
 
-        if (Auth::attempt($credentials)) {
-            $request->session()->regenerate();
-
-            if (auth()->user()->isAdmin()) {
-                ActivityLogger::log(
-                    'admin.logged_in',
-                    auth()->user()->name . ' logged in.',
-                    subject: auth()->user(),
-                );
-
-                return redirect()->route('admin.dashboard')->with('success', 'Logged in successfully!');
-
-            }
-
+        if (!Auth::attempt($credentials)) {
             ActivityLogger::log(
-                'user.logged_in',
-                auth()->user()->name . ' logged in.',
-                subject: auth()->user(),
+                'user.login_failed',
+                'Failed login attempt from ' . $request->ip() . '.',
             );
 
-            return redirect()->route('user.dashboard')->with('success', 'Logged in successfully!');
+            if ($request->expectsJson()) {
+                return response()->json(['message' => 'Invalid username or password.'], 422);
+            }
+
+            return back()->withErrors(['username' => 'Invalid username or password.'])->onlyInput('username');
         }
 
-        // Don't log the raw submitted username — a typo'd password or
-        // email pasted into the username field would otherwise end up
-        // sitting in the activity log verbatim.
+        $request->session()->regenerate();
+        $user = auth()->user();
+
+        if ($user->isAdmin()) {
+            ActivityLogger::log(
+                'admin.logged_in',
+                $user->name . ' logged in.',
+                subject: $user,
+            );
+
+            // Tell the frontend to show the correct MFA modal
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'mfa_required' => true,
+                    'mfa_type'     => $user->hasMfaEnabled() ? 'challenge' : 'setup',
+                ]);
+            }
+
+            // Fallback for normal form submit
+            return $user->hasMfaEnabled()
+                ? redirect()->route('mfa.challenge')
+                : redirect()->route('mfa.setup');
+        }
+
+        // Normal user
         ActivityLogger::log(
-            'user.login_failed',
-            'Failed login attempt from ' . $request->ip() . '.',
+            'user.logged_in',
+            $user->name . ' logged in.',
+            subject: $user,
         );
 
-        return back()->withErrors(['username' => 'Invalid username or password.'])->onlyInput('username');
+        if ($request->expectsJson()) {
+            return response()->json([
+                'redirect' => route('user.dashboard'),
+                'message'  => 'Logged in successfully!',
+            ]);
+        }
+
+        return redirect()->route('user.dashboard')->with('success', 'Logged in successfully!');
     }
 
     public function showRegister()
