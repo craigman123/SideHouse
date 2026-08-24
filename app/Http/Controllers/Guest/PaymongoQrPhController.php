@@ -35,12 +35,27 @@ class PaymongoQrPhController extends Controller
     {
         $validated = $request->validate([
             'booking_id' => ['required', 'integer', 'exists:bookings,id'],
+            'token' => ['required', 'string'],
         ]);
 
         $booking = Booking::findOrFail($validated['booking_id']);
 
+        if (!hash_equals($booking->access_token, $validated['token'])) {  // <- confirm column name
+            abort(403);
+        }
+
         if ($booking->status !== 'pending') {
             return response()->json(['message' => 'This booking is no longer awaiting payment.'], 409);
+        }
+
+        if ($booking->payment_intent_id) {
+            // A QR was already generated for this booking. Don't create a second
+            // PayMongo intent — that would orphan the first one if the guest
+            // already scanned it. Just tell the frontend to reuse/refetch instead.
+            return response()->json([
+                'message' => 'A payment QR already exists for this booking.',
+                'payment_intent_id' => $booking->payment_intent_id,
+            ], 409);
         }
 
         $amountCentavos = (int) round($booking->amount * 100);
@@ -182,10 +197,18 @@ class PaymongoQrPhController extends Controller
             return response()->json(['message' => 'No matching booking'], 200);
         }
 
-        if ($booking->status !== 'paid') {
-            $booking->update([
-                'status' => 'paid',
-                'confirmed_at' => now(),
+        $updated = Booking::where('id', $booking->id)
+        ->where('status', 'pending')
+        ->update([
+            'status' => 'paid',
+            'confirmed_at' => now(),
+        ]);
+
+        if (!$updated && $booking->status !== 'paid') {
+            Log::warning('PayMongo payment.paid for non-pending booking', [
+                'booking_id' => $booking->id,
+                'current_status' => $booking->status,
+                'intent_id' => $intentId,
             ]);
         }
 

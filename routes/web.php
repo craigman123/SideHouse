@@ -84,7 +84,7 @@ Route::post('/auth/google', [AuthController::class, 'googleAuth'])->middleware('
 
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
-Route::middleware('auth')->group(function () {
+Route::middleware(['auth', 'admin'])->group(function () {
     Route::get('/database-query', [DatabaseQueryController::class, 'index'])->name('admin.database.query');
     Route::post('/database-query/execute', [DatabaseQueryController::class, 'execute'])->name('admin.database.execute');
     Route::post('/database-query/describe', [DatabaseQueryController::class, 'describe'])->name('admin.database.describe');
