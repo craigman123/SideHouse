@@ -25,11 +25,16 @@ class PaymongoQrPhController extends Controller
 
     /**
      * POST /guest-book/payment/qrph
-     * Body: { booking_id: number }
+     * Body: { booking_id: number, token: string }
      *
      * Called right after storeBooking()/store() returns a booking_id for a
      * payment_method === 'qrph' booking. Re-derives the amount from the
      * booking itself server-side — never trust a client-sent amount.
+     *
+     * `token` must match the booking's poll_token, so only the guest who
+     * actually owns this booking (i.e. has the waiting-page link) can
+     * generate a QR for it — booking_id alone is not sufficient, since IDs
+     * are sequential and guessable.
      */
     public function createQr(Request $request)
     {
@@ -40,7 +45,7 @@ class PaymongoQrPhController extends Controller
 
         $booking = Booking::findOrFail($validated['booking_id']);
 
-        if (!hash_equals($booking->access_token, $validated['token'])) {  // <- confirm column name
+        if (!$booking->poll_token || !hash_equals($booking->poll_token, $validated['token'])) {
             abort(403);
         }
 
@@ -49,9 +54,9 @@ class PaymongoQrPhController extends Controller
         }
 
         if ($booking->payment_intent_id) {
-            // A QR was already generated for this booking. Don't create a second
-            // PayMongo intent — that would orphan the first one if the guest
-            // already scanned it. Just tell the frontend to reuse/refetch instead.
+            // A QR was already generated for this booking. Don't create a
+            // second PayMongo intent — that would orphan the first one if
+            // the guest already scanned it.
             return response()->json([
                 'message' => 'A payment QR already exists for this booking.',
                 'payment_intent_id' => $booking->payment_intent_id,
@@ -86,7 +91,10 @@ class PaymongoQrPhController extends Controller
             ]);
 
         if ($intentResponse->failed()) {
-            Log::error('PayMongo payment_intents create failed', ['body' => $intentResponse->body()]);
+            Log::error('PayMongo payment_intents create failed', [
+                'status' => $intentResponse->status(),
+                'booking_id' => $booking->id,
+            ]);
             return response()->json(['message' => 'Could not start payment. Please try again.'], 502);
         }
 
@@ -100,7 +108,10 @@ class PaymongoQrPhController extends Controller
             ]);
 
         if ($methodResponse->failed()) {
-            Log::error('PayMongo payment_methods create failed', ['body' => $methodResponse->body()]);
+            Log::error('PayMongo payment_methods create failed', [
+                'status' => $methodResponse->status(),
+                'booking_id' => $booking->id,
+            ]);
             return response()->json(['message' => 'Could not start payment. Please try again.'], 502);
         }
 
@@ -117,18 +128,24 @@ class PaymongoQrPhController extends Controller
             ]);
 
         if ($attachResponse->failed()) {
-            Log::error('PayMongo attach failed', ['body' => $attachResponse->body()]);
+            Log::error('PayMongo attach failed', [
+                'status' => $attachResponse->status(),
+                'booking_id' => $booking->id,
+                'intent_id' => $intentId,
+            ]);
             return response()->json(['message' => 'Could not start payment. Please try again.'], 502);
         }
 
         $attached = $attachResponse->json('data');
-        Log::info('PayMongo attach success', ['test_url' => $attached['attributes']['next_action']['code']['test_url'] ?? 'not found']);
 
         $qrImageUrl = $attached['attributes']['next_action']['code']['image_url'] ?? null;
         $qrExpiresAt = $attached['attributes']['next_action']['code']['expires_at'] ?? null;
 
         if (!$qrImageUrl) {
-            Log::error('PayMongo attach succeeded but no QR image returned', ['body' => $attachResponse->body()]);
+            Log::error('PayMongo attach succeeded but no QR image returned', [
+                'booking_id' => $booking->id,
+                'intent_id' => $intentId,
+            ]);
             return response()->json(['message' => 'Could not generate QR. Please try again.'], 502);
         }
 
@@ -141,19 +158,15 @@ class PaymongoQrPhController extends Controller
             'payment_intent_id' => $intentId,
             'qr_image_url' => $qrImageUrl,
             'expires_at' => $qrExpiresAt,
-            // 'test_url' => $attached['attributes']['next_action']['code']['test_url'] ?? null,
         ]);
     }
 
     /**
      * POST /guest-book/payment/qrph/webhook
      *
-     * FIXED: your dashboard confirmed the real event name is
-     * "payment.paid", not "payment_intent.succeeded" — that was the bug
-     * silently swallowing every webhook call. A PayMongo `payment.paid`
-     * event's data.attributes.data is a Payment resource, which carries
-     * payment_intent_id in ITS attributes — one level deeper than the
-     * original code was looking.
+     * A PayMongo `payment.paid` event's data.attributes.data is a Payment
+     * resource, which carries payment_intent_id in ITS attributes — one
+     * level deeper than a naive read of the event would expect.
      */
     public function webhook(Request $request)
     {
@@ -182,7 +195,9 @@ class PaymongoQrPhController extends Controller
         $intentId = $payment['attributes']['payment_intent_id'] ?? null;
 
         if (!$intentId) {
-            Log::warning('PayMongo payment.paid webhook missing payment_intent_id', ['payload' => $payload]);
+            Log::warning('PayMongo payment.paid webhook missing payment_intent_id', [
+                'event_id' => $event['data']['id'] ?? null,
+            ]);
             return response()->json(['message' => 'Malformed payload'], 400);
         }
 
@@ -197,14 +212,21 @@ class PaymongoQrPhController extends Controller
             return response()->json(['message' => 'No matching booking'], 200);
         }
 
+        // Atomic, guarded update: only ever transitions pending -> paid.
+        // This prevents a delayed/retried webhook from flipping a booking
+        // that's since been cancelled (or expired) back to paid.
         $updated = Booking::where('id', $booking->id)
-        ->where('status', 'pending')
-        ->update([
-            'status' => 'paid',
-            'confirmed_at' => now(),
-        ]);
+            ->where('status', 'pending')
+            ->update([
+                'status' => 'paid',
+                'confirmed_at' => now(),
+            ]);
 
         if (!$updated && $booking->status !== 'paid') {
+            // Booking existed but wasn't pending, and wasn't already paid
+            // either — a payment came in for a booking that's no longer
+            // valid (e.g. cancelled). Don't silently flip it; log it so it
+            // can be manually reviewed/refunded.
             Log::warning('PayMongo payment.paid for non-pending booking', [
                 'booking_id' => $booking->id,
                 'current_status' => $booking->status,
@@ -242,16 +264,13 @@ class PaymongoQrPhController extends Controller
 
         parse_str(str_replace(',', '&', $signatureHeader), $parts);
         $timestamp = $parts['t'] ?? null;
-        $signature = !empty($parts['li']) ? $parts['li'] : ($parts['te'] ?? null);
 
-        // Log::info('PayMongo webhook debug', [
-        //     'raw_header' => $signatureHeader,
-        //     'parsed_parts' => $parts,
-        //     'timestamp' => $timestamp,
-        //     'signature_found' => $signature,
-        //     'secret_set' => !empty($webhookSecret),
-        //     'secret_length' => strlen((string) $webhookSecret),
-        // ]);
+        // 'li' carries the signature in Live Mode, 'te' in Test Mode. In
+        // Test Mode, 'li' is present in the header but set to an empty
+        // string — a bare `??` fallback treats "" as present and never
+        // falls through to 'te', so the comparison always fails. Must use
+        // !empty() here, not ??.
+        $signature = !empty($parts['li']) ? $parts['li'] : ($parts['te'] ?? null);
 
         if (!$timestamp || !$signature || !$webhookSecret) {
             return false;
@@ -259,12 +278,6 @@ class PaymongoQrPhController extends Controller
 
         $signedPayload = "{$timestamp}.{$payload}";
         $expectedSignature = hash_hmac('sha256', $signedPayload, $webhookSecret);
-
-        // Log::info('PayMongo webhook signature compare', [
-        //     'expected' => $expectedSignature,
-        //     'received' => $signature,
-        //     'match' => hash_equals($expectedSignature, $signature),
-        // ]);
 
         return hash_equals($expectedSignature, $signature);
     }

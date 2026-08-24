@@ -22,35 +22,12 @@ use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Guest\PaymongoQrPhController;
 
-// ============================= DEBUGGER ========================================
-Route::get('/debug-role-check', function (\Illuminate\Http\Request $request) {
-    if (!$request->user()) {
-        return response()->json(['logged_in' => false]);
-    }
-    return response()->json([
-        'logged_in' => true,
-        'user_id' => $request->user()->user_id,
-        'role' => $request->user()->role,
-        'role_type' => gettype($request->user()->role),
-    ]);
-})->middleware('auth');
-
-Route::get('/debug-cache-check', function () {
-    return response()->json([
-        'routes_cached' => app()->routesAreCached(),
-        'config_cached' => app()->configurationIsCached(),
-    ]);
+Route::middleware('throttle:10,1')->group(function () {
+    Route::post('/guest-book', [GuestBookingController::class, 'store'])->name('guest.book.store');
+    Route::post('/guest-book/payment/qrph', [PaymongoQrPhController::class, 'createQr'])
+        ->name('guest.book.payment.qrph');
 });
 
-
-
-
-
-
- 
-Route::post('/guest-book/payment/qrph', [PaymongoQrPhController::class, 'createQr'])
-    ->name('guest.book.payment.qrph');
- 
 // No CSRF/auth middleware on the webhook route — PayMongo calls this
 // server-to-server, it won't have your session cookie or CSRF token.
 // If your VerifyCsrfToken middleware applies globally, add this route's
@@ -98,7 +75,10 @@ Route::get('/guest-book/equipment-availability', [GuestBookingController::class,
 // the guest's date/time/equipment picks. See
 // GuestBookingController::paymentPage()'s docblock.
 Route::get('/guest-book/payment', [GuestBookingController::class, 'paymentPage'])->name('guest.book.payment');
-Route::post('/guest-book', [GuestBookingController::class, 'store'])->name('guest.book.store');
+// NOTE: the unthrottled duplicate of this POST route (which used to sit
+// here) has been removed — it was silently overriding the throttled
+// version registered above, defeating the rate limit entirely. Do not
+// re-add a bare Route::post('/guest-book', ...) here.
 
 Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
 Route::post('/login', [AuthController::class, 'login'])->name('login.submit');
