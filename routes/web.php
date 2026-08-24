@@ -21,6 +21,25 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Guest\PaymongoQrPhController;
+
+// ============================= DEBUGGER ========================================
+Route::get('/debug-role-check', function (\Illuminate\Http\Request $request) {
+    if (!$request->user()) {
+        return response()->json(['logged_in' => false]);
+    }
+    return response()->json([
+        'logged_in' => true,
+        'user_id' => $request->user()->user_id,
+        'role' => $request->user()->role,
+        'role_type' => gettype($request->user()->role),
+    ]);
+})->middleware('auth');
+
+
+
+
+
+
  
 Route::post('/guest-book/payment/qrph', [PaymongoQrPhController::class, 'createQr'])
     ->name('guest.book.payment.qrph');
