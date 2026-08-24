@@ -126,6 +126,7 @@ class PaymongoQrPhController extends Controller
             'payment_intent_id' => $intentId,
             'qr_image_url' => $qrImageUrl,
             'expires_at' => $qrExpiresAt,
+            'test_url' => $attached['attributes']['next_action']['code']['test_url'] ?? null,
         ]);
     }
 
