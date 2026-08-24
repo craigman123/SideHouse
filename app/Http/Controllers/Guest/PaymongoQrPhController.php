@@ -107,6 +107,8 @@ class PaymongoQrPhController extends Controller
         }
 
         $attached = $attachResponse->json('data');
+        Log::info('PayMongo attach success', ['test_url' => $attached['attributes']['next_action']['code']['test_url'] ?? 'not found']);
+
         $qrImageUrl = $attached['attributes']['next_action']['code']['image_url'] ?? null;
         $qrExpiresAt = $attached['attributes']['next_action']['code']['expires_at'] ?? null;
 
