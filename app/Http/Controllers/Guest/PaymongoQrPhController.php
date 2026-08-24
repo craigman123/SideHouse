@@ -219,7 +219,7 @@ class PaymongoQrPhController extends Controller
 
         parse_str(str_replace(',', '&', $signatureHeader), $parts);
         $timestamp = $parts['t'] ?? null;
-        $signature = $parts['li'] ?? ($parts['te'] ?? null);
+        $signature = !empty($parts['li']) ? $parts['li'] : ($parts['te'] ?? null);
 
         Log::info('PayMongo webhook debug', [
             'raw_header' => $signatureHeader,
