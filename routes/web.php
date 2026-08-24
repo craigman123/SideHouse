@@ -35,6 +35,13 @@ Route::get('/debug-role-check', function (\Illuminate\Http\Request $request) {
     ]);
 })->middleware('auth');
 
+Route::get('/debug-cache-check', function () {
+    return response()->json([
+        'routes_cached' => app()->routesAreCached(),
+        'config_cached' => app()->configurationIsCached(),
+    ]);
+});
+
 
 
 
