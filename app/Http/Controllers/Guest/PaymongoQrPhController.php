@@ -126,7 +126,7 @@ class PaymongoQrPhController extends Controller
             'payment_intent_id' => $intentId,
             'qr_image_url' => $qrImageUrl,
             'expires_at' => $qrExpiresAt,
-            'test_url' => $attached['attributes']['next_action']['code']['test_url'] ?? null,
+            // 'test_url' => $attached['attributes']['next_action']['code']['test_url'] ?? null,
         ]);
     }
 
@@ -221,14 +221,14 @@ class PaymongoQrPhController extends Controller
         $timestamp = $parts['t'] ?? null;
         $signature = !empty($parts['li']) ? $parts['li'] : ($parts['te'] ?? null);
 
-        Log::info('PayMongo webhook debug', [
-            'raw_header' => $signatureHeader,
-            'parsed_parts' => $parts,
-            'timestamp' => $timestamp,
-            'signature_found' => $signature,
-            'secret_set' => !empty($webhookSecret),
-            'secret_length' => strlen((string) $webhookSecret),
-        ]);
+        // Log::info('PayMongo webhook debug', [
+        //     'raw_header' => $signatureHeader,
+        //     'parsed_parts' => $parts,
+        //     'timestamp' => $timestamp,
+        //     'signature_found' => $signature,
+        //     'secret_set' => !empty($webhookSecret),
+        //     'secret_length' => strlen((string) $webhookSecret),
+        // ]);
 
         if (!$timestamp || !$signature || !$webhookSecret) {
             return false;
@@ -237,11 +237,11 @@ class PaymongoQrPhController extends Controller
         $signedPayload = "{$timestamp}.{$payload}";
         $expectedSignature = hash_hmac('sha256', $signedPayload, $webhookSecret);
 
-        Log::info('PayMongo webhook signature compare', [
-            'expected' => $expectedSignature,
-            'received' => $signature,
-            'match' => hash_equals($expectedSignature, $signature),
-        ]);
+        // Log::info('PayMongo webhook signature compare', [
+        //     'expected' => $expectedSignature,
+        //     'received' => $signature,
+        //     'match' => hash_equals($expectedSignature, $signature),
+        // ]);
 
         return hash_equals($expectedSignature, $signature);
     }
