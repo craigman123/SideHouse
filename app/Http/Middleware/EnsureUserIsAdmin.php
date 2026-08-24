@@ -9,7 +9,7 @@ class EnsureUserIsAdmin
 {
     public function handle(Request $request, Closure $next)
     {
-        if (!$request->user() || !$request->user()->role) {
+        if (!$request->user() || !$request->user()->role !== 'admin') {
             abort(403);
         }
         return $next($request);
