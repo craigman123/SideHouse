@@ -372,3 +372,17 @@
     .wt-shell { padding: 20px 16px 130px; }
     .wt-qr-image-wrap { width: 190px; height: 190px; }
 }
+
+.wt-body {
+    position: relative;
+    overflow-x: hidden;
+}
+
+.bg-particle {
+    z-index: -1;
+}
+
+.wt-shell {
+    position: relative;
+    z-index: 1;
+}

@@ -253,7 +253,7 @@
         const totalSeconds = Math.floor(remainingMs / 1000);
         const minutes = Math.floor(totalSeconds / 60);
         const seconds = totalSeconds % 60;
-        floatTimerValueEl.textContent = `${minutes}:${String(seconds).padStart(2, '0')}`;
+        floatTimerValueEl.textContent = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 
         floatTimerEl.classList.toggle('is-expiring', totalSeconds <= 60);
     }
