@@ -1,0 +1,63 @@
+Side House Security Audit
+Scope: current workspace and reachable Git history, including Laravel routes/controllers/models/migrations, middleware, configuration, Docker, Blade, and public JavaScript.
+
+1. Authentication & Access Control
+[Severity: High] — MFA verification endpoints are not rate-limited — web.php:89 — An attacker who obtains an admin session before MFA can brute-force TOTP or recovery codes; mfa/enable and mfa/verify have no throttle — Add strict per-user/IP throttling, exponential backoff, and alerting.
+[Severity: Medium] — Guest booking tokens are placed in query strings — GuestBookingController.php:798 — Tokens can enter browser history, proxy logs, analytics, and referrer-related telemetry; possession allows status viewing, cancellation, and reference updates — Use signed, short-lived URLs or an authorization header, and add token rotation/expiry.
+[Severity: Medium] — Guest “Find My Booking” exposes booking metadata using only phone/email — GuestBookingController.php:230 — Attackers can enumerate bookings, dates, courts, amounts, and statuses — Require an additional booking secret, verification code, or heavily rate-limit and monitor lookups.
+[Severity: Low] — Admin authorization is globally applied correctly — web.php:104 — No confirmed admin-route escape found; all admin routes use auth, admin, and admin.mfa — Retain route tests covering every admin endpoint.
+2. Payment Integrity
+[Severity: High] — Guest cancellation races payment confirmation — GuestBookingController.php:867 — cancel() checks and updates the route-bound booking without a transaction or row lock; a webhook can confirm payment concurrently, causing paid/cancelled state inconsistency — Lock the booking and re-check status inside a transaction, like cancelAll() and updateReference().
+[Severity: High] — QR Ph endpoint does not enforce payment_method = qrph — PaymongoQrPhController.php:37 — A valid token for a pending legacy/non-QR booking could attach a QR intent and cause the PayMongo webhook to confirm it — Reject any booking whose stored payment method is not qrph.
+[Severity: Medium] — SMS payment flow is referenced but no SMS webhook controllers are present — Webhooks — The current tree cannot process GCash/Landbank SMS webhooks despite comments and retroactive matching code expecting them; payment testing may silently fail — Confirm deployment parity and either restore the handlers with tests or remove the dead flow.
+[Severity: Medium] — QR creation makes external HTTP calls without explicit timeouts — PaymongoQrPhController.php:135 — PayMongo/network stalls can consume PHP workers and deny booking/payment service — Add connect and total timeouts, retries only where idempotent, and circuit-breaker behavior.
+[Severity: Low] — Payment-reference uniqueness is incomplete for legacy references — PaymentReference.php:26 — payment_reference is not unique and normalization strips all non-digits; different formatted inputs collapse to the same digit string — Store a normalized reference separately with an appropriate uniqueness rule per provider, or require provider-scoped uniqueness.
+[Severity: Low] — PayMongo webhook handling is strong but expired events are not durably deduplicated — PaymongoQrPhController.php:342 — Replayed qrph.expired events currently only log, so impact is low, but event processing is inconsistent — Apply the same event ledger to every event type.
+Positive controls: PayMongo HMAC verification, five-minute timestamp window, durable event IDs, amount/currency validation, unique (provider,event_id), and idempotent pending-to-paid updates are present.
+
+3. Data Integrity & Database
+[Severity: High] — Slot uniqueness exists only in application logic — create_booking_slots_table.php — There is no database constraint preventing duplicate court/date/time reservations if another writer bypasses the application lock or a future code path omits it — Add a database-backed reservation strategy, such as a court/date/time-slot table with a unique key, or PostgreSQL exclusion constraints.
+[Severity: Medium] — Core booking foreign keys are missing from the original booking migration — create_bookings_table.php — Orphaned court_id and user_id values can survive deletes or bad imports — Add explicit foreign keys with documented delete behavior.
+[Severity: Medium] — Unmatched payment claiming is provider/reference/amount based but lacks a database uniqueness guard — UnmatchedPayment.php:41 — Concurrent or repeated claim paths rely on locks and code discipline; future paths could double-claim — Add a partial unique/index strategy and enforce one matched payment reference.
+[Severity: Low] — Raw webhook payloads are retained indefinitely — 2026_08_24_000000_create_payment_webhook_events_table.php:11 — Payloads may contain payment/customer data and increase breach impact — Define retention and redact sensitive fields.
+Transaction wrapping for normal booking creation is good, including court/equipment locks.
+
+4. Input Validation & Injection
+[Severity: High] — Guest email lookup accepts SQL wildcard characters — GuestBookingController.php:270 — ILIKE ? receives user input directly, so %@% or _@_ can match broad portions of the booking table and amplify enumeration — Escape %, _, and \, or use exact normalized equality.
+[Severity: Medium] — Stored XSS is possible in guest equipment cards — guest-book.js:1600 — item.name is interpolated into innerHTML; an equipment name entered through an admin form can execute in guest browsers — Build elements with textContent, or HTML-escape every inserted value.
+[Severity: Low] — Models expose sensitive fields through mass assignment — User.php:23, Booking.php:12, PaymentReference.php:26 — Fields such as role, MFA state, confirmation, and payment state are fillable; current controllers mostly use explicit arrays, but a future endpoint could become privilege-escalation/payment-impacting — Remove security-sensitive fields from $fillable and use guarded service methods.
+[Severity: Low] — No confirmed SQL injection found in inspected query paths — GuestBookingController.php:270 — Raw SQL uses a bound value, although the wildcard issue remains — Keep parameter binding and add query tests.
+5. Rate Limiting & Abuse Prevention
+[Severity: High] — MFA setup and verification lack throttling — web.php:89 — TOTP and recovery-code brute force is practical without request limits — Add throttles keyed by account and source IP.
+[Severity: Medium] — Guest booking search is not visibly throttled — web.php:52 — The endpoint supports contact-data enumeration and potentially expensive regex SQL — Add a dedicated low-rate limiter and generic responses.
+[Severity: Medium] — QR webhook has no endpoint throttle or request-size guard — web.php:33 — Signature checking still permits resource exhaustion with large or repeated invalid requests — Add body-size limits, provider-aware throttling, and upstream protection.
+[Severity: Low] — Booking creation is throttled at 10/minute — web.php:24 — This is useful but may still allow automated slot-holding across many IPs — Add per-identity/device heuristics and abandoned-booking monitoring.
+6. Business Logic / Flow Integrity
+[Severity: High] — Cancellation does not atomically coordinate with payment confirmation — GuestBookingController.php:867 — This is the same payment-integrity race and can produce incorrect revenue/slot state — Use a transaction and row lock.
+[Severity: Medium] — Equipment availability failure can leave the UI in a misleading state — guest-book.js:474 — A failed/non-200 availability request can leave loading or stale state; the final server check prevents unauthorized stock allocation, but users may proceed with incorrect availability — Show an explicit unavailable/error state and block continuation until a successful refresh.
+[Severity: Medium] — Overnight logic is duplicated between guest and user controllers — User_UserController.php:328 — The two implementations can drift and produce different accepted slots or conflict behavior — Move slot resolution/validation into one domain service and test midnight boundaries.
+[Severity: Low] — Notification ownership is correctly constrained — NotificationController.php:29 — markRead checks notification.user_id === auth()->id() and list queries are user-scoped — Keep authorization tests.
+7. Secrets & Configuration
+[Severity: High] — Docker copies the entire build context — Dockerfile:28 — If .env or another secret file is present in the build context, it can be baked into the image and pushed to a registry — Add a strict .dockerignore, inject secrets only at runtime, and scan built images.
+[Severity: Medium] — Production log level defaults to debug in .env.example — .env.example:18 — Even with APP_DEBUG=false, verbose application logs may expose operational/payment details — Set production LOG_LEVEL=warning or error.
+[Severity: Medium] — Cron endpoints execute queue work and are bearer-token protected only — VerifyCronToken.php:10 — A leaked token permits job execution and resource exhaustion — Use a strong secret, rotate it, restrict source IP where reliable, prefer POST, and add replay/request auditing.
+[Severity: Low] — MFA secrets are encrypted with APP_KEY — MfaController.php:78 — Correct, but APP_KEY rotation invalidates all MFA secrets — Document key rotation and recovery procedures.
+Reachable Git history contains a Clean project history commit and no reachable .env commits or obvious secret-value history from the inspected refs. This does not prove unreachable GitHub objects, forks, caches, or old clones are clean; rotate any credential that ever existed in the repository and verify GitHub secret scanning/history independently.
+
+8. Third-Party Trust Boundaries
+[Severity: Medium] — PayMongo signature verification is correctly implemented, but malformed payload handling is permissive — PaymongoQrPhController.php:264 — Invalid signed event shapes can receive successful “Ignored” responses and become operationally invisible — Validate JSON/object structure and log malformed event types distinctly.
+[Severity: Medium] — Google client-side JWT decoding is not authentication — payment.js:128 — The browser displays the decoded email before the server verifies the token; this is acceptable only because the server later calls Google verification, but client state must never be trusted — Keep server-side issuer, audience, expiry, and email verification checks.
+[Severity: Low] — No custom CORS policy was found — app.php:1 — Laravel’s same-origin default is preferable here; no confirmed permissive CORS issue — Verify Render/proxy headers do not add wildcard CORS.
+[Severity: Low] — Trusted proxy configuration accepts all proxies — app.php:34 — If the app is reachable without a trusted front proxy, client-controlled forwarded headers could affect scheme/IP logic — Restrict trusted proxies to the actual Render topology or ensure direct origin access is impossible.
+9. Prioritized Top 10
+Add throttling and lockout controls to admin MFA setup/verification.
+Make guest cancellation transactionally lock and re-check booking status.
+Enforce payment_method = qrph before creating PayMongo intents.
+Eliminate wildcard-based guest lookup and add strict rate limiting.
+Prevent stored XSS in equipment rendering.
+Add database-level court/date/time reservation uniqueness.
+Confirm or restore the missing GCash/Landbank webhook deployment.
+Add .dockerignore and prevent .env from entering Docker images.
+Add HTTP timeouts and resource limits to PayMongo/webhook requests.
+Formalize payment-reference uniqueness and unmatched-payment claim constraints.
+Blocks safe production payment testing: yes. Do not test with real money until items 1–4 are addressed, the missing SMS webhook situation is confirmed, and the deployed environment is verified for secret handling, HTTPS, trusted proxies, webhook configuration, and rollback/reconciliation procedures.

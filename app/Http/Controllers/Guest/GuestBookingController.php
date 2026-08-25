@@ -872,19 +872,30 @@ class GuestBookingController extends Controller
             abort(403);
         }
 
-        $pendingSiblingCount = Booking::where('payment_reference_id', $booking->payment_reference_id)
-            ->where('status', 'pending')
-            ->count();
+        $cancelled = false;
 
-        if ($pendingSiblingCount > 1) {
-            return response()->json([
-                'message' => 'This checkout includes multiple dates and must be cancelled all at once.',
-            ], 422);
-        }
+        DB::transaction(function () use ($booking, &$cancelled) {
+            // Re-fetch under lock so a webhook confirming payment concurrently
+            // has to wait its turn instead of racing this cancellation.
+            $locked = Booking::where('id', $booking->id)->lockForUpdate()->first();
 
-        if ($booking->status === 'pending') {
-            $booking->update(['status' => 'cancelled']);
+            $pendingSiblingCount = Booking::where('payment_reference_id', $locked->payment_reference_id)
+                ->where('status', 'pending')
+                ->count();
 
+            if ($pendingSiblingCount > 1) {
+                return;
+            }
+
+            if ($locked->status === 'pending') {
+                $locked->update(['status' => 'cancelled']);
+                $cancelled = true;
+            }
+
+            $booking->status = $locked->status;
+        });
+
+        if ($cancelled) {
             ActivityLogger::log(
                 'booking.cancelled',
                 sprintf(
