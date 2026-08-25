@@ -1601,13 +1601,20 @@ document.addEventListener('DOMContentLoaded', () => {
         card.className = 'equipment-card' + (qty > 0 ? ' has-qty' : '');
 
         const info = document.createElement('div');
-        info.innerHTML = `
-            <p class="equipment-card-name">${item.name}</p>
-            <p class="equipment-card-meta${item.available === 0 ? ' equipment-sold-out' : ''}">
-                ₱${Number(item.price).toLocaleString()} each &middot;
-                ${item.available === 0 ? 'Sold out for this time' : `${item.available} available`}
-            </p>
+
+        const nameEl = document.createElement('p');
+        nameEl.className = 'equipment-card-name';
+        nameEl.textContent = item.name;
+
+        const metaEl = document.createElement('p');
+        metaEl.className = 'equipment-card-meta' + (item.available === 0 ? ' equipment-sold-out' : '');
+        metaEl.innerHTML = `
+            ₱${Number(item.price).toLocaleString()} each &middot;
+            ${item.available === 0 ? 'Sold out for this time' : `${item.available} available`}
         `;
+
+        info.appendChild(nameEl);
+        info.appendChild(metaEl);
 
         const stepper = document.createElement('div');
         stepper.className = 'equipment-qty-stepper';

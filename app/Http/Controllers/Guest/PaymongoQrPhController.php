@@ -42,17 +42,32 @@ class PaymongoQrPhController extends Controller
     {
         $validated = $request->validate([
             'booking_id' => ['required', 'integer', 'exists:bookings,id'],
-            'token' => ['required', 'string'],
+            'token' => ['nullable', 'string'],
         ]);
 
         $booking = Booking::findOrFail($validated['booking_id']);
 
-        if (!$booking->poll_token || !hash_equals($booking->poll_token, $validated['token'])) {
+        $isOwner = auth()->check() && $booking->user_id === auth()->id();
+        $hasValidToken = $booking->poll_token
+            && !empty($validated['token'] ?? null)
+            && hash_equals($booking->poll_token, $validated['token']);
+
+        if (! $isOwner && ! $hasValidToken) {
             abort(403);
         }
 
         if ($booking->status !== 'pending') {
             return response()->json(['message' => 'This booking is no longer awaiting payment.'], 409);
+        }
+
+        // This intent covers the whole checkout and the webhook confirms
+        // every booking under it as paid once PayMongo reports success —
+        // so this must only ever run for bookings that were actually
+        // created as qrph in the first place. A token for a booking on a
+        // different payment method (or none) must not be able to attach
+        // a QR intent and get itself confirmed through this path.
+        if ($booking->payment_method !== 'qrph') {
+            return response()->json(['message' => 'This booking is not set up for QR Ph payment.'], 409);
         }
 
         $paymentReference = $booking->paymentReference;
@@ -74,17 +89,28 @@ class PaymongoQrPhController extends Controller
         // the real intent id once PayMongo responds.
         $claimToken = 'claiming:' . (string) \Illuminate\Support\Str::uuid();
 
-        $claimed = DB::transaction(function () use ($paymentReference, $claimToken) {
+        // PaymongoQrPhController::createQr() — inside the existing claim transaction
+        $claimed = DB::transaction(function () use ($paymentReference, $claimToken, $booking) {
             $locked = PaymentReference::where('id', $paymentReference->id)->lockForUpdate()->first();
+
+            // Re-check now that we hold the lock — a concurrent cancelAll() may
+            // have committed between our earlier status check and this one.
+            $freshBooking = Booking::find($booking->id);
+            if (! $freshBooking || $freshBooking->status !== 'pending') {
+                return 'stale';
+            }
 
             if ($locked->payment_intent_id) {
                 return null;
             }
 
             $locked->update(['payment_intent_id' => $claimToken]);
-
             return $locked;
         });
+
+        if ($claimed === 'stale') {
+            return response()->json(['message' => 'This booking is no longer awaiting payment.'], 409);
+        }
 
         if (!$claimed) {
             $current = $paymentReference->fresh();
@@ -143,6 +169,7 @@ class PaymongoQrPhController extends Controller
         $idempotencyKey = 'qrph-intent-' . $paymentReference->id;
 
         $intentResponse = Http::withBasicAuth($secretKey, '')
+            ->timeout(10)
             ->withHeaders(['Idempotency-Key' => $idempotencyKey])
             ->post(self::API_BASE . '/payment_intents', [
                 'data' => [
@@ -172,6 +199,7 @@ class PaymongoQrPhController extends Controller
         $clientKey = $intent['attributes']['client_key'];
 
         $methodResponse = Http::withBasicAuth($secretKey, '')
+            ->timeout(10)
             ->post(self::API_BASE . '/payment_methods', [
                 'data' => ['attributes' => ['type' => 'qrph']],
             ]);
@@ -188,6 +216,7 @@ class PaymongoQrPhController extends Controller
         $methodId = $methodResponse->json('data.id');
 
         $attachResponse = Http::withBasicAuth($secretKey, '')
+            ->timeout(10)
             ->post(self::API_BASE . "/payment_intents/{$intentId}/attach", [
                 'data' => [
                     'attributes' => [
@@ -437,19 +466,43 @@ class PaymongoQrPhController extends Controller
     {
         $intentId = $event['data']['attributes']['data']['id'] ?? null;
 
-        if ($intentId) {
-            $paymentReference = PaymentReference::where('payment_intent_id', $intentId)->first();
-
-            // Leave the row alone — your existing
-            // bookings:expire-unconfirmed-* scheduled commands already
-            // sweep up stale pending bookings. This just logs it so you
-            // can see expired QR Ph attempts distinctly if useful later.
-            if ($paymentReference) {
-                Log::info('PayMongo QR Ph expired for payment reference', [
-                    'payment_reference_id' => $paymentReference->id,
-                ]);
-            }
+        if (! $intentId) {
+            return response()->json(['message' => 'OK'], 200);
         }
+
+        $cancelled = 0;
+
+        DB::transaction(function () use ($intentId, &$cancelled) {
+            // Lock the PaymentReference the same way createQr()/cancelAll() do —
+            // if a payment.paid webhook for this same intent is racing this
+            // expiry event, whichever transaction commits first wins, and the
+            // other sees the already-updated status instead of acting on stale
+            // data.
+            $paymentReference = PaymentReference::where('payment_intent_id', $intentId)
+                ->lockForUpdate()
+                ->first();
+
+            if (! $paymentReference) {
+                return;
+            }
+
+            $siblings = Booking::where('payment_reference_id', $paymentReference->id)
+                ->where('status', 'pending')
+                ->lockForUpdate()
+                ->get();
+
+            foreach ($siblings as $sibling) {
+                $sibling->update(['status' => 'cancelled']);
+                $sibling->slots()->update(['is_active' => false]);
+                $cancelled++;
+            }
+
+            Log::info('PayMongo QR Ph expired — cancelled pending bookings', [
+                'payment_reference_id' => $paymentReference->id,
+                'intent_id' => $intentId,
+                'cancelled_count' => $cancelled,
+            ]);
+        });
 
         return response()->json(['message' => 'OK'], 200);
     }

@@ -1,0 +1,56 @@
+# Never let secrets enter the build context or an image layer.
+# Render injects real env vars at runtime — none of these files
+# should ever be needed inside the image itself.
+.env
+.env.*
+!.env.example
+
+# Version control — the full git history has no reason to be inside
+# the running container, and can carry old secrets from prior commits
+# even after they were removed from the current working tree.
+.git
+.gitignore
+.gitattributes
+
+# Laravel local/dev state — regenerated at runtime, not needed at
+# build time, and can leak local file paths, cached config values,
+# or session/cache data from whoever's machine built the image.
+storage/*.key
+storage/app/*
+!storage/app/.gitkeep
+storage/framework/cache/*
+storage/framework/sessions/*
+storage/framework/testing/*
+storage/framework/views/*
+!storage/framework/cache/.gitkeep
+!storage/framework/sessions/.gitkeep
+!storage/framework/testing/.gitkeep
+!storage/framework/views/.gitkeep
+storage/logs/*
+!storage/logs/.gitkeep
+bootstrap/cache/*.php
+
+# Dependency directories — reinstalled fresh in the image via
+# `composer install` / would-be `npm install`; copying a host copy
+# in risks platform-mismatched binaries and just bloats the image.
+vendor/
+node_modules/
+
+# Tests and dev tooling — not needed to run the application.
+tests/
+phpunit.xml
+.phpunit.result.cache
+.editorconfig
+.styleci.yml
+
+# IDE / OS cruft.
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Docs and misc that don't belong in a runtime image.
+README.md
+*.md
+docker-compose.yml
+docker-compose.*.yml

@@ -37,11 +37,9 @@ Route::post('/guest-book/payment/qrph/webhook', [PaymongoQrPhController::class, 
     ->name('guest.book.payment.qrph.webhook')
     ->withoutMiddleware(['web']);
 
-Route::post('/guest/bookings/{booking}/update-reference', [GuestBookingController::class, 'updateReference'])
-    ->name('guest.book.update-reference');
-
 Route::get('/cron/expire-unconfirmed', [BookingCronController::class, 'expireUnconfirmed'])
-    ->middleware('cron.auth');
+    ->middleware('cron.auth')
+    ->middleware('throttle:30,1');
 
 Route::get('/cron/run-reminders', [BookingCronController::class, 'runReminders'])
     ->middleware('cron.auth')
@@ -92,9 +90,13 @@ Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 Route::middleware('auth')->group(function () {
     Route::get('/mfa/setup', [MfaController::class, 'setup'])->name('mfa.setup');
     Route::post('/mfa/setup/init', [MfaController::class, 'initSetup'])->name('mfa.setup.init');
-    Route::post('/mfa/enable', [MfaController::class, 'enable'])->name('mfa.enable');
+    Route::post('/mfa/enable', [MfaController::class, 'enable'])
+        ->middleware('throttle:5,1')
+        ->name('mfa.enable');
     Route::get('/mfa/challenge', [MfaController::class, 'challenge'])->name('mfa.challenge');
-    Route::post('/mfa/verify', [MfaController::class, 'verify'])->name('mfa.verify');
+    Route::post('/mfa/verify', [MfaController::class, 'verify'])
+        ->middleware('throttle:5,1')
+        ->name('mfa.verify');
 });
 
 // =================================== ADMIN ROUTES =====================================

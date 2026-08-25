@@ -144,6 +144,7 @@ class User_UserController extends Controller
             }
 
             $locked->update(['status' => 'cancelled']);
+            $locked->slots()->update(['is_active' => false]);
 
             return ['ok' => true, 'booking' => $locked];
         });
@@ -537,6 +538,7 @@ class User_UserController extends Controller
 
                     foreach ($windows as [$start, $end]) {
                         $booking->slots()->create([
+                            'court_id'   => $court->id,
                             'date'       => $start->toDateString(),
                             'start_time' => $start->format('H:i:s'),
                             'end_time'   => $end->format('H:i:s'),

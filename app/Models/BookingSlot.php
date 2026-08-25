@@ -10,6 +10,7 @@ class BookingSlot extends Model
     use HasFactory;
 
     protected $fillable = [
+        'court_id',
         'booking_id',
         'date',
         'start_time',

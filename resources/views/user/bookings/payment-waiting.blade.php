@@ -22,7 +22,6 @@
             data-booking-id="{{ $booking->id }}"
             data-status-url="{{ $statusUrl }}"
             data-cancel-url="{{ $cancelUrl }}"
-            data-update-reference-url="{{ $updateReferenceUrl }}"
             data-book-url="{{ $bookUrl }}"
             data-initial-status="{{ $booking->status }}"
             data-expires-at="{{ $booking->expires_at?->toIso8601String() }}"
@@ -87,21 +86,6 @@
 
             <div class="modal-actions" id="waitActions" @if ($booking->status !== 'pending') style="display:none;" @endif>
                 <button type="button" class="btn btn-secondary" id="waitCancelBtn">Cancel Booking</button>
-            </div>
-
-            <div class="gcash-wait-reference" id="waitReferenceBox" @if ($booking->payment_method === 'qrph' || $booking->status !== 'pending') style="display:none;" @endif>
-                <label for="waitReferenceInput">Typo'd your reference number? Fix it here:</label>
-                <div class="modal-actions">
-                    <input
-                        type="text"
-                        id="waitReferenceInput"
-                        maxlength="50"
-                        value="{{ $currentReference }}"
-                        placeholder="Payment reference number"
-                    >
-                    <button type="button" class="btn btn-secondary" id="waitReferenceBtn">Update Reference</button>
-                </div>
-                <p class="gcash-wait-status" id="waitReferenceMsg"></p>
             </div>
 
             <div class="modal-actions" id="waitDoneActions" @if ($booking->status === 'pending') style="display:none;" @endif>

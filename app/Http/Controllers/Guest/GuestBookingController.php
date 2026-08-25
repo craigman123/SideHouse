@@ -267,7 +267,13 @@ class GuestBookingController extends Controller
                 // either", not "match both", since a guest might only
                 // remember one of the two correctly.
                 if ($emailReady) {
-                    $q->orWhere('email', 'ILIKE', $email);
+                    // Escape ILIKE metacharacters (%, _, and the escape
+                    // character itself, \) in the guest's own input so it's
+                    // always matched as a literal string, never as a
+                    // pattern — otherwise something like "%@%" would match
+                    // every row containing an "@" instead of one email.
+                    $escapedEmail = str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $email);
+                    $q->orWhere('email', 'ILIKE', $escapedEmail);
                 }
                 if ($phoneReady) {
                     $q->orWhereRaw("regexp_replace(contact_number, '\\D', '', 'g') LIKE ?", ['%' . $digits . '%']);
@@ -712,6 +718,7 @@ class GuestBookingController extends Controller
 
                     foreach ($windows as [$start, $end]) {
                         $booking->slots()->create([
+                            'court_id'   => $court->id,
                             'date'       => $start->toDateString(),
                             'start_time' => $start->format('H:i:s'),
                             'end_time'   => $end->format('H:i:s'),
@@ -850,7 +857,6 @@ class GuestBookingController extends Controller
             'statusUrl'       => route('guest.book.status', ['booking' => $booking->id]),
             'cancelUrl'       => route('guest.book.cancel', ['booking' => $booking->id]),
             'cancelAllUrl'    => route('guest.book.cancel-all', ['booking' => $booking->id]),
-            'referenceUrl'    => route('guest.book.update-reference', ['booking' => $booking->id]),
             'landingUrl'      => route('landing'),
         ]);
     }
@@ -873,27 +879,58 @@ class GuestBookingController extends Controller
         }
 
         $cancelled = false;
+        $blocked = null;
 
-        DB::transaction(function () use ($booking, &$cancelled) {
+        DB::transaction(function () use ($booking, &$cancelled, &$blocked) {
             // Re-fetch under lock so a webhook confirming payment concurrently
             // has to wait its turn instead of racing this cancellation.
             $locked = Booking::where('id', $booking->id)->lockForUpdate()->first();
+
+            $paymentReference = PaymentReferenceModel::where('id', $locked->payment_reference_id)
+                ->lockForUpdate()
+                ->first();
+
+            // Once a QR Ph intent exists, it was created for the full amount
+            // across every date in this checkout — cancelling just one date
+            // would leave a live QR that still expects payment for a date
+            // that's no longer being held. From this point only cancelAll()
+            // is safe.
+            if ($paymentReference && $paymentReference->payment_intent_id !== null) {
+                $blocked = 'qr_created';
+
+                return;
+            }
 
             $pendingSiblingCount = Booking::where('payment_reference_id', $locked->payment_reference_id)
                 ->where('status', 'pending')
                 ->count();
 
             if ($pendingSiblingCount > 1) {
+                $blocked = 'multi_date';
+
                 return;
             }
 
             if ($locked->status === 'pending') {
                 $locked->update(['status' => 'cancelled']);
+                $locked->slots()->update(['is_active' => false]);
                 $cancelled = true;
             }
 
             $booking->status = $locked->status;
         });
+
+        if ($blocked === 'qr_created') {
+            return response()->json([
+                'message' => 'A payment QR has already been generated for this checkout and covers all its dates. Cancel the entire booking instead of a single date.',
+            ], 422);
+        }
+
+        if ($blocked === 'multi_date') {
+            return response()->json([
+                'message' => 'This checkout includes multiple dates and must be cancelled all at once.',
+            ], 422);
+        }
 
         if ($cancelled) {
             ActivityLogger::log(
@@ -925,6 +962,15 @@ class GuestBookingController extends Controller
 
         $cancelled = 0;
         DB::transaction(function () use ($booking, &$cancelled) {
+            // Lock the PaymentReference first — this is the same row
+            // createQr() locks before claiming. Locking it here forces a
+            // concurrent createQr() call to wait until this cancellation
+            // commits or rolls back, instead of interleaving and handing out
+            // a QR for a booking we're about to cancel.
+            PaymentReferenceModel::where('id', $booking->payment_reference_id)
+                ->lockForUpdate()
+                ->first();
+
             $siblings = Booking::where('payment_reference_id', $booking->payment_reference_id)
                 ->where('status', 'pending')
                 ->lockForUpdate()
@@ -932,6 +978,7 @@ class GuestBookingController extends Controller
 
             foreach ($siblings as $sibling) {
                 $sibling->update(['status' => 'cancelled']);
+                $sibling->slots()->update(['is_active' => false]);
                 $cancelled++;
             }
         });
@@ -946,123 +993,6 @@ class GuestBookingController extends Controller
         }
 
         return response()->json(['status' => 'cancelled', 'cancelled' => $cancelled]);
-    }
-
-    /**
-     * Lets the guest fix a typo'd reference number on their own still-
-     * pending booking, instead of the only options being "wait for it to
-     * expire" or "cancel and start the whole booking over" — the slot
-     * and everything else about the booking stays exactly as-is, only
-     * the reference number (and the retroactive payment match it
-     * unlocks) changes.
-     *
-     * Updates the SHARED payment_reference row, not just this one
-     * booking — if this booking came from a multi-date checkout, every
-     * sibling booking under the same payment gets the corrected
-     * reference too, and a match here confirms all of them at once
-     * (they were always one payment, not several). A no-op once the
-     * payment is already confirmed/cancelled — see the already_resolved
-     * branch below.
-     */
-    public function updateReference(Request $request, Booking $booking)
-    {
-        $token = (string) $request->query('token', '');
-
-        if ($token === '' || ! $booking->poll_token || ! hash_equals($booking->poll_token, $token)) {
-            abort(403);
-        }
-
-        $validated = $request->validate([
-            'payment_reference' => ['required', 'string', 'max:50'],
-        ]);
-
-        $result = DB::transaction(function () use ($booking, $validated) {
-            // Re-fetch under lockForUpdate() rather than trusting the
-            // route-bound $booking — same reasoning as the webhook
-            // controllers' status re-check: without this, a webhook
-            // confirming (or an expire command cancelling) this exact
-            // booking between the check below and the update at the
-            // bottom could get silently clobbered by this request, or
-            // vice versa.
-            $booking = Booking::where('id', $booking->id)->lockForUpdate()->first();
-
-            if ($booking->status !== 'pending') {
-                return ['status' => $booking->status, 'already_resolved' => true];
-            }
-
-            $paymentReference = PaymentReferenceModel::where('id', $booking->payment_reference_id)
-                ->lockForUpdate()
-                ->first();
-
-            if ($paymentReference === null) {
-                // Shouldn't happen — every booking created by store()
-                // gets one in the same transaction — but fail safe
-                // rather than fatal if it ever does.
-                return ['status' => $booking->status, 'already_resolved' => true];
-            }
-
-            $paymentReference->update(['payment_reference' => $validated['payment_reference']]);
-
-            // Same rule as store()'s retroactive claim and both webhook
-            // controllers: reference number is the only thing that can
-            // confirm a match. No "only one candidate at this amount"
-            // fallback — see those for why.
-            $normalizedRef = PaymentReference::normalize($validated['payment_reference']);
-            $claimedPayment = null;
-
-            if ($normalizedRef !== '' && $paymentReference->confirmed_at === null) {
-                $claimedPayment = UnmatchedPayment::unmatched()
-                    ->where('payment_method', $paymentReference->payment_method)
-                    ->where('amount', $paymentReference->amount)
-                    ->where('created_at', '>=', now()->subMinutes(PaymentWindows::claimWindowMinutes($paymentReference->payment_method)))
-                    ->lockForUpdate()
-                    ->get()
-                    ->first(fn ($p) => PaymentReference::normalize((string) $p->reference_number) === $normalizedRef);
-            }
-
-            if ($claimedPayment) {
-                $paymentReference->update(['confirmed_at' => now()]);
-                $claimedPayment->update([
-                    'matched_payment_reference_id' => $paymentReference->id,
-                    'matched_at'                   => now(),
-                ]);
-
-                $paymentReference->bookings()->where('status', 'pending')->update([
-                    'status'       => 'paid',
-                    'confirmed_at' => now(),
-                ]);
-
-                $booking->refresh();
-            }
-
-            return ['status' => $booking->status];
-        });
-
-        if ($result['status'] === 'paid') {
-            $booking->refresh();
-
-            ActivityLogger::log(
-                'booking.paid',
-                sprintf(
-                    "%s's payment for %s was confirmed after they corrected their reference number.",
-                    $booking->customer_name,
-                    $booking->court?->name ?? 'a court',
-                ),
-                actor: null,
-                subject: $booking,
-                properties: ['amount' => $booking->amount],
-            );
-        }
-
-        return response()->json([
-            'status'  => $result['status'],
-            'message' => match (true) {
-                $result['status'] === 'paid' => 'Payment matched! Your booking is confirmed.',
-                ! empty($result['already_resolved']) => "This booking is no longer pending, so its reference number can't be changed.",
-                default => "Reference number updated — we'll keep watching for a match.",
-            },
-            ! empty($result['already_resolved']) ? 422 : 200,
-        ]);
     }
 
     /**
