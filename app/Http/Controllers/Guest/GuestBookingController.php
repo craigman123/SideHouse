@@ -662,7 +662,6 @@ class GuestBookingController extends Controller
                 // One shared payment for the whole checkout, however many
                 // dates it covers.
                 $paymentReference = PaymentReferenceModel::create([
-                    'payment_reference' => null,
                     'payment_method'    => 'qrph',
                     'amount'            => $totalAmount,
                     'confirmed_at'      => $isPaid ? now() : null,
