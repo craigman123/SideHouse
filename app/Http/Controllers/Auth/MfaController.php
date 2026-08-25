@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use PragmaRX\Google2FA\Google2FA;
 use Illuminate\Support\Str;
 use App\Support\QrCodeGenerator;
+use Illuminate\Contracts\Encryption\DecryptException;
 
 class MfaController extends Controller
 {
@@ -131,7 +132,29 @@ class MfaController extends Controller
 
         $user = $request->user();
         $google2fa = new Google2FA();
-        $secret = decrypt($user->mfa_secret);
+
+        try {
+            $secret = decrypt($user->mfa_secret);
+        } catch (DecryptException $e) {
+            // Secret is undecryptable (e.g. APP_KEY was rotated since this
+            // was encrypted) — can't recover it, so force clean re-enrollment
+            // instead of a 500.
+            $user->update([
+                'mfa_enabled'        => false,
+                'mfa_secret'         => null,
+                'mfa_recovery_codes' => null,
+            ]);
+
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'message' => 'Your MFA setup needs to be redone. Redirecting you to set it up again.',
+                    'redirect' => route('mfa.setup'),
+                ], 409);
+            }
+
+            return redirect()->route('mfa.setup')
+                ->withErrors(['code' => 'Your MFA setup needs to be redone. Please set it up again.']);
+        }
 
         $valid = $google2fa->verifyKey($secret, $request->code);
 
