@@ -14,13 +14,20 @@ class DatabaseSeeder extends Seeder
     /**
      * Seed the application's database.
      */
-    public function run(): void
+    // DatabaseSeeder.php
+    public function run()
     {
+        // Remove hardcoded password
+        // Use a secure random password and output it during seeding
+        $password = Str::random(16);
+        
         User::create([
-            'username' => 'admin',
-            'name' => 'admin',
-            'email' => 'f4l9m@example.com',
-            'password' => Hash::make('12345678'),
+            'name' => 'Admin',
+            'email' => 'admin@sidehouse.com',
+            'password' => Hash::make($password),
+            'is_admin' => true,
         ]);
+        
+        $this->command->info("Admin password: {$password}");
     }
 }

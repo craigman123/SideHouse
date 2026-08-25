@@ -243,7 +243,7 @@ class GuestBookingController extends Controller
         ]);
 
         $phone = trim((string) ($validated['phone'] ?? ''));
-        $email = trim((string) ($validated['email'] ?? ''));
+        $email = strtolower(trim((string) ($validated['email'] ?? '')));
         $digits = preg_replace('/\D/', '', $phone);
 
         $phoneReady = strlen($digits) >= 7;
@@ -258,7 +258,7 @@ class GuestBookingController extends Controller
                 if ($emailReady) {
                     // CHANGED: Use plain LIKE with escaped wildcards instead of ILIKE
                     $escapedEmail = str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $email);
-                    $q->orWhere('email', 'LIKE', $escapedEmail); 
+                    $q->orWhere('email', 'LIKE', $escapedEmail);
                 }
                 if ($phoneReady) {
                     $q->orWhereRaw("regexp_replace(contact_number, '\\D', '', 'g') LIKE ?", ['%' . $digits . '%']);
@@ -791,24 +791,6 @@ class GuestBookingController extends Controller
      * poll_token generated at booking time (and handed back in the store()
      * response) stands in for auth here.
      */
-    public function status(Request $request, Booking $booking)
-    {
-        // ✅ CHANGED: Try session first, fallback to query param
-        $token = session()->get('booking_token_' . $booking->id);
-        
-        // Fallback to query param for backwards compatibility
-        if (!$token) {
-            $token = (string) $request->query('token', '');
-        }
-
-        if ($token === '' || ! $booking->poll_token || ! hash_equals($booking->poll_token, $token)) {
-            abort(403);
-        }
-
-        return response()->json([
-            'status' => $booking->status,
-        ]);
-    }
 
     /**
      * Full-page replacement for the old "waiting for GCash/Landbank

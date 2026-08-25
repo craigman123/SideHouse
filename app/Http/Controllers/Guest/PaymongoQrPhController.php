@@ -431,45 +431,61 @@ class PaymongoQrPhController extends Controller
         }
 
         try {
-            // Find payment reference
-            $paymentReference = PaymentReference::where('payment_intent_id', $intentId)->first();
-            if (!$paymentReference) {
-                Log::warning('PayMongo webhook: no payment_reference found for intent', ['intent_id' => $intentId]);
+            // Wrap everything in a transaction with lock
+            $result = DB::transaction(function () use ($intentId, $paidAmount, $paidCurrency, $eventRowId) {
+                // Lock the payment reference first
+                $paymentReference = PaymentReference::where('payment_intent_id', $intentId)
+                    ->lockForUpdate()
+                    ->first();
+
+                if (!$paymentReference) {
+                    return 'no_reference';
+                }
+
+                // Re-check all bookings under this payment reference while locked
+                $bookings = Booking::where('payment_reference_id', $paymentReference->id)
+                    ->where('status', 'pending')
+                    ->lockForUpdate()
+                    ->get();
+
+                if ($bookings->isEmpty()) {
+                    return 'no_pending';
+                }
+
+                // Validate amount
+                $expectedAmount = (int) round($paymentReference->amount * 100);
+                if ((int)$paidAmount !== $expectedAmount || $paidCurrency !== 'PHP') {
+                    return 'amount_mismatch';
+                }
+
+                // Update all pending bookings
+                $updatedCount = Booking::where('payment_reference_id', $paymentReference->id)
+                    ->where('status', 'pending')
+                    ->update([
+                        'status' => 'paid',
+                        'confirmed_at' => now(),
+                    ]);
+
+                if ($updatedCount > 0 && !$paymentReference->isConfirmed()) {
+                    $paymentReference->update(['confirmed_at' => now()]);
+                }
+
+                return 'success';
+            });
+
+            if ($result === 'no_reference') {
                 $this->markWebhookEvent($eventRowId, 'completed');
                 return response()->json(['message' => 'No matching payment reference'], 200);
             }
 
-            // Validate amount against expected
-            $expectedAmount = (int) round($paymentReference->amount * 100);
-            if ((int)$paidAmount !== $expectedAmount || $paidCurrency !== 'PHP') {
-                Log::error('PayMongo webhook amount/currency mismatch', [
-                    'payment_reference_id' => $paymentReference->id,
-                    'intent_id' => $intentId,
-                    'expected' => $expectedAmount,
-                    'paid' => $paidAmount,
-                    'currency' => $paidCurrency,
-                ]);
+            if ($result === 'no_pending') {
+                $this->markWebhookEvent($eventRowId, 'completed');
+                return response()->json(['message' => 'No pending bookings'], 200);
+            }
+
+            if ($result === 'amount_mismatch') {
                 $this->markWebhookEvent($eventRowId, 'failed', 'Amount/currency mismatch');
                 return response()->json(['message' => 'Amount mismatch'], 400);
-            }
-
-            // Mark all pending bookings as paid
-            $updatedCount = Booking::where('payment_reference_id', $paymentReference->id)
-                ->where('status', 'pending')
-                ->update([
-                    'status' => 'paid',
-                    'confirmed_at' => now(),
-                ]);
-
-            if ($updatedCount > 0 && !$paymentReference->isConfirmed()) {
-                $paymentReference->update(['confirmed_at' => now()]);
-            }
-
-            if ($updatedCount === 0) {
-                Log::warning('PayMongo payment.paid but no pending bookings found', [
-                    'payment_reference_id' => $paymentReference->id,
-                    'intent_id' => $intentId,
-                ]);
             }
 
             $this->markWebhookEvent($eventRowId, 'completed');
@@ -481,9 +497,7 @@ class PaymongoQrPhController extends Controller
                 'event_id' => $eventId,
                 'intent_id' => $intentId ?? null,
                 'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
             ]);
-            // Rethrow to let PayMongo retry (500)
             throw $e;
         }
     }
@@ -566,11 +580,6 @@ class PaymongoQrPhController extends Controller
         $cancelled = 0;
 
         DB::transaction(function () use ($intentId, &$cancelled) {
-            // Lock the PaymentReference the same way createQr()/cancelAll() do —
-            // if a payment.paid webhook for this same intent is racing this
-            // expiry event, whichever transaction commits first wins, and the
-            // other sees the already-updated status instead of acting on stale
-            // data.
             $paymentReference = PaymentReference::where('payment_intent_id', $intentId)
                 ->lockForUpdate()
                 ->first();
