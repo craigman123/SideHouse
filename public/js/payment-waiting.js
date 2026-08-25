@@ -11,7 +11,97 @@
     const cancelAllUrl = box.dataset.cancelAllUrl;
     const landingUrl   = box.dataset.landingUrl;
 
-    // ---------- CSRF (same as payment.js) ----------
+    // ============================================================
+    // BACK NAVIGATION HANDLING
+    // ============================================================
+    
+    let backNavModalShown = false;
+
+    // Push a state to prevent immediate back navigation
+    window.history.pushState({ page: 'payment-waiting' }, '', window.location.href);
+
+    // Handle browser back button
+    window.addEventListener('popstate', function(e) {
+        // If user is trying to go back, show the modal
+        if (!backNavModalShown) {
+            backNavModalShown = true;
+            showBackNavigationModal();
+        }
+    });
+
+    function showBackNavigationModal() {
+        const modal = document.getElementById('wt-back-nav-modal');
+        const stayBtn = document.getElementById('wt-back-nav-stay');
+        const leaveBtn = document.getElementById('wt-back-nav-leave');
+
+        // Check if booking is still pending before showing modal
+        fetch(`${statusUrl}?token=${encodeURIComponent(token)}`, {
+            headers: { Accept: 'application/json' },
+        })
+        .then(res => res.json())
+        .then(data => {
+            // If booking is already paid or cancelled, just redirect
+            if (data.status === 'paid') {
+                window.location.href = landingUrl + '?booking_success=Payment confirmed!';
+                return;
+            }
+            if (data.status === 'cancelled') {
+                window.location.href = landingUrl + '?booking_error=This booking was cancelled.';
+                return;
+            }
+
+            // Show the modal
+            modal.classList.remove('hidden');
+        })
+        .catch(() => {
+            // If we can't check status, assume booking is still pending
+            modal.classList.remove('hidden');
+        });
+
+        // Stay on page - close modal and push a new state
+        stayBtn.onclick = function() {
+            modal.classList.add('hidden');
+            backNavModalShown = false;
+            // Push a new state so the back button works again
+            window.history.pushState({ page: 'payment-waiting' }, '', window.location.href);
+        };
+
+        // Leave - cancel booking and go home
+        leaveBtn.onclick = function() {
+            modal.classList.add('hidden');
+            cancelBookingAndLeave(cancelAllUrl, 'Your booking has been cancelled.');
+        };
+    }
+
+    function cancelBookingAndLeave(url, message) {
+        // Show loading state
+        const leaveBtn = document.getElementById('wt-back-nav-leave');
+        leaveBtn.disabled = true;
+        leaveBtn.textContent = 'Cancelling...';
+
+        fetch(`${url}?token=${encodeURIComponent(token)}`, {
+            method: 'POST',
+            headers: {
+                Accept: 'application/json',
+                ...csrfHeaders(),
+            },
+        })
+        .then(res => res.json())
+        .then(data => {
+            // Redirect to home with error message
+            const params = new URLSearchParams({ booking_error: message });
+            window.location.href = `${landingUrl}?${params.toString()}`;
+        })
+        .catch(() => {
+            // Even if cancel fails, redirect anyway
+            const params = new URLSearchParams({ booking_error: message });
+            window.location.href = `${landingUrl}?${params.toString()}`;
+        });
+    }
+
+    // ============================================================
+    // CSRF (same as payment.js)
+    // ============================================================
 
     function getCookie(name) {
         const match = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)'));
@@ -28,7 +118,9 @@
         return {};
     }
 
-    // ---------- Toasts (matches payment-waiting.css's .wt-toast-* classes) ----------
+    // ============================================================
+    // Toasts (matches payment-waiting.css's .wt-toast-* classes)
+    // ============================================================
 
     function showToast(message, type = 'success') {
         const toastContainer = document.getElementById('toastContainer');
@@ -53,7 +145,9 @@
         setTimeout(remove, 4000);
     }
 
-    // ---------- Confirm modal (replaces native confirm()) ----------
+    // ============================================================
+    // Confirm modal (replaces native confirm())
+    // ============================================================
 
     const confirmModalEl        = document.getElementById('wt-confirm-modal');
     const confirmModalMessageEl = document.getElementById('wt-confirm-modal-message');
@@ -92,7 +186,9 @@
         });
     }
 
-    // ---------- QR generation ----------
+    // ============================================================
+    // QR generation
+    // ============================================================
 
     const qrLoadingEl    = document.getElementById('qrLoading');
     const qrImageWrapEl  = document.getElementById('qrImageWrap');
@@ -102,12 +198,22 @@
     const qrRetryBtn     = document.getElementById('qrRetryBtn');
 
     async function loadQr() {
+        // Check if QR already loaded
+        if (qrImageEl.src && qrImageEl.src !== '') {
+            qrLoadingEl.hidden = true;
+            qrImageWrapEl.hidden = false;
+            qrStatusLineEl.hidden = false;
+            return;
+        }
+
+        // Show loading state
         qrLoadingEl.hidden = false;
         qrImageWrapEl.hidden = true;
         qrErrorEl.hidden = true;
         qrStatusLineEl.hidden = true;
 
         try {
+            // ✅ SINGLE CALL - get or generate QR
             const res = await fetch(createQrUrl, {
                 method: 'POST',
                 headers: {
@@ -115,21 +221,35 @@
                     'Content-Type': 'application/json',
                     ...csrfHeaders(),
                 },
-                body: JSON.stringify({ booking_id: bookingId, token }),
+                body: JSON.stringify({ 
+                    booking_id: bookingId, 
+                    token
+                }),
             });
 
             const data = await res.json().catch(() => ({}));
 
-            if (!res.ok || !data.qr_image_url) {
-                throw new Error(data.message || 'QR generation failed');
+            // ✅ If QR exists or was generated, show it
+            if (data.qr_image_url) {
+                qrImageEl.src = data.qr_image_url;
+                qrLoadingEl.hidden = true;
+                qrImageWrapEl.hidden = false;
+                qrStatusLineEl.hidden = false;
+                return;
             }
 
-            qrImageEl.src = data.qr_image_url;
-            qrLoadingEl.hidden = true;
-            qrImageWrapEl.hidden = false;
-            qrStatusLineEl.hidden = false;
+            // ✅ Handle 409 - QR already exists elsewhere
+            if (res.status === 409 && data.payment_intent_id) {
+                // Reload to get the existing QR
+                window.location.reload();
+                return;
+            }
+
+            // ✅ Show error if something went wrong
+            throw new Error(data.message || 'QR generation failed');
+
         } catch (err) {
-            console.error(err);
+            console.error('QR loading error:', err);
             qrLoadingEl.hidden = true;
             qrErrorEl.hidden = false;
         }
@@ -138,7 +258,9 @@
     qrRetryBtn.addEventListener('click', loadQr);
     loadQr();
 
-    // ---------- Status polling ----------
+    // ============================================================
+    // Status polling
+    // ============================================================
 
     let pollHandle;
     let timerHandle;
@@ -174,7 +296,9 @@
 
     pollHandle = setInterval(pollStatus, 4000);
 
-    // ---------- Floating countdown ----------
+    // ============================================================
+    // Floating countdown
+    // ============================================================
 
     const floatTimerEl      = document.getElementById('floatTimer');
     const floatTimerValueEl = document.getElementById('floatTimerValue');
@@ -205,7 +329,9 @@
     renderCountdown();
     timerHandle = setInterval(renderCountdown, 1000);
 
-    // ---------- Cancel actions ----------
+    // ============================================================
+    // Cancel actions
+    // ============================================================
 
     async function cancelBooking(url, confirmMessage) {
         const confirmed = await showConfirmModal(confirmMessage);

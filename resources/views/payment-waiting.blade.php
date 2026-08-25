@@ -34,7 +34,7 @@
         data-cancel-all-url="{{ $cancelAllUrl }}"
         data-landing-url="{{ $landingUrl }}"
     >
-        <a href="{{ $landingUrl }}" class="wt-back">&larr; Back to home</a>
+        <a href="#" class="wt-back" id="backToHome">&larr; Back to home</a>
 
         <div class="wt-hero">
             <h1>Almost there</h1>
@@ -119,6 +119,26 @@
         </div>
     </div>
 
+    {{-- ==================== BACK NAVIGATION MODAL ==================== --}}
+    <div id="wt-back-nav-modal" class="wt-confirm-modal hidden">
+        <div class="wt-confirm-modal-overlay"></div>
+        <div class="wt-confirm-modal-content">
+            <h2 class="wt-confirm-modal-title">Leave without paying?</h2>
+            <p class="wt-confirm-modal-message">
+                You have an active booking that's waiting for payment. If you leave now, your slot will be released and you'll need to rebook.
+            </p>
+            <div class="wt-confirm-modal-actions">
+                <button type="button" class="wt-confirm-modal-cancel" id="wt-back-nav-stay">
+                    Stay &amp; complete payment
+                </button>
+                <button type="button" class="wt-confirm-modal-confirm" id="wt-back-nav-leave">
+                    Yes, cancel &amp; leave
+                </button>
+            </div>
+        </div>
+    </div>
+
     <script src="{{ asset('js/payment-waiting.js') }}" defer></script>
+    <script src="{{ asset('js/qr-cache.js') }}" defer></script>
 </body>
 </html>

@@ -13,6 +13,8 @@ Schedule::command('bookings:send-in-app-reminders')->everyFiveMinutes();
 // Email for guests whose paid booking is starting soon
 Schedule::command('bookings:send-email-reminders')->everyFiveMinutes();
 
+Schedule::command('webhook:clean')->daily();
+
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');

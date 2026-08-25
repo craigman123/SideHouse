@@ -35,7 +35,7 @@ Route::middleware('throttle:10,1')->group(function () {
 // URI to the $except array there instead of removing middleware here.
 Route::post('/guest-book/payment/qrph/webhook', [PaymongoQrPhController::class, 'webhook'])
     ->name('guest.book.payment.qrph.webhook')
-    ->withoutMiddleware(['web']);
+    ->middleware('throttle:60,60');
 
 Route::get('/cron/expire-unconfirmed', [BookingCronController::class, 'expireUnconfirmed'])
     ->middleware('cron.auth')
@@ -54,7 +54,10 @@ Route::get('/guest/bookings/{booking}/status', [GuestBookingController::class, '
 // refresh, closed tab, or accidental back/forward doesn't cancel the
 // booking. See GuestBookingController::waiting()'s docblock.
 Route::get('/guest/bookings/{booking}/waiting', [GuestBookingController::class, 'waiting'])->name('guest.book.waiting');
-Route::get('/guest/bookings/search', [GuestBookingController::class, 'search'])->name('guest.book.search');
+Route::get('/guest/bookings/search', [GuestBookingController::class, 'search'])
+    ->middleware('throttle:10,1')
+    ->name('guest.book.search');
+    
 Route::post('/guest/bookings/{booking}/cancel', [GuestBookingController::class, 'cancel'])->name('guest.book.cancel');
 Route::post('/guest/bookings/{booking}/cancel-all', [GuestBookingController::class, 'cancelAll'])->name('guest.book.cancel-all');
 

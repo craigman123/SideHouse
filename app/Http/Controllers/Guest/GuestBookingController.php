@@ -246,14 +246,6 @@ class GuestBookingController extends Controller
         $email = trim((string) ($validated['email'] ?? ''));
         $digits = preg_replace('/\D/', '', $phone);
 
-        // Same readiness bar the frontend (landing-search.js) enforces
-        // before it even fires the request — re-checked here so a
-        // half-typed digit string or a bare '@' can't return the whole
-        // table if this endpoint is ever hit directly. Neither field
-        // being usable means there's nothing to search on at all —
-        // returning early here also avoids building an empty where()
-        // closure below, which would otherwise put no constraint on the
-        // query and match every booking in the system.
         $phoneReady = strlen($digits) >= 7;
         $emailReady = $email !== '' && str_contains($email, '@');
 
@@ -263,17 +255,10 @@ class GuestBookingController extends Controller
 
         $bookings = Booking::with(['court', 'equipment', 'paymentReference'])
             ->where(function ($q) use ($phoneReady, $emailReady, $email, $digits) {
-                // Both fields can be filled in at once — treated as "match
-                // either", not "match both", since a guest might only
-                // remember one of the two correctly.
                 if ($emailReady) {
-                    // Escape ILIKE metacharacters (%, _, and the escape
-                    // character itself, \) in the guest's own input so it's
-                    // always matched as a literal string, never as a
-                    // pattern — otherwise something like "%@%" would match
-                    // every row containing an "@" instead of one email.
+                    // CHANGED: Use plain LIKE with escaped wildcards instead of ILIKE
                     $escapedEmail = str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $email);
-                    $q->orWhere('email', 'ILIKE', $escapedEmail);
+                    $q->orWhere('email', 'LIKE', $escapedEmail); 
                 }
                 if ($phoneReady) {
                     $q->orWhereRaw("regexp_replace(contact_number, '\\D', '', 'g') LIKE ?", ['%' . $digits . '%']);
@@ -283,6 +268,11 @@ class GuestBookingController extends Controller
             ->orderByDesc('start_time')
             ->limit(20)
             ->get();
+
+        // NEW: If no bookings found, return empty array (no indication of existence)
+        if ($bookings->isEmpty()) {
+            return response()->json(['bookings' => []]);
+        }
 
         // Resolved by id rather than through a relation on the
         // booking_equipment rows themselves (e.g. $line->equipmentItem)
@@ -786,13 +776,12 @@ class GuestBookingController extends Controller
                 'poll_token' => $b->poll_token,
                 'amount'     => $b->amount,
             ]),
-            // Backwards-compatible top-level fields mirroring the FIRST
-            // booking, for any older frontend code that hasn't been
-            // updated yet to read the `bookings` array above.
             'booking_id' => $bookings[0]->id,
             'poll_token' => $bookings[0]->poll_token,
             'expires_at' => $bookings[0]->expires_at?->toIso8601String(),
             'amount'     => $result['paymentReference']->amount,
+            // ✅ NEW: The frontend should now navigate to /waiting/{booking} without ?token=
+            // The token will be stored in session when they land on waiting page
         ]);
     }
 
@@ -804,7 +793,13 @@ class GuestBookingController extends Controller
      */
     public function status(Request $request, Booking $booking)
     {
-        $token = (string) $request->query('token', '');
+        // ✅ CHANGED: Try session first, fallback to query param
+        $token = session()->get('booking_token_' . $booking->id);
+        
+        // Fallback to query param for backwards compatibility
+        if (!$token) {
+            $token = (string) $request->query('token', '');
+        }
 
         if ($token === '' || ! $booking->poll_token || ! hash_equals($booking->poll_token, $token)) {
             abort(403);
@@ -835,6 +830,8 @@ class GuestBookingController extends Controller
             abort(403);
         }
 
+        session()->put('booking_token_' . $booking->id, $token);
+
         $booking->load('court');
 
         // A multi-date checkout shares one payment_reference across several
@@ -854,9 +851,9 @@ class GuestBookingController extends Controller
             'siblingBookings' => $siblingBookings,
             'totalAmount'     => $paymentReference->amount ?? $siblingBookings->sum('amount'),
             'token'           => $token,
-            'statusUrl'       => route('guest.book.status', ['booking' => $booking->id]),
-            'cancelUrl'       => route('guest.book.cancel', ['booking' => $booking->id]),
-            'cancelAllUrl'    => route('guest.book.cancel-all', ['booking' => $booking->id]),
+            'statusUrl'       => route('guest.book.status', ['booking' => $booking->id]),  // Removed ?token=
+            'cancelUrl'       => route('guest.book.cancel', ['booking' => $booking->id]), // Removed ?token=
+            'cancelAllUrl'    => route('guest.book.cancel-all', ['booking' => $booking->id]), // Removed ?token=
             'landingUrl'      => route('landing'),
         ]);
     }
@@ -872,7 +869,12 @@ class GuestBookingController extends Controller
      */
     public function cancel(Request $request, Booking $booking)
     {
-        $token = (string) $request->query('token', '');
+        $token = session()->get('booking_token_' . $booking->id);
+    
+        // Fallback to query param for backwards compatibility
+        if (!$token) {
+            $token = (string) $request->query('token', '');
+        }
 
         if ($token === '' || ! $booking->poll_token || ! hash_equals($booking->poll_token, $token)) {
             abort(403);
@@ -954,7 +956,12 @@ class GuestBookingController extends Controller
     /** Cancel every still-pending date attached to this one checkout. */
     public function cancelAll(Request $request, Booking $booking)
     {
-        $token = (string) $request->query('token', '');
+         $token = session()->get('booking_token_' . $booking->id);
+    
+        // Fallback to query param for backwards compatibility
+        if (!$token) {
+            $token = (string) $request->query('token', '');
+        }
 
         if ($token === '' || ! $booking->poll_token || ! hash_equals($booking->poll_token, $token)) {
             abort(403);

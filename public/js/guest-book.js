@@ -1935,8 +1935,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 // here can accidentally cancel the booking: closing the
                 // tab, hitting back, or refreshing this next page all
                 // leave it exactly as-is.
-                const waitingUrl = waitingUrlTemplate.replace('__ID__', data.booking_id)
-                    + `?token=${encodeURIComponent(data.poll_token)}`;
+                // ✅ NEW: Remove token from URL
+                const waitingUrl = waitingUrlTemplate.replace('__ID__', data.booking_id);
                 window.location.href = waitingUrl;
             }
         } catch (err) {
