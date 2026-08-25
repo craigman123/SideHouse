@@ -11,9 +11,6 @@ return new class extends Migration
         if (! Schema::hasTable('payment_reference')) {
             Schema::create('payment_reference', function (Blueprint $table) {
                 $table->id();
-                $table->string('payment_proof_path')->nullable();
-                $table->string('gcash_reference_number')->nullable();
-                $table->string('payment_reference');
                 $table->string('payment_method');
                 $table->decimal('amount', 10, 2);
                 $table->timestamp('confirmed_at')->nullable();
