@@ -33,6 +33,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
 
             const data = await res.json();
+            updateCsrfToken(data.csrf_token);
 
             if (!res.ok) {
                 showToast(data.message || 'Invalid username or password.', 'error');
@@ -72,8 +73,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const data = await res.json();
 
-        document.getElementById('mfa-qr-image').src =
-            `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(data.qrCodeUrl)}`;
+        document.getElementById('mfa-qr-image').innerHTML = data.qrCodeSvg;
         document.getElementById('mfa-secret').textContent = data.secret;
 
         document.getElementById('mfa-modal-title').textContent = 'Set up Two-Factor Authentication';
@@ -133,6 +133,11 @@ document.addEventListener('DOMContentLoaded', () => {
         challengeView.classList.remove('hidden');
         modal.classList.remove('hidden');
         document.getElementById('mfa-challenge-code').focus();
+    }
+
+    function updateCsrfToken(token) {
+        if (!token) return;
+        document.querySelector('meta[name="csrf-token"]').setAttribute('content', token);
     }
 
     document.getElementById('mfa-challenge-form').addEventListener('submit', async (e) => {

@@ -30,11 +30,15 @@ class PaymentReference extends Model
         'payment_method',
         'amount',
         'confirmed_at',
+        'payment_intent_id',
+        'qr_image_url',
+        'qr_code_expires_at',
     ];
 
     protected $casts = [
-        'amount'       => 'decimal:2',
-        'confirmed_at' => 'datetime',
+        'amount'              => 'decimal:2',
+        'confirmed_at'        => 'datetime',
+        'qr_code_expires_at'  => 'datetime',
     ];
 
     public function bookings()

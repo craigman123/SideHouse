@@ -204,6 +204,6 @@
     }
 
     document.getElementById('cancelBtn').addEventListener('click', () => {
-        cancelBooking(cancelUrl, 'Cancel this booking? Your held slot will be released.');
+        cancelBooking(cancelAllUrl, 'Cancel this booking? Your held slot will be released.');
     });
 })();

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use PragmaRX\Google2FA\Google2FA;
 use Illuminate\Support\Str;
+use App\Support\QrCodeGenerator;
 
 class MfaController extends Controller
 {
@@ -33,8 +34,10 @@ class MfaController extends Controller
             $secret
         );
 
+        $qrCodeSvg = QrCodeGenerator::svg($qrCodeUrl);
+
         return view('auth.mfa-setup', [
-            'qrCodeUrl' => $qrCodeUrl,
+            'qrCodeSvg' => $qrCodeSvg,
             'secret'    => $secret,
         ]);
     }
@@ -66,7 +69,7 @@ class MfaController extends Controller
 
         return response()->json([
             'secret'    => $secret,
-            'qrCodeUrl' => $qrCodeUrl,
+            'qrCodeSvg' => QrCodeGenerator::svg($qrCodeUrl),
         ]);
     }
 
@@ -99,13 +102,16 @@ class MfaController extends Controller
         ]);
 
         session()->forget('mfa_temp_secret');
-        session(['mfa_passed' => true]);
+        session(['mfa_passed_at' => now()->timestamp]);
+        session()->regenerate(); // rotate session ID after successful MFA
 
+        // in enable(), success branch:
         if ($request->expectsJson()) {
             return response()->json([
                 'message'        => 'MFA enabled successfully',
                 'recovery_codes' => $recoveryCodes,
                 'redirect'       => route('admin.dashboard'),
+                'csrf_token'     => csrf_token(),
             ]);
         }
 
@@ -145,12 +151,15 @@ class MfaController extends Controller
             return back()->withErrors(['code' => 'Invalid authentication code.']);
         }
 
-        session(['mfa_passed' => true]);
+        session(['mfa_passed_at' => now()->timestamp]);
+        session()->regenerate(); // rotate session ID after successful MFA
 
+        // in verify(), success branch:
         if ($request->expectsJson()) {
             return response()->json([
-                'message'  => 'Verified',
-                'redirect' => route('admin.dashboard'),
+                'message'    => 'Verified',
+                'redirect'   => route('admin.dashboard'),
+                'csrf_token' => csrf_token(),
             ]);
         }
 

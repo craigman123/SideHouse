@@ -256,3 +256,17 @@
         letter-spacing: 1px;
     }
 }
+
+.hidden {
+    display: none !important;
+}
+
+.mfa-modal-close {
+    cursor: pointer;
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    font-size: 1.5rem;
+    color: #c9d1d9;
+    transition: color 0.2s;
+}

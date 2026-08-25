@@ -53,6 +53,7 @@ class AuthController extends Controller
                 return response()->json([
                     'mfa_required' => true,
                     'mfa_type'     => $user->hasMfaEnabled() ? 'challenge' : 'setup',
+                    'csrf_token'   => csrf_token(),
                 ]);
             }
 

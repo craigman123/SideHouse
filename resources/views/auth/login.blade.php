@@ -73,6 +73,7 @@
         <div class="mfa-modal-content">
             <div class="mfa-modal-header">
                 <h2 id="mfa-modal-title">Two-Factor Authentication</h2>
+                <button type="button" id="mfa-modal-close" class="mfa-modal-close" aria-label="Close">&times;</button>
             </div>
 
             <div class="mfa-modal-body">
@@ -80,7 +81,7 @@
                 <div id="mfa-setup-view" class="hidden">
                     <p>Scan this QR code with Google Authenticator or Authy:</p>
                     <div class="mfa-qr-wrapper">
-                        <img id="mfa-qr-image" src="" alt="QR Code">
+                        <div id="mfa-qr-image"></div>
                     </div>
                     <p class="mfa-secret-text">Or enter this code manually:<br><code id="mfa-secret"></code></p>
 
