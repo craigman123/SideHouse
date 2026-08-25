@@ -52,7 +52,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             // Normal user
-            window.location.href = data.redirect || '/my-dashboard';
+            window.location.href = safeRedirectPath(data.redirect);
         } catch (err) {
             console.error(err);
             showToast('Something went wrong. Please try again.', 'error');
@@ -60,6 +60,13 @@ document.addEventListener('DOMContentLoaded', () => {
             submitBtn.textContent = 'Log In';
         }
     });
+
+    function safeRedirectPath(path, fallback = '/my-dashboard') {
+        if (typeof path === 'string' && /^\/(?!\/|\\)/.test(path)) {
+            return path;
+        }
+        return fallback;
+    }
 
     // ---------- Setup Modal ----------
     async function openSetupModal() {
@@ -73,7 +80,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const data = await res.json();
 
-        document.getElementById('mfa-qr-image').innerHTML = data.qrCodeSvg;
+        const img = document.createElement('img');
+            img.src = `data:image/png;base64,${data.qrCodeImage}`;
+
+        img.alt = 'MFA QR code';
+        document.getElementById('mfa-qr-image').replaceChildren(img);
         document.getElementById('mfa-secret').textContent = data.secret;
 
         document.getElementById('mfa-modal-title').textContent = 'Set up Two-Factor Authentication';
@@ -121,7 +132,7 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('mfa-modal-title').textContent = 'Save your Recovery Codes';
 
         document.getElementById('mfa-recovery-continue').onclick = () => {
-            window.location.href = data.redirect;
+            window.location.href = safeRedirectPath(data.redirect);
         };
     });
 
@@ -163,7 +174,6 @@ document.addEventListener('DOMContentLoaded', () => {
             errorEl.classList.remove('hidden');
             return;
         }
-
-        window.location.href = data.redirect;
+        window.location.href = safeRedirectPath(data.redirect);
     });
 });

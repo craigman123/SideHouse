@@ -320,16 +320,6 @@ document.addEventListener('DOMContentLoaded', () => {
         // it won't exactly match Supabase's dashboard number, since
         // that also includes WAL + system overhead that isn't
         // queryable through a normal Postgres connection.
-        if (sys.database.size_bytes != null && sys.database.capacity_bytes) {
-            const usedGb = (sys.database.size_bytes / (1024 ** 3)).toFixed(2).replace(/\.00$/, '');
-            const capGb = (sys.database.capacity_bytes / (1024 ** 3)).toFixed(0);
-            dbSize.textContent = `${usedGb} GB used of ${capGb} GB`;
-        } else {
-            // "X GB used of Y GB" (matches Supabase's own Infrastructure >
-        // Disk phrasing) instead of the raw pg_database_size pretty
-        // string. This "used" figure is your DB + WAL where available —
-        // System overhead is Supabase infra-level and isn't visible to
-        // a normal Postgres connection, so it's never included here.
         const db = sys.database;
         if (db.size_bytes != null && db.capacity_bytes) {
             const usedGb = (db.size_bytes / (1024 ** 3)).toFixed(2).replace(/\.00$/, '');
@@ -338,17 +328,22 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             dbSize.textContent = db.size || '—';
         }
-
         renderDiskSegments(db);
-        }
         setProgressBar(document.getElementById('dbSizeBar'), sys.database.used_percent);
 
         dbTableList.innerHTML = '';
-        (sys.database.tables || []).forEach((t) => {
-            const li = document.createElement('li');
-            li.innerHTML = `<span class="table-name">${t.name}</span><span class="table-rows">${t.rows.toLocaleString()}</span>`;
-            dbTableList.appendChild(li);
-        });
+            (sys.database.tables || []).forEach((t) => {
+                const li = document.createElement('li');
+                const nameSpan = document.createElement('span');
+                nameSpan.className = 'table-name';
+                nameSpan.textContent = t.name;
+                const rowsSpan = document.createElement('span');
+                rowsSpan.className = 'table-rows';
+                rowsSpan.textContent = t.rows.toLocaleString();
+                li.appendChild(nameSpan);
+                li.appendChild(rowsSpan);
+                dbTableList.appendChild(li);
+            });
 
         // Server
         phpVersion.textContent = sys.server.php_version;
