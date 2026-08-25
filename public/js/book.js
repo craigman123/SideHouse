@@ -1035,7 +1035,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // updateSummary
         summaryDate.textContent = formatDate(activeSessionDate || selectedDate);
         summaryTime.textContent = formatSelectedSlotsSummary();
-        summaryPayment.textContent = selectedPayment ? PAYMENT_LABELS[selectedPayment] : '—';
+        summaryPayment.textContent = 'QR Ph';
 
         const equipText = equipmentSummaryText();
         if (equipText) {
