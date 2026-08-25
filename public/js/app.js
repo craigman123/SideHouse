@@ -11,6 +11,13 @@ function togglePassword() {
     }
 }
 
+document.addEventListener('DOMContentLoaded', function () {
+    var toggleBtn = document.querySelector('.toggle-password');
+    if (toggleBtn) {
+        toggleBtn.addEventListener('click', togglePassword);
+    }
+});
+
 function showToast(message, type = 'success') {
     let container = document.querySelector('.toast-container');
     if (!container) {

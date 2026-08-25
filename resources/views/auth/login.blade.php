@@ -32,6 +32,8 @@
                 class="google-btn-wrap"
                 data-google-client-id="{{ config('services.google.client_id') }}"
                 data-google-auth-url="{{ route('auth.google') }}"
+                data-redirect-fallback="{{ route('user.dashboard') }}"
+                data-button-text="continue_with"
             ></div>
 
             <div class="auth-divider"><span>or</span></div>
@@ -48,7 +50,7 @@
                     <label for="password">Password</label>
                     <div class="password-wrapper">
                         <input type="password" id="password" name="password" required>
-                        <button type="button" class="toggle-password" onclick="togglePassword()" aria-label="Show password">
+                        <button type="button" class="toggle-password" aria-label="Show password">
                             <svg id="eye-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                 <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
                                 <circle cx="12" cy="12" r="3"></circle>
@@ -113,106 +115,13 @@
         </div>
     </div>
 
-    {{-- ==================== GOOGLE SIGN-IN (unchanged) ==================== --}}
-    <script>
-        document.addEventListener('DOMContentLoaded', function () {
-            var btnEl = document.getElementById('googleSignInBtn');
-            if (!btnEl) return;
+    <script src="{{ asset('js/google-signin.js') }}" defer></script>
 
-            var clientId = btnEl.dataset.googleClientId;
-            var authUrl = btnEl.dataset.googleAuthUrl;
-            if (!clientId || !authUrl) return;
-
-            function getCookie(name) {
-                var match = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)'));
-                return match ? decodeURIComponent(match[1]) : null;
-            }
-
-            function csrfHeaders() {
-                var metaToken = document.querySelector('meta[name="csrf-token"]');
-                if (metaToken && metaToken.content) return { 'X-CSRF-TOKEN': metaToken.content };
-                var cookieToken = getCookie('XSRF-TOKEN');
-                if (cookieToken) return { 'X-XSRF-TOKEN': cookieToken };
-                return {};
-            }
-
-            async function handleGoogleCredential(response) {
-                btnEl.classList.add('google-btn-wrap-loading');
-
-                try {
-                    var res = await fetch(authUrl, {
-                        method: 'POST',
-                        headers: Object.assign(
-                            { 'Content-Type': 'application/json', Accept: 'application/json' },
-                            csrfHeaders()
-                        ),
-                        body: JSON.stringify({ id_token: response.credential }),
-                    });
-
-                    var data = await res.json().catch(function () { return {}; });
-
-                    if (!res.ok) {
-                        showToast(data.message || "Couldn't sign in with Google. Please try again.", 'error');
-                        btnEl.classList.remove('google-btn-wrap-loading');
-                        return;
-                    }
-
-                    showToast(data.message || 'Signed in!', 'success');
-                    window.location.href = data.redirect || '{{ route("user.dashboard") }}';
-                } catch (err) {
-                    console.error(err);
-                    showToast('Something went wrong. Please try again.', 'error');
-                    btnEl.classList.remove('google-btn-wrap-loading');
-                }
-            }
-
-            function render() {
-                window.google.accounts.id.initialize({
-                    client_id: clientId,
-                    callback: handleGoogleCredential,
-                    auto_select: false,
-                });
-                window.google.accounts.id.renderButton(btnEl, {
-                    type: 'standard',
-                    theme: 'filled_black',
-                    size: 'large',
-                    text: 'continue_with',
-                    shape: 'pill',
-                    width: 270,
-                });
-            }
-
-            if (window.google && window.google.accounts && window.google.accounts.id) {
-                render();
-            } else {
-                var attempts = 0;
-                var wait = setInterval(function () {
-                    attempts += 1;
-                    if (window.google && window.google.accounts && window.google.accounts.id) {
-                        clearInterval(wait);
-                        render();
-                    } else if (attempts > 40) {
-                        clearInterval(wait);
-                    }
-                }, 250);
-            }
-        });
-    </script>
-
-    @if ($errors->any())
-        <script>
-            document.addEventListener('DOMContentLoaded', function () {
-                showToast(@json($errors->first()), 'error');
-            });
-        </script>
-    @endif
-
-    @if (session('success'))
-        <script>
-            document.addEventListener('DOMContentLoaded', function () {
-                showToast(@json(session('success')), 'success');
-            });
-        </script>
-    @endif
+    <div id="flashData"
+        data-error="{{ $errors->any() ? $errors->first() : '' }}"
+        data-success="{{ session('success') }}"
+        style="display:none">
+    </div>
+    <script src="{{ asset('js/flash-toast.js') }}" defer></script>
 </body>
 </html>
