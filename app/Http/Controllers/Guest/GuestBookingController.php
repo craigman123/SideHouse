@@ -792,6 +792,23 @@ class GuestBookingController extends Controller
      * response) stands in for auth here.
      */
 
+    public function status(Request $request, Booking $booking)
+    {
+        $token = session()->get('booking_token_' . $booking->id);
+
+        if (!$token) {
+            $token = (string) $request->query('token', '');
+        }
+
+        if ($token === '' || ! $booking->poll_token || ! hash_equals($booking->poll_token, $token)) {
+            abort(403);
+        }
+
+        return response()->json([
+            'status' => $booking->status,
+        ]);
+    }
+
     /**
      * Full-page replacement for the old "waiting for GCash/Landbank
      * payment" modal. A modal could be dismissed by accident (the only
