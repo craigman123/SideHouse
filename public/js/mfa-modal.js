@@ -52,7 +52,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             // Normal user
-            window.location.href = safeRedirectPath(data.redirect);
+            window.location.href = safeRedirectPath(data.redirect, redirectFallback);
         } catch (err) {
             console.error(err);
             showToast('Something went wrong. Please try again.', 'error');
@@ -61,7 +61,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    function safeRedirectPath(path, fallback = '/my-dashboard') {
+    function safeRedirectPath(path, fallback) {
         if (typeof path === 'string' && /^\/(?!\/|\\)/.test(path)) {
             return path;
         }
@@ -132,7 +132,7 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('mfa-modal-title').textContent = 'Save your Recovery Codes';
 
         document.getElementById('mfa-recovery-continue').onclick = () => {
-            window.location.href = safeRedirectPath(data.redirect);
+            window.location.href = safeRedirectPath(data.redirect, redirectFallback);
         };
     });
 
@@ -174,6 +174,6 @@ document.addEventListener('DOMContentLoaded', () => {
             errorEl.classList.remove('hidden');
             return;
         }
-        window.location.href = safeRedirectPath(data.redirect);
+        window.location.href = safeRedirectPath(data.redirect, redirectFallback);
     });
 });
