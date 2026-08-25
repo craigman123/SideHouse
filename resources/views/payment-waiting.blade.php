@@ -7,6 +7,7 @@
     <title>Waiting for Payment | Side House Paddlers</title>
     <link rel="stylesheet" href="{{ asset('css/app.css') }}">
     <link rel="stylesheet" href="{{ asset('css/payment-waiting.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/payment-waiting-modal.css') }}">
     <link rel="icon" type="image/png" href="{{ asset('images/tab_icon.png') }}">
 </head>
 <body class="wt-body">
@@ -97,6 +98,25 @@
     <div class="wt-float-timer" id="floatTimer">
         <span class="wt-float-timer-label">Slot held for</span>
         <span class="wt-float-timer-value" id="floatTimerValue">--:--</span>
+    </div>
+
+    {{-- ==================== CANCEL CONFIRMATION MODAL ==================== --}}
+    <div id="wt-confirm-modal" class="wt-confirm-modal hidden">
+        <div class="wt-confirm-modal-overlay"></div>
+        <div class="wt-confirm-modal-content">
+            <h2 class="wt-confirm-modal-title">Cancel this booking?</h2>
+            <p class="wt-confirm-modal-message" id="wt-confirm-modal-message">
+                All dates in this checkout will be released.
+            </p>
+            <div class="wt-confirm-modal-actions">
+                <button type="button" class="wt-confirm-modal-cancel" id="wt-confirm-modal-cancel">
+                    Keep booking
+                </button>
+                <button type="button" class="wt-confirm-modal-confirm" id="wt-confirm-modal-confirm">
+                    Yes, cancel
+                </button>
+            </div>
+        </div>
     </div>
 
     <script src="{{ asset('js/payment-waiting.js') }}" defer></script>

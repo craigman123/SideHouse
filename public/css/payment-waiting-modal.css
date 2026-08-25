@@ -1,0 +1,98 @@
+/* ---------- Cancel Confirmation Modal ---------- */
+
+.wt-confirm-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.wt-confirm-modal.hidden {
+    display: none;
+}
+
+.wt-confirm-modal-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(1, 4, 9, 0.75);
+    backdrop-filter: blur(5px);
+}
+
+.wt-confirm-modal-content {
+    position: relative;
+    background-color: #161b22;
+    border: 1px solid #30363d;
+    color: #c9d1d9;
+    border-radius: 12px;
+    width: 100%;
+    max-width: 380px;
+    padding: 1.75rem 1.75rem 1.5rem;
+    box-shadow: 0 8px 24px rgba(1, 4, 9, 0.6);
+    animation: wtModalSlideIn 0.22s ease;
+    margin: 0 16px;
+}
+
+@keyframes wtModalSlideIn {
+    from { transform: translateY(16px); opacity: 0; }
+    to   { transform: translateY(0); opacity: 1; }
+}
+
+.wt-confirm-modal-title {
+    margin: 0 0 0.6rem;
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: #f85149;
+    text-align: center;
+}
+
+.wt-confirm-modal-message {
+    text-align: center;
+    margin: 0 0 1.5rem;
+    line-height: 1.5;
+    font-weight: 500;
+    color: #8b949e;
+    font-size: 0.95rem;
+}
+
+.wt-confirm-modal-actions {
+    display: flex;
+    gap: 0.6rem;
+}
+
+.wt-confirm-modal-actions button {
+    flex: 1;
+    padding: 0.75rem;
+    border-radius: 8px;
+    font-weight: 700;
+    font-size: 14px;
+    cursor: pointer;
+    transition: background-color 0.2s, border-color 0.2s;
+}
+
+.wt-confirm-modal-cancel {
+    background-color: transparent;
+    color: #c9d1d9;
+    border: 1px solid #30363d;
+}
+
+.wt-confirm-modal-cancel:hover {
+    border-color: #8b949e;
+    color: #f0f6fc;
+}
+
+.wt-confirm-modal-confirm {
+    background-color: #da3633;
+    color: #fff;
+    border: 1px solid rgba(240, 246, 252, 0.1);
+}
+
+.wt-confirm-modal-confirm:hover {
+    background-color: #f85149;
+}
+
+.wt-confirm-modal-confirm:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}

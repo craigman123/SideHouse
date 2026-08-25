@@ -11,12 +11,6 @@
     const cancelAllUrl = box.dataset.cancelAllUrl;
     const landingUrl   = box.dataset.landingUrl;
 
-    // TODO(Craig): confirm this matches PaymongoQrPhController::createQr()'s
-    // actual JSON shape. Assumed here:
-    //   POST { booking_id, token } -> { qr_image_url }
-    // Adjust loadQr() below if your controller returns something else
-    // (e.g. the raw PayMongo next_action.code.image_url path).
-
     // ---------- CSRF (same as payment.js) ----------
 
     function getCookie(name) {
@@ -57,6 +51,45 @@
 
         toast.querySelector('.wt-toast-close').addEventListener('click', remove);
         setTimeout(remove, 4000);
+    }
+
+    // ---------- Confirm modal (replaces native confirm()) ----------
+
+    const confirmModalEl        = document.getElementById('wt-confirm-modal');
+    const confirmModalMessageEl = document.getElementById('wt-confirm-modal-message');
+    const confirmModalCancelBtn = document.getElementById('wt-confirm-modal-cancel');
+    const confirmModalConfirmBtn = document.getElementById('wt-confirm-modal-confirm');
+
+    // Resolves true if the user confirms, false if they back out
+    // (Cancel button, overlay click, or Escape key).
+    function showConfirmModal(message) {
+        confirmModalMessageEl.textContent = message;
+        confirmModalEl.classList.remove('hidden');
+
+        return new Promise((resolve) => {
+            function cleanup(result) {
+                confirmModalEl.classList.add('hidden');
+                confirmModalConfirmBtn.removeEventListener('click', onConfirm);
+                confirmModalCancelBtn.removeEventListener('click', onCancel);
+                confirmModalEl.removeEventListener('click', onOverlayClick);
+                document.removeEventListener('keydown', onKeydown);
+                resolve(result);
+            }
+
+            function onConfirm() { cleanup(true); }
+            function onCancel() { cleanup(false); }
+            function onOverlayClick(e) {
+                if (e.target === confirmModalEl) cleanup(false);
+            }
+            function onKeydown(e) {
+                if (e.key === 'Escape') cleanup(false);
+            }
+
+            confirmModalConfirmBtn.addEventListener('click', onConfirm);
+            confirmModalCancelBtn.addEventListener('click', onCancel);
+            confirmModalEl.addEventListener('click', onOverlayClick);
+            document.addEventListener('keydown', onKeydown);
+        });
     }
 
     // ---------- QR generation ----------
@@ -175,7 +208,10 @@
     // ---------- Cancel actions ----------
 
     async function cancelBooking(url, confirmMessage) {
-        if (!confirm(confirmMessage)) return;
+        const confirmed = await showConfirmModal(confirmMessage);
+        if (!confirmed) return;
+
+        confirmModalConfirmBtn.disabled = true;
 
         try {
             const res = await fetch(`${url}?token=${encodeURIComponent(token)}`, {
@@ -200,10 +236,12 @@
         } catch (err) {
             console.error(err);
             showToast('Something went wrong. Please try again.', 'error');
+        } finally {
+            confirmModalConfirmBtn.disabled = false;
         }
     }
 
     document.getElementById('cancelBtn').addEventListener('click', () => {
-        cancelBooking(cancelAllUrl, 'Cancel this booking? Your held slot will be released.');
+        cancelBooking(cancelAllUrl, 'All dates in this checkout will be released. This can\'t be undone.');
     });
 })();
