@@ -205,7 +205,7 @@
 
     {{-- Modal 4: contact number + payment method → confirm --}}
     <div class="modal-overlay" id="courtPaymentModal">
-        <div class="modal-box modal-box-lg modal-box-scrollable">
+        <div class="modal-box modal-box-lg modal-box-scrollable" id="paymentPage">
             <div class="modal-header">
                 <h3>Almost Done</h3>
                 <button type="button" class="modal-close" id="courtPaymentModalClose" aria-label="Close">&times;</button>
@@ -215,7 +215,7 @@
 
             <div class="modal-scroll-body">
                 <div class="booking-section">
-                    <p class="booking-section-label">Contact number for this booking</p>
+                    <p class="booking-section-label">Contact Number</p>
                     <div class="guest-info-grid">
                         <div class="guest-info-item">
                             <label for="contactNumber">Contact Number</label>
@@ -225,90 +225,20 @@
                 </div>
 
                 <div class="booking-section">
-                    <p class="booking-section-label">How will you pay?</p>
+                    <p class="booking-section-label">Payment Method</p>
                     <div class="payment-grid" id="paymentGrid">
-                        <button type="button" class="payment-btn payment-btn-qrph" data-method="qrph">
-                            <span class="payment-btn-icon">
-                                <img src="{{ asset('images/qrph.png') }}" alt="QR Ph logo">
-                            </span>
+                        <div class="payment-btn payment-btn-qrph selected">
                             <span class="payment-btn-title">QR Ph</span>
-                            <span class="payment-btn-sub">Pay with GCash, Maya, or any bank via QR Ph — instant, no reference number needed</span>
-                        </button>
-
-                    </div>
-
-                    <div class="payment-qr-panel" id="gcashQrPanel">
-                        <p class="payment-qr-instructions">Scan this code in your GCash app to pay, then enter the reference number from the payment confirmation below.</p>
-                        <div class="payment-qr-image-wrap">
-                            <img
-                                src="{{ asset('images/qr-image.png') }}"
-                                alt="GCash QR code"
-                                id="gcashQrImage"
-                                class="payment-qr-image"
-                                onerror="this.hidden=true; document.getElementById('gcashQrFallback').hidden=false;"
-                            >
-                            <div class="payment-qr-fallback" id="gcashQrFallback" hidden>
-                                <span>QR code coming soon</span>
-                            </div>
-                        </div>
-
-                        <div class="payment-proof-block" id="gcashProofBlock">
-                            <label for="gcashRefNumber" class="payment-proof-label">GCash Reference Number</label>
-                            <input type="text" id="gcashRefNumber" class="payment-ref-input" placeholder="e.g. 1234 567 890123" autocomplete="off">
-                            <p class="payment-proof-note">We confirm automatically the moment GCash notifies us — usually within a minute or two. Your booking stays pending until then.</p>
+                            <span class="payment-btn-sub">Your secure QR code is generated after confirmation. No reference number is needed.</span>
                         </div>
                     </div>
-
-                    <div class="payment-qr-panel" id="mayaQrPanel">
-                        <p class="payment-qr-instructions">Scan this code in your Maya app to pay, then enter the reference number from the payment confirmation below.</p>
-                        <div class="payment-qr-image-wrap">
-                            <img
-                                src="{{ asset('images/qr-image.png') }}"
-                                alt="Maya payment QR code"
-                                id="mayaQrImage"
-                                class="payment-qr-image"
-                                onerror="this.hidden=true; document.getElementById('mayaQrFallback').hidden=false;"
-                            >
-                            <div class="payment-qr-fallback" id="mayaQrFallback" hidden>
-                                <span>QR code coming soon</span>
-                            </div>
-                        </div>
-
-                        <div class="payment-proof-block" id="mayaProofBlock">
-                            <label for="mayaRefNumber" class="payment-proof-label">Maya Reference Number</label>
-                            <input type="text" id="mayaRefNumber" class="payment-ref-input" placeholder="e.g. 1234 567 890123" autocomplete="off">
-                            <p class="payment-proof-note">We confirm automatically the moment we receive the payment notification — usually within a minute or two. Your booking stays pending until then.</p>
-                        </div>
-                    </div>
-
-                    {{-- Landbank payments are temporarily unavailable. --}}
-                    {{-- <div class="payment-qr-panel" id="landbankQrPanel">
-                        <p class="payment-qr-instructions">Scan this code with your Landbank app (or any InstaPay-enabled app) to pay, then enter the reference number from the transfer confirmation below.</p>
-                        <div class="payment-qr-image-wrap">
-                            <img
-                                src="{{ asset('images/qr-image.png') }}"
-                                alt="Landbank InstaPay QR code"
-                                id="landbankQrImage"
-                                class="payment-qr-image"
-                                onerror="this.hidden=true; document.getElementById('landbankQrFallback').hidden=false;"
-                            >
-                            <div class="payment-qr-fallback" id="landbankQrFallback" hidden>
-                                <span>QR code coming soon</span>
-                            </div>
-                        </div>
-
-                        <div class="payment-proof-block" id="landbankProofBlock">
-                            <label for="landbankRefNumber" class="payment-proof-label">Landbank / InstaPay Reference Number</label>
-                            <input type="text" id="landbankRefNumber" class="payment-ref-input" placeholder="e.g. 1234 567 890123" autocomplete="off">
-                            <p class="payment-proof-note">We confirm automatically the moment the transfer notifies us — usually within a minute or two. Your booking stays pending until then.</p>
-                        </div>
-                    </div> --}}
                 </div>
 
                 <div class="booking-summary" id="bookingSummary">
+                    <p class="booking-summary-title">Final Review</p>
                     <p><span id="summaryDate"></span> &middot; <span id="summaryTime"></span></p>
                     <p id="summaryEquipmentRow" hidden>Equipment: <strong id="summaryEquipment"></strong></p>
-                    <p>Payment: <strong id="summaryPayment">&mdash;</strong></p>
+                    <p>Payment: <strong id="summaryPayment">QR Ph</strong></p>
                     <p class="booking-summary-total">Total: <strong id="summaryTotal"></strong></p>
                 </div>
             </div>

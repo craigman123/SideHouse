@@ -140,9 +140,18 @@ document.addEventListener('DOMContentLoaded', () => {
     // itself comes from our own page dataset (server-rendered), but the
     // final URL still gets checked after the booking ID is substituted
     // in, so this stays correct even if that template ever changes shape.
+    // route() renders a full absolute URL (scheme + host included), so we
+    // resolve it against window.location and only trust it if the origin
+    // matches — otherwise we'd never leave the fallback.
     function safeRedirectPath(path, fallback = '/') {
-        if (typeof path === 'string' && /^\/(?!\/|\\)/.test(path)) {
-            return path;
+        if (typeof path !== 'string' || !path) return fallback;
+        try {
+            const url = new URL(path, window.location.origin);
+            if (url.origin === window.location.origin) {
+                return `${url.pathname}${url.search}${url.hash}`;
+            }
+        } catch (err) {
+            // fall through to fallback below
         }
         return fallback;
     }
@@ -993,8 +1002,6 @@ document.addEventListener('DOMContentLoaded', () => {
         // books, instead of making them retype it every visit.
         contactNumberInput.value = userPhone || '';
         equipmentSelection = {};
-        if (gcashRefInput) gcashRefInput.value = '';
-        if (mayaRefInput) mayaRefInput.value = '';
         resetBookingState();
     }
 
@@ -1079,9 +1086,6 @@ document.addEventListener('DOMContentLoaded', () => {
             contactNumberInput.classList.toggle('field-invalid', !contactNumberInput.value.trim());
             return;
         }
-        gcashProofBlock?.classList.remove('payment-proof-invalid');
-        mayaProofBlock?.classList.remove('payment-proof-invalid');
-
         if (!selectedCourt || !selectedDate || selectedSlots.length < MIN_DURATION) return;
 
         confirmBtn.disabled = true;

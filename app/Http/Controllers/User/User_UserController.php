@@ -497,7 +497,6 @@ class User_UserController extends Controller
                 $isPaid = false;
 
                 $paymentReference = PaymentReferenceModel::create([
-                    'payment_reference' => null,
                     'payment_method'    => 'qrph',
                     'amount'            => $totalAmount,
                     'confirmed_at'      => $isPaid ? now() : null,
