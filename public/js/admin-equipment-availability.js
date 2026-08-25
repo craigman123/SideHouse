@@ -190,12 +190,24 @@ document.addEventListener('DOMContentLoaded', () => {
         return 'equip-available-ok';
     }
 
-    function escapeHtml(str) {
-        const div = document.createElement('div');
-        div.textContent = str;
-        return div.innerHTML;
+    // Small helper for building an element with a class + text content in
+    // one line — mirrors the same pattern used in admin-customers.js.
+    function el(tag, className, text) {
+        const node = document.createElement(tag);
+        if (className) node.className = className;
+        if (text !== undefined && text !== null) node.textContent = text;
+        return node;
     }
 
+    function formatPrice(price) {
+        const n = Number(price);
+        return Number.isFinite(n) ? `₱${n.toFixed(2)}` : '—';
+    }
+
+    // ---------- Skeleton rows ----------
+    // No dynamic data here at all (just static placeholder markup), so
+    // this one is safe to keep as innerHTML — nothing external ever flows
+    // through it. Left as-is rather than converted for no reason.
     function skeletonRows(count) {
         return Array.from({ length: count }, () => `
             <tr class="equip-skeleton-row">
@@ -210,34 +222,60 @@ document.addEventListener('DOMContentLoaded', () => {
         `).join('');
     }
 
-    function formatPrice(price) {
-        const n = Number(price);
-        return Number.isFinite(n) ? `₱${n.toFixed(2)}` : '—';
+    // ---------- Row rendering ----------
+    // Built with createElement/textContent rather than innerHTML template
+    // strings, so there's no HTML-injection sink left for item name,
+    // category, stock, or id to flow through — same pattern as
+    // admin-customers.js.
+
+    function buildEquipmentRow(item) {
+        const tr = document.createElement('tr');
+
+        tr.appendChild(el('td', 'equip-item-name', item.name));
+
+        const categoryTd = document.createElement('td');
+        categoryTd.appendChild(el('span', 'equip-category-pill', item.category || '—'));
+        tr.appendChild(categoryTd);
+
+        tr.appendChild(el('td', null, formatPrice(item.price)));
+        tr.appendChild(el('td', null, String(Number(item.stock_total) || 0)));
+        tr.appendChild(el('td', null, String(Number(item.reserved_peak) || 0)));
+
+        const availableTd = document.createElement('td');
+        const availableToday = Number(item.available_today) || 0;
+        availableTd.appendChild(el(
+            'span',
+            `equip-available-badge ${availabilityClass(availableToday)}`,
+            String(availableToday)
+        ));
+        tr.appendChild(availableTd);
+
+        const actionsTd = document.createElement('td');
+        const editBtn = el('button', 'equip-edit-btn', 'Edit');
+        editBtn.type = 'button';
+        editBtn.dataset.id = item.id;
+        const deleteBtn = el('button', 'equip-delete-btn', 'Delete');
+        deleteBtn.type = 'button';
+        deleteBtn.dataset.id = item.id;
+        actionsTd.appendChild(editBtn);
+        actionsTd.appendChild(deleteBtn);
+        tr.appendChild(actionsTd);
+
+        return tr;
     }
 
     function renderRows(rows) {
         currentRows = rows;
         emptyEl.hidden = rows.length > 0;
 
+        tableBody.innerHTML = '';
         if (rows.length === 0) {
-            tableBody.innerHTML = '';
             return;
         }
 
-        tableBody.innerHTML = rows.map((item) => `
-            <tr>
-                <td class="equip-item-name">${escapeHtml(item.name)}</td>
-                <td><span class="equip-category-pill">${escapeHtml(item.category || '—')}</span></td>
-                <td>${formatPrice(item.price)}</td>
-                <td>${item.stock_total}</td>
-                <td>${item.reserved_peak}</td>
-                <td><span class="equip-available-badge ${availabilityClass(item.available_today)}">${item.available_today}</span></td>
-                <td>
-                    <button type="button" class="equip-edit-btn" data-id="${item.id}">Edit</button>
-                    <button type="button" class="equip-delete-btn" data-id="${item.id}">Delete</button>
-                </td>
-            </tr>
-        `).join('');
+        rows.forEach((item) => {
+            tableBody.appendChild(buildEquipmentRow(item));
+        });
     }
 
     async function loadAvailability(date) {

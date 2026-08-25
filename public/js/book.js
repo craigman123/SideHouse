@@ -136,6 +136,17 @@ document.addEventListener('DOMContentLoaded', () => {
     let equipmentCatalog = [];
     let equipmentSelection = {};
 
+    // Validates a same-site path before navigating — waitingUrlTemplate
+    // itself comes from our own page dataset (server-rendered), but the
+    // final URL still gets checked after the booking ID is substituted
+    // in, so this stays correct even if that template ever changes shape.
+    function safeRedirectPath(path, fallback = '/') {
+        if (typeof path === 'string' && /^\/(?!\/|\\)/.test(path)) {
+            return path;
+        }
+        return fallback;
+    }
+
     const pad = (n) => n.toString().padStart(2, '0');
     const todayStr = () => new Date().toISOString().slice(0, 10);
 
@@ -1145,7 +1156,9 @@ document.addEventListener('DOMContentLoaded', () => {
             } else {
                 // Full-page redirect instead of opening a modal — see
                 // User_UserController::waitingForPayment()'s docblock.
-                window.location.href = waitingUrlTemplate.replace('__ID__', data.booking_id);
+                window.location.href = safeRedirectPath(
+                    waitingUrlTemplate.replace('__ID__', data.booking_id)
+                );
             }
         } catch (err) {
             console.error(err);

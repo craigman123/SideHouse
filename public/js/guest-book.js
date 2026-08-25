@@ -525,6 +525,17 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    // Validates a same-site path before navigating — waitingUrlTemplate
+    // comes from our own page dataset (server-rendered), but the final
+    // URL is still checked after the booking ID is substituted in, same
+    // guard used in book.js/mfa-modal.js/google-signin.js.
+    function safeRedirectPath(path, fallback = '/') {
+        if (typeof path === 'string' && /^\/(?!\/|\\)/.test(path)) {
+            return path;
+        }
+        return fallback;
+    }
+
     const pad = (n) => n.toString().padStart(2, '0');
     // NOTE: intentionally NOT using new Date().toISOString().slice(0, 10) —
     // toISOString() always converts to UTC, so for timezones ahead of UTC
@@ -1936,7 +1947,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 // tab, hitting back, or refreshing this next page all
                 // leave it exactly as-is.
                 // ✅ NEW: Remove token from URL
-                const waitingUrl = waitingUrlTemplate.replace('__ID__', data.booking_id);
+                const waitingUrl = safeRedirectPath(waitingUrlTemplate.replace('__ID__', data.booking_id));
                 window.location.href = waitingUrl;
             }
         } catch (err) {

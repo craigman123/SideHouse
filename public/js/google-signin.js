@@ -21,6 +21,16 @@ document.addEventListener('DOMContentLoaded', function () {
 
     var redirectFallback = btnEl.dataset.redirectFallback || '/';
 
+    // Only allow same-site paths ("/something", never "//host" or "/\host",
+    // which browsers treat as protocol-relative → external redirect) —
+    // same guard used in mfa-modal.js and book.js.
+    function safeRedirectPath(path, fallback) {
+        if (typeof path === 'string' && /^\/(?!\/|\\)/.test(path)) {
+            return path;
+        }
+        return fallback;
+    }
+
     async function handleGoogleCredential(response) {
         btnEl.classList.add('google-btn-wrap-loading');
 
@@ -45,7 +55,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }
 
             showToast(data.message || (btnEl.dataset.buttonText === 'signup_with' ? 'Account created!' : 'Signed in!'), 'success');
-            window.location.href = data.redirect || redirectFallback;
+            window.location.href = safeRedirectPath(data.redirect, redirectFallback);
         } catch (err) {
             console.error(err);
             showToast('Something went wrong. Please try again.', 'error');

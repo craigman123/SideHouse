@@ -209,6 +209,15 @@ document.addEventListener('DOMContentLoaded', function() {
         return div.innerHTML;
     }
 
+    // Small helper for building an element with a class + text content in
+    // one line — same pattern used in admin-customers.js.
+    function el(tag, className, text) {
+        const node = document.createElement(tag);
+        if (className) node.className = className;
+        if (text !== undefined && text !== null) node.textContent = text;
+        return node;
+    }
+
     function resultsContainer() {
         return searchModalResults ? searchModalResults.querySelector('.booking-search-results-inner') : null;
     }
@@ -227,6 +236,66 @@ document.addEventListener('DOMContentLoaded', function() {
         renderMessage('Enter your phone number or email, then hit "Find Bookings".');
     }
 
+    // Builds one booking result card entirely with createElement/textContent
+    // rather than an innerHTML template string — this is guest-facing (not
+    // admin-only like the equipment/customers tables), so there's no
+    // HTML-injection sink here at all regardless of what a static scanner
+    // can verify about escaping.
+    function buildBookingResultRow(b) {
+        const row = el('div', 'booking-search-result');
+
+        const top = el('div', 'booking-search-result-top');
+        const main = el('div', 'booking-search-result-main');
+        main.appendChild(el('span', 'booking-search-result-court', b.court));
+        const datetime = el('span', 'booking-search-result-datetime');
+        datetime.append(`${b.date} \u00b7 ${b.time}`);
+        main.appendChild(datetime);
+        top.appendChild(main);
+
+        const statusClass = b.status === 'paid' ? 'status-paid'
+            : b.status === 'cancelled' ? 'status-cancelled'
+            : 'status-pending';
+        const statusLabel = b.status.charAt(0).toUpperCase() + b.status.slice(1);
+        top.appendChild(el('span', `status ${statusClass}`, statusLabel));
+        row.appendChild(top);
+
+        const equipmentList = b.equipment || [];
+        if (equipmentList.length) {
+            const equipWrap = el('div', 'booking-search-result-equipment');
+            equipmentList.forEach((item) => {
+                const chip = el('span', 'booking-search-equipment-chip');
+                chip.append(`${item.quantity}\u00d7 ${item.name}`);
+                equipWrap.appendChild(chip);
+            });
+            row.appendChild(equipWrap);
+        }
+
+        if (b.payment) {
+            const paymentWrap = el('div', 'booking-search-result-payment');
+            const methodLabel = b.payment.charAt(0).toUpperCase() + b.payment.slice(1);
+            paymentWrap.appendChild(el('span', 'booking-search-result-payment-method', methodLabel));
+            if (b.reference) {
+                const refSpan = el('span', 'booking-search-result-payment-ref');
+                refSpan.append(`Ref: ${b.reference}`);
+                paymentWrap.appendChild(refSpan);
+            }
+            row.appendChild(paymentWrap);
+        }
+
+        const footer = el('div', 'booking-search-result-footer');
+        footer.appendChild(el('span', 'booking-search-result-total-label', 'Total'));
+        const totalAmount = Number(b.amount || 0).toLocaleString(undefined, {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+        });
+        const totalSpan = el('span', 'booking-search-result-total-amount');
+        totalSpan.append(`\u20b1${totalAmount}`);
+        footer.appendChild(totalSpan);
+        row.appendChild(footer);
+
+        return row;
+    }
+
     function renderResults(bookings) {
         const inner = resultsContainer();
         if (!inner) return;
@@ -238,42 +307,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         bookings.forEach((b) => {
-            const row = document.createElement('div');
-            row.className = 'booking-search-result';
-
-            const statusClass = b.status === 'paid' ? 'status-paid'
-                : b.status === 'cancelled' ? 'status-cancelled'
-                : 'status-pending';
-
-            const equipmentList = (b.equipment || []);
-            const equipmentHtml = equipmentList.length
-                ? `<div class="booking-search-result-equipment">
-                       ${equipmentList.map((item) => `<span class="booking-search-equipment-chip">${escapeHtml(item.quantity)}&times; ${escapeHtml(item.name)}</span>`).join('')}
-                   </div>`
-                : '';
-
-            row.innerHTML = `
-                <div class="booking-search-result-top">
-                    <div class="booking-search-result-main">
-                        <span class="booking-search-result-court">${escapeHtml(b.court)}</span>
-                        <span class="booking-search-result-datetime">${escapeHtml(b.date)} &middot; ${escapeHtml(b.time)}</span>
-                    </div>
-                    <span class="status ${statusClass}">${escapeHtml(b.status.charAt(0).toUpperCase() + b.status.slice(1))}</span>
-                </div>
-                ${equipmentHtml}
-                ${b.payment ? `
-                <div class="booking-search-result-payment">
-                    <span class="booking-search-result-payment-method">${escapeHtml(b.payment.charAt(0).toUpperCase() + b.payment.slice(1))}</span>
-                    ${b.reference ? `<span class="booking-search-result-payment-ref">Ref: ${escapeHtml(b.reference)}</span>` : ''}
-                </div>
-                ` : ''}
-                <div class="booking-search-result-footer">
-                    <span class="booking-search-result-total-label">Total</span>
-                    <span class="booking-search-result-total-amount">&#8369;${escapeHtml(Number(b.amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }))}</span>
-                </div>
-            `;
-
-            inner.appendChild(row);
+            inner.appendChild(buildBookingResultRow(b));
         });
     }
 

@@ -70,6 +70,17 @@
         return {};
     }
 
+    // Validates a same-site path before navigating — waitingUrlTemplate
+    // comes from our own page dataset (server-rendered), but the final
+    // URL is still checked after the booking ID/token are substituted in,
+    // same guard used in book.js/guest-book.js/mfa-modal.js/google-signin.js.
+    function safeRedirectPath(path, fallback = '/') {
+        if (typeof path === 'string' && /^\/(?!\/|\\)/.test(path)) {
+            return path;
+        }
+        return fallback;
+    }
+
     // ---------- Toasts ----------
 
     function showToast(message, type = 'success') {
@@ -311,8 +322,10 @@
 
             // Full-page redirect to the waiting step — see
             // GuestBookingController::waiting()'s docblock.
-            const waitingUrl = waitingUrlTemplate.replace('__ID__', data.booking_id)
-                + `?token=${encodeURIComponent(data.poll_token)}`;
+            const waitingUrl = safeRedirectPath(
+                waitingUrlTemplate.replace('__ID__', data.booking_id)
+                    + `?token=${encodeURIComponent(data.poll_token)}`
+            );
             window.location.href = waitingUrl;
         } catch (err) {
             console.error(err);
@@ -322,5 +335,3 @@
         }
     });
 })();
-
-
