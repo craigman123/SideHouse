@@ -314,7 +314,7 @@ class PaymongoQrPhController extends Controller
     public function webhook(Request $request)
     {
         // 1. Size guard (already present)
-        $contentLength = $request->getContentLength() ?? strlen($request->getContent());
+        $contentLength = strlen($request->getContent());
         if ($contentLength > self::MAX_WEBHOOK_PAYLOAD_SIZE) {
             Log::warning('PayMongo webhook payload too large', [
                 'size' => $contentLength,
