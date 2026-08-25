@@ -155,7 +155,7 @@ Route::middleware(['auth', 'admin', 'admin.mfa'])->group(function () {
 
 
 // =====================================   USER ROUTES    =====================================
-Route::middleware(['auth', 'user'])->group(function () {
+Route::middleware(['auth'])->group(function () {
     Route::get('/my-dashboard', [UserDashboardController::class, 'index'])->name('user.dashboard');
 
     // Book a court
