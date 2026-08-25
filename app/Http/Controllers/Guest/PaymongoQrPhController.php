@@ -252,6 +252,16 @@ class PaymongoQrPhController extends Controller
         $qrImageUrl = $attached['attributes']['next_action']['code']['image_url'] ?? null;
         $qrExpiresAt = $attached['attributes']['next_action']['code']['expires_at'] ?? null;
 
+        $testUrl = $attached['attributes']['next_action']['code']['test_url'] ?? null;
+
+        if ($testUrl) {
+            Log::info('PayMongo QR Ph test_url (test mode only)', [
+                'payment_reference_id' => $paymentReference->id,
+                'intent_id' => $intentId,
+                'test_url' => $testUrl,
+            ]);
+        }
+
         if (!$qrImageUrl) {
             Log::error('PayMongo attach succeeded but no QR image returned', [
                 'payment_reference_id' => $paymentReference->id,

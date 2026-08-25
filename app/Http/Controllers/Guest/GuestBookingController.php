@@ -523,7 +523,7 @@ class GuestBookingController extends Controller
             'totalAmount'        => $totalAmount,
             'paymentHoldMinutes' => PaymentWindows::BOOKING_EXPIRY_MINUTES,
             'storeUrl'           => route('guest.book.store'),
-            'waitingUrlTemplate' => route('guest.book.waiting', ['booking' => '__ID__']),
+            'waitingUrlTemplate' => route('guest.book.waiting', ['booking' => '__ID__'], false),
             'landingUrl'         => route('landing'),
             'googleClientId'     => config('services.google.client_id'),
         ]);
