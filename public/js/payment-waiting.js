@@ -206,11 +206,4 @@
     document.getElementById('cancelBtn').addEventListener('click', () => {
         cancelBooking(cancelUrl, 'Cancel this booking? Your held slot will be released.');
     });
-
-    const cancelAllBtn = document.getElementById('cancelAllBtn');
-    if (cancelAllBtn) {
-        cancelAllBtn.addEventListener('click', () => {
-            cancelBooking(cancelAllUrl, 'Cancel all dates in this checkout? All held slots will be released.');
-        });
-    }
 })();

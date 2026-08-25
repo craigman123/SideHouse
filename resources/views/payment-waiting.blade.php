@@ -89,9 +89,6 @@
             <div class="wt-section">
                 <div class="wt-cancel-actions">
                     <button type="button" class="wt-btn-cancel" id="cancelBtn">Cancel this booking</button>
-                    @if ($siblingBookings->count() > 1)
-                        <button type="button" class="wt-btn-cancel-all" id="cancelAllBtn">Cancel all {{ $siblingBookings->count() }} dates</button>
-                    @endif
                 </div>
             </div>
         </div>

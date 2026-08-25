@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Guest;
 
 use App\Http\Controllers\Controller;
 use App\Models\Booking;
+use App\Models\PaymentReference;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
@@ -50,8 +51,22 @@ class PaymongoQrPhController extends Controller
             abort(403);
         }
 
-        // Atomically claim the booking before making any PayMongo calls.
-        // Two simultaneous requests both reading payment_intent_id as null
+        if ($booking->status !== 'pending') {
+            return response()->json(['message' => 'This booking is no longer awaiting payment.'], 409);
+        }
+
+        $paymentReference = $booking->paymentReference;
+
+        if (!$paymentReference) {
+            return response()->json(['message' => 'Payment reference missing for this booking.'], 422);
+        }
+
+        // Atomically claim the PaymentReference before making any PayMongo
+        // calls. The intent covers the WHOLE checkout (its amount is the
+        // PaymentReference total, and the webhook confirms every sibling
+        // booking under it) — so the claim belongs here, not on whichever
+        // single Booking row the guest's URL happens to reference. Two
+        // simultaneous requests both reading payment_intent_id as null
         // used to both pass and both call out to PayMongo — this row lock
         // + immediate claim write closes that window. We claim with a
         // temporary sentinel (not a real intent id yet) so the webhook
@@ -59,10 +74,10 @@ class PaymongoQrPhController extends Controller
         // the real intent id once PayMongo responds.
         $claimToken = 'claiming:' . (string) \Illuminate\Support\Str::uuid();
 
-        $claimed = DB::transaction(function () use ($booking, $claimToken) {
-            $locked = Booking::where('id', $booking->id)->lockForUpdate()->first();
+        $claimed = DB::transaction(function () use ($paymentReference, $claimToken) {
+            $locked = PaymentReference::where('id', $paymentReference->id)->lockForUpdate()->first();
 
-            if ($locked->status !== 'pending' || $locked->payment_intent_id) {
+            if ($locked->payment_intent_id) {
                 return null;
             }
 
@@ -72,30 +87,41 @@ class PaymongoQrPhController extends Controller
         });
 
         if (!$claimed) {
-            $current = $booking->fresh();
+            $current = $paymentReference->fresh();
 
-            if ($current->status !== 'pending') {
-                return response()->json(['message' => 'This booking is no longer awaiting payment.'], 409);
+            $hasRealIntent = $current->payment_intent_id
+                && !str_starts_with((string) $current->payment_intent_id, 'claiming:');
+
+            // Not a real conflict — this is the SAME checkout's QR being
+            // asked for again (e.g. the guest refreshed the waiting page,
+            // or the URL references a different sibling date under the
+            // same PaymentReference). A previous call already generated
+            // and stored it below, so just hand that back instead of
+            // erroring, as long as it hasn't expired.
+            if ($hasRealIntent && $current->qr_image_url && $current->qr_code_expires_at?->isFuture()) {
+                return response()->json([
+                    'payment_intent_id' => $current->payment_intent_id,
+                    'qr_image_url' => $current->qr_image_url,
+                    'expires_at' => $current->qr_code_expires_at->toIso8601String(),
+                ]);
             }
 
+            // Either a genuinely concurrent request is mid-flight right
+            // now (payment_intent_id is still the "claiming:" sentinel),
+            // or the previously-generated QR has expired with nothing
+            // fresh to hand back yet. PayMongo's idempotency key below is
+            // derived from the PaymentReference id, so simply retrying
+            // can't produce a fresh intent for an expired one — the guest
+            // needs to cancel and rebook.
             return response()->json([
-                'message' => 'A payment QR already exists for this booking.',
-                'payment_intent_id' => str_starts_with((string) $current->payment_intent_id, 'claiming:')
-                    ? null
-                    : $current->payment_intent_id,
+                'message' => $hasRealIntent
+                    ? 'Your payment QR has expired. Please cancel and rebook to try again.'
+                    : 'A payment QR already exists for this booking.',
+                'payment_intent_id' => $hasRealIntent ? $current->payment_intent_id : null,
             ], 409);
         }
 
-        $booking = $claimed;
-
-        // Use the full PaymentReference total so multi-date checkouts
-        // generate a QR for the correct combined amount.
-        $paymentReference = $booking->paymentReference;
-
-        if (!$paymentReference) {
-            $this->releaseClaim($booking, $claimToken);
-            return response()->json(['message' => 'Payment reference missing for this booking.'], 422);
-        }
+        $paymentReference = $claimed;
 
         $amountCentavos = (int) round($paymentReference->amount * 100);
         $secretKey = config('services.paymongo.secret');
@@ -106,15 +132,15 @@ class PaymongoQrPhController extends Controller
             // which is what was surfacing as a bare, message-less 500 on
             // the client instead of a real error. Catch it here instead.
             Log::error('PayMongo secret key is not configured (services.paymongo.secret / PAYMONGO_SECRET_KEY).');
-            $this->releaseClaim($booking, $claimToken);
+            $this->releaseClaim($paymentReference, $claimToken);
             return response()->json(['message' => 'Payment is not configured yet. Please contact the venue.'], 502);
         }
 
-        // Deterministic idempotency key from the booking ID — if this
-        // request is retried (e.g. a client timeout followed by a retry)
-        // PayMongo will return the same intent instead of creating a
-        // second one, even outside of our own row-lock window.
-        $idempotencyKey = 'qrph-intent-' . $booking->id;
+        // Deterministic idempotency key from the PaymentReference ID — if
+        // this request is retried (e.g. a client timeout followed by a
+        // retry) PayMongo will return the same intent instead of creating
+        // a second one, even outside of our own row-lock window.
+        $idempotencyKey = 'qrph-intent-' . $paymentReference->id;
 
         $intentResponse = Http::withBasicAuth($secretKey, '')
             ->withHeaders(['Idempotency-Key' => $idempotencyKey])
@@ -135,9 +161,9 @@ class PaymongoQrPhController extends Controller
         if ($intentResponse->failed()) {
             Log::error('PayMongo payment_intents create failed', [
                 'status' => $intentResponse->status(),
-                'booking_id' => $booking->id,
+                'payment_reference_id' => $paymentReference->id,
             ]);
-            $this->releaseClaim($booking, $claimToken);
+            $this->releaseClaim($paymentReference, $claimToken);
             return response()->json(['message' => 'Could not start payment. Please try again.'], 502);
         }
 
@@ -153,9 +179,9 @@ class PaymongoQrPhController extends Controller
         if ($methodResponse->failed()) {
             Log::error('PayMongo payment_methods create failed', [
                 'status' => $methodResponse->status(),
-                'booking_id' => $booking->id,
+                'payment_reference_id' => $paymentReference->id,
             ]);
-            $this->releaseClaim($booking, $claimToken);
+            $this->releaseClaim($paymentReference, $claimToken);
             return response()->json(['message' => 'Could not start payment. Please try again.'], 502);
         }
 
@@ -174,10 +200,10 @@ class PaymongoQrPhController extends Controller
         if ($attachResponse->failed()) {
             Log::error('PayMongo attach failed', [
                 'status' => $attachResponse->status(),
-                'booking_id' => $booking->id,
+                'payment_reference_id' => $paymentReference->id,
                 'intent_id' => $intentId,
             ]);
-            $this->releaseClaim($booking, $claimToken);
+            $this->releaseClaim($paymentReference, $claimToken);
             return response()->json(['message' => 'Could not start payment. Please try again.'], 502);
         }
 
@@ -188,17 +214,23 @@ class PaymongoQrPhController extends Controller
 
         if (!$qrImageUrl) {
             Log::error('PayMongo attach succeeded but no QR image returned', [
-                'booking_id' => $booking->id,
+                'payment_reference_id' => $paymentReference->id,
                 'intent_id' => $intentId,
             ]);
-            $this->releaseClaim($booking, $claimToken);
+            $this->releaseClaim($paymentReference, $claimToken);
             return response()->json(['message' => 'Could not generate QR. Please try again.'], 502);
         }
 
         // The critical line that was a TODO before — this is what lets the
-        // webhook below find the right booking by an exact id, no matching
-        // heuristics needed.
-        $booking->update(['payment_intent_id' => $intentId]);
+        // webhook below find the right PaymentReference (and therefore all
+        // of its sibling bookings) by an exact id, no matching heuristics
+        // needed. Stored on PaymentReference, not Booking, since the
+        // intent covers the whole checkout, not one date.
+        $paymentReference->update([
+            'payment_intent_id' => $intentId,
+            'qr_image_url' => $qrImageUrl,
+            'qr_code_expires_at' => $qrExpiresAt,
+        ]);
 
         return response()->json([
             'payment_intent_id' => $intentId,
@@ -278,23 +310,12 @@ class PaymongoQrPhController extends Controller
                 return response()->json(['message' => 'Malformed payload'], 400);
             }
 
-            $booking = Booking::where('payment_intent_id', $intentId)->first();
-
-            if (!$booking) {
-                Log::warning('PayMongo webhook: no booking found for intent', ['intent_id' => $intentId]);
-                $this->markWebhookEvent($eventRowId, 'completed');
-                return response()->json(['message' => 'No matching booking'], 200);
-            }
-
-            $paymentReference = $booking->paymentReference;
+            $paymentReference = PaymentReference::where('payment_intent_id', $intentId)->first();
 
             if (!$paymentReference) {
-                Log::error('PayMongo webhook: booking has no payment_reference', [
-                    'booking_id' => $booking->id,
-                    'intent_id' => $intentId,
-                ]);
-                $this->markWebhookEvent($eventRowId, 'failed', 'Missing payment_reference');
-                return response()->json(['message' => 'Missing payment reference'], 400);
+                Log::warning('PayMongo webhook: no payment_reference found for intent', ['intent_id' => $intentId]);
+                $this->markWebhookEvent($eventRowId, 'completed');
+                return response()->json(['message' => 'No matching payment reference'], 200);
             }
 
             // Validate against the full PaymentReference total (supports multi-date)
@@ -403,11 +424,11 @@ class PaymongoQrPhController extends Controller
     /**
      * Undo an in-progress claim (see createQr()) after a failed PayMongo
      * call, but only if it's still our claim — if another request or the
-     * webhook has since moved the booking on, leave it alone.
+     * webhook has since moved the PaymentReference on, leave it alone.
      */
-    private function releaseClaim(Booking $booking, string $claimToken): void
+    private function releaseClaim(PaymentReference $paymentReference, string $claimToken): void
     {
-        Booking::where('id', $booking->id)
+        PaymentReference::where('id', $paymentReference->id)
             ->where('payment_intent_id', $claimToken)
             ->update(['payment_intent_id' => null]);
     }
@@ -417,16 +438,16 @@ class PaymongoQrPhController extends Controller
         $intentId = $event['data']['attributes']['data']['id'] ?? null;
 
         if ($intentId) {
-            $booking = Booking::where('payment_intent_id', $intentId)
-                ->where('status', 'pending')
-                ->first();
+            $paymentReference = PaymentReference::where('payment_intent_id', $intentId)->first();
 
             // Leave the row alone — your existing
             // bookings:expire-unconfirmed-* scheduled commands already
             // sweep up stale pending bookings. This just logs it so you
             // can see expired QR Ph attempts distinctly if useful later.
-            if ($booking) {
-                Log::info('PayMongo QR Ph expired for booking', ['booking_id' => $booking->id]);
+            if ($paymentReference) {
+                Log::info('PayMongo QR Ph expired for payment reference', [
+                    'payment_reference_id' => $paymentReference->id,
+                ]);
             }
         }
 
