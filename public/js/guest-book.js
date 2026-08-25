@@ -248,7 +248,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const totalHours = days.reduce((sum, d) => sum + (d.hours || 0), 0);
             const maxBookings = Math.max(...days.map((d) => d.bookings || 0), 1);
             const busiest = days.reduce((a, b) => ((b.hours || 0) > (a.hours || 0) ? b : a), days[0]);
-            const todayStr = new Date().toISOString().slice(0, 10);
+            const todayStr = localDateStr();
 
             totalHoursEl.textContent = formatHours(totalHours);
             avgHoursEl.textContent = formatHours(totalHours / days.length);
@@ -526,7 +526,14 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     const pad = (n) => n.toString().padStart(2, '0');
-    const todayStr = () => new Date().toISOString().slice(0, 10);
+    // NOTE: intentionally NOT using new Date().toISOString().slice(0, 10) —
+    // toISOString() always converts to UTC, so for timezones ahead of UTC
+    // (e.g. Asia/Manila, UTC+8) the date rolls over up to 8 hours late,
+    // making the calendar think it's still "yesterday" right after local
+    // midnight. Build the string from local Date components instead so it
+    // matches the browser's actual local calendar day.
+    const localDateStr = (d = new Date()) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+    const todayStr = () => localDateStr();
 
     // ---------- GCash payment confirmation polling ----------
 
