@@ -16,7 +16,7 @@ class MfaController extends Controller
         $user = $request->user();
 
         if ($user->hasMfaEnabled()) {
-            return redirect()->route('admin.dashboard');
+            return redirect()->route('admin.dashboard', absolute: false);
         }
 
         $google2fa = new Google2FA();
@@ -111,13 +111,13 @@ class MfaController extends Controller
             return response()->json([
                 'message'        => 'MFA enabled successfully',
                 'recovery_codes' => $recoveryCodes,
-                'redirect'       => route('admin.dashboard'),
+                'redirect'       => route('admin.dashboard', absolute: false),
                 'csrf_token'     => csrf_token(),
             ]);
         }
 
         return redirect()
-            ->route('admin.dashboard')
+            ->route('admin.dashboard', absolute: false)
             ->with('recovery_codes', $recoveryCodes);
     }
 
@@ -148,7 +148,7 @@ class MfaController extends Controller
             if ($request->expectsJson()) {
                 return response()->json([
                     'message' => 'Your MFA setup needs to be redone. Redirecting you to set it up again.',
-                    'redirect' => route('mfa.setup'),
+                    'redirect' => route('mfa.setup', absolute: false),
                 ], 409);
             }
 
@@ -181,11 +181,11 @@ class MfaController extends Controller
         if ($request->expectsJson()) {
             return response()->json([
                 'message'    => 'Verified',
-                'redirect'   => route('admin.dashboard'),
+                'redirect'   => route('admin.dashboard', absolute: false),
                 'csrf_token' => csrf_token(),
             ]);
         }
 
-        return redirect()->intended(route('admin.dashboard'));
+        return redirect()->intended(route('admin.dashboard', absolute: false));
     }
 }

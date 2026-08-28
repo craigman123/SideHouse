@@ -7,8 +7,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>@yield('title', 'Court Booking System')</title>
     <link rel="stylesheet" href="{{ asset('css/app.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/mfa-modal.css') }}">
     <link rel="icon" type="image/png" href="{{ asset('images/tab_icon.png') }}">
     <script src="{{ asset('js/app.js') }}" defer></script>
+    <script src="{{ asset('js/back-guard.js') }}" defer></script>
     @stack('styles')
 </head>
 <body>
@@ -58,6 +60,24 @@
             @yield('content')
         </main>
     </div>
+
+    <div id="logout-confirm-modal" class="mfa-modal hidden">
+        <div class="mfa-modal-overlay"></div>
+        <div class="mfa-modal-content">
+            <div class="mfa-modal-header">
+                <h2>Leave dashboard?</h2>
+            </div>
+            <div class="mfa-modal-body">
+                <p>Going back will log you out. Do you want to continue?</p>
+                <button id="logout-confirm-no" class="mfa-btn">Stay</button>
+                <button id="logout-confirm-yes" class="mfa-modal-ghost-btn">Log out</button>
+            </div>
+        </div>
+    </div>
+
+    <form id="logout-form" method="POST" action="{{ route('logout') }}" style="display:none">
+        @csrf
+    </form>
 
     @stack('scripts')
 

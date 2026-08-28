@@ -27,8 +27,6 @@ return Application::configure(basePath: dirname(__DIR__))
         // skipped just because a route opted out of the 'web' group.
         $middleware->append(\App\Http\Middleware\SecurityHeaders::class);
         $middleware->alias([
-            'cron.auth' => \App\Http\Middleware\VerifyCronToken::class,
-            'admin'     => \App\Http\Middleware\EnsureUserIsAdmin::class,
             'cron.auth'   => \App\Http\Middleware\VerifyCronToken::class,
             'admin'       => \App\Http\Middleware\EnsureUserIsAdmin::class,
             'admin.mfa'   => \App\Http\Middleware\EnsureAdminMfa::class,

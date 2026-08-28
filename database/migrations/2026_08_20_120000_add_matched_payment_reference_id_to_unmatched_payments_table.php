@@ -39,6 +39,7 @@ return new class extends Migration
         }
     }
 
+
     public function down(): void
     {
         if (Schema::hasColumn('unmatched_payments', 'matched_payment_reference_id')) {

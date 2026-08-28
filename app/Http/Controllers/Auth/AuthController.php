@@ -72,7 +72,7 @@ class AuthController extends Controller
 
         if ($request->expectsJson()) {
             return response()->json([
-                'redirect' => route('user.dashboard'),
+                'redirect' => route('user.dashboard', absolute: false),
                 'message'  => 'Logged in successfully!',
             ]);
         }
@@ -171,7 +171,7 @@ class AuthController extends Controller
 
         return response()->json([
             'message'  => $isNewAccount ? 'Account created! Welcome to Side House.' : 'Logged in successfully!',
-            'redirect' => $user->isAdmin() ? route('admin.dashboard') : route('user.dashboard'),
+            'redirect' => $user->isAdmin() ? route('admin.dashboard', absolute: false) : route('user.dashboard', absolute: false),
         ]);
     }
 

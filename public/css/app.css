@@ -681,3 +681,24 @@ body {
         max-width: 290px;
     }
 }
+
+/* Add to mfa-modal.css — ghost-style secondary button, same look as #mfa-recovery-close */
+.mfa-modal-ghost-btn {
+    width: 100%;
+    margin-top: 0.75rem;
+    padding: 0.85rem;
+    background-color: transparent;
+    color: #c9d1d9;
+    border: 1px solid #30363d;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 15px;
+    cursor: pointer;
+    transition: background-color 0.2s, border-color 0.2s, color 0.2s;
+}
+
+.mfa-modal-ghost-btn:hover {
+    background-color: #0d111715;
+    border-color: #8b949e;
+    color: #f0f6fc;
+}

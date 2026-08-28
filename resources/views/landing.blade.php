@@ -338,7 +338,7 @@
             </div>
         </section>
 
-        <section class="member-cta fade-in" id="getMore">
+        <section class="member-cta fade-in" id="getMore" style="display: none;">
             <div class="member-cta-inner">
                 <h2>Get More From Every Visit</h2>
                 <p>Create a free Side House account to view a detailed history of your bookings, rebook your favorite court and time slot in a single click, and unlock member-only perks like hourly rates discounts and discounted equipment rentals. It only takes a minute.</p>
