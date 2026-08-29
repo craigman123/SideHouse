@@ -151,6 +151,20 @@
         return `${hour12} ${period}`;
     };
 
+    // Derive initials from a customer name — max 2 characters.
+    const toInitials = (name) => {
+        if (!name || !name.trim()) return '?';
+        const parts = name.trim().split(/\s+/);
+        if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+        return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+    };
+
+    // Fixed px-per-hour so the timeline never squeezes to fit the screen.
+    const PX_PER_HOUR = 55;
+
+    // Label column width (time axis, left side).
+    const LABEL_W = 64;
+
     // The board data spans a fixed 6-month window (see BookingController),
     // so the operating-hours range is derived once from every booking in
     // it rather than per-month — keeps the time axis stable as you flip
@@ -167,16 +181,12 @@
                 .forEach(({ start, end }) => {
                     if (!start || !end) return;
                     minMinutes = Math.min(minMinutes, toMinutes(start));
-                    // An end of "00:00" etc. on an overnight slot reads as
-                    // the top of the range, not the bottom.
                     const endMinutes = toMinutes(end) === 0 ? 24 * 60 : toMinutes(end);
                     maxMinutes = Math.max(maxMinutes, endMinutes);
                 });
         });
 
         if (minMinutes >= maxMinutes) {
-            // No bookings anywhere yet — fall back to a sane default
-            // rather than an empty/negative-width grid.
             cachedHourRange = { startHour: 6, endHour: 22 };
         } else {
             cachedHourRange = {
@@ -188,18 +198,15 @@
     };
 
     // Greedy interval-scheduling lane assignment so overlapping bookings
-    // (different courts, same time) stack instead of overlapping visually.
+    // stack instead of overlapping visually.
     const assignLanes = (items) => {
-        const lanes = []; // lanes[i] = end-minutes of the last item placed in that lane
+        const lanes = [];
         return items
             .slice()
             .sort((a, b) => a.startMinutes - b.startMinutes)
             .map((item) => {
                 let lane = lanes.findIndex((endMinutes) => endMinutes <= item.startMinutes);
-                if (lane === -1) {
-                    lane = lanes.length;
-                    lanes.push(0);
-                }
+                if (lane === -1) { lane = lanes.length; lanes.push(0); }
                 lanes[lane] = item.endMinutes;
                 return { ...item, lane };
             })
@@ -217,77 +224,97 @@
         changeView('board');
     };
 
-    // Fixed px-per-hour so the timeline never squeezes to fit the screen —
-    // the .court-month-scroll wrapper (width: 100%, overflow-x: auto)
-    // handles narrow screens by scrolling, not by shrinking hour labels
-    // into unreadable overlapping text.
-    const PX_PER_HOUR = 55;
+    // ── Professional muted palette ──────────────────────────────────────────
+    // Replaces the neon rainbow. Colours are readable on dark backgrounds
+    // without screaming for attention.
+    const STATUS_COLORS = {
+        paid:      { bg: '#1e3a5f', border: '#2d6a9f', text: '#a8c8e8' },
+        pending:   { bg: '#3d2e0a', border: '#7a5c1e', text: '#c9a84c' },
+        cancelled: { bg: '#2a1515', border: '#5c2626', text: '#a05050' },
+    };
 
-    // Border-left accents cycle by the booking's order within the day, not
-    // status — status is already shown via the bar's fill color, so a
-    // separate per-booking color makes every booking on a given date easy
-    // to tell apart at a glance, even ones that don't overlap in time.
+    // Per-booking accent border — muted, distinct, cycles by booking index.
     const LANE_ACCENTS = [
-        '#56d364', '#58a6ff', '#d2a8ff', '#f2cc60',
-        '#ff9492', '#39c5cf', '#ffa657', '#7ee2b8',
-        '#f778ba', '#79c0ff', '#e3b341', '#a5d6ff',
+        '#2d6a9f', '#3d7a5c', '#6b4d8a', '#7a6a2d',
+        '#2d6a6a', '#7a3d5c', '#5c6a2d', '#4d5c8a',
+        '#8a4d3d', '#3d5c7a', '#6a5c3d', '#4d8a6b',
     ];
 
+    // ── Month view: dates across the top, time down the left ────────────────
     const renderMonth = () => {
         if (!monthInput.value) return;
         const [year, month] = monthInput.value.split('-').map(Number);
         const daysInMonth = new Date(year, month, 0).getDate();
         const { startHour, endHour } = getHourRange();
-        const trackWidth = (endHour - startHour) * PX_PER_HOUR;
         const todayValue = toDateValue(new Date());
 
-        monthGrid.replaceChildren();
-        monthGrid.style.width = `${64 + trackWidth}px`; // label column + track
+        // Build the list of date strings for the month.
+        const dates = Array.from({ length: daysInMonth }, (_, i) => {
+            const d = i + 1;
+            return `${year}-${String(month).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+        });
 
-        // Header row: date column + one tick per hour in range.
+        // Column width per date.
+        const COL_W = 90;
+        // Row height per hour.
+        const ROW_H = PX_PER_HOUR;
+        // Time label column width (left side).
+        const TIME_LABEL_W = LABEL_W;
+
+        const totalHours = endHour - startHour;
+        const gridW = TIME_LABEL_W + dates.length * COL_W;
+        const gridH = totalHours * ROW_H;
+
+        monthGrid.replaceChildren();
+        monthGrid.style.width = `${gridW}px`;
+
+        // ── Header row: blank corner + one date column per day ──────────────
         const header = document.createElement('div');
         header.className = 'court-month-header';
-        const headerLabel = document.createElement('span');
-        headerLabel.className = 'court-month-row-label';
-        headerLabel.textContent = 'Date';
-        header.append(headerLabel);
+        header.style.display = 'flex';
+        header.style.position = 'sticky';
+        header.style.top = '0';
+        header.style.zIndex = '3';
+        header.style.background = '#161b22';
 
-        const headerTrack = document.createElement('div');
-        headerTrack.className = 'court-month-track court-month-track-header';
-        headerTrack.style.width = `${trackWidth}px`;
-        for (let hour = startHour; hour <= endHour; hour += 1) {
-            const tick = document.createElement('span');
-            tick.className = 'court-month-tick';
-            tick.style.left = `${(hour - startHour) * PX_PER_HOUR}px`;
-            tick.textContent = formatHourLabel(hour);
-            headerTrack.append(tick);
-        }
-        header.append(headerTrack);
+        // Corner cell
+        const corner = document.createElement('div');
+        corner.className = 'court-month-corner';
+        corner.style.cssText = `flex:0 0 ${TIME_LABEL_W}px;width:${TIME_LABEL_W}px;border-right:1px solid #21262d;border-bottom:1px solid #21262d;`;
+        header.append(corner);
+
+        dates.forEach((dateStr) => {
+            const d = new Date(`${dateStr}T00:00:00`);
+            const dayNum = d.getDate();
+            const weekday = d.toLocaleDateString('en-US', { weekday: 'short' });
+            const isToday = dateStr === todayValue;
+
+            const cell = document.createElement('button');
+            cell.type = 'button';
+            cell.className = 'court-month-date-header' + (isToday ? ' is-today' : '');
+            cell.style.cssText = `flex:0 0 ${COL_W}px;width:${COL_W}px;`;
+            cell.innerHTML = `<strong>${dayNum}</strong><span>${weekday}</span>`;
+            cell.title = `Open ${formatDate(dateStr)} on the daily board`;
+            cell.addEventListener('click', () => jumpToDay(dateStr));
+            header.append(cell);
+        });
         monthGrid.append(header);
 
-        let activeCount = 0;
-
-        for (let day = 1; day <= daysInMonth; day += 1) {
-            const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-
-            const windows = bookings
+        // ── Body: one row per hour, one column per date ─────────────────────
+        // Pre-build merged booking windows per date.
+        const windowsByDate = new Map();
+        dates.forEach((dateStr) => {
+            const raw = bookings
                 .flatMap((booking) => eventWindows(booking, dateStr).map((window) => ({ booking, window })))
-                .filter(({ booking }) => booking.status !== 'cancelled')
                 .map(({ booking, window }) => ({
                     booking,
                     startMinutes: toMinutes(window.start),
                     endMinutes: toMinutes(window.end) === 0 ? 24 * 60 : toMinutes(window.end),
                 }));
 
-            // A single booking can produce several slot windows for the same
-            // day (e.g. hourly recurring slots). Drawn separately those come
-            // out as touching-but-distinct pills with their own rounded
-            // corners and border — merge each booking's overlapping/adjacent
-            // windows into one continuous range so it renders as a single
-            // connected bar, the way one booking should look.
+            // Merge overlapping/adjacent windows for the SAME booking.
             const mergedByBooking = new Map();
-            windows
-                .slice()
+            raw.slice()
                 .sort((a, b) => a.startMinutes - b.startMinutes)
                 .forEach((item) => {
                     const runs = mergedByBooking.get(item.booking) || [];
@@ -299,68 +326,108 @@
                     }
                     mergedByBooking.set(item.booking, runs);
                 });
-            const mergedWindows = [...mergedByBooking.values()].flat();
 
-            const dayClosures = closures.filter((closure) => closure.date === dateStr);
-            const lanedWindows = assignLanes(mergedWindows);
-            activeCount += windows.length;
+            windowsByDate.set(dateStr, [...mergedByBooking.values()].flat());
+        });
 
-            const row = document.createElement('div');
-            row.className = 'court-month-row';
-            if (dateStr === todayValue) row.classList.add('is-today');
-            if (dayClosures.length) row.classList.add('has-closure');
+        // One wrapper div that holds all rows — positions bars absolutely.
+        const body = document.createElement('div');
+        body.className = 'court-month-body';
+        body.style.cssText = `position:relative;display:flex;`;
 
-            const label = document.createElement('button');
-            label.type = 'button';
-            label.className = 'court-month-row-label court-month-row-label-btn';
-            const weekday = new Date(`${dateStr}T00:00:00`).toLocaleDateString('en-US', { weekday: 'short' });
-            label.innerHTML = `<strong>${day}</strong><span>${weekday}</span>`;
-            label.title = `Open ${formatDate(dateStr)} on the daily board`;
-            label.addEventListener('click', () => jumpToDay(dateStr));
-            row.append(label);
+        // Time label column (sticky left).
+        const timeCol = document.createElement('div');
+        timeCol.className = 'court-month-time-col';
+        timeCol.style.cssText = `flex:0 0 ${TIME_LABEL_W}px;width:${TIME_LABEL_W}px;position:sticky;left:0;z-index:2;background:#0d1117;border-right:1px solid #21262d;`;
 
-            const track = document.createElement('div');
-            track.className = 'court-month-track';
-            track.style.width = `${trackWidth}px`;
-            track.style.minHeight = `${Math.max(1, Math.max(...lanedWindows.map((w) => w.laneCount), 1)) * 20}px`;
+        for (let hour = startHour; hour < endHour; hour++) {
+            const cell = document.createElement('div');
+            cell.className = 'court-month-time-cell';
+            cell.style.cssText = `height:${ROW_H}px;display:flex;align-items:flex-start;justify-content:center;padding-top:6px;border-bottom:1px solid #21262d;color:#6e7681;font-size:10px;font-weight:700;`;
+            cell.textContent = formatHourLabel(hour);
+            timeCol.append(cell);
+        }
+        body.append(timeCol);
 
-            if (dayClosures.length) {
-                const closureStrip = document.createElement('div');
-                closureStrip.className = 'court-month-closure';
-                closureStrip.title = dayClosures.map((c) => c.reason || 'Closed').join(', ');
-                track.append(closureStrip);
+        // Date columns.
+        dates.forEach((dateStr, colIndex) => {
+            const colClosures = closures.filter((c) => c.date === dateStr);
+            const colWindows = windowsByDate.get(dateStr) || [];
+            const isToday = dateStr === todayValue;
+
+            const col = document.createElement('div');
+            col.className = 'court-month-date-col' + (isToday ? ' is-today' : '');
+            col.style.cssText = `flex:0 0 ${COL_W}px;width:${COL_W}px;position:relative;border-right:1px solid #21262d;`;
+
+            // Hour grid lines.
+            for (let hour = startHour; hour < endHour; hour++) {
+                const cell = document.createElement('div');
+                cell.style.cssText = `height:${ROW_H}px;border-bottom:1px solid #21262d;box-sizing:border-box;`;
+                if (colClosures.length) cell.style.background = 'rgba(163,113,247,.07)';
+                col.append(cell);
             }
 
-            lanedWindows.forEach(({ booking, startMinutes, endMinutes, lane }, index) => {
+            // Closure strip overlay.
+            if (colClosures.length) {
+                const strip = document.createElement('div');
+                strip.className = 'court-month-closure-col';
+                strip.style.cssText = `position:absolute;inset:0;background:rgba(163,113,247,.06);border-left:2px solid rgba(163,113,247,.35);pointer-events:none;`;
+                strip.title = colClosures.map((c) => c.reason || 'Closed').join(', ');
+                col.append(strip);
+            }
+
+            // Booking bars — absolute positioned by time within the column.
+            const laned = assignLanes(colWindows);
+            const laneCount = laned.length ? Math.max(...laned.map((w) => w.laneCount)) : 1;
+            const barW = Math.floor((COL_W - 4) / Math.max(1, laneCount));
+
+            laned.forEach(({ booking, startMinutes, endMinutes, lane }, index) => {
+                const clampedStart = Math.max(startMinutes, startHour * 60);
+                const clampedEnd = Math.min(endMinutes, endHour * 60);
+                const topPx = ((clampedStart - startHour * 60) / 60) * ROW_H;
+                const heightPx = Math.max(18, ((clampedEnd - clampedStart) / 60) * ROW_H);
+
+                const colors = STATUS_COLORS[booking.status] || STATUS_COLORS.paid;
+                const accentColor = LANE_ACCENTS[index % LANE_ACCENTS.length];
+                const initials = toInitials(booking.customer || '');
+
                 const bar = document.createElement('button');
                 bar.type = 'button';
                 bar.className = `court-month-bar status-${booking.status}`;
-                const clampedStart = Math.max(startMinutes, startHour * 60);
-                const clampedEnd = Math.min(endMinutes, endHour * 60);
-                bar.style.left = `${((clampedStart - startHour * 60) / 60) * PX_PER_HOUR}px`;
-                bar.style.width = `${Math.max(10, ((clampedEnd - clampedStart) / 60) * PX_PER_HOUR)}px`;
-                bar.style.top = `${lane * 20}px`;
-                // Cycle by this booking's position within the day (not its
-                // lane) so every booking on the same date gets a distinct
-                // border color — two non-overlapping bookings that happen
-                // to land in the same lane would otherwise look identical.
-                bar.style.borderLeftColor = LANE_ACCENTS[index % LANE_ACCENTS.length];
-                bar.title = `${booking.customer || 'Walk-in booking'} · ${booking.court} · ${booking.status}`;
-
-                const label = document.createElement('span');
-                label.textContent = booking.customer || 'Walk-in booking';
-                bar.append(label);
-
+                bar.style.cssText = `
+                    position: absolute;
+                    top: ${topPx}px;
+                    left: ${lane * barW + 2}px;
+                    width: ${barW - 2}px;
+                    height: ${heightPx}px;
+                    background: ${colors.bg};
+                    border: 1px solid ${colors.border};
+                    border-left: 3px solid ${accentColor};
+                    border-radius: 4px;
+                    color: ${colors.text};
+                    font-size: 11px;
+                    font-weight: 800;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    overflow: hidden;
+                    cursor: pointer;
+                    padding: 0;
+                    letter-spacing: .03em;
+                `;
+                bar.textContent = initials;
+                bar.title = `${booking.customer || 'Walk-in'} · ${booking.court || ''} · ${booking.status}`;
                 bar.addEventListener('click', () => jumpToDay(dateStr));
-                track.append(bar);
+                col.append(bar);
             });
 
-            row.append(track);
-            monthGrid.append(row);
-        }
+            body.append(col);
+        });
 
+        monthGrid.append(body);
 
         const monthLabel = new Date(year, month - 1, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+        const activeCount = [...windowsByDate.values()].flat().filter(({ booking }) => booking.status !== 'cancelled').length;
         monthSummary.textContent = `${monthLabel} · ${activeCount} active reservation${activeCount === 1 ? '' : 's'}`;
     };
 

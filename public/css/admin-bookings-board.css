@@ -63,124 +63,127 @@
 .court-board-event-status { text-transform: capitalize; }.court-board-event-equipment { color: #79c0ff; }
 .court-board-closure { margin: 10px 10px 0; padding: 9px 10px; border-radius: 6px; color: #d2a8ff; background: rgba(163, 113, 247, .14); font-size: 12px; font-weight: 700; }.court-board-empty { margin: 22px 4px; color: #6e7681; text-align: center; font-size: 13px; }
 
-/* Month view — dates down the side, time-of-day across the top.
-   The grid itself gets an explicit pixel width from JS (label column +
-   hoursCount * PX_PER_HOUR) so hour labels stay a fixed, readable size —
-   .court-month-scroll is what's responsive, via horizontal scroll,
-   rather than the grid squeezing its columns to fit the screen. */
+/* ── Month view: time on the left, dates across the top ─────────────────
+   The grid itself gets an explicit pixel width from JS (time-label column
+   + daysInMonth * COL_W). .court-month-scroll handles overflow on both
+   axes so neither the grid nor the page needs to resize. */
 .court-month-scroll {
-    /* This box, not the page, is what scrolls — both axes. Sticky header/
-       row-labels pin relative to THIS scrolling ancestor, so it needs an
-       explicit overflow-y (not just overflow-x, which would leave height
-       unconstrained and let the page grow instead of the box). */
     overflow: auto;
     -webkit-overflow-scrolling: touch;
     border-radius: 10px;
     border: 1px solid #30363d;
-    /* Capped, responsive height — same box shrinks/grows with viewport
-       instead of ever forcing the page itself to scroll vertically. */
-    max-height: min(70vh, 640px);
+    max-height: min(72vh, 660px);
 }
-.court-month-grid { border-radius: 10px; background: #0d1117; }
 
-.court-month-header,
-.court-month-row {
-    display: flex;
-    align-items: stretch;
-    border-bottom: 1px solid #21262d;
+.court-month-grid {
+    border-radius: 10px;
+    background: #0d1117;
 }
-.court-month-row:last-child { border-bottom: 0; }
 
-.court-month-header { background: #161b22; position: sticky; top: 0; z-index: 2; }
-
-.court-month-row-label {
+/* ── Sticky header row: date columns ── */
+.court-month-header {
     display: flex;
-    flex: 0 0 64px;
-    width: 64px;
+    position: sticky;
+    top: 0;
+    z-index: 3;
+    background: #161b22;
+    border-bottom: 1px solid #30363d;
+}
+
+.court-month-date-header {
+    display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
     gap: 2px;
     padding: 8px 4px;
     border-right: 1px solid #21262d;
+    border: none;
+    background: transparent;
     color: #8b949e;
+    font: inherit;
     font-size: 11px;
-    /* Stays visible while the timeline scrolls horizontally underneath it. */
+    cursor: pointer;
+    box-sizing: border-box;
+    border-right: 1px solid #21262d;
+}
+.court-month-date-header strong { color: #f0f6fc; font-size: 14px; display: block; }
+.court-month-date-header:hover { background: #1c2128; }
+.court-month-date-header:hover strong { color: #56d364; }
+.court-month-date-header.is-today { background: #113321; }
+.court-month-date-header.is-today strong { color: #56d364; }
+
+/* ── Body ── */
+.court-month-body {
+    display: flex;
+    position: relative;
+}
+
+/* ── Sticky time label column ── */
+.court-month-time-col {
+    flex: 0 0 64px;
+    width: 64px;
     position: sticky;
     left: 0;
-    z-index: 1;
+    z-index: 2;
     background: #0d1117;
+    border-right: 1px solid #21262d;
 }
-.court-month-header .court-month-row-label { z-index: 3; background: #161b22; }
-.court-month-row-label strong { color: #f0f6fc; font-size: 14px; }
 
-.court-month-row-label-btn {
-    border: 0;
-    cursor: pointer;
-    font: inherit;
-}
-.court-month-row-label-btn:hover { background: #21262d; }
-.court-month-row-label-btn:hover strong { color: #56d364; }
-
-.court-month-row.is-today .court-month-row-label { background: #113321; }
-.court-month-row.is-today .court-month-row-label strong { color: #56d364; }
-
-.court-month-track { position: relative; flex: 0 0 auto; min-height: 34px; padding: 7px 0; }
-.court-month-track-header { min-height: 30px; padding: 0; }
-
-.court-month-tick {
-    position: absolute;
-    top: 0;
-    bottom: 0;
+.court-month-time-cell {
+    height: 55px;
     display: flex;
-    align-items: center;
-    padding-left: 6px;
-    border-left: 1px solid #21262d;
+    align-items: flex-start;
+    justify-content: center;
+    padding-top: 6px;
+    border-bottom: 1px solid #21262d;
     color: #6e7681;
     font-size: 10px;
     font-weight: 700;
-    white-space: nowrap;
+    box-sizing: border-box;
 }
 
+/* ── Date columns ── */
+.court-month-date-col {
+    flex: 0 0 90px;
+    width: 90px;
+    position: relative;
+    border-right: 1px solid #21262d;
+    box-sizing: border-box;
+}
+.court-month-date-col.is-today { background: rgba(35, 134, 54, .04); }
+
+/* ── Booking bars: professional muted palette, initials only ── */
 .court-month-bar {
     position: absolute;
-    height: 55px;
     display: flex;
     align-items: center;
-    border: 0;
-    /* Color itself is set inline per-lane by JS (see LANE_ACCENTS); this is
-       just a fallback if that's ever missing. */
-    border-left: 4px solid #3fb950;
-    border-radius: 3px;
-    padding: 0 8px;
+    justify-content: center;
     overflow: hidden;
-    color: #0d1117;
-    background: #3fb950;
-    font-size: 12px;
+    border-radius: 4px;
+    font-size: 11px;
     font-weight: 800;
-    line-height: 1.2;
-    text-align: left;
-    white-space: nowrap;
+    letter-spacing: .03em;
     cursor: pointer;
+    padding: 0;
+    box-sizing: border-box;
+    transition: filter .15s ease, outline .1s ease;
 }
-.court-month-bar span {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+.court-month-bar:hover {
+    filter: brightness(1.15);
+    outline: 2px solid rgba(255,255,255,.25);
+    outline-offset: 1px;
+    z-index: 10;
 }
-.court-month-bar.status-paid { background: #3fb950; }
-.court-month-bar.status-pending { background: #d29922; }
-.court-month-bar.status-cancelled { background: #f85149; opacity: .55; }
-.court-month-bar:hover { outline: 2px solid #f0f6fc; outline-offset: 1px; z-index: 1; }
 
-.court-month-closure {
+/* Closure column overlay */
+.court-month-closure-col {
     position: absolute;
     inset: 0;
-    background: rgba(163, 113, 247, .1);
-    border-radius: 4px;
+    background: rgba(163, 113, 247, .06);
+    border-left: 2px solid rgba(163, 113, 247, .35);
     pointer-events: none;
 }
-.court-month-row.has-closure .court-month-row-label { background: rgba(163, 113, 247, .18); }
 
 @media (max-width: 700px) {
     .bookings-view-tabs {
@@ -198,4 +201,5 @@
     .court-board-toolbar { flex-direction: column; }.court-board-controls { width: 100%; }.court-board-controls input { flex: 1; }
     .court-board { grid-template-columns: 1fr; }
     .court-month-scroll { max-height: min(60vh, 480px); }
+    .court-month-date-header { font-size: 10px; }
 }
