@@ -42,21 +42,25 @@ class User extends Authenticatable
         'remember_token',
     ];
 
-    protected $casts = [
-        'mfa_enabled' => 'boolean',
-        'mfa_recovery_codes' => 'array',
-    ];
-
     /**
-     * Get the attributes that should be cast.
+     * Merged into a single casts() method — having both a $casts property
+     * and a casts() method causes the method to silently win in Laravel 10+,
+     * dropping mfa_enabled, mfa_recovery_codes, and mfa_secret from casting.
+     *
+     * mfa_secret uses the 'encrypted' cast so the model handles
+     * encryption/decryption automatically — no manual encrypt()/decrypt()
+     * needed in controllers.
      *
      * @return array<string, string>
      */
     protected function casts(): array
     {
         return [
-            'email_verified_at' => 'datetime',
-            'password' => 'hashed',
+            'email_verified_at'  => 'datetime',
+            'password'           => 'hashed',
+            'mfa_enabled'        => 'boolean',
+            'mfa_secret'         => 'encrypted',
+            'mfa_recovery_codes' => 'array',
         ];
     }
 
