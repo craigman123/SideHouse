@@ -177,6 +177,6 @@
             ],
         ];
     @endphp
-    <script id="courtBoardData" type="application/json">{{ json_encode($courtBoardData) }}</script>
+    <script id="courtBoardData" type="application/json">{!! json_encode($courtBoardData, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) !!}</script>
     <script src="{{ asset('js/admin-bookings-board.js') }}" defer></script>
 @endpush
