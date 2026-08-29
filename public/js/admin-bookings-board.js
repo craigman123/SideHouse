@@ -6,9 +6,16 @@
     if (!workspace || !dataElement || !board) return;
 
     const data = JSON.parse(dataElement.textContent || '{}');
-    const bookings = data.bookings || [];
-    const closures = data.closures || [];
-    const courts = data.courts || [];
+    const bookings  = data.bookings  || [];
+    const closures  = data.closures  || [];
+    const courts    = data.courts    || [];
+    const bizSettings = data.businessSettings || {};
+    // Open/close hours from BusinessSetting — fallback to sane defaults
+    // so the grid is usable even on a fresh install with no row yet.
+    const BIZ_OPEN_HOUR  = typeof bizSettings.open_hour  === 'number' ? bizSettings.open_hour  : 6;
+    const BIZ_CLOSE_HOUR = typeof bizSettings.close_hour === 'number' ? bizSettings.close_hour : 22;
+    // Weekday numbers (0=Sun … 6=Sat) that are always closed.
+    const BIZ_CLOSED_WEEKDAYS = Array.isArray(bizSettings.closed_weekdays) ? bizSettings.closed_weekdays : [];
     const dateInput = document.getElementById('courtBoardDate');
     const summary = document.getElementById('courtBoardSummary');
     const tabs = workspace.querySelectorAll('[data-bookings-view]');
@@ -165,35 +172,25 @@
     // Label column width (time axis, left side).
     const LABEL_W = 64;
 
-    // The board data spans a fixed 6-month window (see BookingController),
-    // so the operating-hours range is derived once from every booking in
-    // it rather than per-month — keeps the time axis stable as you flip
-    // between months instead of jumping around based on what happened to
-    // be booked that particular month.
+    // Hour range is pinned to BusinessSetting open_hour / close_hour so the
+    // grid always shows the full operating window regardless of whether any
+    // bookings exist yet — no more grid that stops at the last booking's
+    // end time. close_hour > 12 means midnight-crossing hours (e.g. 7 means
+    // next-day 7 AM = hour 31); store as-is and let formatHourLabel wrap.
     let cachedHourRange = null;
     const getHourRange = () => {
         if (cachedHourRange) return cachedHourRange;
 
-        let minMinutes = 24 * 60;
-        let maxMinutes = 0;
-        bookings.forEach((booking) => {
-            (booking.slots && booking.slots.length ? booking.slots : [{ start: booking.start, end: booking.end }])
-                .forEach(({ start, end }) => {
-                    if (!start || !end) return;
-                    minMinutes = Math.min(minMinutes, toMinutes(start));
-                    const endMinutes = toMinutes(end) === 0 ? 24 * 60 : toMinutes(end);
-                    maxMinutes = Math.max(maxMinutes, endMinutes);
-                });
-        });
+        // Resolve the close hour: if close_hour <= open_hour it crosses
+        // midnight, so add 24 to get the correct ceiling.
+        const rawClose = BIZ_CLOSE_HOUR <= BIZ_OPEN_HOUR
+            ? BIZ_CLOSE_HOUR + 24
+            : BIZ_CLOSE_HOUR;
 
-        if (minMinutes >= maxMinutes) {
-            cachedHourRange = { startHour: 6, endHour: 22 };
-        } else {
-            cachedHourRange = {
-                startHour: Math.max(0, Math.floor(minMinutes / 60)),
-                endHour: Math.min(24, Math.ceil(maxMinutes / 60)),
-            };
-        }
+        cachedHourRange = {
+            startHour: BIZ_OPEN_HOUR,
+            endHour:   rawClose,
+        };
         return cachedHourRange;
     };
 
@@ -352,27 +349,33 @@
         // Date columns.
         dates.forEach((dateStr, colIndex) => {
             const colClosures = closures.filter((c) => c.date === dateStr);
+            // Also treat recurring closed weekdays (from BusinessSetting) as closures.
+            const weekday = new Date(`${dateStr}T00:00:00`).getDay(); // 0=Sun…6=Sat
+            const isWeekdayClosed = BIZ_CLOSED_WEEKDAYS.includes(weekday);
             const colWindows = windowsByDate.get(dateStr) || [];
             const isToday = dateStr === todayValue;
 
             const col = document.createElement('div');
-            col.className = 'court-month-date-col' + (isToday ? ' is-today' : '');
+            col.className = 'court-month-date-col' + (isToday ? ' is-today' : '') + (isWeekdayClosed ? ' is-closed-weekday' : '');
             col.style.cssText = `flex:0 0 ${COL_W}px;width:${COL_W}px;position:relative;border-right:1px solid #21262d;`;
 
             // Hour grid lines.
             for (let hour = startHour; hour < endHour; hour++) {
                 const cell = document.createElement('div');
                 cell.style.cssText = `height:${ROW_H}px;border-bottom:1px solid #21262d;box-sizing:border-box;`;
-                if (colClosures.length) cell.style.background = 'rgba(163,113,247,.07)';
+                if (colClosures.length || isWeekdayClosed) cell.style.background = 'rgba(163,113,247,.07)';
                 col.append(cell);
             }
 
-            // Closure strip overlay.
-            if (colClosures.length) {
+            // Closure strip overlay — manual closures + recurring closed weekdays.
+            const hasAnyClosure = colClosures.length || isWeekdayClosed;
+            if (hasAnyClosure) {
                 const strip = document.createElement('div');
                 strip.className = 'court-month-closure-col';
                 strip.style.cssText = `position:absolute;inset:0;background:rgba(163,113,247,.06);border-left:2px solid rgba(163,113,247,.35);pointer-events:none;`;
-                strip.title = colClosures.map((c) => c.reason || 'Closed').join(', ');
+                const closureLabels = colClosures.map((c) => c.reason || 'Closed');
+                if (isWeekdayClosed) closureLabels.push('Closed (business hours)');
+                strip.title = closureLabels.join(', ');
                 col.append(strip);
             }
 

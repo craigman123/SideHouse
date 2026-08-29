@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Booking;
+use App\Models\BusinessSetting;
 use App\Models\Court;
 use App\Models\CourtClosure;
 use Carbon\Carbon;
@@ -66,8 +67,10 @@ class BookingController extends Controller
 
         $courts = Court::orderBy('name')->get(['id', 'name']);
 
+        $businessSettings = BusinessSetting::current();
+
         return view('admin.bookings.index', compact(
-            'bookings', 'courts', 'courtBoardBookings', 'courtBoardClosures'
+            'bookings', 'courts', 'courtBoardBookings', 'courtBoardClosures', 'businessSettings'
         ));
     }
 }
