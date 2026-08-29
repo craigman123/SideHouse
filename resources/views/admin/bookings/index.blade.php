@@ -165,15 +165,18 @@
 @endsection
 
 @push('scripts')
-    <script id="courtBoardData" type="application/json">@json([
-        'bookings'         => $courtBoardBookings,
-        'closures'         => $courtBoardClosures,
-        'courts'           => $courts,
-        'businessSettings' => [
-            'open_hour'       => $businessSettings->open_hour,
-            'close_hour'      => $businessSettings->close_hour,
-            'closed_weekdays' => $businessSettings->closed_weekdays,
-        ],
-    ])</script>
+    @php
+        $courtBoardData = [
+            'bookings'         => $courtBoardBookings,
+            'closures'         => $courtBoardClosures,
+            'courts'           => $courts,
+            'businessSettings' => [
+                'open_hour'       => $businessSettings->open_hour,
+                'close_hour'      => $businessSettings->close_hour,
+                'closed_weekdays' => $businessSettings->closed_weekdays,
+            ],
+        ];
+    @endphp
+    <script id="courtBoardData" type="application/json">{{ json_encode($courtBoardData) }}</script>
     <script src="{{ asset('js/admin-bookings-board.js') }}" defer></script>
 @endpush
