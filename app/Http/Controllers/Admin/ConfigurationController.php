@@ -74,6 +74,39 @@ class ConfigurationController extends Controller
     }
 
     /**
+     * Updates the peak-pricing fields on the single business_settings
+     * row. Same cache-busting story as updateHours() — BusinessSetting::saved()
+     * clears the cache, so this applies to the very next booking request.
+     *
+     * peak_start_hour === peak_end_hour is allowed on purpose: that's how
+     * the admin turns peak pricing off (see BusinessSetting::hasPeakPricing()),
+     * so it isn't rejected here.
+     */
+    public function updatePricing(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'peak_start_hour' => ['required', 'integer', 'between:0,23'],
+            'peak_end_hour' => ['required', 'integer', 'between:0,23'],
+            'peak_adjustment_type' => ['required', 'in:flat,percent'],
+            'peak_adjustment_value' => ['required', 'numeric', 'min:0', 'max:1000'],
+        ]);
+
+        $settings = BusinessSetting::current();
+        $settings->update($validated);
+
+        ActivityLogger::log(
+            'schedule.pricing_updated',
+            auth()->user()->name . ' updated the peak pricing configuration.',
+            subject: $settings,
+            properties: $validated,
+        );
+
+        return redirect()
+            ->route('admin.configuration.index')
+            ->with('success', 'Peak pricing updated.');
+    }
+
+    /**
      * Adds a closure for one date — either store-wide (no court
      * selected) or scoped to a single court.
      */

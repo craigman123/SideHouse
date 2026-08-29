@@ -322,6 +322,31 @@ document.addEventListener('DOMContentLoaded', () => {
     const STEP_MINUTES = parseInt(grid.dataset.stepMinutes, 10);
     const OVERNIGHT = CLOSE_HOUR <= OPEN_HOUR;
 
+    // Peak/night pricing (admin Configuration page) — display-only
+    // preview of the surcharge store()/paymentPage() actually apply
+    // server-side. Blank attributes (no window configured, or it was
+    // left zero-length) mean peak pricing is off, same as
+    // BusinessSetting::hasPeakPricing() on the backend.
+    const PEAK_START_HOUR = grid.dataset.peakStartHour === '' ? null : parseInt(grid.dataset.peakStartHour, 10);
+    const PEAK_END_HOUR = grid.dataset.peakEndHour === '' ? null : parseInt(grid.dataset.peakEndHour, 10);
+    const PEAK_ADJUSTMENT_TYPE = grid.dataset.peakAdjustmentType || null;
+    const PEAK_ADJUSTMENT_VALUE = grid.dataset.peakAdjustmentValue === '' ? null : parseFloat(grid.dataset.peakAdjustmentValue);
+    const HAS_PEAK_PRICING = PEAK_START_HOUR !== null
+        && PEAK_END_HOUR !== null
+        && PEAK_START_HOUR !== PEAK_END_HOUR
+        && (PEAK_ADJUSTMENT_TYPE === 'flat' || PEAK_ADJUSTMENT_TYPE === 'percent')
+        && PEAK_ADJUSTMENT_VALUE > 0;
+
+    // Mirrors BusinessSetting::isPeakHour() — same crosses-midnight
+    // convention as OPEN_HOUR/CLOSE_HOUR (peak end <= peak start means
+    // the window wraps past midnight).
+    function isPeakHour(hour) {
+        if (!HAS_PEAK_PRICING) return false;
+        return PEAK_END_HOUR > PEAK_START_HOUR
+            ? hour >= PEAK_START_HOUR && hour < PEAK_END_HOUR
+            : hour >= PEAK_START_HOUR || hour < PEAK_END_HOUR;
+    }
+
     // Days of week (0 = Sunday ... 6 = Saturday) closed every week, plus
     // specific upcoming one-off closure dates — both set on the admin
     // Schedule page. Used to mark the calendar red before the guest even
@@ -502,7 +527,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const item = equipmentCatalog.find((candidate) => String(candidate.id) === String(id));
             return total + (item ? Number(item.price) * Number(quantity) : 0);
         }, 0);
-        const total = slotPrice() * selectedSlots.length + equipmentTotal;
+        const total = selectedSlotsTotal() + equipmentTotal;
 
         if (selectionDateTime && selectionEquipment && selectionTotal) {
             if (!selectedSlots.length) {
@@ -1327,9 +1352,26 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Price for a single STEP_MINUTES-long slot (STEP_MINUTES is 60 for
     // the guest widget, so this is normally just the court's hourly rate,
-    // but the math stays correct if that ever changes).
-    function slotPrice() {
-        return Number(selectedCourt.price) * (STEP_MINUTES / 60);
+    // but the math stays correct if that ever changes). `hour` (0-23) is
+    // the slot's real clock hour — omit it to get the flat, un-adjusted
+    // rate. Mirrors BusinessSetting::applyPeakAdjustment(): the surcharge
+    // is applied to the hourly rate first, then scaled to the slot length.
+    function slotPrice(hour) {
+        let hourlyRate = Number(selectedCourt.price);
+        if (hour !== undefined && isPeakHour(hour)) {
+            hourlyRate = PEAK_ADJUSTMENT_TYPE === 'percent'
+                ? hourlyRate * (1 + PEAK_ADJUSTMENT_VALUE / 100)
+                : hourlyRate + PEAK_ADJUSTMENT_VALUE;
+        }
+
+        return hourlyRate * (STEP_MINUTES / 60);
+    }
+
+    // Sums the actual per-slot (peak-aware) price across every selected
+    // slot key ("YYYY-MM-DD HH:MM"), instead of assuming every slot
+    // costs the same flat amount.
+    function selectedSlotsTotal() {
+        return selectedSlots.reduce((sum, key) => sum + slotPrice(Number(keyTime(key).slice(0, 2))), 0);
     }
 
     // Slot rows show the full "3:00 - 4:00 AM" window rather than just the
@@ -1439,7 +1481,12 @@ document.addEventListener('DOMContentLoaded', () => {
             } else if (past) {
                 priceLabel.textContent = 'Past';
             } else {
-                priceLabel.textContent = `₱${slotPrice().toLocaleString()}`;
+                priceLabel.textContent = `₱${slotPrice(h).toLocaleString()}`;
+            }
+
+            if (!booked && !past && isPeakHour(h)) {
+                row.classList.add('time-slot-row-peak');
+                row.dataset.tooltip = 'Peak pricing applies to this hour';
             }
 
             toggle.appendChild(check);
@@ -1531,7 +1578,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         if (timePickerFeeTotal) {
-            timePickerFeeTotal.textContent = `₱${(slotPrice() * selectedSlots.length).toLocaleString()}`;
+            timePickerFeeTotal.textContent = `₱${selectedSlotsTotal().toLocaleString()}`;
         }
     }
 
@@ -1783,7 +1830,7 @@ document.addEventListener('DOMContentLoaded', () => {
             summaryEquipmentRow.hidden = true;
         }
 
-        const total = slotPrice() * selectedSlots.length + equipmentTotal();
+        const total = selectedSlotsTotal() + equipmentTotal();
         summaryTotal.textContent = `₱${total.toLocaleString()}`;
     }
 

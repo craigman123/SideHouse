@@ -6,6 +6,7 @@ use App\Support\PaymentWindows;
 use App\Http\Controllers\Controller;
 use App\Models\Booking;
 use App\Models\BookingSlot;
+use App\Models\BusinessSetting;
 use App\Models\Court;
 use App\Models\CourtClosure;
 use App\Models\Equipment;
@@ -47,15 +48,27 @@ class GuestBookingController extends Controller
             ->map(fn ($date) => $date->toDateString())
             ->values();
 
+        // Peak pricing is global (one window, applies to every court) —
+        // handed to the guest widget as plain data attributes so book.js
+        // can mirror BusinessSetting::applyPeakAdjustment() client-side
+        // for the running fee display. The server-computed amount in
+        // store()/paymentPage() below remains the source of truth; this
+        // is display-only.
+        $settings = BusinessSetting::current();
+
         return view('landing', [
-            'courts'         => $courts,
-            'openHour'       => BookingHours::openHour(),
-            'closeHour'      => BookingHours::closeHour(),
-            'minDuration'    => BookingHours::minDurationHours(),
-            'maxDuration'    => BookingHours::maxDurationHours(),
-            'stepMinutes'    => BookingHours::stepMinutes(),
-            'closedWeekdays' => BookingHours::closedWeekdays(),
-            'closureDates'   => $closureDates,
+            'courts'              => $courts,
+            'openHour'            => BookingHours::openHour(),
+            'closeHour'           => BookingHours::closeHour(),
+            'minDuration'         => BookingHours::minDurationHours(),
+            'maxDuration'         => BookingHours::maxDurationHours(),
+            'stepMinutes'         => BookingHours::stepMinutes(),
+            'closedWeekdays'      => BookingHours::closedWeekdays(),
+            'closureDates'        => $closureDates,
+            'peakStartHour'       => $settings->hasPeakPricing() ? $settings->peak_start_hour : null,
+            'peakEndHour'         => $settings->hasPeakPricing() ? $settings->peak_end_hour : null,
+            'peakAdjustmentType'  => $settings->hasPeakPricing() ? $settings->peak_adjustment_type : null,
+            'peakAdjustmentValue' => $settings->hasPeakPricing() ? $settings->peak_adjustment_value : null,
         ]);
     }
 
@@ -468,10 +481,23 @@ class GuestBookingController extends Controller
             return redirect()->route('landing')->with('error', $e->getMessage());
         }
 
-        $stepMinutes    = BookingHours::stepMinutes();
-        $slotPrice      = $court->hourly_rate * ($stepMinutes / 60);
+        $stepMinutes = BookingHours::stepMinutes();
+        $settings    = BusinessSetting::current();
+
+        // Peak pricing is applied per hour slot (see
+        // BusinessSetting::applyPeakAdjustment()'s docblock) rather than
+        // once for the whole booking, since a selection spanning the
+        // peak boundary has mixed rates across its own hours.
+        $slotAmountFor = fn (Carbon $start) => round(
+            $settings->applyPeakAdjustment($court->hourly_rate, $start->hour) * ($stepMinutes / 60),
+            2
+        );
+
         $totalSlotCount = collect($groups)->sum(fn ($windows) => count($windows));
-        $courtAmount    = round($slotPrice * $totalSlotCount, 2);
+        $courtAmount    = round(
+            collect($groups)->flatten(1)->sum(fn ($window) => $slotAmountFor($window[0])),
+            2
+        );
 
         // Resolved purely for display (name/price/subtotal) — quantities
         // aren't re-checked against live stock here on purpose; see the
@@ -582,15 +608,22 @@ class GuestBookingController extends Controller
             return response()->json(['message' => $e->getMessage()], 422);
         }
 
-        $stepMinutes    = BookingHours::stepMinutes();
-        $slotPrice      = $court->hourly_rate * ($stepMinutes / 60);
-        $totalSlotCount = collect($groups)->sum(fn ($windows) => count($windows));
+        $stepMinutes = BookingHours::stepMinutes();
+        $settings    = BusinessSetting::current();
+
+        // Same per-hour peak calculation as paymentPage() — kept as a
+        // closure so store() and paymentPage() can never drift apart on
+        // what a given slot actually costs.
+        $slotAmountFor = fn (Carbon $start) => round(
+            $settings->applyPeakAdjustment($court->hourly_rate, $start->hour) * ($stepMinutes / 60),
+            2
+        );
 
         $expiresAt = now()->addMinutes(PaymentWindows::BOOKING_EXPIRY_MINUTES);
 
         try {
             $result = DB::transaction(function () use (
-                $validated, $court, $groups, $slotPrice, $totalSlotCount,
+                $validated, $court, $groups, $slotAmountFor,
                 $guestEmail, $expiresAt
             ) {
                 // Lock the court row for the rest of this transaction —
@@ -652,7 +685,7 @@ class GuestBookingController extends Controller
                     $resolvedEquipment[] = ['item' => $item, 'quantity' => $line['quantity']];
                 }
 
-                $courtAmount = $slotPrice * $totalSlotCount;
+                $courtAmount = collect($groups)->flatten(1)->sum(fn ($window) => $slotAmountFor($window[0]));
                 $equipmentAmount = collect($resolvedEquipment)
                     ->sum(fn ($line) => $line['item']->price * $line['quantity']);
                 $totalAmount = round($courtAmount + $equipmentAmount, 2);
@@ -673,7 +706,7 @@ class GuestBookingController extends Controller
                 foreach ($groups as $dateStr => $windows) {
                     $envelopeStart = $windows[0][0];
                     $envelopeEnd   = $windows[count($windows) - 1][1];
-                    $dateAmount    = round($slotPrice * count($windows), 2);
+                    $dateAmount    = round(collect($windows)->sum(fn ($window) => $slotAmountFor($window[0])), 2);
 
                     $booking = Booking::create([
                         'user_id'              => null,
@@ -711,7 +744,7 @@ class GuestBookingController extends Controller
                             'date'       => $start->toDateString(),
                             'start_time' => $start->format('H:i:s'),
                             'end_time'   => $end->format('H:i:s'),
-                            'price'      => $slotPrice,
+                            'price'      => $slotAmountFor($start),
                         ]);
                     }
 

@@ -34,6 +34,16 @@
             data-closed-weekdays="{{ implode(',', $closedWeekdays ?? []) }}"
             data-closure-dates="{{ ($closureDates ?? collect())->implode(',') }}"
             data-court-closures="{{ $courtClosures ?? '' }}"
+            {{-- Peak/night pricing (admin Configuration page) — blank
+                 attributes when no peak window is configured, which
+                 book.js treats as "peak pricing off". Display-only: the
+                 running total here is just a preview, the server
+                 (User_UserController::storeBooking()) always recomputes
+                 and charges the real amount. --}}
+            data-peak-start-hour="{{ $peakStartHour ?? '' }}"
+            data-peak-end-hour="{{ $peakEndHour ?? '' }}"
+            data-peak-adjustment-type="{{ $peakAdjustmentType ?? '' }}"
+            data-peak-adjustment-value="{{ $peakAdjustmentValue ?? '' }}"
         >
             @forelse ($courts as $court)
                 <button

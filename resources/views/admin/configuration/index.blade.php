@@ -115,6 +115,64 @@
             </form>
         </div>
 
+        {{-- ---------- Peak / night pricing ---------- --}}
+        <div class="schedule-panel">
+            <div class="schedule-panel-header">
+                <h2>Peak Pricing</h2>
+                <p class="schedule-panel-note">Applies to every court. Adds a surcharge to bookings that fall inside this window — e.g. the higher electricity cost of running the night lights. Leave both times the same to turn peak pricing off. Set Ends before Starts (e.g. Starts 5 PM, Ends 6 AM) for a window that crosses midnight.</p>
+            </div>
+
+            <form method="POST" action="{{ route('admin.configuration.pricing.update') }}" class="schedule-hours-form">
+                @csrf
+                @method('PUT')
+
+                <div class="schedule-field-grid">
+                    <div class="schedule-field">
+                        <label for="peak_start_hour">Starts At</label>
+                        <select name="peak_start_hour" id="peak_start_hour">
+                            @for ($h = 0; $h < 24; $h++)
+                                <option value="{{ $h }}" @selected(old('peak_start_hour', $settings->peak_start_hour) === $h)>
+                                    {{ \Carbon\Carbon::createFromTime($h, 0)->format('g:i A') }}
+                                </option>
+                            @endfor
+                        </select>
+                        @error('peak_start_hour') <span class="schedule-field-error">{{ $message }}</span> @enderror
+                    </div>
+
+                    <div class="schedule-field">
+                        <label for="peak_end_hour">Ends At</label>
+                        <select name="peak_end_hour" id="peak_end_hour">
+                            @for ($h = 0; $h < 24; $h++)
+                                <option value="{{ $h }}" @selected(old('peak_end_hour', $settings->peak_end_hour) === $h)>
+                                    {{ \Carbon\Carbon::createFromTime($h, 0)->format('g:i A') }}
+                                </option>
+                            @endfor
+                        </select>
+                        @error('peak_end_hour') <span class="schedule-field-error">{{ $message }}</span> @enderror
+                    </div>
+
+                    <div class="schedule-field">
+                        <label for="peak_adjustment_type">Surcharge Type</label>
+                        <select name="peak_adjustment_type" id="peak_adjustment_type">
+                            <option value="flat" @selected(old('peak_adjustment_type', $settings->peak_adjustment_type) === 'flat')>Flat amount (₱ per hour)</option>
+                            <option value="percent" @selected(old('peak_adjustment_type', $settings->peak_adjustment_type) === 'percent')>Percent of hourly rate</option>
+                        </select>
+                        @error('peak_adjustment_type') <span class="schedule-field-error">{{ $message }}</span> @enderror
+                    </div>
+
+                    <div class="schedule-field">
+                        <label for="peak_adjustment_value">Surcharge Amount</label>
+                        <input type="number" name="peak_adjustment_value" id="peak_adjustment_value" min="0" max="1000" step="0.01" value="{{ old('peak_adjustment_value', $settings->peak_adjustment_value) }}">
+                        @error('peak_adjustment_value') <span class="schedule-field-error">{{ $message }}</span> @enderror
+                    </div>
+                </div>
+
+                <div class="schedule-form-actions">
+                    <button type="submit" class="btn btn-primary">Save Peak Pricing</button>
+                </div>
+            </form>
+        </div>
+
         {{-- ---------- Closures ---------- --}}
         <div class="schedule-panel">
             <div class="schedule-panel-header">

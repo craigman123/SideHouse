@@ -141,6 +141,7 @@ Route::middleware(['auth', 'admin', 'admin.mfa'])->group(function () {
     // Configuration / Schedule
     Route::get('/admin/configuration', [ConfigurationController::class, 'index'])->name('admin.configuration.index');
     Route::put('/admin/configuration/hours', [ConfigurationController::class, 'updateHours'])->name('admin.configuration.hours.update');
+    Route::put('/admin/configuration/pricing', [ConfigurationController::class, 'updatePricing'])->name('admin.configuration.pricing.update');
     Route::post('/admin/configuration/closures', [ConfigurationController::class, 'storeClosure'])->name('admin.configuration.closures.store');
     Route::delete('/admin/configuration/closures/{closure}', [ConfigurationController::class, 'destroyClosure'])->name('admin.configuration.closures.destroy');
 

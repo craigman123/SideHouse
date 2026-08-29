@@ -4,6 +4,7 @@ namespace App\Http\Controllers\User;
 
 use App\Http\Controllers\Controller;
 use App\Models\Booking;
+use App\Models\BusinessSetting;
 use App\Models\Court;
 use App\Models\CourtClosure;
 use App\Models\Equipment;
@@ -70,17 +71,26 @@ class User_UserController extends Controller
             ->unique()
             ->values();
 
+        // See GuestBookingController::landing() for why this is
+        // display-only: storeBooking() below is the actual source of
+        // truth for what a slot costs.
+        $settings = BusinessSetting::current();
+
         return view('user.bookings.book', [
-            'userName'       => auth()->user()->name,
-            'userPhone'      => auth()->user()->phone_number ?? '',
-            'courts'         => $courts,
-            'openHour'       => BookingHours::openHour(),
-            'closeHour'      => BookingHours::closeHour(),
-            'minDuration'    => BookingHours::minDurationHours(),
-            'maxDuration'    => BookingHours::maxDurationHours(),
-            'stepMinutes'    => BookingHours::stepMinutes(),
-            'closedWeekdays' => BookingHours::closedWeekdays(),
-            'closureDates'   => $closureDates,
+            'userName'            => auth()->user()->name,
+            'userPhone'           => auth()->user()->phone_number ?? '',
+            'courts'              => $courts,
+            'openHour'            => BookingHours::openHour(),
+            'closeHour'           => BookingHours::closeHour(),
+            'minDuration'         => BookingHours::minDurationHours(),
+            'maxDuration'         => BookingHours::maxDurationHours(),
+            'stepMinutes'         => BookingHours::stepMinutes(),
+            'closedWeekdays'      => BookingHours::closedWeekdays(),
+            'closureDates'        => $closureDates,
+            'peakStartHour'       => $settings->hasPeakPricing() ? $settings->peak_start_hour : null,
+            'peakEndHour'         => $settings->hasPeakPricing() ? $settings->peak_end_hour : null,
+            'peakAdjustmentType'  => $settings->hasPeakPricing() ? $settings->peak_adjustment_type : null,
+            'peakAdjustmentValue' => $settings->hasPeakPricing() ? $settings->peak_adjustment_value : null,
         ]);
     }
 
@@ -427,14 +437,25 @@ class User_UserController extends Controller
             ->first();
         $discountPercent = $activeMembership?->plan?->discount_percent ?? 0;
 
-        $slotPrice = round($court->hourly_rate * ($stepMinutes / 60) * (1 - $discountPercent / 100), 2);
+        // Peak surcharge is applied to the base hourly rate per hour slot
+        // first (see BusinessSetting::applyPeakAdjustment()'s docblock —
+        // a booking spanning the peak boundary has mixed rates across its
+        // own hours), then the membership discount is applied on top of
+        // that already-adjusted rate.
+        $settings = BusinessSetting::current();
+        $slotAmountFor = fn (Carbon $start) => round(
+            $settings->applyPeakAdjustment($court->hourly_rate, $start->hour)
+                * ($stepMinutes / 60)
+                * (1 - $discountPercent / 100),
+            2
+        );
         $totalSlotCount = count($slotWindows);
 
         $expiresAt = now()->addMinutes(PaymentWindows::BOOKING_EXPIRY_MINUTES);
 
         try {
             $result = DB::transaction(function () use (
-                $validated, $court, $user, $groups, $slotPrice, $totalSlotCount,
+                $validated, $court, $user, $groups, $slotAmountFor,
                 $discountPercent, $expiresAt
             ) {
                 // See GuestBookingController::store() for why this lock
@@ -489,7 +510,7 @@ class User_UserController extends Controller
                     $resolvedEquipment[] = ['item' => $item, 'quantity' => $line['quantity']];
                 }
 
-                $courtAmount = $slotPrice * $totalSlotCount;
+                $courtAmount = collect($groups)->flatten(1)->sum(fn ($window) => $slotAmountFor($window[0]));
                 $equipmentAmount = collect($resolvedEquipment)
                     ->sum(fn ($line) => $line['item']->price * $line['quantity']);
                 $totalAmount = round($courtAmount + $equipmentAmount, 2);
@@ -508,7 +529,7 @@ class User_UserController extends Controller
                 foreach ($groups as $dateStr => $windows) {
                     $envelopeStart = $windows[0][0];
                     $envelopeEnd   = $windows[count($windows) - 1][1];
-                    $dateAmount    = round($slotPrice * count($windows), 2);
+                    $dateAmount    = round(collect($windows)->sum(fn ($window) => $slotAmountFor($window[0])), 2);
 
                     $booking = Booking::create([
                         'user_id'              => auth()->id(),
@@ -541,7 +562,7 @@ class User_UserController extends Controller
                             'date'       => $start->toDateString(),
                             'start_time' => $start->format('H:i:s'),
                             'end_time'   => $end->format('H:i:s'),
-                            'price'      => $slotPrice,
+                            'price'      => $slotAmountFor($start),
                         ]);
                     }
 

@@ -14,6 +14,10 @@ class BusinessSetting extends Model
         'min_duration_hours',
         'max_duration_hours',
         'closed_weekdays',
+        'peak_start_hour',
+        'peak_end_hour',
+        'peak_adjustment_type',
+        'peak_adjustment_value',
     ];
 
     protected $casts = [
@@ -23,6 +27,9 @@ class BusinessSetting extends Model
         'min_duration_hours' => 'integer',
         'max_duration_hours' => 'integer',
         'closed_weekdays' => 'array',
+        'peak_start_hour' => 'integer',
+        'peak_end_hour' => 'integer',
+        'peak_adjustment_value' => 'float',
     ];
 
     private const CACHE_KEY = 'business_settings.current';
@@ -59,6 +66,58 @@ class BusinessSetting extends Model
         $decoded = is_array($value) ? $value : (json_decode((string) $value, true) ?: []);
 
         return array_values(array_unique(array_map('intval', $decoded)));
+    }
+
+    /**
+     * True only when a full, non-degenerate peak window is configured —
+     * every peak_* field set and the window isn't zero-length. Kept as a
+     * single guard so callers don't have to remember all four conditions.
+     */
+    public function hasPeakPricing(): bool
+    {
+        return $this->peak_start_hour !== null
+            && $this->peak_end_hour !== null
+            && $this->peak_start_hour !== $this->peak_end_hour
+            && in_array($this->peak_adjustment_type, ['flat', 'percent'], true)
+            && $this->peak_adjustment_value > 0;
+    }
+
+    /**
+     * Whether a given real clock hour (0-23) falls inside the peak window.
+     * Same crosses-midnight convention as open_hour/close_hour elsewhere:
+     * peak_end_hour <= peak_start_hour means the window wraps past midnight
+     * (e.g. 17 → 6 covers 5 PM through 6 AM), so it's checked as an "or"
+     * instead of a contiguous range.
+     */
+    public function isPeakHour(int $hour): bool
+    {
+        if (!$this->hasPeakPricing()) {
+            return false;
+        }
+
+        if ($this->peak_end_hour > $this->peak_start_hour) {
+            return $hour >= $this->peak_start_hour && $hour < $this->peak_end_hour;
+        }
+
+        return $hour >= $this->peak_start_hour || $hour < $this->peak_end_hour;
+    }
+
+    /**
+     * Applies the peak surcharge to a single hour's base rate, if that
+     * hour falls in the peak window. Callers should call this once PER
+     * HOUR SLOT being priced (not once for a whole multi-hour booking),
+     * since a booking spanning the peak boundary (e.g. 4 PM–6 PM with a
+     * 5 PM peak start) has mixed rates across its own hours.
+     */
+    public function applyPeakAdjustment(float $hourlyRate, int $hour): float
+    {
+        if (!$this->isPeakHour($hour)) {
+            return $hourlyRate;
+        }
+
+        return $this->peak_adjustment_type === 'percent'
+            ? round($hourlyRate * (1 + $this->peak_adjustment_value / 100), 2)
+            : round($hourlyRate + $this->peak_adjustment_value, 2);
     }
 
     public static function forgetCache(): void

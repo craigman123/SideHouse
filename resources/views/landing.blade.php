@@ -136,6 +136,16 @@
             data-closed-weekdays="{{ implode(',', $closedWeekdays) }}"
             data-closure-dates="{{ $closureDates->implode(',') }}"
             data-google-client-id="{{ config('services.google.client_id') }}"
+            {{-- Peak/night pricing (admin Configuration page) — blank
+                 attributes when no peak window is configured, which
+                 guest-book.js treats as "peak pricing off". Display-only:
+                 the guest widget's running total is just a preview, the
+                 server (GuestBookingController::store()/paymentPage())
+                 always recomputes and charges the real amount. --}}
+            data-peak-start-hour="{{ $peakStartHour }}"
+            data-peak-end-hour="{{ $peakEndHour }}"
+            data-peak-adjustment-type="{{ $peakAdjustmentType }}"
+            data-peak-adjustment-value="{{ $peakAdjustmentValue }}"
             @if ($courts->isNotEmpty())
                 data-court-id="{{ $courts->first()->id }}"
                 data-court-name="{{ $courts->first()->name }}"
