@@ -45,7 +45,7 @@ class EquipmentAvailabilityController extends Controller
         );
 
         return redirect()
-            ->route('admin.equipment.availability.index')
+            ->route('admin.equipment.availability')
             ->with('success', "\"{$item->name}\" added.");
     }
 
