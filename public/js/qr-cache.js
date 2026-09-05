@@ -242,9 +242,10 @@
         if (!box) return;
 
         const bookingId = box.dataset.bookingId;
-        const token = box.dataset.token;
+        const token = box.dataset.token; // undefined on the user page — fine,
+        // createQr() falls back to auth-ownership when there's no token.
 
-        if (!bookingId || !token) return;
+        if (!bookingId) return;
 
         function getCsrfHeaders() {
             const metaToken = document.querySelector('meta[name="csrf-token"]')?.content;

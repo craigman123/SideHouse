@@ -1,11 +1,12 @@
 (function () {
-    const box = document.getElementById('waitingBox');
+    // Renamed from 'waitingBox' to 'waitingPage' so this shares the same
+    // container qr-cache.js's auto-init looks for — no separate QR script
+    // needed, we just reuse the shared loader.
+    const box = document.getElementById('waitingPage');
     if (!box) return;
     const statusUrl = box.dataset.statusUrl;
     const cancelUrl = box.dataset.cancelUrl;
     const expiresAt = box.dataset.expiresAt ? new Date(box.dataset.expiresAt).getTime() : null;
-    const qrphCreateUrl = box.dataset.qrphCreateUrl;
-    const bookingId = box.dataset.bookingId;
     const titleEl = document.getElementById('waitTitle');
     const statusEl = document.getElementById('waitStatus');
     const spinnerEl = document.getElementById('waitSpinner');
@@ -15,10 +16,6 @@
     const doneActionsEl = document.getElementById('waitDoneActions');
     const cancelBtn = document.getElementById('waitCancelBtn');
     const qrphPanel = document.getElementById('qrphWaitPanel');
-    const qrphLoading = document.getElementById('qrphWaitLoading');
-    const qrphImage = document.getElementById('qrphWaitImage');
-    const qrphError = document.getElementById('qrphWaitError');
-    const qrphRetry = document.getElementById('qrphWaitRetry');
     let pollTimer;
     let countdownTimer;
     let resolved = box.dataset.initialStatus !== 'pending';
@@ -66,29 +63,10 @@
         }
         poll();
     }
-    async function requestQrPhCode() {
-        if (!qrphPanel) return;
-        qrphLoading.hidden = false;
-        qrphImage.hidden = true;
-        qrphError.hidden = true;
-        try {
-            const response = await fetch(qrphCreateUrl, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', Accept: 'application/json', ...csrfHeaders() },
-                body: JSON.stringify({ booking_id: Number(bookingId) }),
-            });
-            const data = await response.json().catch(() => ({}));
-            if (!response.ok) throw new Error(data.message || 'Could not generate QR Ph code.');
-            qrphImage.src = data.qr_image_url;
-            qrphImage.hidden = false;
-        } catch (error) {
-            console.error(error);
-            qrphError.hidden = false;
-        } finally {
-            qrphLoading.hidden = true;
-        }
-    }
-    qrphRetry?.addEventListener('click', requestQrPhCode);
+    // QR generation itself is now handled entirely by qr-cache.js's
+    // auto-init (it reads #waitingPage's data-booking-id/data-create-qr-url/
+    // data-status-url and wires up #qrLoading/#qrImageWrap/#qrImage/#qrError/
+    // #qrRetryBtn/#qrStatusLine on its own). Nothing to do here for that.
     cancelBtn?.addEventListener('click', cancelBooking);
     if (!resolved) {
         if (expiresAt) {
@@ -103,7 +81,6 @@
             updateCountdown();
             countdownTimer = setInterval(updateCountdown, 1000);
         }
-        requestQrPhCode();
         poll();
     }
 })();

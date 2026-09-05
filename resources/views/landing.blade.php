@@ -228,6 +228,12 @@
                 <h3>Comfort Room Available</h3>
                 <p>Clean, accessible restrooms on-site so you can freshen up before, during, or after your game.</p>
             </div>
+
+            <div class="feature-card fade-in">
+                <div class="feature-icon">1️⃣</div>
+                <h3>Single Court</h3>
+                <p>Reserve a single court for your game, ensuring you have the space you need with your friends, family, or team. In Side House Paddlers you are welcome!</p>
+            </div>
         </section>
 
         <section class="stats-section fade-in" id="courtStats" data-stats-url="{{ route('guest.book.monthly-stats') }}">
