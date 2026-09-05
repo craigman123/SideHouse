@@ -12,6 +12,8 @@ class BookingCronController extends Controller
         Artisan::call('bookings:expire-unconfirmed-qrph');
         Artisan::call('bookings:send-in-app-reminders');
         Artisan::call('bookings:send-email-reminders');
+        Artisan::call('logs:prune');
+        Artisan::call('webhook:clean');
         Artisan::call('queue:work', [
             '--stop-when-empty' => true,
             '--max-time' => 20,

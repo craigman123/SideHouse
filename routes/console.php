@@ -14,6 +14,7 @@ Schedule::command('bookings:send-in-app-reminders')->everyFiveMinutes();
 Schedule::command('bookings:send-email-reminders')->everyFiveMinutes();
 
 Schedule::command('webhook:clean')->daily();
+Schedule::command('logs:prune')->daily();
 
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
