@@ -40,7 +40,7 @@
                     <a href="#features" class="nav-link">Features</a>
                     <a href="#faq" class="nav-link">FAQ</a>
                     <a href="#findUs" class="nav-link">Find Us</a>
-                    <a href="#getMore" class="nav-link">Create Account</a>
+                    {{-- <a href="#getMore" class="nav-link">Create Account</a> --}}
                 </div>
 
                     <button type="button" class="nav-search-show" id="navSearchTrigger" aria-label="Find your booking" aria-haspopup="dialog">
@@ -71,7 +71,7 @@
                 <a href="#features" class="nav-link">Features</a>
                 <a href="#faq" class="nav-link">FAQ</a>
                 <a href="#findUs" class="nav-link">Find Us</a>
-                <a href="#getMore" class="nav-link">Create Account</a>
+                {{-- <a href="#getMore" class="nav-link">Create Account</a> --}}
             </div>
 
             <div class="nav-search-wrap">
