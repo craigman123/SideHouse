@@ -556,7 +556,7 @@ body {
     }
 }
 
-@media (max-width: 950px) {
+@media (max-width: 1150px) {
     .nav-toggle {
         display: flex;
     }

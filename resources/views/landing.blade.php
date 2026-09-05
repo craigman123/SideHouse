@@ -13,6 +13,41 @@
     <link rel="stylesheet" href="{{ asset('css/landing-search.css') }}">
     <link rel="icon" type="image/png" href="{{ asset('images/tab_icon.png') }}">
     <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <style>
+        /* Loading skeleton for the usage & vacancy charts — shown until
+           each chart's JS replaces it with the real bars. */
+        .stats-skeleton {
+            display: flex;
+            align-items: flex-end;
+            gap: 10px;
+            height: 100%;
+            width: 100%;
+            padding: 0 4px;
+        }
+        .stats-skeleton-bar {
+            flex: 1 0 22px;
+            border-radius: 4px 4px 0 0;
+            background: linear-gradient(90deg, rgba(148,163,184,0.12) 25%, rgba(148,163,184,0.28) 37%, rgba(148,163,184,0.12) 63%);
+            background-size: 400% 100%;
+            animation: statsSkeletonShimmer 1.4s ease infinite;
+        }
+        @keyframes statsSkeletonShimmer {
+            0% { background-position: 100% 50%; }
+            100% { background-position: 0 50%; }
+        }
+        .stats-skeleton-bar:nth-child(1) { height: 38%; }
+        .stats-skeleton-bar:nth-child(2) { height: 62%; }
+        .stats-skeleton-bar:nth-child(3) { height: 48%; }
+        .stats-skeleton-bar:nth-child(4) { height: 80%; }
+        .stats-skeleton-bar:nth-child(5) { height: 55%; }
+        .stats-skeleton-bar:nth-child(6) { height: 70%; }
+        .stats-skeleton-bar:nth-child(7) { height: 42%; }
+        .stats-skeleton-bar:nth-child(8) { height: 58%; }
+        .stats-skeleton-bar:nth-child(9) { height: 90%; }
+        .stats-skeleton-bar:nth-child(10) { height: 50%; }
+        .stats-skeleton-bar:nth-child(11) { height: 65%; }
+        .stats-skeleton-bar:nth-child(12) { height: 72%; }
+    </style>
 </head>
 <body>
 
@@ -41,6 +76,9 @@
                     <a href="#faq" class="nav-link">FAQ</a>
                     <a href="#findUs" class="nav-link">Find Us</a>
                     {{-- <a href="#getMore" class="nav-link">Create Account</a> --}}
+                    <a href="https://www.google.com/maps/dir/?api=1&destination=10.246043101731798,123.78949399013447"
+                    target="_blank"
+                    rel="noopener noreferrer" class="nav-link">Get Directions</a>
                 </div>
 
                     <button type="button" class="nav-search-show" id="navSearchTrigger" aria-label="Find your booking" aria-haspopup="dialog">
@@ -72,6 +110,9 @@
                 <a href="#faq" class="nav-link">FAQ</a>
                 <a href="#findUs" class="nav-link">Find Us</a>
                 {{-- <a href="#getMore" class="nav-link">Create Account</a> --}}
+                <a href="https://www.google.com/maps/dir/?api=1&destination=10.246043101731798,123.78949399013447"
+                    target="_blank"
+                    rel="noopener noreferrer" class="nav-link">Get Directions</a>
             </div>
 
             <div class="nav-search-wrap">
@@ -268,7 +309,30 @@
 
                     <div class="stats-chart-scroll">
                         <div class="stats-chart" id="statsChart">
-                            <p class="loading-text">Loading chart…</p>
+                            <div class="stats-skeleton"><div class="stats-skeleton-bar"></div><div class="stats-skeleton-bar"></div><div class="stats-skeleton-bar"></div><div class="stats-skeleton-bar"></div><div class="stats-skeleton-bar"></div><div class="stats-skeleton-bar"></div><div class="stats-skeleton-bar"></div><div class="stats-skeleton-bar"></div><div class="stats-skeleton-bar"></div><div class="stats-skeleton-bar"></div><div class="stats-skeleton-bar"></div><div class="stats-skeleton-bar"></div></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="stats-xaxis-label">Date</div>
+            </div>
+
+            <div class="stats-chart-wrap" id="vacantChartWrap">
+                <div class="stats-intro" style="margin-bottom: 12px;">
+                    <h3 style="margin: 0;">Vacant Slots This Month</h3>
+                    <p style="margin: 4px 0 0;">Click any bar to jump straight to booking that date.</p>
+                </div>
+                <div class="stats-chart-title" id="vacantChartMonthLabel">Loading…</div>
+
+                <div class="stats-chart-frame">
+                    <div class="stats-yaxis">
+                        <span class="stats-yaxis-title">Vacant Hours</span>
+                        <div class="stats-yaxis-numbers" id="vacantYAxisNumbers"></div>
+                    </div>
+
+                    <div class="stats-chart-scroll">
+                        <div class="stats-chart" id="vacantChart">
+                            <div class="stats-skeleton"><div class="stats-skeleton-bar"></div><div class="stats-skeleton-bar"></div><div class="stats-skeleton-bar"></div><div class="stats-skeleton-bar"></div><div class="stats-skeleton-bar"></div><div class="stats-skeleton-bar"></div><div class="stats-skeleton-bar"></div><div class="stats-skeleton-bar"></div><div class="stats-skeleton-bar"></div><div class="stats-skeleton-bar"></div><div class="stats-skeleton-bar"></div><div class="stats-skeleton-bar"></div></div>
                         </div>
                     </div>
                 </div>
@@ -293,7 +357,7 @@
                     </button>
                     <div class="faq-answer-wrap">
                         <div class="faq-answer">
-                            <p>We're located in 423 Tabay, Tunghaan Minglanilla Cebu.</p>
+                            <p>We're located at 423 Tabay, Tunghaan, Minglanilla, Cebu — just a short drive from the main highway, with easy access whether you're coming from Cebu City or the south. Tap the button below and Google Maps will guide you straight to our door.</p>
                             <a
                                 href="https://www.google.com/maps/dir/?api=1&destination=10.246043101731798,123.78949399013447"
                                 target="_blank"
@@ -319,7 +383,7 @@
                     </button>
                     <div class="faq-answer-wrap">
                         <div class="faq-answer">
-                            <p>We have both padel and pickleball equipment available to rent when you book.</p>
+                            <p>Yes — we have both padel and pickleball equipment available to rent right when you book, so there's no need to buy your own gear before your first visit. Paddles/rackets and balls are provided on-site, and you're always welcome to bring your own equipment instead if you already have a favorite.</p>
                         </div>
                     </div>
                 </div>
@@ -333,7 +397,7 @@
                     </button>
                     <div class="faq-answer-wrap">
                         <div class="faq-answer">
-                            <p>We currently accept GCash and Maya payments.</p>
+                            <p>We accept QRPH, the universal QR payment standard, so you can pay quickly and securely by scanning with any participating bank or e-wallet app — including GCash, Maya, BPI, BDO, and more. No need to worry about which specific app you use; if it supports QR Ph, you're covered.</p>
                         </div>
                     </div>
                 </div>
@@ -347,11 +411,13 @@
                     </button>
                     <div class="faq-answer-wrap">
                         <div class="faq-answer">
-                            <p>Call us at <a href="tel:09335191862">0933 519 1863</a> or message us on Facebook Messenger (Side House Paddlers). Drop your GCash number so we can send your refund.</p>
+                            <p>To cancel or reschedule a booking, simply call us at <a href="tel:09335191862">0933 519 1863</a> or message us on Facebook Messenger (Side House Paddlers) as early as possible so we can free up the slot for other players. If a refund is due, just let us know which bank or e-wallet you paid with and we'll send it back to the same account.</p>
                         </div>
                     </div>
                 </div>
             </div>
+
+            <p class="faq-outro" style="text-align:center; max-width: 560px; margin: 32px auto 0; color: var(--text-muted, #9aa0a6); font-size: 0.95rem; line-height: 1.6;">Still have questions? We're happy to help — but honestly, the fastest way to see what makes Side House Paddlers different is to book a court and experience it yourself.</p>
         </section>
 
         <section class="member-cta fade-in" id="getMore" style="display: none;">
@@ -578,6 +644,7 @@
     <div class="toast-container" id="toastContainer"></div>
 
     <script src="{{ asset('js/guest-book.js') }}" defer></script>
+    <script src="{{ asset('js/stats-vacant.js') }}" defer></script>
     <script src="{{ asset('js/landing-search.js') }}" defer></script>
 </body>
 </html>
