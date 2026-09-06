@@ -11,7 +11,7 @@ return new class extends Migration
     {
         if (! Schema::hasColumn('bookings', 'payment_method')) {
             Schema::table('bookings', function (Blueprint $table) {
-                $table->string('payment_method')->default('arrival');
+                $table->string('payment_method')->default("Admin Reservation");
             });
         }
 
@@ -25,7 +25,7 @@ return new class extends Migration
                     ->where('payment_reference_id', $payment->id)
                     ->where('status', 'pending')
                     ->where(function ($query) {
-                        $query->whereNull('payment_method')->orWhere('payment_method', 'arrival');
+                        $query->whereNull('payment_method')->orWhere('payment_method', 'Admin Reservation');
                     })
                     ->update(['payment_method' => $payment->payment_method]);
             });

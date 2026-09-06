@@ -5,6 +5,7 @@
     
 @push('styles')
     <link rel="stylesheet" href="{{ asset('css/admin-schedule.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/manual-booking.css') }}">
 @endpush
 
 @section('content')
@@ -173,6 +174,70 @@
             </form>
         </div>
 
+        <div
+            class="schedule-panel"
+            id="manualBookingPanel"
+            data-closure-dates="{{ $closures->map(fn ($c) => [
+                'date' => $c->date->toDateString(),
+                'court_id' => $c->court_id,
+                'reason' => $c->reason,
+            ])->toJson() }}"
+            data-availability-url="{{ route('admin.configuration.availability') }}"
+            data-open-hour="{{ $settings->open_hour }}"
+            data-close-hour="{{ $settings->close_hour }}"
+            data-step-minutes="{{ $settings->step_minutes }}"
+            data-closed-weekdays="{{ implode(',', $settings->closed_weekdays) }}"
+        >
+            <div class="schedule-panel-header">
+                <h2>Manual Booking</h2>
+                <p class="schedule-panel-note">Book a court directly with no payment attached — walk-ins, phone reservations, comps. Goes straight to Confirmed.</p>
+            </div>
+
+            <form method="POST" action="{{ route('admin.configuration.manual-booking.store') }}" id="manual-booking-form">
+                @csrf
+
+                <div class="schedule-field-grid">
+                    <div class="schedule-field">
+                        <label for="mb_court">Court</label>
+                        <select name="court_id" id="mb_court" required>
+                            <option value="">Select a court</option>
+                            @foreach ($courts as $court)
+                                <option value="{{ $court->id }}">{{ $court->name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    <div class="schedule-field">
+                        <label for="mb_customer_name">Customer Name</label>
+                        <input type="text" name="customer_name" id="mb_customer_name" maxlength="255" required>
+                    </div>
+
+                    <div class="schedule-field">
+                        <label for="mb_contact_number">Contact Number</label>
+                        <input type="text" name="contact_number" id="mb_contact_number" maxlength="32">
+                    </div>
+
+                    <div class="schedule-field">
+                        <label for="mb_email">Email</label>
+                        <input type="email" name="email" id="mb_email" maxlength="255">
+                    </div>
+                </div>
+
+                <div class="schedule-field schedule-field-wide">
+                    <label>Date / Time Slots</label>
+                    <div id="mbSlotList" class="mb-slot-list"></div>
+                    <p class="schedule-field-error" id="mbSlotsError" hidden>Add at least one date and time.</p>
+                    <button type="button" id="mbAddSlotTrigger" class="btn btn-secondary btn-sm">+ Add Date &amp; Time</button>
+                </div>
+
+                <div id="mbHiddenSlots"></div>
+
+                <div class="schedule-form-actions">
+                    <button type="submit" class="btn btn-primary">Create Booking</button>
+                </div>
+            </form>
+        </div>
+
         {{-- ---------- Closures ---------- --}}
         <div class="schedule-panel">
             <div class="schedule-panel-header">
@@ -180,8 +245,16 @@
                 <p class="schedule-panel-note">Block a specific date — holidays, maintenance, tournaments, etc. Leave "Court" set to All Courts to close everything that day.</p>
             </div>
 
-            <form method="POST" action="{{ route('admin.configuration.closures.store') }}" class="schedule-closure-form">
+            <form
+                method="POST"
+                action="{{ route('admin.configuration.closures.store') }}"
+                class="schedule-closure-form"
+                id="closureForm"
+                data-store-url="{{ route('admin.configuration.closures.store') }}"
+                data-update-url-template="{{ route('admin.configuration.closures.update', ['closure' => '__ID__']) }}"
+            >
                 @csrf
+                <input type="hidden" name="_method" id="closureFormMethod" value="">
 
                 <div class="schedule-field-grid">
                     <div class="schedule-field">
@@ -254,7 +327,8 @@
                 </div>
 
                 <div class="schedule-form-actions">
-                    <button type="submit" class="btn btn-primary">Add Closure</button>
+                    <button type="submit" class="btn btn-primary" id="closureSubmitBtn">Add Closure</button>
+                    <button type="button" class="btn btn-secondary" id="closureCancelEditBtn" style="display:none;">Cancel</button>
                 </div>
             </form>
 
@@ -268,11 +342,21 @@
                                 <span class="schedule-closure-reason">{{ $closure->reason }}</span>
                             @endif
                         </div>
-                        <form method="POST" action="{{ route('admin.configuration.closures.destroy', $closure) }}" onsubmit="return confirm('Remove this closure?');">
-                            @csrf
-                            @method('DELETE')
-                            <button type="submit" class="btn btn-secondary btn-sm">Remove</button>
-                        </form>
+                        <div class="schedule-closure-actions">
+                            <button
+                                type="button"
+                                class="btn btn-secondary btn-sm sh-closure-edit-btn"
+                                data-id="{{ $closure->id }}"
+                                data-date="{{ $closure->date->toDateString() }}"
+                                data-court-id="{{ $closure->court_id }}"
+                                data-reason="{{ $closure->reason }}"
+                            >Edit</button>
+                            <form method="POST" action="{{ route('admin.configuration.closures.destroy', $closure) }}" onsubmit="return confirm('Remove this closure?');">
+                                @csrf
+                                @method('DELETE')
+                                <button type="submit" class="btn btn-secondary btn-sm">Remove</button>
+                            </form>
+                        </div>
                     </div>
                 @empty
                     <p class="schedule-empty-note">No upcoming closures — the court follows regular hours every day.</p>
@@ -281,8 +365,52 @@
         </div>
 
     </div>
+
+    {{-- Manual Booking: date picker --}}
+<div class="mb-modal-overlay" id="mbCalendarModal">
+    <div class="mb-modal-box">
+        <div class="mb-modal-header">
+            <h3>Select a Date</h3>
+            <button type="button" class="mb-modal-close" id="mbCalendarClose" aria-label="Close">&times;</button>
+        </div>
+        <div class="mb-calendar">
+            <div class="mb-calendar-header">
+                <button type="button" class="mb-calendar-nav" id="mbCalPrev" aria-label="Previous month">&lsaquo;</button>
+                <span id="mbCalMonthLabel"></span>
+                <button type="button" class="mb-calendar-nav" id="mbCalNext" aria-label="Next month">&rsaquo;</button>
+            </div>
+            <div class="mb-calendar-weekdays">
+                <span>S</span><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span>
+            </div>
+            <div class="mb-calendar-grid" id="mbCalendarGrid"></div>
+        </div>
+    </div>
+</div>
+
+    {{-- Manual Booking: time picker --}}
+    <div class="mb-modal-overlay" id="mbTimeModal">
+        <div class="mb-modal-box mb-time-box">
+            <div class="mb-modal-header">
+                <button type="button" class="mb-modal-back" id="mbBackToCalendar">&larr; Back to date</button>
+                <button type="button" class="mb-modal-close" id="mbTimeClose" aria-label="Close">&times;</button>
+            </div>
+            <h3 id="mbTimeDateLabel" class="mb-time-date-label">Pick Your Hours</h3>
+            <div class="mb-time-legend">
+                <span><span class="mb-legend-swatch"></span> Available</span>
+                <span><span class="mb-legend-swatch mb-legend-selected"></span> Selected</span>
+                <span><span class="mb-legend-swatch mb-legend-booked"></span> Booked</span>
+            </div>
+            <div class="mb-time-slot-list" id="mbTimeSlotGrid"></div>
+            <div class="mb-modal-actions">
+                <button type="button" class="btn btn-secondary" id="mbTimeCancel">Cancel</button>
+                <button type="button" class="btn btn-primary" id="mbTimeAdd">Add</button>
+            </div>
+        </div>
+    </div>
 @endsection
 
 @push('scripts')
     <script src="{{ asset('js/admin-schedule.js') }}" defer></script>
+    <script src="{{ asset('js/manual-booking.js') }}" defer></script>
+    <script src="{{ asset('js/closure-edit.js') }}" defer></script>
 @endpush

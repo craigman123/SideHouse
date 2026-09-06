@@ -164,6 +164,29 @@
             }
             render();
         });
+
+        // Lets external scripts (e.g. the closure edit form) push a date
+        // into this picker after init, since the constructor above only
+        // reads hiddenInput.value once at page load.
+        root.shSetDate = function (iso) {
+            if (!iso) {
+                selected = null;
+                hiddenInput.value = '';
+                valueLabel.textContent = 'Select a date';
+                valueLabel.classList.add('sh-datepicker-placeholder');
+                const t = startOfToday();
+                viewYear = t.getFullYear();
+                viewMonth = t.getMonth();
+                return;
+            }
+            const parts = iso.split('-').map(Number);
+            selected = new Date(parts[0], parts[1] - 1, parts[2]);
+            viewYear = selected.getFullYear();
+            viewMonth = selected.getMonth();
+            hiddenInput.value = iso;
+            valueLabel.textContent = formatDisplay(selected);
+            valueLabel.classList.remove('sh-datepicker-placeholder');
+        };
     }
 
     document.addEventListener('DOMContentLoaded', () => {

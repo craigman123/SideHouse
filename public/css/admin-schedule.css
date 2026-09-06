@@ -93,7 +93,8 @@
 .schedule-field select,
 .schedule-field input[type="text"],
 .schedule-field input[type="number"],
-.schedule-field input[type="date"] {
+.schedule-field input[type="date"],
+.schedule-field input[type="email"] {
     appearance: none;
     -webkit-appearance: none;
     background-color: #0d1117;
@@ -104,6 +105,7 @@
     font-size: 14px;
     font-weight: 600;
     font-family: inherit;
+    margin-bottom: 5px;
 }
 
 .schedule-field select {

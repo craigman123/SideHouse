@@ -430,3 +430,26 @@ document.addEventListener('DOMContentLoaded', () => {
     loadSystem();
     setInterval(loadSystem, 10000);
 });
+
+const db = data.database;
+
+function formatGb(bytes) {
+    return (bytes / (1024 ** 3)).toFixed(2).replace(/\.00$/, '');
+}
+
+if (db.size_bytes != null && db.capacity_bytes) {
+    const usedGb = formatGb(db.size_bytes);
+    const capGb = (db.capacity_bytes / (1024 ** 3)).toFixed(0);
+    document.getElementById('dbSize').textContent = `${usedGb} GB used of ${capGb} GB`;
+} else {
+    document.getElementById('dbSize').textContent = db.size ?? '—';
+}
+
+const dbSizeBar = document.getElementById('dbSizeBar');
+if (dbSizeBar) {
+    const pct = db.used_percent ?? 0;
+    dbSizeBar.style.width = `${Math.min(pct, 100)}%`;
+
+    dbSizeBar.classList.toggle('health-progress-bar-warning', pct >= 70 && pct < 90);
+    dbSizeBar.classList.toggle('health-progress-bar-danger', pct >= 90);
+}
