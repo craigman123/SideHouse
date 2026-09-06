@@ -1127,6 +1127,9 @@ html {
    change if the chart's height is ever adjusted. ---------- */
 .stats-chart-wrap {
     --stats-chart-height: 180px;
+}
+
+.stats-chart-wrap {
     margin-bottom: 50px;
 }
 

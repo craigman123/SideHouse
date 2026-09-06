@@ -251,7 +251,7 @@
                 <h3>Gear Included</h3>
                 <p>Need a racket or paddle? Rent padel and pickleball equipment right when you book.</p>
             </div>
-g
+
             {{-- <div class="feature-card fade-in">
                 <div class="feature-icon">⚡</div>
                 <h3>Fast & Simple</h3>
