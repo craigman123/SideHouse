@@ -175,7 +175,11 @@
             data-max-duration="{{ $maxDuration }}"
             data-step-minutes="{{ $stepMinutes }}"
             data-closed-weekdays="{{ implode(',', $closedWeekdays) }}"
-            data-closure-dates="{{ $closureDates->implode(',') }}"
+            {{-- Each entry: {"date": "2026-09-07", "reason": "Reserved for a private event"}.
+                 `reason` is null when the admin didn't type one in on the
+                 Schedule page, and guest-book.js falls back to a generic
+                 "Closed for the day." message in that case. --}}
+            data-closure-dates="{{ $closureDates->toJson() }}"
             data-google-client-id="{{ config('services.google.client_id') }}"
             {{-- Peak/night pricing (admin Configuration page) — blank
                  attributes when no peak window is configured, which

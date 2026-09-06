@@ -359,17 +359,57 @@ document.addEventListener('DOMContentLoaded', () => {
             .filter((s) => s !== '')
             .map(Number)
     );
-    const CLOSURE_DATES = new Set(
-        (grid.dataset.closureDates || '')
-            .split(',')
+    // One-off closure dates now carry an optional reason (e.g. "Reserved
+    // for a private event") set on the admin Schedule page, so the guest
+    // sees *why* a specific date is blocked instead of a generic message.
+    // Falls back to parsing the old comma-separated date list (no
+    // reasons) if the page hasn't been updated to send JSON yet.
+    const CLOSURE_DATES = new Map();
+    (function parseClosureDates() {
+        const raw = grid.dataset.closureDates || '';
+        if (!raw.trim()) return;
+
+        try {
+            const parsed = JSON.parse(raw);
+            parsed.forEach((entry) => {
+                if (entry && entry.date) {
+                    CLOSURE_DATES.set(entry.date, entry.reason || null);
+                }
+            });
+            return;
+        } catch (err) {
+            // Not JSON — fall through to legacy comma-separated parsing.
+        }
+
+        raw.split(',')
             .map((s) => s.trim())
             .filter(Boolean)
-    );
+            .forEach((dateStr) => CLOSURE_DATES.set(dateStr, null));
+    })();
+
+    const WEEKDAY_NAMES_FULL = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
     function isDateClosed(dateStr) {
         if (CLOSURE_DATES.has(dateStr)) return true;
         const weekday = new Date(`${dateStr}T00:00:00`).getDay();
         return CLOSED_WEEKDAYS.has(weekday);
+    }
+
+    // Human-readable reason for why a date is closed, for the toast/
+    // tooltip shown when a guest taps a closed calendar day. One-off
+    // closures use their own reason if the admin set one; recurring
+    // weekly closures (e.g. always closed Mondays) get a generic
+    // "Closed on Sundays" style message since there's no single event
+    // behind them.
+    function getClosureReason(dateStr) {
+        if (CLOSURE_DATES.has(dateStr)) {
+            return CLOSURE_DATES.get(dateStr) || 'Closed for the day.';
+        }
+        const weekday = new Date(`${dateStr}T00:00:00`).getDay();
+        if (CLOSED_WEEKDAYS.has(weekday)) {
+            return `Closed every ${WEEKDAY_NAMES_FULL[weekday]}.`;
+        }
+        return 'This date is closed.';
     }
 
     // Slot must start at least 1 hour from now. dateStr is the row's own
@@ -872,12 +912,21 @@ document.addEventListener('DOMContentLoaded', () => {
         renderCalendar();
 
         const MIN_SKELETON_MS = 300;
-        const [ranges] = await Promise.all([
+        const [availability] = await Promise.all([
             fetchAvailability(dateStr),
             new Promise((resolve) => setTimeout(resolve, MIN_SKELETON_MS)),
         ]);
 
-        bookedRanges = ranges;
+        // Backstop for a date that goes from open to closed between page
+        // load and now (admin adds a same-day closure while a guest is
+        // mid-flow) — isDateClosed()/shiftSelectedDate() already keep the
+        // guest from navigating here in the normal case, so this should
+        // rarely fire, but the server stays the source of truth.
+        if (availability.closed) {
+            showToast(availability.closedReason || 'This date just closed for booking.', 'error');
+        }
+
+        bookedRanges = availability.booked;
         renderTimeSlots();
         updateTimePickerFee();
         updateSelectionSummary();
@@ -1064,15 +1113,19 @@ document.addEventListener('DOMContentLoaded', () => {
         renderTimeSlotSkeleton();
 
         const MIN_SKELETON_MS = 300;
-        const [ranges] = await Promise.all([
+        const [availability] = await Promise.all([
             fetchAvailability(selectedDate),
             new Promise((resolve) => setTimeout(resolve, MIN_SKELETON_MS)),
         ]);
 
-        bookedRanges = ranges;
+        bookedRanges = availability.booked;
         renderTimeSlots();
         updateTimePickerFee();
-        showToast('Picking up where you left off — your time and equipment are still saved.', 'success');
+        if (availability.closed) {
+            showToast(availability.closedReason || 'This date just closed for booking.', 'error');
+        } else {
+            showToast('Picking up where you left off — your time and equipment are still saved.', 'success');
+        }
     }
 
     function initBooking() {
@@ -1250,10 +1303,12 @@ document.addEventListener('DOMContentLoaded', () => {
             } else if (isClosed) {
                 // Still clickable (not disabled) so tapping it tells the
                 // guest why, instead of just looking unresponsive.
+                const reason = getClosureReason(dateStr);
                 btn.classList.add('calendar-day-closed');
-                btn.setAttribute('aria-label', `${dateStr} — closed`);
+                btn.setAttribute('aria-label', `${dateStr} — closed. ${reason}`);
+                btn.title = reason; // hover tooltip on desktop
                 btn.addEventListener('click', () => {
-                    showToast('This date is closed.', 'error');
+                    showToast(reason, 'error');
                 });
             } else {
                 btn.addEventListener('click', () => selectDate(dateStr, btn));
@@ -1285,14 +1340,17 @@ document.addEventListener('DOMContentLoaded', () => {
         // perceptible. Racing it against a minimum delay avoids that
         // without adding lag on slower connections.
         const MIN_SKELETON_MS = 300;
-        const [ranges] = await Promise.all([
+        const [availability] = await Promise.all([
             fetchAvailability(dateStr),
             new Promise((resolve) => setTimeout(resolve, MIN_SKELETON_MS)),
         ]);
 
-        bookedRanges = ranges;
+        bookedRanges = availability.booked;
         renderTimeSlots();
         updateTimePickerFee();
+        if (availability.closed) {
+            showToast(availability.closedReason || 'This date just closed for booking.', 'error');
+        }
     }
 
     function renderTimeSlotSkeleton() {
@@ -1315,16 +1373,20 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function fetchAvailability(dateStr) {
-        if (!availabilityUrl) return [];
+        if (!availabilityUrl) return { booked: [], closed: false, closedReason: null };
         try {
             const url = `${availabilityUrl}?court_id=${selectedCourt.id}&date=${dateStr}`;
             const res = await fetch(url, { headers: { Accept: 'application/json' } });
             if (!res.ok) throw new Error('Failed to load availability');
             const data = await res.json();
-            return (data.booked || []).map((b) => ({ start: b.start, end: b.end }));
+            return {
+                booked: (data.booked || []).map((b) => ({ start: b.start, end: b.end })),
+                closed: !!data.closed,
+                closedReason: data.closed_reason || null,
+            };
         } catch (err) {
             console.error(err);
-            return [];
+            return { booked: [], closed: false, closedReason: null };
         }
     }
 
@@ -1405,10 +1467,17 @@ document.addEventListener('DOMContentLoaded', () => {
         return `${hour12}:00 ${period}`;
     }
 
-    function appendClosedDivider() {
+    // showCloses=false when there's no tail session ending this morning
+    // (the previous calendar day was closed, so there's nothing for
+    // "Closes at ..." to refer to) — just tell the guest when today's
+    // own session opens instead of showing a "Closes" time that doesn't
+    // apply to this page.
+    function appendClosedDivider(showCloses) {
         const divider = document.createElement('div');
         divider.className = 'time-slot-closed-divider';
-        divider.innerHTML = `<p class="time-slot-closed-divider-label">Closes</p> at ${formatHourLabel(CLOSE_HOUR)} · <p class="time-slot-open-divider-label">Opens</p> at ${formatHourLabel(OPEN_HOUR)}`;
+        divider.innerHTML = showCloses
+            ? `<p class="time-slot-closed-divider-label">Closes</p> at ${formatHourLabel(CLOSE_HOUR)} · <p class="time-slot-open-divider-label">Opens</p> at ${formatHourLabel(OPEN_HOUR)}`
+            : `<p class="time-slot-open-divider-label">Opens</p> at ${formatHourLabel(OPEN_HOUR)}`;
         timeSlotGrid.appendChild(divider);
     }
 
@@ -1523,7 +1592,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (hasTail) {
             renderTimeSlotBlock(0, CLOSE_HOUR * 60, tailSessionDate);
-            appendClosedDivider();
+        }
+        // Always show the full "Closes at ... · Opens at ..." line on
+        // overnight-schedule venues, even on a page with no actual tail
+        // session (previous day was closed) — keeps every date page
+        // looking the same instead of some showing a shorter one-sided
+        // version.
+        if (OVERNIGHT) {
+            appendClosedDivider(true);
         }
 
         // The session selectedDate opens itself, running from open_hour
@@ -1968,7 +2044,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 activeSessionDate = null;
 
                 closePaymentModal();
-                bookedRanges = await fetchAvailability(selectedDate);
+                bookedRanges = (await fetchAvailability(selectedDate)).booked;
                 renderTimeSlots();
                 openTimePickerModal();
 

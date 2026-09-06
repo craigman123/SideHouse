@@ -44,8 +44,11 @@ class GuestBookingController extends Controller
                     $query->orWhere('court_id', $primaryCourtId);
                 }
             })
-            ->pluck('date')
-            ->map(fn ($date) => $date->toDateString())
+            ->get(['date', 'reason'])
+            ->map(fn ($closure) => [
+                'date'   => $closure->date->toDateString(),
+                'reason' => $closure->reason,
+            ])
             ->values();
 
         // Peak pricing is global (one window, applies to every court) —
