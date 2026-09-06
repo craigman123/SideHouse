@@ -225,11 +225,11 @@
 
                     @if ($hasPeakRate)
                         <p class="book-now-rate book-now-rate-peak">
-                            <span>₱{{ number_format($baseRate, 2) }} / hour</span>
+                            <span> -- ₱{{ number_format($baseRate, 2) }} / hour average time -- </span>
                             <span class="book-now-rate-peak-note">
-                                ₱{{ number_format($peakRate, 2) }} / hour
+                                -- <strong class="book-now-rate-peak-rate"> ₱{{ number_format($peakRate, 2) }} </strong> / hour
                                 from {{ \Carbon\Carbon::createFromTime($peakStartHour)->format('g A') }}
-                                to {{ \Carbon\Carbon::createFromTime($peakEndHour)->format('g A') }}
+                                to {{ \Carbon\Carbon::createFromTime($peakEndHour)->format('g A') }} --
                             </span>
                         </p>
                     @else
@@ -308,6 +308,12 @@
                 <div class="feature-icon">1️⃣</div>
                 <h3>Single Court</h3>
                 <p>Reserve a single court for your game, ensuring you have the space you need with your friends, family, or team. In Side House Paddlers you are welcome!</p>
+            </div>
+
+            <div class="feature-card fade-in red-upper-border">
+                <div class="feature-icon">🛎️</div>
+                <h3>Reserve Special Dates</h3>
+                <p>Looking to mark an occasion that means a little more? Reserve the court exclusively for your group — a milestone celebration, a family gathering, or simply a day you'd like uninterrupted with the people who matter most. Our team can help tailor the space and timing to fit.</p>
             </div>
         </section>
 

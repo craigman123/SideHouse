@@ -285,4 +285,7 @@ body {
 }
 
   .book-now-rate-peak { display: flex; flex-direction: column; gap: 2px; }
+  .book-now-rate-peak-rate { color: gold; font-weight: 700; }
   .book-now-rate-peak-note { font-size: 1em; opacity: 0.75; }
+
+  .red-upper-border { border-top: 3px solid #d41717; }
