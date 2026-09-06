@@ -252,11 +252,11 @@
                 <p>Need a racket or paddle? Rent padel and pickleball equipment right when you book.</p>
             </div>
 
-            <div class="feature-card fade-in">
+            {{-- <div class="feature-card fade-in">
                 <div class="feature-icon">⚡</div>
                 <h3>Fast & Simple</h3>
                 <p>No calls, no messages, no account required — just book online and show up ready to play.</p>
-            </div>
+            </div> --}}
 
             <div class="feature-card fade-in feature-card-exclusive">
                 <div class="feature-icon">🌟</div>
