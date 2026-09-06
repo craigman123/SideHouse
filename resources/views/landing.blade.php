@@ -204,7 +204,37 @@
                 <h2>Book a Court Right Now</h2>
                 <p>No sign-up required. Pick your date, time, and duration — you're booked.</p>
                 @if ($courts->isNotEmpty())
-                    <p class="book-now-rate">₱{{ number_format($courts->first()->hourly_rate, 2) }} / hour</p>
+                    @php
+                        $baseRate = $courts->first()->hourly_rate;
+
+                        // Same rule as BusinessSetting::hasPeakPricing() —
+                        // a degenerate (zero-length) or unconfigured window
+                        // means peak pricing is off.
+                        $hasPeakRate = $peakStartHour !== null
+                            && $peakEndHour !== null
+                            && $peakStartHour !== $peakEndHour
+                            && in_array($peakAdjustmentType, ['flat', 'percent'], true)
+                            && $peakAdjustmentValue > 0;
+
+                        if ($hasPeakRate) {
+                            $peakRate = $peakAdjustmentType === 'percent'
+                                ? $baseRate * (1 + $peakAdjustmentValue / 100)
+                                : $baseRate + $peakAdjustmentValue;
+                        }
+                    @endphp
+
+                    @if ($hasPeakRate)
+                        <p class="book-now-rate book-now-rate-peak">
+                            <span>₱{{ number_format($baseRate, 2) }} / hour</span>
+                            <span class="book-now-rate-peak-note">
+                                ₱{{ number_format($peakRate, 2) }} / hour
+                                from {{ \Carbon\Carbon::createFromTime($peakStartHour)->format('g A') }}
+                                to {{ \Carbon\Carbon::createFromTime($peakEndHour)->format('g A') }}
+                            </span>
+                        </p>
+                    @else
+                        <p class="book-now-rate">₱{{ number_format($baseRate, 2) }} / hour</p>
+                    @endif
                 @endif
             </div>
 

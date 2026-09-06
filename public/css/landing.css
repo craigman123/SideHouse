@@ -283,3 +283,6 @@ body {
         transition-duration: .01ms !important;
     }
 }
+
+  .book-now-rate-peak { display: flex; flex-direction: column; gap: 2px; }
+  .book-now-rate-peak-note { font-size: 1em; opacity: 0.75; }

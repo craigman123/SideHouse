@@ -150,7 +150,34 @@ document.addEventListener('DOMContentLoaded', () => {
         const courtPrice = parseInt(grid.dataset.courtPrice, 10);
         const stepMinutes = parseInt(grid.dataset.stepMinutes, 10);
         const closedWeekdaysRaw = grid.dataset.closedWeekdays || '';
-        
+
+        // Peak/night pricing, read locally rather than relying on the
+        // PEAK_* consts declared further down this file — this block runs
+        // earlier, so those would still be in their temporal dead zone.
+        // Mirrors BusinessSetting::hasPeakPricing()/isPeakHour() on the backend.
+        const peakStartHour = grid.dataset.peakStartHour === '' ? null : parseInt(grid.dataset.peakStartHour, 10);
+        const peakEndHour = grid.dataset.peakEndHour === '' ? null : parseInt(grid.dataset.peakEndHour, 10);
+        const peakAdjustmentType = grid.dataset.peakAdjustmentType || null;
+        const peakAdjustmentValue = grid.dataset.peakAdjustmentValue === '' ? null : parseFloat(grid.dataset.peakAdjustmentValue);
+        const hasPeakPricing = peakStartHour !== null
+            && peakEndHour !== null
+            && peakStartHour !== peakEndHour
+            && (peakAdjustmentType === 'flat' || peakAdjustmentType === 'percent')
+            && peakAdjustmentValue > 0;
+
+        function isPeakHourLocal(hour) {
+            if (!hasPeakPricing) return false;
+            return peakEndHour > peakStartHour
+                ? hour >= peakStartHour && hour < peakEndHour
+                : hour >= peakStartHour || hour < peakEndHour;
+        }
+
+        function peakRateFor(baseRate) {
+            return peakAdjustmentType === 'percent'
+                ? baseRate * (1 + peakAdjustmentValue / 100)
+                : baseRate + peakAdjustmentValue;
+        }
+
         // Parse closed weekdays (0=Sun, 1=Mon ... 6=Sat)
         const closedWeekdays = closedWeekdaysRaw
             .split(',')
@@ -174,17 +201,69 @@ document.addEventListener('DOMContentLoaded', () => {
             ? closedWeekdays.map(d => dayNames[d]).join(', ') 
             : 'None (Open daily)';
 
+        // Walks every bookable hour of the operating day (honoring the
+        // same overnight-wrap convention as open/close elsewhere) and
+        // groups consecutive hours into peak/non-peak runs, so a single
+        // peak window shows up as one or two "off-peak" runs around it
+        // (e.g. 8 AM–4 PM off-peak, 4 PM–6 PM peak, 6 PM–11 PM off-peak)
+        // rather than one average rate for the whole day.
+        function buildRateSegments() {
+            const hours = [];
+            if (closeHour > openHour) {
+                for (let h = openHour; h < closeHour; h++) hours.push(h);
+            } else {
+                for (let h = openHour; h < 24; h++) hours.push(h);
+                for (let h = 0; h < closeHour; h++) hours.push(h);
+            }
+
+            const runs = [];
+            hours.forEach((h) => {
+                const peak = isPeakHourLocal(h);
+                const last = runs[runs.length - 1];
+                if (last && last.peak === peak) {
+                    last.end = h + 1;
+                } else {
+                    runs.push({ peak, start: h, end: h + 1 });
+                }
+            });
+
+            return runs;
+        }
+
+        let hourlyRateCard;
+
+        if (hasPeakPricing) {
+            const segments = buildRateSegments();
+            const rateLinesHtml = segments.map((seg) => {
+                const rate = seg.peak ? peakRateFor(courtPrice) : courtPrice;
+                const label = `${format12Hour(seg.start % 24)} – ${format12Hour(seg.end % 24)}`;
+                return `<div class="rate-card-line${seg.peak ? ' rate-card-line-peak' : ''}">`
+                    + `<span class="rate-card-line-price">₱${Math.round(rate).toLocaleString()}/hr</span>`
+                    + `<span class="rate-card-line-range">${label}</span>`
+                    + `</div>`;
+            }).join('');
+
+            hourlyRateCard = {
+                title: 'Hourly Rate',
+                value: rateLinesHtml,
+                detail: `Peak pricing applies ${format12Hour(peakStartHour)} – ${format12Hour(peakEndHour)}`,
+                isHtml: true,
+            };
+        } else {
+            hourlyRateCard = {
+                title: 'Hourly Rate',
+                value: `₱${courtPrice.toLocaleString()}`,
+                detail: `Per ${stepMinutes}-minute slot`,
+            };
+        }
+
         const cardsData = [
             {
                 title: 'Opening Hours',
                 value: `${openStr} – ${closeStr}`,
                 detail: overnight ? 'Overnight operation (wrap-around)' : 'Standard daily schedule'
             },
-            {
-                title: 'Hourly Rate',
-                value: `₱${courtPrice.toLocaleString()}`,
-                detail: `Per ${stepMinutes}-minute slot`
-            },
+            hourlyRateCard,
             {
                 title: 'Closed Days',
                 value: closedDaysText,
@@ -195,7 +274,7 @@ document.addEventListener('DOMContentLoaded', () => {
         ratesContainer.innerHTML = cardsData.map(card => `
             <div class="rate-card fade-in">
                 <div class="rate-card-title">${card.title}</div>
-                <div class="rate-card-value">${card.value}</div>
+                <div class="rate-card-value${card.isHtml ? ' rate-card-value-multi' : ''}">${card.value}</div>
                 <div class="rate-card-details">${card.detail}</div>
             </div>
         `).join('');
