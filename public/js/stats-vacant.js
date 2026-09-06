@@ -1,4 +1,3 @@
-
 document.addEventListener('DOMContentLoaded', () => {
     const statsSection = document.getElementById('courtStats');
     const bookNow = document.getElementById('bookNow');
@@ -22,14 +21,35 @@ document.addEventListener('DOMContentLoaded', () => {
         .split(',')
         .map((s) => parseInt(s.trim(), 10))
         .filter((n) => !isNaN(n));
-    const CLOSURE_DATES = (bookNow.dataset.closureDates || '')
-        .split(',')
-        .map((s) => s.trim())
-        .filter(Boolean);
+    // Same JSON {date, reason} format guest-book.js parses for the main
+    // calendar — falls back to the old comma-separated date list if the
+    // page ever serves that instead, so this chart can't silently break
+    // again the way it did when the attribute's format changed and this
+    // file's own CSV parsing was left behind.
+    const CLOSURE_DATES = new Set();
+    (function parseClosureDates() {
+        const raw = bookNow.dataset.closureDates || '';
+        if (!raw.trim()) return;
+
+        try {
+            const parsed = JSON.parse(raw);
+            parsed.forEach((entry) => {
+                if (entry && entry.date) CLOSURE_DATES.add(entry.date);
+            });
+            return;
+        } catch (err) {
+            // Not JSON — fall through to legacy comma-separated parsing.
+        }
+
+        raw.split(',')
+            .map((s) => s.trim())
+            .filter(Boolean)
+            .forEach((dateStr) => CLOSURE_DATES.add(dateStr));
+    })();
 
     function dailyCapacityHours(dateStr) {
         const weekday = new Date(`${dateStr}T00:00:00`).getDay();
-        if (CLOSED_WEEKDAYS.includes(weekday) || CLOSURE_DATES.includes(dateStr)) return 0;
+        if (CLOSED_WEEKDAYS.includes(weekday) || CLOSURE_DATES.has(dateStr)) return 0;
         // Overnight courts (close hour <= open hour) wrap past midnight.
         return CLOSE_HOUR <= OPEN_HOUR ? (24 - OPEN_HOUR) + CLOSE_HOUR : CLOSE_HOUR - OPEN_HOUR;
     }
