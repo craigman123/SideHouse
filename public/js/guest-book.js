@@ -615,6 +615,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let activeSessionDate = null;
     let selectedPayment = null;
     let bookedRanges = [];
+    let maintenanceRanges = [];
     let equipmentCatalog = []; // [{id, name, category, price, available}]
     let equipmentSelection = {}; // { [equipmentId]: quantity }
     let googleIdToken = null; // raw JWT from Google — sent as-is, verified server-side
@@ -1006,6 +1007,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         bookedRanges = availability.booked;
+        maintenanceRanges = availability.maintenanceBlocked;
         renderTimeSlots();
         updateTimePickerFee();
         updateSelectionSummary();
@@ -1198,6 +1200,7 @@ document.addEventListener('DOMContentLoaded', () => {
         ]);
 
         bookedRanges = availability.booked;
+        maintenanceRanges = availability.maintenanceBlocked;
         renderTimeSlots();
         updateTimePickerFee();
         if (availability.closed) {
@@ -1425,6 +1428,7 @@ document.addEventListener('DOMContentLoaded', () => {
         ]);
 
         bookedRanges = availability.booked;
+        maintenanceRanges = availability.maintenanceBlocked;
         renderTimeSlots();
         updateTimePickerFee();
         if (availability.closed) {
@@ -1452,7 +1456,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function fetchAvailability(dateStr) {
-        if (!availabilityUrl) return { booked: [], closed: false, closedReason: null };
+        if (!availabilityUrl) return { booked: [], closed: false, closedReason: null, maintenanceBlocked: [] };
         try {
             const url = `${availabilityUrl}?court_id=${selectedCourt.id}&date=${dateStr}`;
             const res = await fetch(url, { headers: { Accept: 'application/json' } });
@@ -1462,10 +1466,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 booked: (data.booked || []).map((b) => ({ start: b.start, end: b.end })),
                 closed: !!data.closed,
                 closedReason: data.closed_reason || null,
+                // Time ranges where PayMongo QR Ph payments are blocked due to
+                // scheduled maintenance (see PaymongoMaintenanceWindow /
+                // GuestBookingController::availability()). Same {start, end}
+                // shape as `booked`, so it's handled the same way downstream.
+                maintenanceBlocked: (data.maintenance_blocked || []).map((b) => ({ start: b.start, end: b.end, subject: b.subject || null })),
             };
         } catch (err) {
             console.error(err);
-            return { booked: [], closed: false, closedReason: null };
+            return { booked: [], closed: false, closedReason: null, maintenanceBlocked: [] };
         }
     }
 
@@ -1489,6 +1498,33 @@ document.addEventListener('DOMContentLoaded', () => {
             const rangeEnd = timeToMinutes(r.end) || 1440;
             return totalMin < rangeEnd && slotEnd > rangeStart;
         });
+    }
+
+    // Same overlap check as isSlotBookedAt, but against PayMongo
+    // maintenance windows instead of existing bookings — a slot in this
+    // range can't be paid for right now, so it's treated as unavailable
+    // even though nobody has actually booked it.
+    function isSlotMaintenanceBlockedAt(totalMin) {
+        const slotEnd = totalMin + STEP_MINUTES;
+        return maintenanceRanges.some((r) => {
+            const rangeStart = timeToMinutes(r.start);
+            const rangeEnd = timeToMinutes(r.end) || 1440;
+            return totalMin < rangeEnd && slotEnd > rangeStart;
+        });
+    }
+
+    // Returns the subject line of whichever maintenance window covers this
+    // slot, so the tooltip can reference the actual advisory instead of a
+    // generic message. Null if no window overlaps (isSlotMaintenanceBlockedAt
+    // should be checked first).
+    function maintenanceSubjectAt(totalMin) {
+        const slotEnd = totalMin + STEP_MINUTES;
+        const match = maintenanceRanges.find((r) => {
+            const rangeStart = timeToMinutes(r.start);
+            const rangeEnd = timeToMinutes(r.end) || 1440;
+            return totalMin < rangeEnd && slotEnd > rangeStart;
+        });
+        return match?.subject || null;
     }
 
     // Price for a single STEP_MINUTES-long slot (STEP_MINUTES is 60 for
@@ -1603,8 +1639,25 @@ document.addEventListener('DOMContentLoaded', () => {
             const timeStr = `${pad(h)}:${pad(m)}`;
 
             const booked = isSlotBookedAt(totalMin);
+            const maintenanceBlocked = isSlotMaintenanceBlockedAt(totalMin);
             const past = isSlotPastAt(selectedDate, timeStr);
-            const unavailable = booked || past;
+            const unavailable = booked || maintenanceBlocked || past;
+
+            // Single source of truth for *why* a slot is unavailable — used
+            // for both the native browser tooltip (title) and the custom
+            // CSS tooltip (dataset.tooltip) below, so they can never drift
+            // out of sync with each other.
+            const maintenanceSubject = maintenanceBlocked ? maintenanceSubjectAt(totalMin) : null;
+            const unavailableReason = booked
+                ? 'Reserved — already booked by another player'
+                : maintenanceBlocked
+                    ? (!maintenanceSubject
+                        ? `Payment temporarily unavailable — ${maintenanceSubject}`
+                        : 'Payment system under scheduled maintenance during this time')
+                    : past
+                        ? 'This time has already passed'
+                        : '';
+
             const isSelected = selectedSlots.includes(slotKey(selectedDate, timeStr));
 
             const row = document.createElement('div');
@@ -1616,6 +1669,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const toggle = document.createElement('button');
             toggle.type = 'button';
+            if (unavailable) toggle.title = unavailableReason;
             toggle.className = 'time-slot-row-toggle' + (isSelected ? ' selected' : '');
 
             const check = document.createElement('span');
@@ -1626,13 +1680,15 @@ document.addEventListener('DOMContentLoaded', () => {
             const priceLabel = document.createElement('span');
             if (booked) {
                 priceLabel.textContent = 'Booked';
+            } else if (maintenanceBlocked) {
+                priceLabel.textContent = 'Unavailable';
             } else if (past) {
                 priceLabel.textContent = 'Past';
             } else {
                 priceLabel.textContent = `₱${slotPrice(h).toLocaleString()}`;
             }
 
-            if (!booked && !past && isPeakHour(h)) {
+            if (!booked && !maintenanceBlocked && !past && isPeakHour(h)) {
                 row.classList.add('time-slot-row-peak');
                 row.dataset.tooltip = 'Peak pricing applies to this hour';
             }
@@ -1642,9 +1698,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (unavailable) {
                 toggle.disabled = true;
-                row.dataset.tooltip = booked
-                    ? 'Reserved — already booked by another player'
-                    : 'This time has already passed';
+                row.dataset.tooltip = unavailableReason;
             } else {
                 toggle.setAttribute('aria-pressed', String(isSelected));
                 toggle.addEventListener('click', () => toggleSlot(timeStr, sessionDate));
@@ -2123,7 +2177,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 activeSessionDate = null;
 
                 closePaymentModal();
-                bookedRanges = (await fetchAvailability(selectedDate)).booked;
+                const refreshedAvailability = await fetchAvailability(selectedDate);
+                bookedRanges = refreshedAvailability.booked;
+                maintenanceRanges = refreshedAvailability.maintenanceBlocked;
                 renderTimeSlots();
                 openTimePickerModal();
 

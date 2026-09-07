@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Guest;
 use App\Http\Controllers\Controller;
 use App\Models\Booking;
 use App\Models\PaymentReference;
+use App\Models\PaymongoMaintenanceWindow;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
@@ -65,6 +66,12 @@ class PaymongoQrPhController extends Controller
 
         if ($booking->payment_method !== 'qrph') {
             return response()->json(['message' => 'This booking is not set up for QR Ph payment.'], 409);
+        }
+
+        if (PaymongoMaintenanceWindow::isCurrentlyActive()) {
+            return response()->json([
+                'message' => 'QR Ph payments are temporarily unavailable due to scheduled Transaction Maintenance Service. Please select another timeslot.',
+            ], 503);
         }
 
         $paymentReference = $booking->paymentReference;

@@ -13,6 +13,8 @@ Schedule::command('bookings:send-in-app-reminders')->everyFiveMinutes();
 // Email for guests whose paid booking is starting soon
 Schedule::command('bookings:send-email-reminders')->everyFiveMinutes();
 
+Schedule::command('app:check-paymongo-maintenance')->everyFiveMinutes();
+
 Schedule::command('webhook:clean')->daily();
 Schedule::command('logs:prune')->daily();
 

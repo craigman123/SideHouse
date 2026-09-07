@@ -180,16 +180,26 @@ class GuestBookingController extends Controller
             ];
         }
 
-        // Lets the picker show "Closed" for a date instead of just an
-        // empty/fully-available slot list — covers both a one-off
-        // CourtClosure row and a recurring weekly closure (see
-        // App\Support\BookingHours and the admin Schedule page).
         $courtId = (int) $validated['court_id'];
+
+        // PayMongo QR Ph maintenance windows that fall on this date — the guest
+        // picker should grey these specific hours out so no one can select a
+        // slot they won't be able to pay for.
+        $maintenanceRanges = \App\Models\PaymongoMaintenanceWindow::currentAndUpcoming()
+            ->filter(fn ($w) => $w->start_at->isSameDay(\Carbon\Carbon::parse($validated['date']))
+                || $w->end_at->isSameDay(\Carbon\Carbon::parse($validated['date'])))
+            ->map(fn ($w) => [
+                'start'   => $w->start_at->format('H:i'),
+                'end'     => $w->end_at->format('H:i'),
+                'subject' => $w->subject,
+            ])
+            ->values();
 
         return response()->json([
             'booked' => $booked,
             'closed' => BookingHours::isClosed($courtId, $validated['date']),
             'closed_reason' => BookingHours::closedReason($courtId, $validated['date']),
+            'maintenance_blocked' => $maintenanceRanges,
         ]);
     }
 
