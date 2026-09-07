@@ -11,7 +11,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     observer.unobserve(entry.target);
                 }
             });
-        }, { root: null, rootMargin: '0px', threshold: 0.15 });
+        }, { root: null, rootMargin: '0px', threshold: 0.05 });
 
         fadeEls.forEach((el) => fadeObserver.observe(el));
     } else {

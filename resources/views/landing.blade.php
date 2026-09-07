@@ -523,10 +523,10 @@
                     <span>0933 519 1863</span>
                 </a>
 
-                <p class="footer-contact">
+                <a href="https://www.facebook.com/profile.php?id=61594010734013" class="footer-contact">
                     <span class="footer-icon">●</span>
                     <span>Facebook Messenger</span>
-                </p>
+                </a>
             </div>
 
         </div>
