@@ -110,45 +110,69 @@ class ConfigurationController extends Controller
     }
 
     /**
-     * Adds a closure for one date — either store-wide (no court
-     * selected) or scoped to a single court.
+     * Adds closures for one or more dates — either store-wide (no court
+     * selected) or scoped to a single court. Each selected date gets its
+     * own CourtClosure row; dates that already have an entry are skipped
+     * so duplicate-checking stays intact.
      */
     public function storeClosure(Request $request): RedirectResponse
     {
         $validated = $request->validate([
-            'court_id' => ['nullable', 'integer', 'exists:courts,id'],
-            'date' => ['required', 'date', 'after_or_equal:today'],
-            'reason' => ['nullable', 'string', 'max:255'],
+            'court_id'  => ['nullable', 'integer', 'exists:courts,id'],
+            'dates'     => ['required', 'array', 'min:1'],
+            'dates.*'   => ['required', 'date', 'after_or_equal:today'],
+            'reason'    => ['nullable', 'string', 'max:255'],
         ]);
 
-        $exists = CourtClosure::where('date', $validated['date'])
-            ->where('court_id', $validated['court_id'] ?? null)
-            ->exists();
+        $courtId = $validated['court_id'] ?? null;
+        $reason  = $validated['reason'] ?? null;
+        $dates   = array_unique($validated['dates']);
 
-        if ($exists) {
-            return redirect()
-                ->route('admin.configuration.index')
-                ->with('error', 'That date already has a closure entry.');
+        $added   = 0;
+        $skipped = 0;
+        $lastClosure = null;
+
+        foreach ($dates as $date) {
+            $exists = CourtClosure::where('date', $date)
+                ->where('court_id', $courtId)
+                ->exists();
+
+            if ($exists) { $skipped++; continue; }
+
+            $lastClosure = CourtClosure::create([
+                'court_id' => $courtId,
+                'date'     => $date,
+                'reason'   => $reason,
+            ]);
+
+            ActivityLogger::log(
+                'schedule.closure_added',
+                sprintf(
+                    '%s closed %s on %s%s.',
+                    auth()->user()->name,
+                    $lastClosure->court?->name ?? 'all courts',
+                    $lastClosure->date->format('M d, Y'),
+                    $reason ? " ({$reason})" : '',
+                ),
+                subject: $lastClosure,
+            );
+
+            $added++;
         }
 
-        $closure = CourtClosure::create($validated);
+        if ($added === 0) {
+            return redirect()
+                ->route('admin.configuration.index')
+                ->with('error', 'All selected dates already have a closure entry.');
+        }
 
-        ActivityLogger::log(
-            'schedule.closure_added',
-            sprintf(
-                '%s closed %s on %s%s.',
-                auth()->user()->name,
-                $closure->court?->name ?? 'all courts',
-                $closure->date->format('M d, Y'),
-                $closure->reason ? " ({$closure->reason})" : '',
-            ),
-            subject: $closure,
-            properties: $validated,
-        );
+        $message = $added === 1
+            ? 'Closure added.'
+            : "{$added} closure(s) added." . ($skipped ? " {$skipped} skipped (already exist)." : '');
 
         return redirect()
             ->route('admin.configuration.index')
-            ->with('success', 'Closure added.');
+            ->with('success', $message);
     }
 
     public function updateClosure(Request $request, CourtClosure $closure): RedirectResponse

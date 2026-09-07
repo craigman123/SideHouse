@@ -1,54 +1,114 @@
-
+/**
+ * Closed Dates: Edit and Remove modals.
+ *
+ * Edit opens #closureEditModal, pre-fills its own single-select date
+ * picker (#closureEditDatepicker) plus court/reason from the row's
+ * data-* attributes, and points the form at the update route for that
+ * closure's id.
+ *
+ * Remove opens #closureDeleteModal for confirmation instead of the
+ * browser's native confirm(). Each row already renders its own hidden
+ * <form id="closureDeleteForm{id}"> with the DELETE request wired up —
+ * this just submits the right one once the admin confirms.
+ */
 (function () {
     document.addEventListener('DOMContentLoaded', () => {
-        const form = document.getElementById('closureForm');
-        if (!form) {
-            return;
-        }
+        initEditModal();
+        initDeleteModal();
+    });
 
-        const storeUrl = form.dataset.storeUrl;
+    function initEditModal() {
+        const modal = document.getElementById('closureEditModal');
+        const form = document.getElementById('closureEditForm');
+        if (!modal || !form) return;
+
         const updateUrlTemplate = form.dataset.updateUrlTemplate;
-        const methodInput = document.getElementById('closureFormMethod');
-        const submitBtn = document.getElementById('closureSubmitBtn');
-        const cancelBtn = document.getElementById('closureCancelEditBtn');
-        const courtSelect = document.getElementById('closure_court');
-        const reasonInput = document.getElementById('closure_reason');
-        const datepickerRoot = document.querySelector('.sh-datepicker');
+        const courtSelect = document.getElementById('closure_edit_court');
+        const reasonInput = document.getElementById('closure_edit_reason');
+        const datepickerRoot = document.getElementById('closureEditDatepicker');
+        const closeBtn = document.getElementById('closureEditClose');
+        const cancelBtn = document.getElementById('closureEditCancel');
 
-        function enterEditMode(btn) {
+        function openModal(btn) {
             const { id, date, courtId, reason } = btn.dataset;
 
             form.action = updateUrlTemplate.replace('__ID__', id);
-            methodInput.value = 'PUT';
-            submitBtn.textContent = 'Update Closure';
-            cancelBtn.style.display = '';
 
-            if (datepickerRoot && typeof datepickerRoot.shSetDate === 'function') {
-                datepickerRoot.shSetDate(date || '');
-            }
             courtSelect.value = courtId || '';
             reasonInput.value = reason || '';
 
-            form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            // Recompute which dates are blocked for the now-selected court,
+            // excluding this closure's own row — otherwise its own date
+            // would show up as "already closed" against itself.
+            if (datepickerRoot && typeof datepickerRoot.shRefreshClosures === 'function') {
+                datepickerRoot.shRefreshClosures(id);
+            }
+            if (datepickerRoot && typeof datepickerRoot.shSetDate === 'function') {
+                datepickerRoot.shSetDate(date || '');
+            }
+
+            modal.classList.add('open');
         }
 
-        function exitEditMode() {
-            form.action = storeUrl;
-            methodInput.value = '';
-            submitBtn.textContent = 'Add Closure';
-            cancelBtn.style.display = 'none';
-
-            if (datepickerRoot && typeof datepickerRoot.shSetDate === 'function') {
-                datepickerRoot.shSetDate('');
-            }
-            courtSelect.value = '';
-            reasonInput.value = '';
+        function closeModal() {
+            modal.classList.remove('open');
         }
 
         document.querySelectorAll('.sh-closure-edit-btn').forEach((btn) => {
-            btn.addEventListener('click', () => enterEditMode(btn));
+            btn.addEventListener('click', () => openModal(btn));
         });
 
-        cancelBtn.addEventListener('click', exitEditMode);
-    });
+        closeBtn.addEventListener('click', closeModal);
+        cancelBtn.addEventListener('click', closeModal);
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) closeModal();
+        });
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && modal.classList.contains('open')) closeModal();
+        });
+    }
+
+    function initDeleteModal() {
+        const modal = document.getElementById('closureDeleteModal');
+        if (!modal) return;
+
+        const textEl = document.getElementById('closureDeleteText');
+        const closeBtn = document.getElementById('closureDeleteClose');
+        const cancelBtn = document.getElementById('closureDeleteCancel');
+        const confirmBtn = document.getElementById('closureDeleteConfirm');
+
+        let pendingFormId = null;
+
+        function openModal(btn) {
+            pendingFormId = btn.dataset.formId;
+            textEl.textContent = btn.dataset.label
+                ? `Remove the closure for ${btn.dataset.label}?`
+                : 'This will reopen the court for this date.';
+            modal.classList.add('open');
+        }
+
+        function closeModal() {
+            modal.classList.remove('open');
+            pendingFormId = null;
+        }
+
+        document.querySelectorAll('.sh-closure-delete-btn').forEach((btn) => {
+            btn.addEventListener('click', () => openModal(btn));
+        });
+
+        closeBtn.addEventListener('click', closeModal);
+        cancelBtn.addEventListener('click', closeModal);
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) closeModal();
+        });
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && modal.classList.contains('open')) closeModal();
+        });
+
+        confirmBtn.addEventListener('click', () => {
+            if (!pendingFormId) return;
+            const form = document.getElementById(pendingFormId);
+            if (form) form.submit();
+        });
+    }
 })();

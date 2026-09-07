@@ -4,6 +4,7 @@
 @section('page-title', 'Configuration')
     
 @push('styles')
+    <link rel="stylesheet" href="{{ asset('css/admin-profile.css') }}">
     <link rel="stylesheet" href="{{ asset('css/admin-schedule.css') }}">
     <link rel="stylesheet" href="{{ asset('css/manual-booking.css') }}">
 @endpush
@@ -18,12 +19,41 @@
             </div>
         </div>
 
-        @if (session('success'))
-            <div class="schedule-flash schedule-flash-success">{{ session('success') }}</div>
+        {{-- Top-right toast notifications --}}
+        @if (session('success') || session('error') || $errors->any())
+            <div id="scheduleToastWrap" class="schedule-toast-wrap">
+                @if (session('success'))
+                    <div class="schedule-toast schedule-toast-success" role="alert">
+                        <span>{{ session('success') }}</span>
+                        <button type="button" class="schedule-toast-close" aria-label="Dismiss">&times;</button>
+                    </div>
+                @endif
+                @if (session('error'))
+                    <div class="schedule-toast schedule-toast-error" role="alert">
+                        <span>{{ session('error') }}</span>
+                        <button type="button" class="schedule-toast-close" aria-label="Dismiss">&times;</button>
+                    </div>
+                @endif
+                @if ($errors->any())
+                    {{-- Validation failures still get their own inline @error() text
+                         next to the offending field, but they also get a toast so a
+                         failed submit is never silent / easy to miss. --}}
+                    <div class="schedule-toast schedule-toast-error" role="alert">
+                        <span>{{ $errors->first() }}</span>
+                        <button type="button" class="schedule-toast-close" aria-label="Dismiss">&times;</button>
+                    </div>
+                @endif
+            </div>
         @endif
-        @if (session('error'))
-            <div class="schedule-flash schedule-flash-error">{{ session('error') }}</div>
-        @endif
+
+        {{-- Every closure's id/date/court_id, read by admin-schedule.js so the
+             date pickers can block dates already closed for the selected
+             court and prevent accidental duplicate closures. --}}
+        <script type="application/json" id="sh-closures-data">{!! $closures->map(fn ($c) => [
+            'id' => $c->id,
+            'date' => $c->date->toDateString(),
+            'court_id' => $c->court_id,
+        ])->toJson() !!}</script>
 
         {{-- ---------- Operating hours ---------- --}}
         <div class="schedule-panel">
@@ -250,27 +280,18 @@
                 action="{{ route('admin.configuration.closures.store') }}"
                 class="schedule-closure-form"
                 id="closureForm"
-                data-store-url="{{ route('admin.configuration.closures.store') }}"
-                data-update-url-template="{{ route('admin.configuration.closures.update', ['closure' => '__ID__']) }}"
             >
                 @csrf
-                <input type="hidden" name="_method" id="closureFormMethod" value="">
 
                 <div class="schedule-field-grid">
-                    <div class="schedule-field">
-                        <label for="closure_date_trigger">Date</label>
+                    <div class="schedule-field schedule-field-wide">
+                        <label>Dates</label>
 
-                        {{--
-                            Custom calendar popover instead of the native
-                            <input type="date"> — the hidden input below is
-                            what actually submits with the form (same
-                            "date" field name/shape the controller already
-                            validates). data-existing-dates lets the JS mark
-                            dates that already have a closure entry.
-                        --}}
                         <div
-                            class="sh-datepicker"
+                            class="sh-datepicker sh-datepicker-multi"
+                            id="closureDatepicker"
                             data-existing-dates="{{ $closures->pluck('date')->map(fn ($d) => $d->toDateString())->implode(',') }}"
+                            data-court-select="closure_court"
                         >
                             <button
                                 type="button"
@@ -279,8 +300,8 @@
                                 aria-haspopup="dialog"
                                 aria-expanded="false"
                             >
-                                <span class="sh-datepicker-value {{ old('date') ? '' : 'sh-datepicker-placeholder' }}">
-                                    {{ old('date') ? \Carbon\Carbon::parse(old('date'))->format('M d, Y') : 'Select a date' }}
+                                <span class="sh-datepicker-value sh-datepicker-placeholder" id="closure_date_label">
+                                    Select one or more dates
                                 </span>
                                 <svg class="sh-datepicker-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                     <rect x="3" y="4" width="18" height="18" rx="2"></rect>
@@ -290,7 +311,8 @@
                                 </svg>
                             </button>
 
-                            <input type="hidden" name="date" id="closure_date" value="{{ old('date') }}" required>
+                            {{-- hidden inputs injected by JS, one per selected date --}}
+                            <div id="closure_dates_inputs"></div>
 
                             <div class="sh-datepicker-panel" role="dialog" hidden>
                                 <div class="sh-datepicker-header">
@@ -305,7 +327,8 @@
                             </div>
                         </div>
 
-                        @error('date') <span class="schedule-field-error">{{ $message }}</span> @enderror
+                        @error('dates') <span class="schedule-field-error">{{ $message }}</span> @enderror
+                        @error('dates.*') <span class="schedule-field-error">{{ $message }}</span> @enderror
                     </div>
 
                     <div class="schedule-field">
@@ -328,7 +351,6 @@
 
                 <div class="schedule-form-actions">
                     <button type="submit" class="btn btn-primary" id="closureSubmitBtn">Add Closure</button>
-                    <button type="button" class="btn btn-secondary" id="closureCancelEditBtn" style="display:none;">Cancel</button>
                 </div>
             </form>
 
@@ -351,11 +373,25 @@
                                 data-court-id="{{ $closure->court_id }}"
                                 data-reason="{{ $closure->reason }}"
                             >Edit</button>
-                            <form method="POST" action="{{ route('admin.configuration.closures.destroy', $closure) }}" onsubmit="return confirm('Remove this closure?');">
+
+                            {{-- No inputs live in the button itself — the actual DELETE
+                                 request goes through this hidden form once the custom
+                                 confirm modal is accepted. --}}
+                            <form
+                                method="POST"
+                                action="{{ route('admin.configuration.closures.destroy', $closure) }}"
+                                id="closureDeleteForm{{ $closure->id }}"
+                                class="sh-hidden-form"
+                            >
                                 @csrf
                                 @method('DELETE')
-                                <button type="submit" class="btn btn-secondary btn-sm">Remove</button>
                             </form>
+                            <button
+                                type="button"
+                                class="btn btn-secondary btn-sm delete-closure sh-closure-delete-btn"
+                                data-form-id="closureDeleteForm{{ $closure->id }}"
+                                data-label="{{ $closure->date->format('M d, Y') }} &mdash; {{ $closure->court?->name ?? 'All Courts' }}"
+                            >Remove</button>
                         </div>
                     </div>
                 @empty
@@ -364,6 +400,105 @@
             </div>
         </div>
 
+    </div>
+
+    {{-- Closure: edit modal --}}
+    <div class="mb-modal-overlay" id="closureEditModal">
+        <div class="mb-modal-box">
+            <div class="mb-modal-header">
+                <h3>Edit Closure</h3>
+                <button type="button" class="mb-modal-close" id="closureEditClose" aria-label="Close">&times;</button>
+            </div>
+
+            {{-- Each closure row is a single date, so this picker stays in
+                 single-select mode — it deliberately doesn't reuse the
+                 multi-select picker from the Add form, since the update
+                 endpoint only ever updates one closure record's `date`.
+                 Use the Add form above to close several new dates at once. --}}
+            <form
+                method="POST"
+                id="closureEditForm"
+                data-update-url-template="{{ route('admin.configuration.closures.update', ['closure' => '__ID__']) }}"
+            >
+                @csrf
+                @method('PUT')
+
+                <div class="schedule-field-grid">
+                    <div class="schedule-field schedule-field-wide">
+                        <label>Date</label>
+
+                        <div class="sh-datepicker" id="closureEditDatepicker" data-court-select="closure_edit_court">
+                            <button
+                                type="button"
+                                class="sh-datepicker-trigger"
+                                id="closure_edit_date_trigger"
+                                aria-haspopup="dialog"
+                                aria-expanded="false"
+                            >
+                                <span class="sh-datepicker-value sh-datepicker-placeholder" id="closure_edit_date_label">
+                                    Select a date
+                                </span>
+                                <svg class="sh-datepicker-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <rect x="3" y="4" width="18" height="18" rx="2"></rect>
+                                    <line x1="16" y1="2" x2="16" y2="6"></line>
+                                    <line x1="8" y1="2" x2="8" y2="6"></line>
+                                    <line x1="3" y1="10" x2="21" y2="10"></line>
+                                </svg>
+                            </button>
+
+                            <input type="hidden" name="date" id="closure_edit_date_input">
+
+                            <div class="sh-datepicker-panel" role="dialog" hidden>
+                                <div class="sh-datepicker-header">
+                                    <button type="button" class="sh-datepicker-nav" data-dir="-1" aria-label="Previous month">&lsaquo;</button>
+                                    <span class="sh-datepicker-month-label"></span>
+                                    <button type="button" class="sh-datepicker-nav" data-dir="1" aria-label="Next month">&rsaquo;</button>
+                                </div>
+                                <div class="sh-datepicker-weekdays">
+                                    <span>Su</span><span>Mo</span><span>Tu</span><span>We</span><span>Th</span><span>Fr</span><span>Sa</span>
+                                </div>
+                                <div class="sh-datepicker-grid"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="schedule-field">
+                        <label for="closure_edit_court">Court</label>
+                        <select name="court_id" id="closure_edit_court">
+                            <option value="">All Courts</option>
+                            @foreach ($courts as $court)
+                                <option value="{{ $court->id }}">{{ $court->name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    <div class="schedule-field schedule-field-wide">
+                        <label for="closure_edit_reason">Reason (optional)</label>
+                        <input type="text" name="reason" id="closure_edit_reason" maxlength="255" placeholder="e.g. Holiday, resurfacing">
+                    </div>
+                </div>
+
+                <div class="mb-modal-actions">
+                    <button type="button" class="btn btn-secondary" id="closureEditCancel">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    {{-- Closure: delete confirmation modal --}}
+    <div class="mb-modal-overlay" id="closureDeleteModal">
+        <div class="mb-modal-box">
+            <div class="mb-modal-header">
+                <h3>Remove Closure?</h3>
+                <button type="button" class="mb-modal-close" id="closureDeleteClose" aria-label="Close">&times;</button>
+            </div>
+            <p class="schedule-panel-note" id="closureDeleteText">This will reopen the court for this date.</p>
+            <div class="mb-modal-actions">
+                <button type="button" class="btn btn-secondary" id="closureDeleteCancel">Cancel</button>
+                <button type="button" class="btn btn-danger" id="closureDeleteConfirm">Remove</button>
+            </div>
+        </div>
     </div>
 
     {{-- Manual Booking: date picker --}}
@@ -413,4 +548,9 @@
     <script src="{{ asset('js/admin-schedule.js') }}" defer></script>
     <script src="{{ asset('js/manual-booking.js') }}" defer></script>
     <script src="{{ asset('js/closure-edit.js') }}" defer></script>
+    <script type="application/json" id="sh-closures-data">{!! $closures->map(fn ($c) => [
+        'id' => $c->id,
+        'date' => $c->date->toDateString(),
+        'court_id' => $c->court_id,
+    ])->toJson() !!}</script>
 @endpush
