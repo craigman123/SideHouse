@@ -147,6 +147,9 @@ Route::middleware(['auth', 'admin', 'admin.mfa'])->group(function () {
     Route::post('configuration/manual-booking', [ConfigurationController::class, 'storeManualBooking'])->name('admin.configuration.manual-booking.store');
     Route::get('configuration/availability', [ConfigurationController::class, 'availability'])->name('admin.configuration.availability');
     Route::put('/admin/configuration/closures/{closure}', [ConfigurationController::class, 'updateClosure'])->name('admin.configuration.closures.update');
+    Route::delete('configuration/specific-date-closure/{closure}', [ConfigurationController::class, 'destroySpecificDateClosure'])->name('admin.configuration.specific-date-closure.destroy');
+    Route::post('configuration/specific-date-closure', [ConfigurationController::class, 'storeSpecificDateClosure'])->name('admin.configuration.specific-date-closure.store');
+    Route::put('configuration/specific-date-closure/{closure}', [ConfigurationController::class, 'updateSpecificDateClosure'])->name('admin.configuration.specific-date-closure.update');
 
     //Equipment
     Route::get('/admin/equipment/availability', [EquipmentAvailabilityController::class, 'index'])->name('admin.equipment.availability');

@@ -127,7 +127,7 @@ html {
 .book-now-section {
     max-width: 1100px;
     margin: 0 auto;
-    padding: 60px 24px;
+    padding: 25px 24px;
     position: relative;
     z-index: 1;
 }
@@ -1872,4 +1872,145 @@ a.footer-contact:hover {
 
 #cancelEditConfirmModal .modal-confirm-body p:last-child {
     margin-bottom: 0;
+}
+
+/* Daily schedule — same visual language as the feature cards */
+/* NOTE: no `overflow: hidden` and no `transform` on this section.
+   Either creates a new clipping/containing context, which traps the
+   .bg-particle bubbles inside the section and stops them rendering
+   across the rest of the page. */
+.specific-date-time-closures.feature-card {
+    margin-top: 2rem;
+    padding: 1.5rem;
+    color: #c9d1d9;
+    background: #161b22;
+    border: 1px solid #30363d;
+    border-top: 3px solid #3fb950;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+    margin: 40px auto;
+    max-width: 700px;
+}
+
+/* Keep the green hover glow from .feature-card:hover but cancel its
+   translateY/scale — the transform is what broke the bubbles. */
+.specific-date-time-closures.feature-card:hover {
+    transform: none;
+}
+
+.specific-date-time-closures h3 {
+    margin: 0 0 1rem;
+    color: #f0f6fc;
+    font-size: 1.25rem;
+    font-weight: 600;
+}
+
+.schedule-table-wrapper {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+
+    overflow-x: auto;
+    overflow-y: hidden;
+
+    border: 1px solid #30363d;
+    border-radius: 8px;
+
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
+}
+
+.schedule-table {
+    display: table;
+    max-width: none !important;
+
+    table-layout: auto;
+    border-collapse: collapse;
+
+    background: transparent;
+    color: #c9d1d9;
+    font-size: 0.95rem;
+}
+
+.schedule-table th,
+.schedule-table td {
+    padding: 0.9rem 1.25rem;
+    text-align: left;
+    border-bottom: 1px solid #30363d;
+}
+
+.schedule-table th {
+    background: #21262d;
+    color: #f0f6fc;
+    font-size: 0.8rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.schedule-table tbody tr {
+    transition: background-color 0.2s ease;
+}
+
+.schedule-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.schedule-table tbody tr:hover {
+    background: #1c2128;
+}
+
+.schedule-table td:nth-last-child(-n + 2) {
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+}
+
+.schedule-table td:last-child {
+    color: gold;
+}
+
+@media (max-width: 640px) {
+    .specific-date-time-closures.feature-card {
+        padding: 1rem;
+        min-width: 0;
+        max-width: 100%;
+    }
+
+    .schedule-table-wrapper {
+        width: 100%;
+        max-width: 100%;
+        overflow-x: scroll;
+    }
+
+    .schedule-table {
+        min-width: 620px !important;
+        width: 620px !important;
+        max-width: none !important;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .schedule-table tbody tr {
+        transition: none;
+    }
+}
+
+.schedule-table .today-row td {
+    font-weight: 600;
+}
+
+.schedule-table .today-row {
+    outline: 2px solid #3fb950;
+    outline-offset: -2px;
+    background: rgba(0, 255, 64, 0.06);
+}
+
+.description-representation {
+    font-size: 14px;
+    color: #8b949e;
+    line-height: 1.5;
+    text-align: center;
+    width: 500px;
+    margin: 10px auto;
+    max-width: 100%;
 }

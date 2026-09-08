@@ -4,6 +4,7 @@ namespace App\Support;
 
 use App\Models\BusinessSetting;
 use App\Models\CourtClosure;
+use App\Models\SpecificDateTimeClosure;
 use Carbon\Carbon;
 
 /**
@@ -114,5 +115,17 @@ class BookingHours
         }
 
         return null;
+    }
+
+    public static function closeHourForDate($date): int
+    {
+        $closure = SpecificDateTimeClosure::whereDate('date', $date)->first();
+        if ($closure) {
+            $parsed = Carbon::parse($closure->time_closing);
+            return $parsed->hour * 60 + $parsed->minute;
+        }
+        // Global close hour – convert to minutes; if it's 0 (midnight), treat it as 24:00 (1440)
+        $globalHours = self::closeHour();
+        return $globalHours === 0 ? 1440 : $globalHours * 60;
     }
 }

@@ -94,7 +94,8 @@
 .schedule-field input[type="text"],
 .schedule-field input[type="number"],
 .schedule-field input[type="date"],
-.schedule-field input[type="email"] {
+.schedule-field input[type="email"],
+.schedule-field input[type="time"] {
     appearance: none;
     -webkit-appearance: none;
     background-color: #0d1117;
@@ -440,6 +441,8 @@
     display: flex;
     flex-direction: column;
     gap: 8px;
+    max-height: 500px;
+    overflow-y: auto;
 }
 
 .schedule-closure-row {

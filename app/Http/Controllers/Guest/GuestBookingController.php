@@ -11,6 +11,7 @@ use App\Models\Court;
 use App\Models\CourtClosure;
 use App\Models\Equipment;
 use App\Models\PaymentReference as PaymentReferenceModel;
+use App\Models\SpecificDateTimeClosure;
 use App\Support\ActivityLogger;
 use App\Support\BookingHours;
 use Carbon\Carbon;
@@ -58,6 +59,7 @@ class GuestBookingController extends Controller
         // store()/paymentPage() below remains the source of truth; this
         // is display-only.
         $settings = BusinessSetting::current();
+        $scheduleDays = $this->buildScheduleDays($settings);
 
         return view('landing', [
             'courts'              => $courts,
@@ -68,11 +70,52 @@ class GuestBookingController extends Controller
             'stepMinutes'         => BookingHours::stepMinutes(),
             'closedWeekdays'      => BookingHours::closedWeekdays(),
             'closureDates'        => $closureDates,
+            'scheduleDays'        => $scheduleDays,
+            'specificDateClosing' => SpecificDateTimeClosure::upcoming()->get(),
             'peakStartHour'       => $settings->hasPeakPricing() ? $settings->peak_start_hour : null,
             'peakEndHour'         => $settings->hasPeakPricing() ? $settings->peak_end_hour : null,
             'peakAdjustmentType'  => $settings->hasPeakPricing() ? $settings->peak_adjustment_type : null,
             'peakAdjustmentValue' => $settings->hasPeakPricing() ? $settings->peak_adjustment_value : null,
         ]);
+    }
+
+    private function buildScheduleDays(BusinessSetting $settings): array
+    {
+        $days = [];
+        $startDate = Carbon::yesterday();
+        $daysDisplay = 5;
+
+        for ($i = 0; $i < $daysDisplay; $i++) {
+            $date = $startDate->copy()->addDays($i);
+            $dateStr = $date->toDateString();
+
+            // Closing time (global or per-date)
+            $closeMinutes = BookingHours::closeHourForDate($dateStr);
+            $closeTime = Carbon::createFromTime(0, 0, 0)
+                ->addMinutes($closeMinutes)
+                ->format('g:i A');
+
+            // Opening time (always global)
+            $openTime = Carbon::createFromTime($settings->open_hour, 0, 0)
+                ->format('g:i A');
+
+            // Rates
+            $averageRate = (float) Court::first()->hourly_rate; // or fetch from settings if it's there
+            $peakRate = $settings->hasPeakPricing()
+                ? round($settings->applyPeakAdjustment($averageRate, $settings->peak_start_hour), 2)
+                : null;
+
+            $days[] = [
+                'date'        => $date->format('F j, Y'),
+                'dateShort'   => $date->format('M j'),
+                'opens_at'    => $openTime,
+                'closes_at'   => $closeTime,
+                'average'     => $averageRate,
+                'peak'        => $peakRate,
+            ];
+        }
+
+        return $days;
     }
 
     /**
@@ -195,11 +238,15 @@ class GuestBookingController extends Controller
             ])
             ->values();
 
+        $date = $validated['date'];
+        $closeMinutes = BookingHours::closeHourForDate($validated['date']);
+
         return response()->json([
-            'booked' => $booked,
-            'closed' => BookingHours::isClosed($courtId, $validated['date']),
-            'closed_reason' => BookingHours::closedReason($courtId, $validated['date']),
+            'booked'              => $booked,
+            'closed'              => BookingHours::isClosed($courtId, $date),
+            'closed_reason'       => BookingHours::closedReason($courtId, $date),
             'maintenance_blocked' => $maintenanceRanges,
+            'close_minutes'       => $closeMinutes,
         ]);
     }
 
@@ -439,15 +486,23 @@ class GuestBookingController extends Controller
         $maxSlotsPerDate = max(1, (int) floor(BookingHours::maxDurationHours() * 60 / $stepMinutes));
 
         foreach ($groups as $dateStr => $windows) {
-            if (count($windows) < $minSlotsPerDate || count($windows) > $maxSlotsPerDate) {
-                throw new \RuntimeException(
-                    "Please select between {$minSlotsPerDate} and {$maxSlotsPerDate} hour(s) for "
-                        . Carbon::parse($dateStr)->format('M j, Y') . '.'
-                );
-            }
+            // Specific close check
+            $closeMinutes = BookingHours::closeHourForDate($dateStr);
+            $closeTime = Carbon::parse($dateStr)->startOfDay()->addMinutes($closeMinutes);
 
+            // Check if the entire date is closed
             if (BookingHours::isClosed($courtId, $dateStr)) {
                 throw new \RuntimeException('This court is closed on ' . Carbon::parse($dateStr)->format('M j, Y') . '.');
+            }
+
+            foreach ($windows as [$start, $end]) {
+                if ($end->gt($closeTime)) {
+                    throw new \RuntimeException("The court closes at {$closeTime->format('g:i A')} on " . Carbon::parse($dateStr)->format('M j, Y') . ".");
+                }
+
+                if (BookingHours::isClosed($courtId, $dateStr)) {
+                    throw new \RuntimeException('This court is closed on ' . Carbon::parse($dateStr)->format('M j, Y') . '.');
+                }
             }
         }
 

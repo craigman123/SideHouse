@@ -3,16 +3,17 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Booking;
+use App\Models\BookingSlot;
 use App\Models\BusinessSetting;
 use App\Models\Court;
 use App\Models\CourtClosure;
+use App\Models\SpecificDateTimeClosure;
 use App\Support\ActivityLogger;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\View\View;
-use App\Models\Booking;
-use App\Models\BookingSlot;
 use Illuminate\Support\Facades\DB;
+use Illuminate\View\View;
 
 class ConfigurationController extends Controller
 {
@@ -32,7 +33,16 @@ class ConfigurationController extends Controller
             ->orderBy('date')
             ->get();
 
-        return view('admin.configuration.index', compact('settings', 'courts', 'closures'));
+        $specificClosures = SpecificDateTimeClosure::orderBy('date')
+            ->upcoming()
+            ->get();
+
+        return view('admin.configuration.index', compact(
+            'settings', 
+            'courts', 
+            'closures',
+            'specificClosures',
+            ));
     }
 
     /**
@@ -331,6 +341,82 @@ class ConfigurationController extends Controller
         return redirect()
             ->route('admin.configuration.index')
             ->with('success', 'Booking created — no payment required.');
+    }
+
+    public function storeSpecificDateClosure(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'dates' => ['required', 'array', 'min:1'],
+            'dates.*' => ['required', 'date', 'after_or_equal:today'],
+            'time_closing' => ['required', 'date_format:H:i'],
+        ]);
+
+        $dates = array_unique($validated['dates']);
+        $added = 0;
+        $skipped = 0;
+
+        foreach ($dates as $date) {
+            $exists = SpecificDateTimeClosure::where('date', $date)
+                ->where('time_closing', $validated['time_closing'])
+                ->exists();
+
+            if ($exists) { $skipped++; continue; }
+
+            $closure = SpecificDateTimeClosure::create([
+                'date' => $date,
+                'time_closing' => $validated['time_closing'],
+            ]);
+
+            ActivityLogger::log(
+                'schedule.specific_date_time_closed_added',
+                sprintf(
+                    '%s added a specific date/time closure for %s at %s.',
+                    auth()->user()->name,
+                    $closure->date,
+                    $closure->time_closing,
+                ),
+                subject: $closure,
+            );
+
+            $added++;
+        }
+
+        if ($added === 0) {
+            return redirect()
+                ->route('admin.configuration.index')
+                ->with('error', 'All selected dates already have that closing time.');
+        }
+
+        $message = $added === 1
+            ? 'Specific date/time closure added.'
+            : "{$added} closure(s) added." . ($skipped ? " {$skipped} skipped (already exist)." : '');
+
+        return redirect()
+            ->route('admin.configuration.index')
+            ->with('success', $message);
+    }
+
+    public function editSpecificDateClosure(SpecificDateTimeClosure $closure): View
+    {
+        return view('admin.configuration.edit_specific_date_time_closure', compact('closure'));
+    }
+
+    public function destroySpecificDateClosure(SpecificDateTimeClosure $closure): RedirectResponse
+    {
+        $description = sprintf(
+            '%s removed the specific date/time closure for %s at %s.',
+            auth()->user()->name,
+            $closure->date,
+            $closure->time_closing,
+        );
+
+        $closure->delete();
+
+        ActivityLogger::log('schedule.specific_date_time_closed_removed', $description);
+
+        return redirect()
+            ->route('admin.configuration.index')
+            ->with('success', 'Specific date/time closure removed.');
     }
 
     /**

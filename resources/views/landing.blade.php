@@ -12,42 +12,8 @@
     <link rel="stylesheet" href="{{ asset('css/landing-book.css') }}">
     <link rel="stylesheet" href="{{ asset('css/landing-search.css') }}">
     <link rel="icon" type="image/png" href="{{ asset('images/tab_icon.png') }}">
+    <link rel="stylesheet" href="{{ asset('css/skeleton.css') }}">
     <script src="https://accounts.google.com/gsi/client" async defer></script>
-    <style>
-        /* Loading skeleton for the usage & vacancy charts — shown until
-           each chart's JS replaces it with the real bars. */
-        .stats-skeleton {
-            display: flex;
-            align-items: flex-end;
-            gap: 10px;
-            height: 100%;
-            width: 100%;
-            padding: 0 4px;
-        }
-        .stats-skeleton-bar {
-            flex: 1 0 22px;
-            border-radius: 4px 4px 0 0;
-            background: linear-gradient(90deg, rgba(148,163,184,0.12) 25%, rgba(148,163,184,0.28) 37%, rgba(148,163,184,0.12) 63%);
-            background-size: 400% 100%;
-            animation: statsSkeletonShimmer 1.4s ease infinite;
-        }
-        @keyframes statsSkeletonShimmer {
-            0% { background-position: 100% 50%; }
-            100% { background-position: 0 50%; }
-        }
-        .stats-skeleton-bar:nth-child(1) { height: 38%; }
-        .stats-skeleton-bar:nth-child(2) { height: 62%; }
-        .stats-skeleton-bar:nth-child(3) { height: 48%; }
-        .stats-skeleton-bar:nth-child(4) { height: 80%; }
-        .stats-skeleton-bar:nth-child(5) { height: 55%; }
-        .stats-skeleton-bar:nth-child(6) { height: 70%; }
-        .stats-skeleton-bar:nth-child(7) { height: 42%; }
-        .stats-skeleton-bar:nth-child(8) { height: 58%; }
-        .stats-skeleton-bar:nth-child(9) { height: 90%; }
-        .stats-skeleton-bar:nth-child(10) { height: 50%; }
-        .stats-skeleton-bar:nth-child(11) { height: 65%; }
-        .stats-skeleton-bar:nth-child(12) { height: 72%; }
-    </style>
 </head>
 <body>
 
@@ -75,6 +41,7 @@
                     <a href="#features" class="nav-link">Features</a>
                     <a href="#faq" class="nav-link">FAQ</a>
                     <a href="#findUs" class="nav-link">Find Us</a>
+                    <a href="#analytics" class="nav-link">Analytics</a>
                     {{-- <a href="#getMore" class="nav-link">Create Account</a> --}}
                     <a href="https://www.google.com/maps/dir/?api=1&destination=10.246043101731798,123.78949399013447"
                     target="_blank"
@@ -109,6 +76,7 @@
                 <a href="#features" class="nav-link">Features</a>
                 <a href="#faq" class="nav-link">FAQ</a>
                 <a href="#findUs" class="nav-link">Find Us</a>
+                <a href="#analytics" class="nav-link">Analytics</a>
                 {{-- <a href="#getMore" class="nav-link">Create Account</a> --}}
                 <a href="https://www.google.com/maps/dir/?api=1&destination=10.246043101731798,123.78949399013447"
                     target="_blank"
@@ -273,6 +241,61 @@
             @endif
         </section>
 
+        <p class="description-representation">This section presents the daily operating schedule, including opening and closing times, average rates, and peak rates. It allows users to quickly check the available schedule and pricing for each day. </p>
+         <section class="specific-date-time-closures feature-card">
+            @if($scheduleDays)
+                <h3>Daily Schedule</h3>
+                <div class="schedule-table-wrapper">
+                    <table class="schedule-table">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Opens at</th>
+                                <th>Closes at</th>
+                                <th>Average</th>
+                                <th>Peak</th>
+                            </tr>
+                        </thead>
+                            <tbody>
+                            @foreach($scheduleDays as $day)
+                                @php
+                                    $date = \Carbon\Carbon::parse($day['date']);
+                                    $today = \Carbon\Carbon::today();
+
+                                    if ($date->isSameDay($today->copy()->subDay())) {
+                                        $dateLabel = 'Yesterday';
+                                    } elseif ($date->isSameDay($today)) {
+                                        $dateLabel = 'Today';
+                                    } elseif ($date->isSameDay($today->copy()->addDay())) {
+                                        $dateLabel = 'Tomorrow';
+                                    } else {
+                                        $dateLabel = $day['dateShort'];
+                                    }
+
+                                    $isToday = $date->isSameDay($today);
+                                @endphp
+
+                                <tr class="{{ $isToday ? 'today-row' : '' }}">
+                                    <td>{{ $dateLabel }}</td>
+                                    <td>{{ $day['opens_at'] }}</td>
+                                    <td>{{ $day['closes_at'] }}</td>
+                                    <td>₱{{ number_format($day['average'], 2) }}</td>
+                                    <td>
+                                        @if($day['peak'])
+                                            ₱{{ number_format($day['peak'], 2) }}
+                                        @else
+                                            —
+                                        @endif
+                                    </td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            @endif
+        </section> 
+
+        <p class="description-representation"> This section highlights the main features and benefits of Side House Paddlers. Each card briefly explains what users can expect from the booking experience and the facilities provided.</p>
         <section class="features" id="features">
             <div class="feature-card fade-in">
                 <div class="feature-icon">🏓</div>
@@ -317,7 +340,7 @@
             </div>
         </section>
 
-        <section class="stats-section fade-in" id="courtStats" data-stats-url="{{ route('guest.book.monthly-stats') }}">
+        <section id="analytics" class="stats-section fade-in" id="courtStats" data-stats-url="{{ route('guest.book.monthly-stats') }}">
             <div class="stats-intro">
                 <h2>Court Usage This Month</h2>
                 <p id="statsMonthLabel">Loading…</p>

@@ -613,6 +613,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // once selectedSlots empties out again.
     const slotSessions = new Map(); // slot key -> the booking `date` it belongs to
     let activeSessionDate = null;
+    let lastRequestedDate = null;
+    let currentCloseMinutes = null;
     let selectedPayment = null;
     let bookedRanges = [];
     let maintenanceRanges = [];
@@ -975,14 +977,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // calendar buttons.
     async function changeDateInModal(dateStr) {
         selectedDate = dateStr;
-        // Intentionally keep selectedSlots + activeSessionDate across
-        // day-to-day navigation in the time picker. That way a guest can
-        // pick e.g. 11 PM–12 AM on Aug 19 and 12 AM–1 AM on Aug 20 (both
-        // belonging to the same overnight session) without losing the
-        // first selection when they flip to the next calendar day.
-        // Selections are still cleared when picking a fresh date from the
-        // calendar, on full reset, or after a conflict error.
-
         if (timePickerDateLabel) timePickerDateLabel.textContent = formatDate(dateStr);
         updateDayNavState();
         renderTimeSlotSkeleton();
@@ -991,17 +985,17 @@ document.addEventListener('DOMContentLoaded', () => {
         // highlighted, in case the guest backs all the way out later.
         renderCalendar();
 
+        lastRequestedDate = dateStr;
+
         const MIN_SKELETON_MS = 300;
         const [availability] = await Promise.all([
             fetchAvailability(dateStr),
             new Promise((resolve) => setTimeout(resolve, MIN_SKELETON_MS)),
         ]);
 
-        // Backstop for a date that goes from open to closed between page
-        // load and now (admin adds a same-day closure while a guest is
-        // mid-flow) — isDateClosed()/shiftSelectedDate() already keep the
-        // guest from navigating here in the normal case, so this should
-        // rarely fire, but the server stays the source of truth.
+        if (lastRequestedDate !== dateStr) return;
+
+        currentCloseMinutes = availability.close_minutes ?? CLOSE_HOUR * 60;
         if (availability.closed) {
             showToast(availability.closedReason || 'This date just closed for booking.', 'error');
         }
@@ -1192,13 +1186,16 @@ document.addEventListener('DOMContentLoaded', () => {
         updateDayNavState();
         openTimePickerModal();
         renderTimeSlotSkeleton();
+        lastRequestedDate = selectedDate;
 
         const MIN_SKELETON_MS = 300;
         const [availability] = await Promise.all([
             fetchAvailability(selectedDate),
             new Promise((resolve) => setTimeout(resolve, MIN_SKELETON_MS)),
         ]);
+        if (lastRequestedDate !== selectedDate) return;
 
+        currentCloseMinutes = availability.close_minutes ?? CLOSE_HOUR * 60;
         bookedRanges = availability.booked;
         maintenanceRanges = availability.maintenanceBlocked;
         renderTimeSlots();
@@ -1408,6 +1405,7 @@ document.addEventListener('DOMContentLoaded', () => {
         selectedSlots = [];
         slotSessions.clear();
         activeSessionDate = null;
+        lastRequestedDate = dateStr;
 
         calendarGrid.querySelectorAll('.calendar-day').forEach((el) => el.classList.remove('selected'));
         btn.classList.add('selected');
@@ -1427,6 +1425,9 @@ document.addEventListener('DOMContentLoaded', () => {
             new Promise((resolve) => setTimeout(resolve, MIN_SKELETON_MS)),
         ]);
 
+        if (lastRequestedDate !== dateStr) return;
+
+        currentCloseMinutes = availability.close_minutes ?? CLOSE_HOUR * 60;
         bookedRanges = availability.booked;
         maintenanceRanges = availability.maintenanceBlocked;
         renderTimeSlots();
@@ -1462,16 +1463,13 @@ document.addEventListener('DOMContentLoaded', () => {
             const res = await fetch(url, { headers: { Accept: 'application/json' } });
             if (!res.ok) throw new Error('Failed to load availability');
             const data = await res.json();
-            return {
-                booked: (data.booked || []).map((b) => ({ start: b.start, end: b.end })),
-                closed: !!data.closed,
-                closedReason: data.closed_reason || null,
-                // Time ranges where PayMongo QR Ph payments are blocked due to
-                // scheduled maintenance (see PaymongoMaintenanceWindow /
-                // GuestBookingController::availability()). Same {start, end}
-                // shape as `booked`, so it's handled the same way downstream.
-                maintenanceBlocked: (data.maintenance_blocked || []).map((b) => ({ start: b.start, end: b.end, subject: b.subject || null })),
-            };
+                return {
+                    booked: data.booked || [],
+                    closed: !!data.closed,
+                    closedReason: data.closed_reason || null,
+                    maintenanceBlocked: data.maintenance_blocked || [],
+                    close_minutes: data.close_minutes ?? null, 
+                };
         } catch (err) {
             console.error(err);
             return { booked: [], closed: false, closedReason: null, maintenanceBlocked: [] };
@@ -1587,12 +1585,14 @@ document.addEventListener('DOMContentLoaded', () => {
     // "Closes at ..." to refer to) — just tell the guest when today's
     // own session opens instead of showing a "Closes" time that doesn't
     // apply to this page.
-    function appendClosedDivider(showCloses) {
+    function appendClosedDivider(showCloses, closeMinutes) {
         const divider = document.createElement('div');
         divider.className = 'time-slot-closed-divider';
-        divider.innerHTML = showCloses
-            ? `<p class="time-slot-closed-divider-label">Closes</p> at ${formatHourLabel(CLOSE_HOUR)} · <p class="time-slot-open-divider-label">Opens</p> at ${formatHourLabel(OPEN_HOUR)}`
-            : `<p class="time-slot-open-divider-label">Opens</p> at ${formatHourLabel(OPEN_HOUR)}`;
+        const closeLabel = showCloses
+            ? `<p class="time-slot-closed-divider-label">Closes</p> at ${formatMinutesTo12Hour(closeMinutes ?? CLOSE_HOUR * 60)}`
+            : '';
+        const openLabel = `<p class="time-slot-open-divider-label">Opens</p> at ${formatHourLabel(OPEN_HOUR)}`;
+        divider.innerHTML = closeLabel + (showCloses ? ' · ' : '') + openLabel;
         timeSlotGrid.appendChild(divider);
     }
 
@@ -1630,8 +1630,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function renderTimeSlotBlock(startMin, endMin, sessionDate) {
-        // Slots stay pickable on every block and every day — the only
-        // limit is MAX_DURATION, enforced in toggleSlot().
 
         for (let totalMin = startMin; totalMin + STEP_MINUTES <= endMin; totalMin += STEP_MINUTES) {
             const h = Math.floor(totalMin / 60);
@@ -1711,34 +1709,33 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    function formatMinutesTo12Hour(minutes) {
+        if (minutes === 1440) minutes = 0; // midnight
+        const h = Math.floor(minutes / 60);
+        const m = minutes % 60;
+        const period = h >= 12 ? 'PM' : 'AM';
+        const hour12 = h % 12 === 0 ? 12 : h % 12;
+        return `${hour12}:${pad(m)} ${period}`;
+    }
+
     function renderTimeSlots() {
         timeSlotGrid.innerHTML = '';
         if (!selectedDate) return;
 
-        // The session that opened the PREVIOUS calendar day and is still
-        // running past midnight into this one (e.g. viewing Aug 20's page
-        // shows the 1-7 AM tail of the session Aug 19 opened at 4 PM).
-        // Only real if the business was actually open the day before —
-        // otherwise there's no session to be a tail of.
         const tailSessionDate = OVERNIGHT ? addDaysToDateStr(selectedDate, -1) : null;
         const hasTail = OVERNIGHT && !isDateClosed(tailSessionDate);
 
         if (hasTail) {
             renderTimeSlotBlock(0, CLOSE_HOUR * 60, tailSessionDate);
         }
-        // Always show the full "Closes at ... · Opens at ..." line on
-        // overnight-schedule venues, even on a page with no actual tail
-        // session (previous day was closed) — keeps every date page
-        // looking the same instead of some showing a shorter one-sided
-        // version.
+
         if (OVERNIGHT) {
-            appendClosedDivider(true);
+            const closeMin = currentCloseMinutes ?? CLOSE_HOUR * 60;
+            appendClosedDivider(true, closeMin);
         }
 
-        // The session selectedDate opens itself, running from open_hour
-        // up to (but not past) midnight — anything past midnight belongs
-        // to tomorrow's page as ITS tail block, not this one.
-        renderTimeSlotBlock(OPEN_HOUR * 60, OVERNIGHT ? 1440 : CLOSE_HOUR * 60, selectedDate);
+        const endMin = currentCloseMinutes ?? (OVERNIGHT ? 1440 : CLOSE_HOUR * 60);
+        renderTimeSlotBlock(OPEN_HOUR * 60, endMin, selectedDate);
     }
 
     // Toggles one hour on or off. Selected hours don't need to be
@@ -1769,6 +1766,19 @@ document.addEventListener('DOMContentLoaded', () => {
         renderTimeSlots();
         updateTimePickerFee();
         updateSelectionSummary();
+    }
+
+    function onDateSelected(date) {
+        fetch(`/availability?court_id=${courtId}&date=${date}`)
+            .then(response => response.json())
+            .then(data => {
+                const closeMin = data.close_minutes; // e.g., 600
+                const openMin = OPEN_HOUR * 60;      // from page data attributes
+
+                // Clear the grid and re-render using the specific close
+                timeSlotGrid.innerHTML = '';
+                renderTimeSlotBlock(openMin, closeMin, date);
+            });
     }
 
     // Running fee shown under the hour list — collapses the selected
@@ -2173,11 +2183,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 showToast(data.message || 'That slot is no longer available.', 'error');
 
                 selectedSlots = [];
-        slotSessions.clear();
+                slotSessions.clear();
                 activeSessionDate = null;
 
                 closePaymentModal();
                 const refreshedAvailability = await fetchAvailability(selectedDate);
+                currentCloseMinutes = refreshedAvailability.close_minutes ?? CLOSE_HOUR * 60;
                 bookedRanges = refreshedAvailability.booked;
                 maintenanceRanges = refreshedAvailability.maintenanceBlocked;
                 renderTimeSlots();

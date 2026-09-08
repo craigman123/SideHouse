@@ -4,6 +4,7 @@
 @section('page-title', 'Configuration')
     
 @push('styles')
+    <link rel="stylesheet" href="{{ asset('css/specific-date-closures.css') }}">
     <link rel="stylesheet" href="{{ asset('css/admin-profile.css') }}">
     <link rel="stylesheet" href="{{ asset('css/admin-schedule.css') }}">
     <link rel="stylesheet" href="{{ asset('css/manual-booking.css') }}">
@@ -203,6 +204,162 @@
                 </div>
             </form>
         </div>
+
+        <div class="time-closings">
+            <form id="specific-closure-form"
+                action="{{ route('admin.configuration.specific-date-closure.store') }}"
+                method="POST" class="tc-form">
+                    <h2>Specific Date / Time Closures</h2>
+                    <p class="schedule-panel-note">Block a specific date — holidays, maintenance, tournaments, etc. Leave "Court" set to All Courts to close everything that day.</p>
+
+                @csrf
+
+                <div class="tc-field-row">
+                    <div class="tc-field tc-field-grow">
+                        <label for="tc-datepicker-input">Dates</label>
+
+                        <div class="tc-datepicker" id="tc-datepicker">
+                            <button type="button" class="tc-datepicker-input" id="tc-datepicker-input">
+                                <span id="tc-datepicker-label">Select dates</span>
+                                <svg class="tc-dp-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <rect x="3" y="4" width="18" height="18" rx="2"></rect>
+                                    <line x1="16" y1="2" x2="16" y2="6"></line>
+                                    <line x1="8" y1="2" x2="8" y2="6"></line>
+                                    <line x1="3" y1="10" x2="21" y2="10"></line>
+                                </svg>
+                            </button>
+
+                            <div class="tc-datepicker-panel" id="tc-datepicker-panel" hidden>
+                                <div class="tc-dp-header">
+                                    <button type="button" class="tc-dp-nav" id="tc-dp-prev" aria-label="Previous month">&lsaquo;</button>
+                                    <span class="tc-dp-month-label" id="tc-dp-month-label"></span>
+                                    <button type="button" class="tc-dp-nav" id="tc-dp-next" aria-label="Next month">&rsaquo;</button>
+                                </div>
+                                <div class="tc-dp-weekdays">
+                                    <span>SU</span><span>MO</span><span>TU</span><span>WE</span>
+                                    <span>TH</span><span>FR</span><span>SA</span>
+                                </div>
+                                <div class="tc-dp-grid" id="tc-dp-grid"></div>
+                                <div class="tc-dp-footer">
+                                    <button type="button" class="tc-btn tc-btn-secondary tc-btn-sm" id="tc-dp-clear">Clear</button>
+                                    <button type="button" class="tc-btn tc-btn-primary tc-btn-sm" id="tc-dp-done">Done</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="tc-hidden-inputs" data-existing-dates="{{ ($specificClosures ?? collect())->pluck('date')->map(fn($d) => \Illuminate\Support\Carbon::parse($d)->toDateString())->implode(',') }}"></div>
+                    </div>
+
+                    <div class="tc-field">
+                        <label for="tc-time-closing">Closing time</label>
+                        <input type="time" id="tc-time-closing" name="time_closing" required>
+                    </div>
+                </div>
+
+                <button type="submit" id="tc-submit-btn" class="tc-btn tc-btn-primary" disabled>
+                    Save closure(s)
+                </button>
+            </form>
+
+            <div class="tc-form">
+                <table class="tc-table">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Closing time</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @forelse ($specificClosures ?? [] as $closure)
+                            <tr>
+                                <td>{{ \Illuminate\Support\Carbon::parse($closure->date)->format('M d, Y') }}</td>
+                                <td>{{ \Illuminate\Support\Carbon::parse($closure->time_closing)->format('g:i A') }}</td>
+                                <td>
+                                    <div class="tc-inline-form-group">
+                                        <button type="button"
+                                            class="tc-btn tc-btn-primary tc-btn-sm sh-specific-closure-edit-btn"
+                                            data-id="{{ $closure->id }}"
+                                            data-date="{{ \Illuminate\Support\Carbon::parse($closure->date)->toDateString() }}"
+                                            data-time="{{ \Illuminate\Support\Carbon::parse($closure->time_closing)->format('H:i') }}"
+                                        >Edit</button>
+
+                                        <form method="POST"
+                                            action="{{ route('admin.configuration.specific-date-closure.destroy', $closure) }}"
+                                            id="specificClosureDeleteForm{{ $closure->id }}"
+                                            class="sh-hidden-form">
+                                            @csrf
+                                            @method('DELETE')
+                                        </form>
+                                        <button type="button"
+                                            class="tc-btn tc-btn-danger tc-btn-sm sh-specific-closure-delete-btn"
+                                            data-form-id="specificClosureDeleteForm{{ $closure->id }}"
+                                            data-label="{{ \Illuminate\Support\Carbon::parse($closure->date)->format('M d, Y') }} at {{ \Illuminate\Support\Carbon::parse($closure->time_closing)->format('g:i A') }}"
+                                        >Remove</button>
+                                    </div>
+                                </td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="3" class="tc-empty-row">No specific date/time closures set.</td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="mb-modal-overlay" id="editSpecificClosureModal">
+            <div class="mb-modal-box">
+                <div class="mb-modal-header">
+                    <h3>Edit Closure</h3>
+                    <button type="button" class="mb-modal-close" id="specificClosureEditClose" aria-label="Close">&times;</button>
+                </div>
+
+                <form
+                    method="POST"
+                    id="specificClosureEditForm"
+                    data-update-url-template="{{ route('admin.configuration.specific-date-closure.update', ['closure' => '__ID__']) }}"
+                >
+                    @csrf
+                    @method('PUT')
+
+                    <div class="schedule-field-grid">
+                        <div class="schedule-field">
+                            <label for="specific_closure_edit_date">Date</label>
+                            <input type="date" name="date" id="specific_closure_edit_date" required>
+                        </div>
+
+                        <div class="schedule-field">
+                            <label for="specific_closure_edit_time">Closing time</label>
+                            <input type="time" name="time_closing" id="specific_closure_edit_time" required>
+                        </div>
+                    </div>
+
+                    <div class="mb-modal-actions">
+                        <button type="button" class="btn btn-secondary" id="specificClosureEditCancel">Cancel</button>
+                        <button type="submit" class="btn btn-primary">Save Changes</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        {{-- Specific Date/Time Closure: remove confirmation modal --}}
+        <div class="mb-modal-overlay" id="removeSpecificClosureModal">
+            <div class="mb-modal-box">
+                <div class="mb-modal-header">
+                    <h3>Remove Closure?</h3>
+                    <button type="button" class="mb-modal-close" id="specificClosureDeleteClose" aria-label="Close">&times;</button>
+                </div>
+                <p class="schedule-panel-note" id="specificClosureDeleteText">This will reopen bookings for this date/time.</p>
+                <div class="mb-modal-actions">
+                    <button type="button" class="btn btn-secondary" id="specificClosureDeleteCancel">Cancel</button>
+                    <button type="button" class="btn btn-danger" id="specificClosureDeleteConfirm">Remove</button>
+                </div>
+            </div>
+        </div>
+
+        {{-- ---------- Manual Booking ---------- --}}
 
         <div
             class="schedule-panel"
@@ -548,6 +705,7 @@
     <script src="{{ asset('js/admin-schedule.js') }}" defer></script>
     <script src="{{ asset('js/manual-booking.js') }}" defer></script>
     <script src="{{ asset('js/closure-edit.js') }}" defer></script>
+    <script src="{{ asset('js/specific-date-closures.js') }}" defer></script>
     <script type="application/json" id="sh-closures-data">{!! $closures->map(fn ($c) => [
         'id' => $c->id,
         'date' => $c->date->toDateString(),
