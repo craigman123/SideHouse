@@ -149,8 +149,8 @@
 
                 <div class="court-board-legend" aria-label="Booking status legend">
                     <span><i class="legend-dot legend-paid"></i>Paid</span>
-                    <span><i class="legend-dot legend-pending"></i>Pending</span>
-                    <span><i class="legend-dot legend-cancelled"></i>Cancelled</span>
+                    {{-- <span><i class="legend-dot legend-pending"></i>Pending</span>
+                    <span><i class="legend-dot legend-cancelled"></i>Cancelled</span> --}}
                     <span><i class="legend-dot legend-closure"></i>Closure</span>
                 </div>
 

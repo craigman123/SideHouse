@@ -49,7 +49,7 @@
 .court-board-legend { display: flex; flex-wrap: wrap; gap: 15px; margin: 18px 0 10px; color: #8b949e; font-size: 12px; font-weight: 700; }
 .court-board-legend span { display: inline-flex; align-items: center; gap: 6px; }
 .legend-dot { width: 9px; height: 9px; border-radius: 50%; }
-.legend-paid { background: #3fb950; }.legend-pending { background: #d29922; }.legend-cancelled { background: #f85149; }.legend-closure { background: #a371f7; }
+.legend-paid { background: #3fb950; }.legend-pending { background: #d29922; }.legend-cancelled { background: #f85149; }.legend-closure { background: #7a1f1f; }
 .court-board-summary { padding: 10px 12px; margin-bottom: 16px; border-radius: 8px; color: #c9d1d9; background: #0d1117; font-size: 13px; }
 
 .court-board { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
@@ -152,6 +152,7 @@
     box-sizing: border-box;
 }
 .court-month-date-col.is-today { background: rgba(35, 134, 54, .04); }
+.court-month-date-col.is-closed { background: rgba(248, 81, 73, .14); border-right: 2px solid #7a1f1f; }
 
 /* ── Booking bars: professional muted palette, initials only ── */
 .court-month-bar {
@@ -180,9 +181,20 @@
 .court-month-closure-col {
     position: absolute;
     inset: 0;
-    background: rgba(163, 113, 247, .06);
-    border-left: 2px solid rgba(163, 113, 247, .35);
+    display: flex;
+    align-items: center;
+    justify-content: center;
     pointer-events: none;
+}
+
+.court-month-closed-label {
+    writing-mode: vertical-rl;
+    transform: rotate(180deg);
+    color: rgb(255, 179, 171);
+    font-size: 40px;
+    font-weight: 800;
+    text-shadow: rgba(0, 0, 0, 0.5) 0px 1px 2px;
+    letter-spacing: 30px;
 }
 
 @media (max-width: 700px) {
@@ -203,5 +215,6 @@
     .court-month-scroll { max-height: min(60vh, 480px); }
     .court-month-date-header { font-size: 10px; }
 }
-/* Closed weekday column header tint */
-.court-month-date-col.is-closed-weekday { background: rgba(163, 113, 247, .04); }
+/* Closed weekday column header tint (fallback; .is-closed above takes over
+   once the column also carries the manual-closure/red-fill treatment). */
+.court-month-date-col.is-closed-weekday { background: rgba(248, 81, 73, .06); }

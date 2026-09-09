@@ -74,7 +74,7 @@
                 class="floating-directions"
                 aria-label="Get directions to Side House Paddlers"
             >
-                <svg class="floating-directions-icon" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2">
+                <svg class="floating-directions-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z" />
                     <circle cx="12" cy="10" r="2.4" />
                 </svg>
@@ -100,7 +100,7 @@
 
             <div class="nav-search-wrap">
                 <div class="nav-search">
-                    <svg class="nav-search-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+                    <svg class="nav-search-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
                         <circle cx="11" cy="11" r="7" />
                         <path d="M16.5 16.5l4.5 4.5" />
                     </svg>

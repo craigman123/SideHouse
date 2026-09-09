@@ -349,6 +349,7 @@
         const windowsByDate = new Map();
         dates.forEach((dateStr) => {
             const raw = bookings
+                .filter((booking) => booking.status !== 'cancelled')
                 .flatMap((booking) => eventWindows(booking, dateStr).map((window) => ({ booking, window })))
                 .map(({ booking, window }) => ({
                     booking,
@@ -408,31 +409,44 @@
             const colWindows = windowsByDate.get(dateStr) || [];
             const isToday = dateStr === todayValue;
 
-            const col = document.createElement('div');
-            col.className = 'court-month-date-col' + (isToday ? ' is-today' : '') + (isWeekdayClosed ? ' is-closed-weekday' : '');
-            col.style.cssText = `flex:0 0 ${COL_W}px;width:${COL_W}px;position:relative;border-right:1px solid #21262d;`;
+            // Closure strip overlay — manual closures + recurring closed weekdays.
+            const hasAnyClosure = colClosures.length || isWeekdayClosed;
 
-            // Hour grid lines.
+            const col = document.createElement('div');
+            col.className = 'court-month-date-col' + (isToday ? ' is-today' : '') + (isWeekdayClosed ? ' is-closed-weekday' : '') + (hasAnyClosure ? ' is-closed' : '');
+            col.style.cssText = `flex:0 0 ${COL_W}px;width:${COL_W}px;position:relative;box-sizing:border-box;` +
+                (hasAnyClosure
+                    ? `border-right:2px solid #7a1f1f;background:rgba(248,81,73,.14);`
+                    : `border-right:1px solid #21262d;`);
+
+            // Hour grid lines — skipped for closed columns so the red fill
+            // reads as one solid block instead of a striped grid.
             rowPlan.forEach((row) => {
                 const cell = document.createElement('div');
                 if (row.type === 'hour') {
-                    cell.style.cssText = `height:${ROW_H}px;border-bottom:1px solid #21262d;box-sizing:border-box;`;
-                    if (colClosures.length || isWeekdayClosed) cell.style.background = 'rgba(163,113,247,.07)';
+                    cell.style.cssText = `height:${ROW_H}px;box-sizing:border-box;` +
+                        (hasAnyClosure ? '' : `border-bottom:1px solid #21262d;`);
                 } else {
-                    cell.style.cssText = `height:${DIVIDER_H}px;border-top:1px solid #21262d;border-bottom:1px solid #21262d;box-sizing:border-box;background:rgba(255,255,255,.02);`;
+                    cell.style.cssText = `height:${DIVIDER_H}px;box-sizing:border-box;background:rgba(255,255,255,.02);` +
+                        (hasAnyClosure ? '' : `border-top:1px solid #21262d;border-bottom:1px solid #21262d;`);
                 }
                 col.append(cell);
             });
 
-            // Closure strip overlay — manual closures + recurring closed weekdays.
-            const hasAnyClosure = colClosures.length || isWeekdayClosed;
             if (hasAnyClosure) {
                 const strip = document.createElement('div');
                 strip.className = 'court-month-closure-col';
-                strip.style.cssText = `position:absolute;inset:0;background:rgba(163,113,247,.06);border-left:2px solid rgba(163,113,247,.35);pointer-events:none;`;
+                strip.style.cssText = `position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;`;
                 const closureLabels = colClosures.map((c) => c.reason || 'Closed');
                 if (isWeekdayClosed) closureLabels.push('Closed (business hours)');
                 strip.title = closureLabels.join(', ');
+
+                const label = document.createElement('span');
+                label.className = 'court-month-closed-label';
+                label.textContent = 'CLOSED';
+                label.style.cssText = `writing-mode:vertical-rl;transform:rotate(180deg);color:#ffb3ab;font-size:40px;font-weight:800;letter-spacing:30px;text-shadow:0 1px 2px rgba(0,0,0,.5);`;
+                strip.append(label);
+
                 col.append(strip);
             }
 
