@@ -2055,12 +2055,21 @@ a.footer-contact:hover {
     text-decoration: line-through;
     color: #6e7681;
     margin-right: 6px;
-    font-size: 0.85em;
+    font-size: 0.70em;
 }
 
 .closes-actual {
     color: #f0883e;
     font-weight: 700;
+}
+
+.closure-format {
+    display: flex;
+    flex-direction: column;
+}
+
+.closure-cell {
+    padding: 0 0 0 1.5rem !important;
 }
 
 .weekly-schedule-section h3 {

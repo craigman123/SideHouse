@@ -283,13 +283,15 @@
                                                 @endif
                                             </td>
                                             <td>{{ $day['opens_at'] }}</td>
-                                            <td>
-                                                @if($day['hasEarlyClosure'])
-                                                    <span class="closes-usual" title="Usual closing time">{{ $day['usual_closes_at'] }}</span>
-                                                    <span class="closes-actual" title="Closing early today">{{ $day['closes_at'] }}</span>
-                                                @else
-                                                    {{ $day['closes_at'] }}
-                                                @endif
+                                            <td class="closure-cell">
+                                                <div class="closure-format">
+                                                    @if($day['hasEarlyClosure'])
+                                                        <span class="closes-usual" title="Usual closing time">{{ $day['usual_closes_at'] }}</span>
+                                                        <span class="closes-actual" title="Closing early today">{{ $day['closes_at'] }}</span>
+                                                    @else
+                                                        {{ $day['closes_at'] }}
+                                                    @endif
+                                                </div>
                                             </td>
                                             <td>₱{{ number_format($day['average'], 2) }}</td>
                                             <td>
@@ -329,13 +331,15 @@
                                                 @endif
                                             </td>
                                             <td>{{ $day['opens_at'] }}</td>
-                                            <td>
-                                                @if($day['hasEarlyClosure'])
-                                                    <span class="closes-usual" title="Usual closing time">{{ $day['usual_closes_at'] }}</span>
-                                                    <span class="closes-actual" title="Closing early today">{{ $day['closes_at'] }}</span>
-                                                @else
-                                                    {{ $day['closes_at'] }}
-                                                @endif
+                                            <td class="closure-cell">
+                                                <div class="closure-format">
+                                                    @if($day['hasEarlyClosure'])
+                                                        <span class="closes-usual" title="Usual closing time">{{ $day['usual_closes_at'] }}</span>
+                                                        <span class="closes-actual" title="Closing early today">{{ $day['closes_at'] }}</span>
+                                                    @else
+                                                        {{ $day['closes_at'] }}
+                                                    @endif
+                                                </div>
                                             </td>
                                             <td>₱{{ number_format($day['average'], 2) }}</td>
                                             <td>
