@@ -878,6 +878,7 @@ html {
 .guest-email-confirmed {
     display: flex;
     align-items: center;
+    justify-content: space-between;
     flex-wrap: wrap;
     gap: 8px;
     background-color: #0d1117;

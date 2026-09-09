@@ -46,7 +46,7 @@
                     <div class="guest-email-block">
                         <label class="guest-email-label" id="guestEmailLabel">Email Address</label>
                         <div id="googleSignInBtn" class="google-signin-btn"></div>
-                        <div class="guest-email-confirmed" id="guestEmailConfirmed" hidden><span>Signed in as <strong id="guestEmailConfirmedAddress"></strong></span><button type="button" id="guestEmailChange">Change</button></div>
+                        <div class="guest-email-confirmed" id="guestEmailConfirmed" hidden><span>Signed in as <strong id="guestEmailConfirmedAddress"></strong></span><button class="btn btn-link btn-change-email" type="button" id="guestEmailChange">X</button></div>
                     </div>
                 </div>
                 <div class="booking-section">
