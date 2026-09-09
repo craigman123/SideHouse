@@ -1280,7 +1280,7 @@ html {
     background-color: #2ea043;
     border-radius: 4px 4px 0 0;
     transition: background-color 0.15s ease, transform 0.15s ease;
-    cursor: default;
+    cursor: pointer;
     position: relative;
 }
 
@@ -1296,11 +1296,12 @@ html {
 .stats-bar-label {
     font-size: 10px;
     color: #6e7681;
-    font-weight: 600;
+    font-weight: 700;
 }
 
 .stats-bar-col.stats-bar-today .stats-bar-label {
     color: #3fb950;
+    font-weight: 700;
 }
 
 @media (max-width: 800px) {
@@ -2013,6 +2014,37 @@ a.footer-contact:hover {
 
 .schedule-table .past-row td:last-child {
     color: #6e7681;
+}
+
+/* Fully closed days — a closed weekday or a whole-day CourtClosure.
+   Hours and rates don't apply, so cross them out rather than showing
+   times that don't actually hold for that day; the tag in the first
+   cell stays plain text so "Closed" itself doesn't get struck through. */
+.schedule-table .closed-row td {
+    color: #6e7681;
+}
+
+.schedule-table .closed-row td:not(:first-child) {
+    text-decoration: line-through;
+}
+
+.schedule-table .closed-row td:last-child {
+    color: #6e7681;
+}
+
+.closed-tag {
+    display: inline-block;
+    margin-left: 8px;
+    padding: 0.15em 0.6em;
+    border-radius: 999px;
+    background: rgba(248, 81, 73, 0.15);
+    color: #f85149;
+    font-size: 0.72em;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    text-decoration: none;
+    border: 2px solid rgb(94, 0, 0);
 }
 
 /* Closes-at cell when a SpecificDateTimeClosure shortens the day: the

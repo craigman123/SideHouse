@@ -26,7 +26,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // page ever serves that instead, so this chart can't silently break
     // again the way it did when the attribute's format changed and this
     // file's own CSV parsing was left behind.
-    const CLOSURE_DATES = new Set();
+    // Maps date -> reason (reason may be null) so hover tooltips can show
+    // *why* a day is closed, not just that it is.
+    const CLOSURE_DATES = new Map();
     (function parseClosureDates() {
         const raw = bookNow.dataset.closureDates || '';
         if (!raw.trim()) return;
@@ -34,17 +36,18 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const parsed = JSON.parse(raw);
             parsed.forEach((entry) => {
-                if (entry && entry.date) CLOSURE_DATES.add(entry.date);
+                if (entry && entry.date) CLOSURE_DATES.set(entry.date, entry.reason || null);
             });
             return;
         } catch (err) {
             // Not JSON — fall through to legacy comma-separated parsing.
+            // No reason available in this format.
         }
 
         raw.split(',')
             .map((s) => s.trim())
             .filter(Boolean)
-            .forEach((dateStr) => CLOSURE_DATES.add(dateStr));
+            .forEach((dateStr) => CLOSURE_DATES.set(dateStr, null));
     })();
 
     function dailyCapacityHours(dateStr) {
@@ -52,6 +55,13 @@ document.addEventListener('DOMContentLoaded', () => {
         if (CLOSED_WEEKDAYS.includes(weekday) || CLOSURE_DATES.has(dateStr)) return 0;
         // Overnight courts (close hour <= open hour) wrap past midnight.
         return CLOSE_HOUR <= OPEN_HOUR ? (24 - OPEN_HOUR) + CLOSE_HOUR : CLOSE_HOUR - OPEN_HOUR;
+    }
+
+    // A closed weekday (e.g. every Monday) has no CourtClosure row behind
+    // it, so there's no reason to show — only dates actually present in
+    // CLOSURE_DATES carry one.
+    function getClosureReason(dateStr) {
+        return CLOSURE_DATES.get(dateStr) || null;
     }
 
     function formatHours(n) {
@@ -194,6 +204,29 @@ document.addEventListener('DOMContentLoaded', () => {
         setTimeout(step, 250);
     }
 
+        function showToast(message, type = 'success') {
+        const toastContainer = document.getElementById('toastContainer');
+        if (!toastContainer) return;
+
+        const toast = document.createElement('div');
+        toast.className = `toast toast-${type}`;
+        toast.innerHTML = `
+            <span class="toast-message"></span>
+            <button type="button" class="toast-close" aria-label="Dismiss">&times;</button>
+        `;
+        toast.querySelector('.toast-message').textContent = message;
+
+        toastContainer.appendChild(toast);
+
+        const remove = () => {
+            toast.classList.add('toast-out');
+            setTimeout(() => toast.remove(), 300);
+        };
+
+        toast.querySelector('.toast-close').addEventListener('click', remove);
+        setTimeout(remove, 4000);
+    }
+
     function renderVacantChart(data) {
         const days = data.days || [];
         if (monthTag) monthTag.textContent = data.month_label || '';
@@ -246,6 +279,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 bar.style.display = 'flex';
                 bar.style.alignItems = 'center';
                 bar.style.justifyContent = 'center';
+                bar.style.cursor = 'pointer';
 
                 const placeholderLabel = document.createElement('span');
                 placeholderLabel.className = 'stats-bar-placeholder-label';
@@ -266,11 +300,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 bar.title = `${formatDateLabel(v.date)}: Past date`;
                 renderPlaceholderBar('#6b7280', 'PAST');
             } else if (isClosedDay) {
-                // Closed (but not yet past) — flat red placeholder so a
-                // closed day reads clearly at a glance, not just a
-                // near-invisible zero-height bar.
-                bar.title = `${formatDateLabel(v.date)}: Closed`;
+
+                const reason = getClosureReason(v.date);
+                bar.title = reason
+                    ? `${formatDateLabel(v.date)}: Closed — ${reason}`
+                    : `${formatDateLabel(v.date)}: Closed`;
                 renderPlaceholderBar('#dc2626', 'CLOSED');
+                bar.setAttribute('role', 'button');
+                bar.addEventListener('click', () => showToast(reason, 'error'));
             } else {
                 // Distinct color from the usage chart's bars so the two
                 // graphs read as different metrics at a glance.

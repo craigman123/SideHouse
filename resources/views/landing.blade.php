@@ -261,23 +261,22 @@
                                 </thead>
                                 <tbody>
                                     @foreach($weeklySchedule['thisWeek'] as $day)
-                                        <tr class="{{ $day['isToday'] ? 'today-row' : '' }} {{ $day['isPast'] ? 'past-row' : '' }}">
-                                            <td>{{ $day['dateLabel'] }}</td>
-                                            <td>{{ $day['opens_at'] }}</td>
-
-                                                @if($day['hasEarlyClosure'])
-                                                    <td class="early-closure-cell">
-                                                        <div style=" display: flex; flex-direction: column;">
-                                                            <span class="closes-usual" title="Usual closing time">{{ $day['usual_closes_at'] }}</span>
-                                                            <span class="closes-actual" title="Closing early today">{{ $day['closes_at'] }}</span>
-                                                        </div>
-                                                    </td>
-                                                @else
-                                                    <td>
-                                                        {{ $day['closes_at'] }}
-                                                    </td>
+                                        <tr class="{{ $day['isToday'] ? 'today-row' : '' }} {{ $day['isPast'] ? 'past-row' : '' }} {{ $day['isFullyClosed'] ? 'closed-row' : '' }}">
+                                            <td>
+                                                {{ $day['dateLabel'] }}
+                                                @if($day['isFullyClosed'])
+                                                    <span class="closed-tag">Closed</span>
                                                 @endif
-                                            
+                                            </td>
+                                            <td>{{ $day['opens_at'] }}</td>
+                                            <td>
+                                                @if($day['hasEarlyClosure'])
+                                                    <span class="closes-usual" title="Usual closing time">{{ $day['usual_closes_at'] }}</span>
+                                                    <span class="closes-actual" title="Closing early today">{{ $day['closes_at'] }}</span>
+                                                @else
+                                                    {{ $day['closes_at'] }}
+                                                @endif
+                                            </td>
                                             <td>₱{{ number_format($day['average'], 2) }}</td>
                                             <td>
                                                 @if($day['peak'])
@@ -308,21 +307,22 @@
                                 </thead>
                                 <tbody>
                                     @foreach($weeklySchedule['nextWeek'] as $day)
-                                        <tr class="{{ $day['isToday'] ? 'today-row' : '' }} {{ $day['isPast'] ? 'past-row' : '' }}">
-                                            <td>{{ $day['dateLabel'] }}</td>
-                                            <td>{{ $day['opens_at'] }}</td>
-                                                @if($day['hasEarlyClosure'])
-                                                    <td class="early-closure-cell">
-                                                        <div style=" display: flex; flex-direction: column;">
-                                                            <span class="closes-usual" title="Usual closing time">{{ $day['usual_closes_at'] }}</span>
-                                                            <span class="closes-actual" title="Closing early today">{{ $day['closes_at'] }}</span>
-                                                        </div>
-                                                    </td>
-                                                @else
-                                                    <td>
-                                                        {{ $day['closes_at'] }}
-                                                    </td>
+                                        <tr class="{{ $day['isToday'] ? 'today-row' : '' }} {{ $day['isPast'] ? 'past-row' : '' }} {{ $day['isFullyClosed'] ? 'closed-row' : '' }}">
+                                            <td>
+                                                {{ $day['dateLabel'] }}
+                                                @if($day['isFullyClosed'])
+                                                    <span class="closed-tag">Closed</span>
                                                 @endif
+                                            </td>
+                                            <td>{{ $day['opens_at'] }}</td>
+                                            <td>
+                                                @if($day['hasEarlyClosure'])
+                                                    <span class="closes-usual" title="Usual closing time">{{ $day['usual_closes_at'] }}</span>
+                                                    <span class="closes-actual" title="Closing early today">{{ $day['closes_at'] }}</span>
+                                                @else
+                                                    {{ $day['closes_at'] }}
+                                                @endif
+                                            </td>
                                             <td>₱{{ number_format($day['average'], 2) }}</td>
                                             <td>
                                                 @if($day['peak'])
@@ -419,7 +419,39 @@
 
                     <div class="stats-chart-scroll">
                         <div class="stats-chart" id="statsChart">
-                            <div class="stats-skeleton"><div class="stats-skeleton-bar"></div><div class="stats-skeleton-bar"></div><div class="stats-skeleton-bar"></div><div class="stats-skeleton-bar"></div><div class="stats-skeleton-bar"></div><div class="stats-skeleton-bar"></div><div class="stats-skeleton-bar"></div><div class="stats-skeleton-bar"></div><div class="stats-skeleton-bar"></div><div class="stats-skeleton-bar"></div><div class="stats-skeleton-bar"></div><div class="stats-skeleton-bar"></div></div>
+                            <div class="stats-skeleton">
+                                <div class="stats-skeleton-bar"></div>
+                                <div class="stats-skeleton-bar"></div>
+                                <div class="stats-skeleton-bar"></div>
+                                <div class="stats-skeleton-bar"></div>
+                                <div class="stats-skeleton-bar"></div>
+                                <div class="stats-skeleton-bar"></div>
+                                <div class="stats-skeleton-bar"></div>
+                                <div class="stats-skeleton-bar"></div>
+                                <div class="stats-skeleton-bar"></div>
+                                <div class="stats-skeleton-bar"></div>
+                                <div class="stats-skeleton-bar"></div>
+                                <div class="stats-skeleton-bar"></div>
+                                <div class="stats-skeleton-bar"></div>
+                                <div class="stats-skeleton-bar"></div>
+                                <div class="stats-skeleton-bar"></div>
+                                <div class="stats-skeleton-bar"></div>
+                                <div class="stats-skeleton-bar"></div>
+                                <div class="stats-skeleton-bar"></div>
+                                <div class="stats-skeleton-bar"></div>
+                                <div class="stats-skeleton-bar"></div>
+                                <div class="stats-skeleton-bar"></div>
+                                <div class="stats-skeleton-bar"></div>
+                                <div class="stats-skeleton-bar"></div>
+                                <div class="stats-skeleton-bar"></div>
+                                <div class="stats-skeleton-bar"></div>
+                                <div class="stats-skeleton-bar"></div>
+                                <div class="stats-skeleton-bar"></div>
+                                <div class="stats-skeleton-bar"></div>
+                                <div class="stats-skeleton-bar"></div>
+                                <div class="stats-skeleton-bar"></div>
+                                <div class="stats-skeleton-bar"></div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -442,7 +474,33 @@
 
                     <div class="stats-chart-scroll">
                         <div class="stats-chart" id="vacantChart">
-                            <div class="stats-skeleton"><div class="stats-skeleton-bar"></div><div class="stats-skeleton-bar"></div><div class="stats-skeleton-bar"></div><div class="stats-skeleton-bar"></div><div class="stats-skeleton-bar"></div><div class="stats-skeleton-bar"></div><div class="stats-skeleton-bar"></div><div class="stats-skeleton-bar"></div><div class="stats-skeleton-bar"></div><div class="stats-skeleton-bar"></div><div class="stats-skeleton-bar"></div><div class="stats-skeleton-bar"></div></div>
+                            <div class="stats-skeleton">
+                                <div class="stats-skeleton-bar"></div>
+                                <div class="stats-skeleton-bar"></div>
+                                <div class="stats-skeleton-bar"></div>
+                                <div class="stats-skeleton-bar"></div>
+                                <div class="stats-skeleton-bar"></div>
+                                <div class="stats-skeleton-bar"></div>
+                                <div class="stats-skeleton-bar"></div>
+                                <div class="stats-skeleton-bar"></div>
+                                <div class="stats-skeleton-bar"></div>
+                                <div class="stats-skeleton-bar"></div>
+                                <div class="stats-skeleton-bar"></div>
+                                <div class="stats-skeleton-bar"></div>
+                                <div class="stats-skeleton-bar"></div>
+                                <div class="stats-skeleton-bar"></div>
+                                <div class="stats-skeleton-bar"></div>
+                                <div class="stats-skeleton-bar"></div>
+                                <div class="stats-skeleton-bar"></div>
+                                <div class="stats-skeleton-bar"></div>
+                                <div class="stats-skeleton-bar"></div>
+                                <div class="stats-skeleton-bar"></div>
+                                <div class="stats-skeleton-bar"></div>
+                                <div class="stats-skeleton-bar"></div>
+                                <div class="stats-skeleton-bar"></div>
+                                <div class="stats-skeleton-bar"></div>
+                                <div class="stats-skeleton-bar"></div>
+                            </div>
                         </div>
                     </div>
                 </div>

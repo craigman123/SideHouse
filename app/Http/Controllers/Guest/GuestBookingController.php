@@ -59,7 +59,7 @@ class GuestBookingController extends Controller
         // store()/paymentPage() below remains the source of truth; this
         // is display-only.
         $settings = BusinessSetting::current();
-        $weeklySchedule = $this->buildWeeklyScheduleDays($settings);
+        $weeklySchedule = $this->buildWeeklyScheduleDays($settings, $primaryCourtId);
 
         return view('landing', [
             'courts'              => $courts,
@@ -85,15 +85,15 @@ class GuestBookingController extends Controller
      * buildScheduleDays()'s rolling 5-day window above since that one is
      * anchored on "yesterday" rather than calendar week boundaries.
      */
-    private function buildWeeklyScheduleDays(BusinessSetting $settings): array
+    private function buildWeeklyScheduleDays(BusinessSetting $settings, ?int $courtId): array
     {
         $today = Carbon::today();
         $thisWeekStart = $today->copy()->startOfWeek(Carbon::MONDAY);
         $nextWeekStart = $thisWeekStart->copy()->addWeek();
 
         return [
-            'thisWeek' => $this->buildWeekRows($thisWeekStart, $settings, $today),
-            'nextWeek' => $this->buildWeekRows($nextWeekStart, $settings, $today),
+            'thisWeek' => $this->buildWeekRows($thisWeekStart, $settings, $today, $courtId),
+            'nextWeek' => $this->buildWeekRows($nextWeekStart, $settings, $today, $courtId),
         ];
     }
 
@@ -123,13 +123,18 @@ class GuestBookingController extends Controller
         ];
     }
 
-    private function buildWeekRows(Carbon $weekStart, BusinessSetting $settings, Carbon $today): array
+    private function buildWeekRows(Carbon $weekStart, BusinessSetting $settings, Carbon $today, ?int $courtId): array
     {
         $days = [];
 
         for ($i = 0; $i < 7; $i++) {
             $date = $weekStart->copy()->addDays($i);
             $dateStr = $date->toDateString();
+
+            // Whole-day closures — closed weekdays and one-off
+            // CourtClosure dates — reuse the same check the booking
+            // calendar itself uses, so the two never drift apart.
+            $isFullyClosed = $courtId ? BookingHours::isClosed($courtId, $dateStr) : false;
 
             // Closing time (global or per-date)
             $close = $this->closeTimeInfo($dateStr);
@@ -172,6 +177,7 @@ class GuestBookingController extends Controller
                 'peak'            => $peakRate,
                 'isToday'         => $isToday,
                 'isPast'          => $isPast,
+                'isFullyClosed'   => $isFullyClosed,
             ];
         }
 
@@ -221,6 +227,7 @@ class GuestBookingController extends Controller
                 'date'     => $dateStr,
                 'hours'    => round($hoursByDate[$dateStr] ?? 0, 2),
                 'bookings' => $bookingsByDate[$dateStr] ?? 0,
+                'reason'   => $closuresByDate[$dateStr]->reason ?? null,
             ];
         }
 
