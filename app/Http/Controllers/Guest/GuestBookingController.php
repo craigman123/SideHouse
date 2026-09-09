@@ -97,6 +97,32 @@ class GuestBookingController extends Controller
         ];
     }
 
+    /**
+     * Closing-time info for a single date, flagging when a
+     * SpecificDateTimeClosure has shortened that day versus the usual
+     * global closing hour — so the schedule tables can show the usual
+     * time struck through next to the actual (earlier) one.
+     */
+    private function closeTimeInfo(string $dateStr): array
+    {
+        $closeMinutes = BookingHours::closeHourForDate($dateStr);
+        $usualCloseMinutes = BookingHours::closeHour() * 60;
+
+        $closesAt = Carbon::createFromTime(0, 0, 0)->addMinutes($closeMinutes)->format('g:i A');
+        $usualClosesAt = Carbon::createFromTime(0, 0, 0)->addMinutes($usualCloseMinutes)->format('g:i A');
+
+        // Compare the formatted strings, not the raw minute counts — a
+        // normal midnight close can come back as either 0 or 1440
+        // minutes depending on which of these two calls produced it,
+        // and both render as "12:00 AM". Comparing the raw numbers was
+        // flagging every ordinary day as an early closure.
+        return [
+            'closes_at'       => $closesAt,
+            'usual_closes_at' => $usualClosesAt,
+            'hasEarlyClosure' => $closesAt !== $usualClosesAt,
+        ];
+    }
+
     private function buildWeekRows(Carbon $weekStart, BusinessSetting $settings, Carbon $today): array
     {
         $days = [];
@@ -106,10 +132,7 @@ class GuestBookingController extends Controller
             $dateStr = $date->toDateString();
 
             // Closing time (global or per-date)
-            $closeMinutes = BookingHours::closeHourForDate($dateStr);
-            $closeTime = Carbon::createFromTime(0, 0, 0)
-                ->addMinutes($closeMinutes)
-                ->format('g:i A');
+            $close = $this->closeTimeInfo($dateStr);
 
             // Opening time (always global)
             $openTime = Carbon::createFromTime($settings->open_hour, 0, 0)
@@ -139,14 +162,16 @@ class GuestBookingController extends Controller
             }
 
             $days[] = [
-                'date'      => $dateStr,
-                'dateLabel' => $dateLabel,
-                'opens_at'  => $openTime,
-                'closes_at' => $closeTime,
-                'average'   => $averageRate,
-                'peak'      => $peakRate,
-                'isToday'   => $isToday,
-                'isPast'    => $isPast,
+                'date'            => $dateStr,
+                'dateLabel'       => $dateLabel,
+                'opens_at'        => $openTime,
+                'closes_at'       => $close['closes_at'],
+                'usual_closes_at' => $close['usual_closes_at'],
+                'hasEarlyClosure' => $close['hasEarlyClosure'],
+                'average'         => $averageRate,
+                'peak'            => $peakRate,
+                'isToday'         => $isToday,
+                'isPast'          => $isPast,
             ];
         }
 

@@ -2015,6 +2015,25 @@ a.footer-contact:hover {
     color: #6e7681;
 }
 
+/* Closes-at cell when a SpecificDateTimeClosure shortens the day: the
+   usual time reads struck-through, the actual (earlier) time sits next
+   to it in an alerting color so it can't be mistaken for the norm. */
+.closes-usual {
+    text-decoration: line-through;
+    color: #6e7681;
+    margin-right: 6px;
+    font-size: 0.75em;
+}
+
+.closes-actual {
+    color: #f0883e;
+    font-weight: 700;
+}
+
+.early-closure-cell {
+    padding: 0.3rem 1rem !important;
+}
+
 .weekly-schedule-section h3 {
     margin-bottom: 1.5rem;
 }

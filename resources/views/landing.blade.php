@@ -264,7 +264,20 @@
                                         <tr class="{{ $day['isToday'] ? 'today-row' : '' }} {{ $day['isPast'] ? 'past-row' : '' }}">
                                             <td>{{ $day['dateLabel'] }}</td>
                                             <td>{{ $day['opens_at'] }}</td>
-                                            <td>{{ $day['closes_at'] }}</td>
+
+                                                @if($day['hasEarlyClosure'])
+                                                    <td class="early-closure-cell">
+                                                        <div style=" display: flex; flex-direction: column;">
+                                                            <span class="closes-usual" title="Usual closing time">{{ $day['usual_closes_at'] }}</span>
+                                                            <span class="closes-actual" title="Closing early today">{{ $day['closes_at'] }}</span>
+                                                        </div>
+                                                    </td>
+                                                @else
+                                                    <td>
+                                                        {{ $day['closes_at'] }}
+                                                    </td>
+                                                @endif
+                                            
                                             <td>₱{{ number_format($day['average'], 2) }}</td>
                                             <td>
                                                 @if($day['peak'])
@@ -298,7 +311,18 @@
                                         <tr class="{{ $day['isToday'] ? 'today-row' : '' }} {{ $day['isPast'] ? 'past-row' : '' }}">
                                             <td>{{ $day['dateLabel'] }}</td>
                                             <td>{{ $day['opens_at'] }}</td>
-                                            <td>{{ $day['closes_at'] }}</td>
+                                                @if($day['hasEarlyClosure'])
+                                                    <td class="early-closure-cell">
+                                                        <div style=" display: flex; flex-direction: column;">
+                                                            <span class="closes-usual" title="Usual closing time">{{ $day['usual_closes_at'] }}</span>
+                                                            <span class="closes-actual" title="Closing early today">{{ $day['closes_at'] }}</span>
+                                                        </div>
+                                                    </td>
+                                                @else
+                                                    <td>
+                                                        {{ $day['closes_at'] }}
+                                                    </td>
+                                                @endif
                                             <td>₱{{ number_format($day['average'], 2) }}</td>
                                             <td>
                                                 @if($day['peak'])
