@@ -59,7 +59,7 @@ class GuestBookingController extends Controller
         // store()/paymentPage() below remains the source of truth; this
         // is display-only.
         $settings = BusinessSetting::current();
-        $scheduleDays = $this->buildScheduleDays($settings);
+        $weeklySchedule = $this->buildWeeklyScheduleDays($settings);
 
         return view('landing', [
             'courts'              => $courts,
@@ -70,7 +70,7 @@ class GuestBookingController extends Controller
             'stepMinutes'         => BookingHours::stepMinutes(),
             'closedWeekdays'      => BookingHours::closedWeekdays(),
             'closureDates'        => $closureDates,
-            'scheduleDays'        => $scheduleDays,
+            'weeklySchedule'      => $weeklySchedule,
             'specificDateClosing' => SpecificDateTimeClosure::upcoming()->get(),
             'peakStartHour'       => $settings->hasPeakPricing() ? $settings->peak_start_hour : null,
             'peakEndHour'         => $settings->hasPeakPricing() ? $settings->peak_end_hour : null,
@@ -79,14 +79,30 @@ class GuestBookingController extends Controller
         ]);
     }
 
-    private function buildScheduleDays(BusinessSetting $settings): array
+    /**
+     * Two 7-day blocks (Mon–Sun) — this week and next week — for the
+     * landing page's "Weekly Schedule" tables. Kept separate from
+     * buildScheduleDays()'s rolling 5-day window above since that one is
+     * anchored on "yesterday" rather than calendar week boundaries.
+     */
+    private function buildWeeklyScheduleDays(BusinessSetting $settings): array
+    {
+        $today = Carbon::today();
+        $thisWeekStart = $today->copy()->startOfWeek(Carbon::MONDAY);
+        $nextWeekStart = $thisWeekStart->copy()->addWeek();
+
+        return [
+            'thisWeek' => $this->buildWeekRows($thisWeekStart, $settings, $today),
+            'nextWeek' => $this->buildWeekRows($nextWeekStart, $settings, $today),
+        ];
+    }
+
+    private function buildWeekRows(Carbon $weekStart, BusinessSetting $settings, Carbon $today): array
     {
         $days = [];
-        $startDate = Carbon::yesterday();
-        $daysDisplay = 5;
 
-        for ($i = 0; $i < $daysDisplay; $i++) {
-            $date = $startDate->copy()->addDays($i);
+        for ($i = 0; $i < 7; $i++) {
+            $date = $weekStart->copy()->addDays($i);
             $dateStr = $date->toDateString();
 
             // Closing time (global or per-date)
@@ -100,18 +116,37 @@ class GuestBookingController extends Controller
                 ->format('g:i A');
 
             // Rates
-            $averageRate = (float) Court::first()->hourly_rate; // or fetch from settings if it's there
+            $averageRate = (float) Court::first()->hourly_rate;
             $peakRate = $settings->hasPeakPricing()
                 ? round($settings->applyPeakAdjustment($averageRate, $settings->peak_start_hour), 2)
                 : null;
 
+            $isToday = $date->isSameDay($today);
+            $isPast = $date->lt($today);
+
+            if ($isToday) {
+                $dateLabel = 'Today';
+            } elseif ($date->isSameDay($today->copy()->subDay())) {
+                $dateLabel = 'Yesterday';
+            } elseif ($isPast) {
+                // Anything further back than yesterday just reads "Past"
+                // rather than spelling out the date.
+                $dateLabel = 'Past';
+            } elseif ($date->isSameDay($today->copy()->addDay())) {
+                $dateLabel = 'Tomorrow';
+            } else {
+                $dateLabel = $date->format('D, M j');
+            }
+
             $days[] = [
-                'date'        => $date->format('F j, Y'),
-                'dateShort'   => $date->format('M j'),
-                'opens_at'    => $openTime,
-                'closes_at'   => $closeTime,
-                'average'     => $averageRate,
-                'peak'        => $peakRate,
+                'date'      => $dateStr,
+                'dateLabel' => $dateLabel,
+                'opens_at'  => $openTime,
+                'closes_at' => $closeTime,
+                'average'   => $averageRate,
+                'peak'      => $peakRate,
+                'isToday'   => $isToday,
+                'isPast'    => $isPast,
             ];
         }
 

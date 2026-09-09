@@ -1889,7 +1889,7 @@ a.footer-contact:hover {
     border-radius: 12px;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
     margin: 40px auto;
-    max-width: 700px;
+    z-index: 1;
 }
 
 /* Keep the green hover glow from .feature-card:hover but cancel its
@@ -2005,6 +2005,50 @@ a.footer-contact:hover {
     background: rgba(0, 255, 64, 0.06);
 }
 
+/* Days that have already passed — muted so today's outline stays the
+   only thing that draws the eye. */
+.schedule-table .past-row td {
+    color: #6e7681;
+}
+
+.schedule-table .past-row td:last-child {
+    color: #6e7681;
+}
+
+.weekly-schedule-section h3 {
+    margin-bottom: 1.5rem;
+}
+
+/* Stacked, not side-by-side — a single 5-column table gets the section's
+   full width instead of splitting it in half. */
+.weekly-schedule-grid {
+    display: flex;
+    flex-direction: row;
+    gap: 2rem;
+}
+
+.weekly-schedule-block {
+    min-width: 0;
+    background: #0d1117;
+    border: 1px solid #21262d;
+    border-radius: 10px;
+    padding: 1.25rem;
+}
+
+.weekly-schedule-label {
+    margin: 0 0 0.9rem;
+    color: #8b949e;
+    font-size: 0.85rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.weekly-schedule-block .schedule-table td:first-child,
+.weekly-schedule-block .schedule-table th:first-child {
+    white-space: nowrap;
+}
+
 .description-representation {
     font-size: 14px;
     color: #8b949e;
@@ -2013,4 +2057,10 @@ a.footer-contact:hover {
     width: 500px;
     margin: 10px auto;
     max-width: 100%;
+}
+
+@media (max-width: 1250px) {
+    .weekly-schedule-grid {
+        flex-direction: column;
+    }
 }

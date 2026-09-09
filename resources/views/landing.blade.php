@@ -241,59 +241,81 @@
             @endif
         </section>
 
-        <p class="description-representation">This section presents the daily operating schedule, including opening and closing times, average rates, and peak rates. It allows users to quickly check the available schedule and pricing for each day. </p>
-         <section class="specific-date-time-closures feature-card">
-            @if($scheduleDays)
-                <h3>Daily Schedule</h3>
-                <div class="schedule-table-wrapper">
-                    <table class="schedule-table">
-                        <thead>
-                            <tr>
-                                <th>Date</th>
-                                <th>Opens at</th>
-                                <th>Closes at</th>
-                                <th>Average</th>
-                                <th>Peak</th>
-                            </tr>
-                        </thead>
-                            <tbody>
-                            @foreach($scheduleDays as $day)
-                                @php
-                                    $date = \Carbon\Carbon::parse($day['date']);
-                                    $today = \Carbon\Carbon::today();
+        <p class="description-representation">This section shows the operating schedule for this week and next week. Today's row is outlined, and days already passed are labeled "Past".</p>
+        <section class="specific-date-time-closures feature-card weekly-schedule-section">
+            @if($weeklySchedule)
+                <h3>Weekly Schedule</h3>
+                <div class="weekly-schedule-grid">
+                    <div class="weekly-schedule-block">
+                        <h4 class="weekly-schedule-label">This Week</h4>
+                        <div class="schedule-table-wrapper">
+                            <table class="schedule-table">
+                                <thead>
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>Opens at</th>
+                                        <th>Closes at</th>
+                                        <th>Average</th>
+                                        <th>Peak</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach($weeklySchedule['thisWeek'] as $day)
+                                        <tr class="{{ $day['isToday'] ? 'today-row' : '' }} {{ $day['isPast'] ? 'past-row' : '' }}">
+                                            <td>{{ $day['dateLabel'] }}</td>
+                                            <td>{{ $day['opens_at'] }}</td>
+                                            <td>{{ $day['closes_at'] }}</td>
+                                            <td>₱{{ number_format($day['average'], 2) }}</td>
+                                            <td>
+                                                @if($day['peak'])
+                                                    ₱{{ number_format($day['peak'], 2) }}
+                                                @else
+                                                    —
+                                                @endif
+                                            </td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
 
-                                    if ($date->isSameDay($today->copy()->subDay())) {
-                                        $dateLabel = 'Yesterday';
-                                    } elseif ($date->isSameDay($today)) {
-                                        $dateLabel = 'Today';
-                                    } elseif ($date->isSameDay($today->copy()->addDay())) {
-                                        $dateLabel = 'Tomorrow';
-                                    } else {
-                                        $dateLabel = $day['dateShort'];
-                                    }
-
-                                    $isToday = $date->isSameDay($today);
-                                @endphp
-
-                                <tr class="{{ $isToday ? 'today-row' : '' }}">
-                                    <td>{{ $dateLabel }}</td>
-                                    <td>{{ $day['opens_at'] }}</td>
-                                    <td>{{ $day['closes_at'] }}</td>
-                                    <td>₱{{ number_format($day['average'], 2) }}</td>
-                                    <td>
-                                        @if($day['peak'])
-                                            ₱{{ number_format($day['peak'], 2) }}
-                                        @else
-                                            —
-                                        @endif
-                                    </td>
-                                </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
+                    <div class="weekly-schedule-block">
+                        <h4 class="weekly-schedule-label">Next Week</h4>
+                        <div class="schedule-table-wrapper">
+                            <table class="schedule-table">
+                                <thead>
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>Opens at</th>
+                                        <th>Closes at</th>
+                                        <th>Average</th>
+                                        <th>Peak</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach($weeklySchedule['nextWeek'] as $day)
+                                        <tr class="{{ $day['isToday'] ? 'today-row' : '' }} {{ $day['isPast'] ? 'past-row' : '' }}">
+                                            <td>{{ $day['dateLabel'] }}</td>
+                                            <td>{{ $day['opens_at'] }}</td>
+                                            <td>{{ $day['closes_at'] }}</td>
+                                            <td>₱{{ number_format($day['average'], 2) }}</td>
+                                            <td>
+                                                @if($day['peak'])
+                                                    ₱{{ number_format($day['peak'], 2) }}
+                                                @else
+                                                    —
+                                                @endif
+                                            </td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>
             @endif
-        </section> 
+        </section>
 
         <p class="description-representation"> This section highlights the main features and benefits of Side House Paddlers. Each card briefly explains what users can expect from the booking experience and the facilities provided.</p>
         <section class="features" id="features">
@@ -340,7 +362,8 @@
             </div>
         </section>
 
-        <section id="analytics" class="stats-section fade-in" id="courtStats" data-stats-url="{{ route('guest.book.monthly-stats') }}">
+        <span id="analytics"></span>
+        <section id="courtStats" class="stats-section fade-in" data-stats-url="{{ route('guest.book.monthly-stats') }}">
             <div class="stats-intro">
                 <h2>Court Usage This Month</h2>
                 <p id="statsMonthLabel">Loading…</p>
