@@ -1,5 +1,32 @@
 /* ---------- Fixed Navigation with Smooth Mobile Menu ---------- */
 
+/* Shared fixed container for the nav pill and the persistent
+   "Get Directions" button below it — everything that needs to always
+   stay on screen while scrolling lives in here, stacked with a gap, so
+   the button never has to track the nav's height by hand across the
+   four responsive breakpoints below. pointer-events is off on the
+   wrapper itself (it spans the full bar width/height even where
+   there's no visible content, e.g. the gap and the space left of the
+   button) and back on for its two children, so clicks pass through to
+   the hero underneath everywhere except the nav pill and the button. */
+.landing-nav-wrap {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 1000;
+    margin: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 12px;
+    pointer-events: none;
+}
+
+.landing-nav-wrap > * {
+    pointer-events: auto;
+}
+
 .landing-nav {
     display: flex;
     align-items: center;
@@ -9,29 +36,28 @@
     border: 2px solid #21262d;
     border-radius: 50px;
     --webkit-backdrop-filter: blur(100px);
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    z-index: 1000;
+    align-self: stretch;
     gap: 16px;
     flex-wrap: nowrap;
     height: 80px;
     transition: background-color 0.3s ease;
-    margin: 20px;
 }
 
 /* Toggled on <body> by openTimePickerModal()/closeTimePickerModal() in
-   guest-book.js — the nav is position:fixed and sits above everything
-   including modal backdrops, so it needs to be actively hidden rather
-   than just covered. */
-body.nav-hidden-for-modal .landing-nav {
+   guest-book.js — the wrapper is position:fixed and sits above
+   everything including modal backdrops, so it (nav + floating button
+   together) needs to be actively hidden rather than just covered. */
+body.nav-hidden-for-modal .landing-nav-wrap {
     display: none;
 }
 
-/* Add padding to body to account for fixed nav */
+/* Add padding to body to account for the fixed nav + floating button
+   stacked above it. Kept in sync with .landing-nav-wrap's gap and
+   .floating-directions' height by hand at each breakpoint below —
+   if either changes, this needs updating too or content will sit
+   under the floating button. */
 body {
-    padding-top: 68px;
+    padding-top: 124px;
 }
 
 /* ----- Left: Logo ----- */
@@ -102,6 +128,38 @@ body {
 .nav-link-book:hover {
     background-color: #2ea043;
     color: #fff !important;
+}
+
+/* ----- Floating "Get Directions" pill (below the nav, always on screen) ----- */
+
+.floating-directions {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+
+    padding: 9px 18px;
+    border-radius: 999px;
+    border: 2px solid #21262d;
+    background-color: rgba(13, 17, 23, 0.82);
+    --webkit-backdrop-filter: blur(100px);
+
+    color: #c9d1d9;
+    font-size: 13px;
+    font-weight: 700;
+    text-decoration: none;
+    white-space: nowrap;
+
+    transition: color 0.2s ease, border-color 0.2s ease, background-color 0.2s ease, transform 0.15s ease;
+}
+
+.floating-directions:hover {
+    color: #3fb950;
+    border-color: #3fb950;
+    transform: translateY(1px);
+}
+
+.floating-directions-icon {
+    flex-shrink: 0;
 }
 
 /* ----- Search Bar ----- */
@@ -293,11 +351,11 @@ body {
 .nav-mobile-menu {
     display: none;
     position: fixed;
-    top: 68px;
+    top: 124px;
     left: 0;
     right: 0;
     z-index: 1000;
-    max-height: calc(100vh - 68px);
+    max-height: calc(100vh - 124px);
     overflow-y: auto;
     padding: 16px;
     pointer-events: none;
@@ -531,7 +589,7 @@ body {
     }
 
     body {
-        padding-top: 64px;
+        padding-top: 120px;
     }
 
     .nav-logo {
@@ -548,16 +606,16 @@ body {
     }
 
     .nav-mobile-overlay {
-        top: 64px;
+        top: 120px;
     }
 
     .nav-mobile-menu {
-        top: 64px;
-        max-height: calc(100vh - 64px);
+        top: 120px;
+        max-height: calc(100vh - 120px);
     }
 }
 
-@media (max-width: 1250px) {
+@media (max-width: 1110px) {
     .nav-toggle {
         display: flex;
     }
@@ -584,7 +642,7 @@ body {
     }
 
     body {
-        padding-top: 60px;
+        padding-top: 116px;
     }
 
     .nav-logo {
@@ -608,12 +666,12 @@ body {
     }
 
     .nav-mobile-overlay {
-        top: 60px;
+        top: 116px;
     }
 
     .nav-mobile-menu {
-        top: 60px;
-        max-height: calc(100vh - 60px);
+        top: 116px;
+        max-height: calc(100vh - 116px);
         padding: 12px;
     }
 
@@ -667,7 +725,7 @@ body {
     }
 
     body {
-        padding-top: 56px;
+        padding-top: 100px;
     }
 
     .nav-logo {
@@ -692,13 +750,22 @@ body {
     }
 
     .nav-mobile-overlay {
-        top: 56px;
+        top: 100px;
     }
 
     .nav-mobile-menu {
-        top: 56px;
-        max-height: calc(100vh - 56px);
+        top: 100px;
+        max-height: calc(100vh - 100px);
         padding: 10px;
+    }
+
+    .landing-nav-wrap {
+        gap: 8px;
+    }
+
+    .floating-directions {
+        padding: 7px 14px;
+        font-size: 12px;
     }
 
     .nav-mobile-panel {
@@ -1300,4 +1367,8 @@ body {
 
 .booking-search-result-payment-ref {
     font-family: ui-monospace, monospace;
+}
+
+.direction-btn {
+    position: relative;
 }

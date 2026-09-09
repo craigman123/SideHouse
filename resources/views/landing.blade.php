@@ -28,41 +28,59 @@
         <div class="bg-particle"></div>
 
         {{-- Updated navigation with search bar --}}
-        <nav class="landing-nav">
-            <div class="nav-left">
-                <img src="{{ asset('images/tab_icon.png') }}" alt="Side House" class="nav-logo" loading="lazy">
-                <strong class="nav-title-landing">Side House Paddlers</strong>
-            </div>
-
-            <div class="nav-center">
-                <div class="nav-links">
-                    <a href="#" class="nav-link active">Home</a>
-                    <a href="#bookNow" class="nav-link">Book a Court</a>
-                    <a href="#features" class="nav-link">Features</a>
-                    <a href="#faq" class="nav-link">FAQ</a>
-                    <a href="#findUs" class="nav-link">Find Us</a>
-                    <a href="#analytics" class="nav-link">Analytics</a>
-                    {{-- <a href="#getMore" class="nav-link">Create Account</a> --}}
-                    <a href="https://www.google.com/maps/dir/?api=1&destination=10.246043101731798,123.78949399013447"
-                    target="_blank"
-                    rel="noopener noreferrer" class="nav-link">Get Directions</a>
+        <div class="landing-nav-wrap">
+            <nav class="landing-nav">
+                <div class="nav-left">
+                    <img src="{{ asset('images/tab_icon.png') }}" alt="Side House" class="nav-logo" loading="lazy">
+                    <strong class="nav-title-landing">Side House Paddlers</strong>
                 </div>
 
-                    <button type="button" class="nav-search-show" id="navSearchTrigger" aria-label="Find your booking" aria-haspopup="dialog">
-                        <svg class="nav-search-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
-                            <circle cx="11" cy="11" r="7" />
-                            <path d="M16.5 16.5l4.5 4.5" />
-                        </svg>
-                    </button>
-                <a href="#bookNow" class="nav-link nav-link-book">Book Now</a>
-            </div>
+                <div class="nav-center">
+                    <div class="nav-links">
+                        <a href="#" class="nav-link active">Home</a>
+                        <a href="#bookNow" class="nav-link">Book a Court</a>
+                        <a href="#features" class="nav-link">Features</a>
+                        <a href="#faq" class="nav-link">FAQ</a>
+                        <a href="#findUs" class="nav-link">Find Us</a>
+                        <a href="#analytics" class="nav-link">Analytics</a>
+                        {{-- <a href="#getMore" class="nav-link">Create Account</a> --}}
+                    </div>
 
-            <button class="nav-toggle" id="navToggle" aria-label="Toggle navigation" aria-expanded="false">
-                <span></span>
-                <span></span>
-                <span></span>
-            </button>
-        </nav>
+                        <button type="button" class="nav-search-show" id="navSearchTrigger" aria-label="Find your booking" aria-haspopup="dialog">
+                            <svg class="nav-search-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="11" cy="11" r="7" />
+                                <path d="M16.5 16.5l4.5 4.5" />
+                            </svg>
+                        </button>
+                    <a href="#bookNow" class="nav-link nav-link-book">Book Now</a>
+                </div>
+
+                <button class="nav-toggle" id="navToggle" aria-label="Toggle navigation" aria-expanded="false">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </button>
+            </nav>
+
+            {{-- Same destination as the "Get Directions" nav link above,
+                 but as its own persistent pill under the nav — stacked in
+                 this shared fixed wrapper so it stays on screen and
+                 right-aligned under Book Now at every scroll position and
+                 screen size, without tracking the nav's height by hand. --}}
+            <a
+                href="https://www.google.com/maps/dir/?api=1&destination=10.246043101731798,123.78949399013447"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="floating-directions"
+                aria-label="Get directions to Side House Paddlers"
+            >
+                <svg class="floating-directions-icon" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z" />
+                    <circle cx="12" cy="10" r="2.4" />
+                </svg>
+                Get Directions
+            </a>
+        </div>
 
     <!-- Mobile Menu Overlay -->
     <div class="nav-mobile-overlay" id="navMobileOverlay"></div>
@@ -78,9 +96,6 @@
                 <a href="#findUs" class="nav-link">Find Us</a>
                 <a href="#analytics" class="nav-link">Analytics</a>
                 {{-- <a href="#getMore" class="nav-link">Create Account</a> --}}
-                <a href="https://www.google.com/maps/dir/?api=1&destination=10.246043101731798,123.78949399013447"
-                    target="_blank"
-                    rel="noopener noreferrer" class="nav-link">Get Directions</a>
             </div>
 
             <div class="nav-search-wrap">
@@ -116,7 +131,6 @@
             <div class="hero-visit-details" aria-label="Venue details">
                 <span>Open {{ \Carbon\Carbon::createFromTime($openHour)->format('g A') }}–{{ \Carbon\Carbon::createFromTime($closeHour)->format('g A') }}</span>
                 <span>423 Tabay, Tunghaan, Minglanilla</span>
-                <a href="https://www.google.com/maps/dir/?api=1&destination=10.246043101731798,123.78949399013447" target="_blank" rel="noopener noreferrer">Get directions</a>
             </div>
 
             <a href="#bookNow" class="scroll-cue" aria-label="Scroll to booking">
@@ -419,39 +433,7 @@
 
                     <div class="stats-chart-scroll">
                         <div class="stats-chart" id="statsChart">
-                            <div class="stats-skeleton">
-                                <div class="stats-skeleton-bar"></div>
-                                <div class="stats-skeleton-bar"></div>
-                                <div class="stats-skeleton-bar"></div>
-                                <div class="stats-skeleton-bar"></div>
-                                <div class="stats-skeleton-bar"></div>
-                                <div class="stats-skeleton-bar"></div>
-                                <div class="stats-skeleton-bar"></div>
-                                <div class="stats-skeleton-bar"></div>
-                                <div class="stats-skeleton-bar"></div>
-                                <div class="stats-skeleton-bar"></div>
-                                <div class="stats-skeleton-bar"></div>
-                                <div class="stats-skeleton-bar"></div>
-                                <div class="stats-skeleton-bar"></div>
-                                <div class="stats-skeleton-bar"></div>
-                                <div class="stats-skeleton-bar"></div>
-                                <div class="stats-skeleton-bar"></div>
-                                <div class="stats-skeleton-bar"></div>
-                                <div class="stats-skeleton-bar"></div>
-                                <div class="stats-skeleton-bar"></div>
-                                <div class="stats-skeleton-bar"></div>
-                                <div class="stats-skeleton-bar"></div>
-                                <div class="stats-skeleton-bar"></div>
-                                <div class="stats-skeleton-bar"></div>
-                                <div class="stats-skeleton-bar"></div>
-                                <div class="stats-skeleton-bar"></div>
-                                <div class="stats-skeleton-bar"></div>
-                                <div class="stats-skeleton-bar"></div>
-                                <div class="stats-skeleton-bar"></div>
-                                <div class="stats-skeleton-bar"></div>
-                                <div class="stats-skeleton-bar"></div>
-                                <div class="stats-skeleton-bar"></div>
-                            </div>
+                            <div class="stats-skeleton"><div class="stats-skeleton-bar"></div><div class="stats-skeleton-bar"></div><div class="stats-skeleton-bar"></div><div class="stats-skeleton-bar"></div><div class="stats-skeleton-bar"></div><div class="stats-skeleton-bar"></div><div class="stats-skeleton-bar"></div><div class="stats-skeleton-bar"></div><div class="stats-skeleton-bar"></div><div class="stats-skeleton-bar"></div><div class="stats-skeleton-bar"></div><div class="stats-skeleton-bar"></div></div>
                         </div>
                     </div>
                 </div>
@@ -474,33 +456,7 @@
 
                     <div class="stats-chart-scroll">
                         <div class="stats-chart" id="vacantChart">
-                            <div class="stats-skeleton">
-                                <div class="stats-skeleton-bar"></div>
-                                <div class="stats-skeleton-bar"></div>
-                                <div class="stats-skeleton-bar"></div>
-                                <div class="stats-skeleton-bar"></div>
-                                <div class="stats-skeleton-bar"></div>
-                                <div class="stats-skeleton-bar"></div>
-                                <div class="stats-skeleton-bar"></div>
-                                <div class="stats-skeleton-bar"></div>
-                                <div class="stats-skeleton-bar"></div>
-                                <div class="stats-skeleton-bar"></div>
-                                <div class="stats-skeleton-bar"></div>
-                                <div class="stats-skeleton-bar"></div>
-                                <div class="stats-skeleton-bar"></div>
-                                <div class="stats-skeleton-bar"></div>
-                                <div class="stats-skeleton-bar"></div>
-                                <div class="stats-skeleton-bar"></div>
-                                <div class="stats-skeleton-bar"></div>
-                                <div class="stats-skeleton-bar"></div>
-                                <div class="stats-skeleton-bar"></div>
-                                <div class="stats-skeleton-bar"></div>
-                                <div class="stats-skeleton-bar"></div>
-                                <div class="stats-skeleton-bar"></div>
-                                <div class="stats-skeleton-bar"></div>
-                                <div class="stats-skeleton-bar"></div>
-                                <div class="stats-skeleton-bar"></div>
-                            </div>
+                            <div class="stats-skeleton"><div class="stats-skeleton-bar"></div><div class="stats-skeleton-bar"></div><div class="stats-skeleton-bar"></div><div class="stats-skeleton-bar"></div><div class="stats-skeleton-bar"></div><div class="stats-skeleton-bar"></div><div class="stats-skeleton-bar"></div><div class="stats-skeleton-bar"></div><div class="stats-skeleton-bar"></div><div class="stats-skeleton-bar"></div><div class="stats-skeleton-bar"></div><div class="stats-skeleton-bar"></div></div>
                         </div>
                     </div>
                 </div>
