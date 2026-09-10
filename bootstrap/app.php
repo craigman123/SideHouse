@@ -14,11 +14,12 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware) {
         $middleware->validateCsrfTokens(except: [
             'guest/bookings/*/cancel',
-            'guest/bookings/*/cancel-all',
+            'guest/bookings/*/cancel-all', // adjust to your actual cancelAllUrl route pattern
             'guest-book/payment/qrph/webhook',
         ]);
         $middleware->preventRequestsDuringMaintenance(except: [
             'cron/*',
+            'maintenance/bypass',
         ]);
         $middleware->web(append: [
             \App\Http\Middleware\PreventBackHistory::class,

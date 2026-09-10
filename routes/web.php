@@ -27,6 +27,10 @@ Route::get('/system/{action}/{token}', [MaintenanceController::class, 'toggle'])
     ->name('system.maintenance-toggle')
     ->middleware('throttle:5,1');
 
+Route::post('/maintenance/bypass', [MaintenanceController::class, 'bypass'])
+    ->name('maintenance.bypass')
+    ->middleware('throttle:5,1');
+
 
 Route::middleware('throttle:10,1')->group(function () {
     Route::post('/guest-book', [GuestBookingController::class, 'store'])->name('guest.book.store');

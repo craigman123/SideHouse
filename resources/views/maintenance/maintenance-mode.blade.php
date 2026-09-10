@@ -98,6 +98,12 @@
             color: #6e7681;
         }
 
+        .bypass-error {
+            color: #f85149;
+            font-size: 12px;
+            margin: -4px 0 4px;
+        }
+
         .button-refresh {
             text-decoration: none;
             color: #04b104;
@@ -122,6 +128,10 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
+        }
+
+        .button-bypass {
+            background: none;
         }
 
         @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
@@ -152,10 +162,13 @@
                 Visitors are seeing the maintenance page. You're browsing
                 normally because your bypass cookie is active.
             </p>
-            <form class="bypass-form">
+            <form class="bypass-form" action="{{ url('/maintenance/bypass') }}" method="POST">
                 @csrf
+                @error('bypass')
+                    <p class="bypass-error">{{ $message }}</p>
+                @enderror
                 <input class=input-token type="text" name="bypass" placeholder="Enter Token to bypass Maintenance">
-                <button type="submit" class="button-refresh">Confirm</button>
+                <button type="submit" class="button-refresh button-bypass">Confirm</button>
             </form>
         @else
             <div class="status-title">Site is back online</div>
