@@ -98,6 +98,25 @@
             color: #6e7681;
         }
 
+        .button-refresh {
+            text-decoration: none;
+            color: #04b104;
+            border: 1px solid #217600;
+            padding: 6px;
+            margin: 10px auto;
+            /* margin-top: 10px; */
+            border-radius: 7px;
+            display: block;
+            text-align: center;
+            width: 80px;
+            font-weight: bold;
+        }
+
+        .button-refresh:hover {
+            background-color: #217600;
+            color: #3fde00;
+        }
+
         @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
 
         @media (max-width: 420px) {
@@ -133,7 +152,7 @@
                 Maintenance mode has been turned off and the bypass cookie
                 was cleared. Everyone, including you, now sees the live site.
             </p>
-            <a href="{{ url('/') }}" class="button">Refresh</a>
+            <a href="{{ url('/') }}" class="button-refresh">Refresh</a>
         @endif
 
         <p class="status-footer">Court Booking &middot; Side House Paddlers</p>
