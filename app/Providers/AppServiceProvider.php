@@ -2,12 +2,14 @@
 
 namespace App\Providers;
 
+use App\Models\PaymentReference;
+use App\Observers\PaymentReferenceObserver;
 use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
-use Illuminate\Database\Eloquent\Model;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -27,6 +29,7 @@ class AppServiceProvider extends ServiceProvider
     {   
         Model::preventSilentlyDiscardingAttributes(! $this->app->isProduction());
         Paginator::defaultView('vendor.pagination.pagination-custom');
+        PaymentReference::observe(PaymentReferenceObserver::class);
 
         // 5 attempts per minute, keyed by submitted username + IP so an
         // attacker can't dodge the limit just by rotating usernames, and

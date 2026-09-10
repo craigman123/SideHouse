@@ -72,7 +72,7 @@
 
         .input-token {
             background: none;
-            border: 1px solid #404040;
+            border: 2px solid #404040;
             width: 100%;
             text-align: center;
             color: white;
@@ -83,7 +83,7 @@
         }
 
         .input-token:hover {
-            border: 1px solid #58a6ff;
+            border: 2px solid #58a6ff;
             color: white;
         }
 
@@ -107,7 +107,7 @@
         .button-refresh {
             text-decoration: none;
             color: #04b104;
-            border: 1px solid #217600;
+            border: 2px solid #217600;
             padding: 6px;
             margin: 10px auto;
             /* margin-top: 10px; */

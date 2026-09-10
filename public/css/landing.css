@@ -289,3 +289,8 @@ body {
   .book-now-rate-peak-note { font-size: 1em; opacity: 0.75; }
 
   .red-upper-border { border-top: 3px solid #d41717; }
+
+
+.times-roman {
+    font-family: 'Times New Roman', Times, serif;
+}

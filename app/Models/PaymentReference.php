@@ -6,16 +6,16 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 /**
- * One row per checkout session's payment — a guest paying once via
- * GCash/Landbank for several different booked dates in the same session
- * still gets exactly one row here, with every one of those Booking rows
- * pointing back at it via bookings.payment_reference_id. See the
+ * One row per checkout session's payment — a guest paying once via QR Ph
+ * for several different booked dates in the same session still gets
+ * exactly one row here, with every one of those Booking rows pointing
+ * back at it via bookings.payment_reference_id. See the
  * 2026_08_20_000000_restructure_payment_reference_table migration for why
  * this used to be the other way around (booking_id living on this table).
  *
  * confirmed_at is the actual source of truth for "did this get paid" —
- * GcashWebhookController / LandbankWebhookController set it (and cascade
- * 'paid' to every linked booking) when the SMS receipt matches.
+ * PaymongoQrPhController's webhook sets it (and cascades 'paid' to every
+ * linked booking) once PayMongo confirms the payment.
  */
 class PaymentReference extends Model
 {

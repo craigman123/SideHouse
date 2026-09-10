@@ -5,8 +5,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const availabilityUrl = grid.dataset.availabilityUrl;
     const equipmentUrl = grid.dataset.equipmentUrl;
     const storeUrl = grid.dataset.storeUrl;
-    const statusUrlTemplate = grid.dataset.statusUrlTemplate;
-    const cancelUrlTemplate = grid.dataset.cancelUrlTemplate;
     const waitingUrlTemplate = grid.dataset.waitingUrlTemplate;
     const userPhone = grid.dataset.userPhone || '';
 
@@ -105,7 +103,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const timePickerModal = document.getElementById('timePickerModal');
     const equipmentModal = document.getElementById('equipmentModal');
     const paymentModal = document.getElementById('courtPaymentModal');
-    const gcashWaitModal = document.getElementById('gcashWaitModal');
 
     const modalCourtName = document.getElementById('modalCourtName');
     const modalCourtNameBooking = document.getElementById('modalCourtNameBooking');
@@ -131,11 +128,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const contactNumberInput = document.getElementById('contactNumber');
     const paymentGrid = document.getElementById('paymentGrid');
-    const gcashWaitTitle = document.getElementById('gcashWaitTitle');
-    const gcashWaitAmount = document.getElementById('gcashWaitAmount');
-    const gcashWaitStatus = document.getElementById('gcashWaitStatus');
-    const gcashWaitCountdown = document.getElementById('gcashWaitCountdown');
-    const gcashWaitCancel = document.getElementById('gcashWaitCancel');
     const bookingSummary = document.getElementById('bookingSummary');
     const summaryDate = document.getElementById('summaryDate');
     const summaryTime = document.getElementById('summaryTime');
@@ -911,141 +903,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return parts.join(', ');
     }
 
-    // ---------- Payment confirmation polling ----------
 
-    const POLL_INTERVAL_MS = 4000;
-    let pollTimer = null;
-    let countdownTimer = null;
-    let activeCancelUrl = null;
-
-    function stopPolling() {
-        if (pollTimer) clearTimeout(pollTimer);
-        if (countdownTimer) clearInterval(countdownTimer);
-        pollTimer = null;
-        countdownTimer = null;
-    }
-
-    function closeWaitModal() {
-        stopPolling();
-        gcashWaitModal.classList.remove('open');
-    }
-
-    function formatCountdown(msRemaining) {
-        const totalSeconds = Math.max(0, Math.floor(msRemaining / 1000));
-        const mins = Math.floor(totalSeconds / 60);
-        const secs = totalSeconds % 60;
-        return `${mins}:${secs.toString().padStart(2, '0')}`;
-    }
-
-    function watchPaymentConfirmation(bookingId, expiresAtIso, amountLabel, method) {
-        const statusUrl = statusUrlTemplate.replace('__ID__', bookingId);
-        const cancelUrl = cancelUrlTemplate.replace('__ID__', bookingId);
-        activeCancelUrl = cancelUrl;
-        const expiresAt = new Date(expiresAtIso).getTime();
-        const methodLabel = PAYMENT_LABELS[method] || 'the payment provider';
-
-        if (gcashWaitTitle) gcashWaitTitle.textContent = `Waiting for ${methodLabel} Payment`;
-        gcashWaitAmount.textContent = amountLabel;
-        gcashWaitStatus.textContent = `We'll confirm automatically the moment ${methodLabel} notifies us — usually within a minute or two.`;
-        gcashWaitModal.classList.add('open');
-
-        countdownTimer = setInterval(() => {
-            const remaining = expiresAt - Date.now();
-            gcashWaitCountdown.textContent = formatCountdown(remaining);
-            if (remaining <= 0) {
-                clearInterval(countdownTimer);
-                countdownTimer = null;
-                handleCountdownExpired();
-            }
-        }, 1000);
-        gcashWaitCountdown.textContent = formatCountdown(expiresAt - Date.now());
-
-        async function handleCountdownExpired() {
-            if (pollTimer) clearTimeout(pollTimer);
-            pollTimer = null;
-
-            try {
-                const res = await fetch(statusUrl, { headers: { Accept: 'application/json' } });
-                if (res.ok) {
-                    const data = await res.json();
-
-                    if (data.status === 'paid') {
-                        closeWaitModal();
-                        showToast('Payment confirmed — see you on the court!', 'success');
-                        finishBookingReset();
-                        return;
-                    }
-
-                    if (data.status === 'cancelled') {
-                        closeWaitModal();
-                        showToast("We didn't receive that payment in time, so the slot was released. Please rebook when you're ready to pay.", 'error');
-                        finishBookingReset();
-                        return;
-                    }
-                }
-            } catch (err) {
-                console.error(err);
-            }
-
-            try {
-                await fetch(cancelUrl, { method: 'POST', headers: { Accept: 'application/json', ...csrfHeaders() } });
-            } catch (err) {
-                console.error(err);
-            }
-
-            closeWaitModal();
-            showToast("We didn't receive that payment in time, so the slot was released. Please rebook when you're ready to pay.", 'error');
-            finishBookingReset();
-        }
-
-        async function poll() {
-            try {
-                const res = await fetch(statusUrl, { headers: { Accept: 'application/json' } });
-                if (res.ok) {
-                    const data = await res.json();
-
-                    if (data.status === 'paid') {
-                        stopPolling();
-                        gcashWaitStatus.textContent = 'Payment confirmed!';
-                        setTimeout(() => {
-                            closeWaitModal();
-                            showToast('Payment confirmed — see you on the court!', 'success');
-                            finishBookingReset();
-                        }, 900);
-                        return;
-                    }
-
-                    if (data.status === 'cancelled') {
-                        stopPolling();
-                        closeWaitModal();
-                        showToast("We didn't receive that payment in time, so the slot was released. Please rebook when you're ready to pay.", 'error');
-                        finishBookingReset();
-                        return;
-                    }
-                }
-            } catch (err) {
-                console.error(err);
-            }
-
-            pollTimer = setTimeout(poll, POLL_INTERVAL_MS);
-        }
-
-        poll();
-    }
-
-    gcashWaitCancel?.addEventListener('click', async () => {
-        const cancelUrl = activeCancelUrl;
-        closeWaitModal();
-        if (cancelUrl) {
-            try {
-                await fetch(cancelUrl, { method: 'POST', headers: { Accept: 'application/json', ...csrfHeaders() } });
-            } catch (err) {
-                console.error(err);
-            }
-        }
-        showToast('Booking cancelled.', 'success');
-        finishBookingReset();
-    });
 
     function finishBookingReset() {
         // Reset back to the saved profile number (if any) rather than

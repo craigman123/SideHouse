@@ -10,6 +10,7 @@
     const cancelUrl    = box.dataset.cancelUrl;
     const cancelAllUrl = box.dataset.cancelAllUrl;
     const landingUrl   = box.dataset.landingUrl;
+    const receiptUrl   = box.dataset.receiptUrl;
 
     // ============================================================
     // BACK NAVIGATION HANDLING
@@ -42,7 +43,7 @@
         .then(data => {
             // If booking is already paid or cancelled, just redirect
             if (data.status === 'paid') {
-                window.location.href = landingUrl + '?booking_success=Payment confirmed!';
+                window.location.href = `${receiptUrl}?token=${encodeURIComponent(token)}`;
                 return;
             }
             if (data.status === 'cancelled') {
@@ -209,10 +210,7 @@
             if (data.status === 'paid') {
                 clearInterval(pollHandle);
                 clearInterval(timerHandle);
-                const params = new URLSearchParams({
-                    booking_success: "Payment confirmed — you're all set!",
-                });
-                window.location.href = `${landingUrl}?${params.toString()}`;
+                window.location.href = `${receiptUrl}?token=${encodeURIComponent(token)}`;
             } else if (data.status === 'cancelled') {
                 clearInterval(pollHandle);
                 clearInterval(timerHandle);

@@ -15,6 +15,7 @@ use App\Http\Controllers\Auth\MfaController;
 use App\Http\Controllers\BookingCronController;
 use App\Http\Controllers\Guest\GuestBookingController;
 use App\Http\Controllers\Guest\PaymongoQrPhController;
+use App\Http\Controllers\Guest\PaymentReceiptController;
 use App\Http\Controllers\User\FeedbackController;
 use App\Http\Controllers\User\NotificationController;
 use App\Http\Controllers\User\User_UserController;
@@ -63,6 +64,10 @@ Route::get('/guest/bookings/{booking}/status', [GuestBookingController::class, '
 // refresh, closed tab, or accidental back/forward doesn't cancel the
 // booking. See GuestBookingController::waiting()'s docblock.
 Route::get('/guest/bookings/{booking}/waiting', [GuestBookingController::class, 'waiting'])->name('guest.book.waiting');
+// The HTML receipt page a guest lands on once their payment is confirmed.
+// Same poll_token-or-owner gate as everything else guest-facing — see
+// PaymentReceiptController::show()'s docblock.
+Route::get('/guest/bookings/{booking}/receipt', [PaymentReceiptController::class, 'show'])->name('guest.book.receipt');
 Route::get('/guest/bookings/search', [GuestBookingController::class, 'search'])
     ->middleware('throttle:10,1')
     ->name('guest.book.search');

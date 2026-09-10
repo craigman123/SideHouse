@@ -9,11 +9,11 @@ namespace App\Support;
  * (not cast to int) so a leading zero in a real reference number is
  * never silently dropped.
  *
- * Shared by GcashWebhookController, LandbankWebhookController, and
+ * Intended to be shared by PaymongoQrPhController and
  * GuestBookingController::store() so the guest-entered reference and the
- * SMS-parsed one are always compared the exact same way, in either
- * direction (webhook matching a booking, or store() retroactively
- * claiming a parked UnmatchedPayment).
+ * webhook-reported one are always compared the exact same way — but as
+ * of this writing nothing in the codebase actually calls normalize()
+ * yet; see the cleanup notes for this file.
  */
 class PaymentReference
 {

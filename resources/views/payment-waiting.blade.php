@@ -33,6 +33,7 @@
         data-cancel-url="{{ $cancelUrl }}"
         data-cancel-all-url="{{ $cancelAllUrl }}"
         data-landing-url="{{ $landingUrl }}"
+        data-receipt-url="{{ $receiptUrl }}"
     >
         <a href="#" class="wt-back" id="backToHome">&larr; Back to home</a>
 

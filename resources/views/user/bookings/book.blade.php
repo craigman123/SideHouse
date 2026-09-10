@@ -260,24 +260,6 @@
         </div>
     </div>
 
-    {{-- Modal 5: waiting for payment confirmation --}}
-    <div class="modal-overlay" id="gcashWaitModal">
-        <div class="modal-box">
-            <div class="modal-header">
-                <h3 id="gcashWaitTitle">Waiting for Payment</h3>
-            </div>
-            <div class="gcash-wait-body">
-                <div class="gcash-wait-spinner" aria-hidden="true"></div>
-                <p class="gcash-wait-amount">Pay <strong id="gcashWaitAmount"></strong> via the QR code you scanned.</p>
-                <p class="gcash-wait-status" id="gcashWaitStatus">We'll confirm automatically the moment we're notified — usually within a minute or two.</p>
-                <p class="gcash-wait-countdown">Slot held for <strong id="gcashWaitCountdown">--:--</strong></p>
-            </div>
-            <div class="modal-actions">
-                <button type="button" class="btn btn-secondary" id="gcashWaitCancel">Cancel Booking</button>
-            </div>
-        </div>
-    </div>
-
     <div class="toast-container" id="toastContainer"></div>
 
 @endsection

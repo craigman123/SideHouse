@@ -116,32 +116,6 @@ class User_UserController extends Controller
         ]);
     }
 
-    /**
-     * Cancel a booking. Route-model-bound, but we still verify ownership
-     * explicitly rather than relying on the route alone. Also doubles as
-     * the "give up on a pending GCash/Landbank payment" action the
-     * checkout's waiting modal calls.
-     *
-     * Only a 'pending' booking can be cancelled here — a 'paid' booking
-     * has confirmed revenue behind it, and cancelling it without going
-     * through an actual refund/cancellation-policy decision would make
-     * that revenue vanish from reports with no refund record anywhere.
-     * If a paid booking genuinely needs cancelling, that has to go
-     * through staff (Admin\BookingController), not this self-service
-     * endpoint.
-     *
-     * Locked and re-checked under a transaction rather than trusting the
-     * route-bound $booking — GcashWebhookController::handleSms() /
-     * LandbankWebhookController::handleSms() could confirm this exact
-     * booking's payment between the page loading and this click landing,
-     * and without the lock a 'pending' check here could pass a beat
-     * before the webhook's own update, then still cancel a booking that
-     * had just been paid for.
-     *
-     * Cancels only THIS booking (this one date) — a sibling booking
-     * sharing the same payment_reference from the same multi-date
-     * checkout is unaffected.
-     */
     public function cancelBooking(Booking $booking)
     {
         abort_unless($booking->user_id === auth()->id(), 403);

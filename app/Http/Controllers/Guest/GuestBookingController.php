@@ -988,7 +988,19 @@ class GuestBookingController extends Controller
      */
     public function waiting(Request $request, Booking $booking)
     {
-        $token = (string) $request->query('token', '');
+        // Same fallback order as status()/cancel()/cancelAll(): prefer the
+        // token already stashed in session from an earlier visit, and only
+        // fall back to the query param when there isn't one yet (e.g. the
+        // very first visit from the booking-confirmation redirect). Without
+        // this fallback, any redirect back to this route that forgets to
+        // re-attach ?token= (e.g. PaymentReceiptController::show() when the
+        // payment isn't confirmed yet) 403s even for the booking's rightful
+        // owner.
+        $token = session()->get('booking_token_' . $booking->id);
+
+        if (!$token) {
+            $token = (string) $request->query('token', '');
+        }
 
         if ($token === '' || ! $booking->poll_token || ! hash_equals($booking->poll_token, $token)) {
             abort(403);
@@ -1019,6 +1031,7 @@ class GuestBookingController extends Controller
             'cancelUrl'       => route('guest.book.cancel', ['booking' => $booking->id]), // Removed ?token=
             'cancelAllUrl'    => route('guest.book.cancel-all', ['booking' => $booking->id]), // Removed ?token=
             'landingUrl'      => route('landing'),
+            'receiptUrl'      => route('guest.book.receipt' , ['booking' => $booking->id]), 
         ]);
     }
 
