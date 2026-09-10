@@ -22,38 +22,12 @@ use App\Http\Controllers\User\UserDashboardController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\MaintenanceController;
 
-
-// =============================== MAINTENANCE MODE ==========================================
-Route::get('/system/{action}/{token}', function (string $action, string $token) {
-    $controlToken = (string) env('MAINTENANCE_CONTROL_TOKEN');
-
-    // hash_equals prevents timing attacks on the token comparison.
-    if ($controlToken === '' || ! hash_equals($controlToken, $token)) {
-        abort(404);
-    }
-
-    if ($action === 'down') {
-        Artisan::call('down', [
-            '--secret' => env('MAINTENANCE_BYPASS_SECRET'),
-            '--render' => 'errors::503',
-        ]);
-
-        return 'Maintenance mode is now ON.';
-    }
-
-    if ($action === 'up') {
-        Artisan::call('up');
-
-        return 'Maintenance mode is now OFF.';
-    }
-
-    abort(404);
-})->name('system.maintenance-toggle');
-
-
-
-
+// ====================================== Maintenance Mode ====================================== 
+Route::get('/system/{action}/{token}', [MaintenanceController::class, 'toggle'])
+    ->name('system.maintenance-toggle')
+    ->middleware('throttle:5,1');
 
 
 Route::middleware('throttle:10,1')->group(function () {
