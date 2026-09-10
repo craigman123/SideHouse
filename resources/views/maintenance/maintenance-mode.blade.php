@@ -117,6 +117,13 @@
             color: #3fde00;
         }
 
+        .bypass-form {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
         @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
 
         @media (max-width: 420px) {
@@ -145,7 +152,11 @@
                 Visitors are seeing the maintenance page. You're browsing
                 normally because your bypass cookie is active.
             </p>
-            <input class=input-token type="text" name="bypass" placeholder="Enter Token to bypass Maintenance">
+            <form class="bypass-form">
+                @csrf
+                <input class=input-token type="text" name="bypass" placeholder="Enter Token to bypass Maintenance">
+                <button type="submit" class="button-refresh">Confirm</button>
+            </form>
         @else
             <div class="status-title">Site is back online</div>
             <p class="status-subtitle">
