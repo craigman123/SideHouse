@@ -37,18 +37,20 @@ class MaintenanceController extends Controller
             '--render' => 'errors::503',
         ]);
 
-        return 'Maintenance mode is now ON.';
+        return view('maintenance.maintenance-mode', ['status' => 'on']);
     }
 
     protected function up()
     {
         Artisan::call('up');
 
-        return response('Maintenance mode is now OFF.')
+        return response()
+            ->view('miantenance.maintenance-mode', ['status' => 'off'])
             ->withCookie(Cookie::forget(
                 'laravel_maintenance',
                 config('session.path'),
                 config('session.domain'),
             ));
     }
+
 }
