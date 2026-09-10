@@ -21,6 +21,9 @@ return Application::configure(basePath: dirname(__DIR__))
             'cron/*',
             'maintenance/bypass',
         ]);
+        $middleware->encryptCookies(except: [
+            'laravel_maintenance',
+        ]);
         $middleware->web(append: [
             \App\Http\Middleware\PreventBackHistory::class,
         ]);
