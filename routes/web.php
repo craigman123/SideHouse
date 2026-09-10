@@ -19,10 +19,8 @@ use App\Http\Controllers\User\FeedbackController;
 use App\Http\Controllers\User\NotificationController;
 use App\Http\Controllers\User\User_UserController;
 use App\Http\Controllers\User\UserDashboardController;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\MaintenanceController;
+use App\Http\Controllers\Maintenance\MaintenanceController;
 
 // ====================================== Maintenance Mode ====================================== 
 Route::get('/system/{action}/{token}', [MaintenanceController::class, 'toggle'])
