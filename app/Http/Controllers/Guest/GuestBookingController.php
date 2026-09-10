@@ -947,8 +947,6 @@ class GuestBookingController extends Controller
             'poll_token' => $bookings[0]->poll_token,
             'expires_at' => $bookings[0]->expires_at?->toIso8601String(),
             'amount'     => $result['paymentReference']->amount,
-            // ✅ NEW: The frontend should now navigate to /waiting/{booking} without ?token=
-            // The token will be stored in session when they land on waiting page
         ]);
     }
 
