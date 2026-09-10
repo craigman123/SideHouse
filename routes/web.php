@@ -23,6 +23,39 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Route;
 
+
+// =============================== MAINTENANCE MODE ==========================================
+Route::get('/system/{action}/{token}', function (string $action, string $token) {
+    $controlToken = (string) env('MAINTENANCE_CONTROL_TOKEN');
+
+    // hash_equals prevents timing attacks on the token comparison.
+    if ($controlToken === '' || ! hash_equals($controlToken, $token)) {
+        abort(404);
+    }
+
+    if ($action === 'down') {
+        Artisan::call('down', [
+            '--secret' => env('MAINTENANCE_BYPASS_SECRET'),
+            '--render' => 'errors::503',
+        ]);
+
+        return 'Maintenance mode is now ON.';
+    }
+
+    if ($action === 'up') {
+        Artisan::call('up');
+
+        return 'Maintenance mode is now OFF.';
+    }
+
+    abort(404);
+})->name('system.maintenance-toggle');
+
+
+
+
+
+
 Route::middleware('throttle:10,1')->group(function () {
     Route::post('/guest-book', [GuestBookingController::class, 'store'])->name('guest.book.store');
     Route::post('/guest-book/payment/qrph', [PaymongoQrPhController::class, 'createQr'])

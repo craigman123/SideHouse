@@ -8,7 +8,7 @@
 //   Turn maintenance OFF: https://yourdomain.com/system/up/{MAINTENANCE_CONTROL_TOKEN}
 //   Bypass while down:    https://yourdomain.com/{MAINTENANCE_BYPASS_SECRET}
 //
-// Both tokens live in Render's Environment tab — never hardcode them here.
+// Both tokens live in Hosting Website Environment tab — never hardcode them here.
 
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Route;
