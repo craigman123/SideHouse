@@ -98,16 +98,14 @@
                 Visitors are seeing the maintenance page. You're browsing
                 normally because your bypass cookie is active.
             </p>
-
-            <a href="{{ url('/') }}" class="button">Refresh</a>
+            <input type="text" name="bypass" placeholder="Enter Token to bypass Maintenance">
         @else
             <div class="status-title">Site is back online</div>
             <p class="status-subtitle">
                 Maintenance mode has been turned off and the bypass cookie
                 was cleared. Everyone, including you, now sees the live site.
             </p>
-
-            <input type="text" name="bypass" placeholder="Enter Token to bypass Maintenance">
+            <a href="{{ url('/') }}" class="button">Refresh</a>
         @endif
 
         <p class="status-footer">Court Booking &middot; Side House Paddlers</p>
