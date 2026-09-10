@@ -45,7 +45,7 @@ class MaintenanceController extends Controller
         Artisan::call('up');
 
         return response()
-            ->view('miantenance.maintenance-mode', ['status' => 'off'])
+            ->view('maintenance.maintenance-mode', ['status' => 'off'])
             ->withCookie(Cookie::forget(
                 'laravel_maintenance',
                 config('session.path'),
