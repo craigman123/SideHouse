@@ -23,6 +23,10 @@ use App\Http\Controllers\User\UserDashboardController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Maintenance\MaintenanceController;
 
+Route::match(['get', 'post'], '/test-error/{code}', function ($code) {
+    abort((int) $code);
+});
+
 // ====================================== Maintenance Mode ====================================== 
 Route::get('/system/{action}/{token}', [MaintenanceController::class, 'toggle'])
     ->name('system.maintenance-toggle')
