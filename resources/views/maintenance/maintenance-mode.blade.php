@@ -58,7 +58,7 @@
 
         .status-title { font-size: 22px; font-weight: 800; margin-bottom: 10px; }
         .status-subtitle { font-size: 14px; color: #8b949e; line-height: 1.6; margin-bottom: 8px; }
-        .status-footer { margin-top: 26px; font-size: 12px; color: #6e7681; }
+        .status-footer { margin-top: 10px; font-size: 12px; color: #6e7681; }
 
         /* ── ON state (maintenance active) — amber ── */
         .is-on .status-icon { background: rgba(210, 153, 34, .12); color: #e3b341; }
@@ -69,6 +69,34 @@
         .is-off .status-icon { background: rgba(35, 134, 54, .14); color: #56d364; }
         .is-off .status-pill { border: 1px solid #238636; background: rgba(35, 134, 54, .1); color: #56d364; }
         .is-off .status-dot { background: #56d364; }
+
+        .input-token {
+            background: none;
+            border: 1px solid #404040;
+            width: 100%;
+            text-align: center;
+            color: white;
+            border-radius: 10px;
+            padding: 10px;
+            margin: 10px auto;
+            transition: all .3s ease-in-out;
+        }
+
+        .input-token:hover {
+            border: 1px solid #58a6ff;
+            color: white;
+        }
+
+        .input-token:focus {
+            border: 1px solid #58a6ff;
+            color: #58a6ff;
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.15);
+        }
+
+        .input-token::placeholder {
+            color: #6e7681;
+        }
 
         @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
 
@@ -98,7 +126,7 @@
                 Visitors are seeing the maintenance page. You're browsing
                 normally because your bypass cookie is active.
             </p>
-            <input type="text" name="bypass" placeholder="Enter Token to bypass Maintenance">
+            <input class=input-token type="text" name="bypass" placeholder="Enter Token to bypass Maintenance">
         @else
             <div class="status-title">Site is back online</div>
             <p class="status-subtitle">
