@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Side House Paddlers | Guest</title>
     <link rel="stylesheet" href="{{ asset('css/app.css') }}">
     <link rel="stylesheet" href="{{ asset('css/dashboard.css') }}">
@@ -709,47 +710,28 @@
     </div>
 
     <!-- Search modal: insert above your scripts, before the closing </body> -->
-    <div class="modal-overlay" id="searchModal" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="searchModalLabel" data-bookings-search-url="{{ route('guest.book.search') }}" hidden>
+    <div class="modal-overlay" id="searchModal" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="searchModalLabel"
+         data-request-code-url="{{ route('guest.book.search.request-code') }}"
+         data-verify-code-url="{{ route('guest.book.search.verify-code') }}"
+         hidden>
         <div class="modal-box modal-box-search" role="document">
             <div class="modal-header">
                 <div class="search-modal-header">
                     <h3 id="searchModalLabel">Find Your Booking</h3>
                     <button type="button" class="modal-close" id="searchModalClose" aria-label="Close search">&times;</button>
                 </div>
-                <p class="search-modal-hint">Look up a booking using the phone number or email you used when booking.</p>
+                <p class="search-modal-hint" id="searchModalHint">Enter the email you used when booking — we'll send you a 4-digit code.</p>
             </div>
 
             <div class="modal-body">
-                <form id="bookingSearchForm" class="booking-search-form">
-                    <div class="filter-group">
-                        <label for="searchPhoneInput">Phone Number</label>
-                        <div class="booking-search-field">
-                            <input
-                                id="searchPhoneInput"
-                                class="booking-search-input"
-                                type="text"
-                                inputmode="tel"
-                                autocomplete="tel"
-                                placeholder="09XX XXX XXXX"
-                                aria-label="Phone number"
-                            />
-                            <button type="button" class="booking-search-field-clear" id="searchPhoneClear" aria-label="Clear phone number" hidden>&times;</button>
-                        </div>
-                    </div>
-
-                    <div class="filter-divider" role="separator" aria-hidden="true">
-                        <span class="filter-line"></span>
-                        <span class="filter-or">or</span>
-                        <span class="filter-line"></span>
-                    </div>
-
+                <form id="bookingSearchEmailForm" class="booking-search-form">
                     <div class="filter-group">
                         <label for="searchEmailInput">Email Address</label>
                         <div class="booking-search-field">
                             <input
                                 id="searchEmailInput"
                                 class="booking-search-input"
-                                type="text"
+                                type="email"
                                 inputmode="email"
                                 autocomplete="email"
                                 placeholder="you@example.com"
@@ -759,7 +741,31 @@
                         </div>
                     </div>
 
-                    <button type="submit" class="btn-filter booking-search-submit" id="bookingSearchSubmit">Find Bookings</button>
+                    <button type="submit" class="btn-filter booking-search-submit" id="bookingSearchSendCode">Send Code</button>
+                </form>
+
+                <form id="bookingSearchCodeForm" class="booking-search-form" hidden>
+                    <div class="filter-group">
+                        <label id="searchCodeLabel">4-Digit Code</label>
+                        <div class="otp-input-group" id="searchCodeGroup" role="group" aria-labelledby="searchCodeLabel">
+                            <input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="1" class="otp-input" data-otp-index="0" autocomplete="one-time-code" aria-label="Digit 1 of 4" />
+                            <input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="1" class="otp-input" data-otp-index="1" aria-label="Digit 2 of 4" />
+                            <input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="1" class="otp-input" data-otp-index="2" aria-label="Digit 3 of 4" />
+                            <input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="1" class="otp-input" data-otp-index="3" aria-label="Digit 4 of 4" />
+                        </div>
+                    </div>
+                    
+                    <p style="margin:0; color:#6b7280; font-size:13px; line-height:1.6;">
+                        <strong style = "color:#0f9700;"> Reason:</strong> Booking privacy is needed to ensure the safety of all participants.
+                            And to avoid fraudelent booking attempts.
+                    </p>
+
+                    <button type="submit" class="btn-filter booking-search-submit" id="bookingSearchVerifyCode">Verify Code</button>
+
+                    <div class="booking-search-links">
+                        <button type="button" class="booking-search-link" id="bookingSearchResendCode">Resend code</button>
+                        <button type="button" class="booking-search-link" id="bookingSearchChangeEmail">Use a different email</button>
+                    </div>
                 </form>
 
                 <div id="searchModalResults" class="booking-search-results" role="listbox" aria-live="polite">

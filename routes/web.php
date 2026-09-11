@@ -14,6 +14,7 @@ use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\Auth\MfaController;
 use App\Http\Controllers\BookingCronController;
 use App\Http\Controllers\Guest\GuestBookingController;
+use App\Http\Controllers\Guest\GuestBookingSearchController;
 use App\Http\Controllers\Guest\PaymongoQrPhController;
 use App\Http\Controllers\Guest\PaymentReceiptController;
 use App\Http\Controllers\User\FeedbackController;
@@ -60,68 +61,117 @@ Route::get('/cron/run-reminders', [BookingCronController::class, 'runReminders']
     ->middleware('throttle:30,1');
 
 
-Route::get('/', [GuestBookingController::class, 'landing'])->name('landing');
+Route::get('/', [GuestBookingController::class, 'landing'])
+    ->middleware('throttle:60,1')
+    ->name('landing');
 
-Route::get('/book/monthly-stats', [GuestBookingController::class, 'monthlyStats'])->name('guest.book.monthly-stats');
-Route::get('/guest/bookings/{booking}/status', [GuestBookingController::class, 'status'])->name('guest.book.status');
+Route::get('/book/monthly-stats', [GuestBookingController::class, 'monthlyStats'])
+    ->middleware('throttle:30,1')
+    ->name('guest.book.monthly-stats');
+// status/waiting are polled repeatedly by the frontend while a payment is
+// pending, so the limit here is generous — just enough to stop scripted
+// abuse without breaking normal polling.
+Route::get('/guest/bookings/{booking}/status', [GuestBookingController::class, 'status'])
+    ->middleware('throttle:120,1')
+    ->name('guest.book.status');
 // Full-page "waiting for payment" step — replaces the old modal so a
 // refresh, closed tab, or accidental back/forward doesn't cancel the
 // booking. See GuestBookingController::waiting()'s docblock.
-Route::get('/guest/bookings/{booking}/waiting', [GuestBookingController::class, 'waiting'])->name('guest.book.waiting');
+Route::get('/guest/bookings/{booking}/waiting', [GuestBookingController::class, 'waiting'])
+    ->middleware('throttle:60,1')
+    ->name('guest.book.waiting');
 // The HTML receipt page a guest lands on once their payment is confirmed.
 // Same poll_token-or-owner gate as everything else guest-facing — see
 // PaymentReceiptController::show()'s docblock.
-Route::get('/guest/bookings/{booking}/receipt', [PaymentReceiptController::class, 'show'])->name('guest.book.receipt');
-Route::get('/guest/bookings/search', [GuestBookingController::class, 'search'])
-    ->middleware('throttle:10,1')
-    ->name('guest.book.search');
+Route::get('/guest/bookings/{booking}/receipt', [PaymentReceiptController::class, 'show'])
+    ->middleware('throttle:30,1')
+    ->name('guest.book.receipt');
+// Email + OTP booking lookup — no phone number, no direct search anymore.
+// request-code sends an email every hit, so it gets the tightest limit
+// in the file; verify-code is guessable (OTP) so it's tight too.
+Route::post('/guest/bookings/search/request-code', [GuestBookingSearchController::class, 'requestCode'])
+    ->middleware('throttle:3,1')
+    ->name('guest.book.search.request-code');
+Route::post('/guest/bookings/search/verify-code', [GuestBookingSearchController::class, 'verifyCode'])
+    ->middleware('throttle:5,1')
+    ->name('guest.book.search.verify-code');
     
-Route::post('/guest/bookings/{booking}/cancel', [GuestBookingController::class, 'cancel'])->name('guest.book.cancel');
-Route::post('/guest/bookings/{booking}/cancel-all', [GuestBookingController::class, 'cancelAll'])->name('guest.book.cancel-all');
+// cancel / cancel-all typically trigger a confirmation email, so keep
+// these tighter than a plain read route.
+Route::post('/guest/bookings/{booking}/cancel', [GuestBookingController::class, 'cancel'])
+    ->middleware('throttle:10,1')
+    ->name('guest.book.cancel');
+Route::post('/guest/bookings/{booking}/cancel-all', [GuestBookingController::class, 'cancelAll'])
+    ->middleware('throttle:10,1')
+    ->name('guest.book.cancel-all');
 
 // Guest booking (no login required)
-Route::get('/guest-book/availability', [GuestBookingController::class, 'availability'])->name('guest.book.availability');
-Route::get('/guest-book/equipment-availability', [GuestBookingController::class, 'equipmentAvailability'])->name('guest.book.equipment-availability');
+Route::get('/guest-book/availability', [GuestBookingController::class, 'availability'])
+    ->middleware('throttle:60,1')
+    ->name('guest.book.availability');
+Route::get('/guest-book/equipment-availability', [GuestBookingController::class, 'equipmentAvailability'])
+    ->middleware('throttle:60,1')
+    ->name('guest.book.equipment-availability');
 // Full-page "guest info + payment method" step — replaces the old
 // "Almost Done" modal so a refresh or stray backdrop click can't lose
 // the guest's date/time/equipment picks. See
 // GuestBookingController::paymentPage()'s docblock.
-Route::get('/guest-book/payment', [GuestBookingController::class, 'paymentPage'])->name('guest.book.payment');
+Route::get('/guest-book/payment', [GuestBookingController::class, 'paymentPage'])
+    ->middleware('throttle:30,1')
+    ->name('guest.book.payment');
 // NOTE: the unthrottled duplicate of this POST route (which used to sit
 // here) has been removed — it was silently overriding the throttled
 // version registered above, defeating the rate limit entirely. Do not
 // re-add a bare Route::post('/guest-book', ...) here.
 
-Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
+Route::get('/login', [AuthController::class, 'showLogin'])
+    ->middleware('throttle:30,1')
+    ->name('login');
 Route::post('/login', [AuthController::class, 'login'])
     ->middleware('throttle:login')
     ->name('login.submit');
 
-Route::get('/register', [AuthController::class, 'showRegister'])->name('register');
+Route::get('/register', [AuthController::class, 'showRegister'])
+    ->middleware('throttle:30,1')
+    ->name('register');
+// register.submit likely sends a welcome/verification email — keep it
+// under the named 'register' limiter you already have configured.
 Route::post('/register', [AuthController::class, 'register'])
     ->middleware('throttle:register')
     ->name('register.submit');
 
 Route::post('/auth/google', [AuthController::class, 'googleAuth'])->middleware('throttle:15,1')->name('auth.google');
 
-Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
+Route::post('/logout', [AuthController::class, 'logout'])
+    ->middleware('throttle:10,1')
+    ->name('logout');
 
 
 // =================================== MFA ROUTES =====================================
 Route::middleware('auth')->group(function () {
-    Route::get('/mfa/setup', [MfaController::class, 'setup'])->name('mfa.setup');
-    Route::post('/mfa/setup/init', [MfaController::class, 'initSetup'])->name('mfa.setup.init');
+    Route::get('/mfa/setup', [MfaController::class, 'setup'])
+        ->middleware('throttle:20,1')
+        ->name('mfa.setup');
+    // init likely emails/texts an OTP or generates a fresh secret — treat
+    // it like a send-code endpoint, not a plain page load.
+    Route::post('/mfa/setup/init', [MfaController::class, 'initSetup'])
+        ->middleware('throttle:5,1')
+        ->name('mfa.setup.init');
     Route::post('/mfa/enable', [MfaController::class, 'enable'])
         ->middleware('throttle:5,1')
         ->name('mfa.enable');
-    Route::get('/mfa/challenge', [MfaController::class, 'challenge'])->name('mfa.challenge');
+    Route::get('/mfa/challenge', [MfaController::class, 'challenge'])
+        ->middleware('throttle:20,1')
+        ->name('mfa.challenge');
     Route::post('/mfa/verify', [MfaController::class, 'verify'])
         ->middleware('throttle:5,1')
         ->name('mfa.verify');
 });
 
 // =================================== ADMIN ROUTES =====================================
-Route::middleware(['auth', 'admin', 'admin.mfa'])->group(function () {
+// Baseline limit for every admin route below; individual routes that
+// send email (announcements, account deletion) get a tighter override.
+Route::middleware(['auth', 'admin', 'admin.mfa', 'throttle:120,1'])->group(function () {
     Route::get('/dashboard', [Admin_DashboardController::class, 'index'])->name('admin.dashboard');
 
     // Bookings CRUD
@@ -139,7 +189,11 @@ Route::middleware(['auth', 'admin', 'admin.mfa'])->group(function () {
     //Announcements
     Route::get('/announcements', [AnnouncementController::class, 'index'])->name('admin.announcements.index');
     Route::get('/announcements/create', [AnnouncementController::class, 'create'])->name('admin.announcements.create');
-    Route::post('/announcements', [AnnouncementController::class, 'store'])->name('admin.announcements.store');
+    // If store() mass-emails users/customers, this is your biggest single
+    // SMTP-spike risk in the admin area — kept tight on purpose.
+    Route::post('/announcements', [AnnouncementController::class, 'store'])
+        ->middleware('throttle:5,1')
+        ->name('admin.announcements.store');
     Route::delete('/announcements/{announcement}', [AnnouncementController::class, 'destroy'])->name('admin.announcements.destroy');
 
     // Customers
@@ -148,8 +202,12 @@ Route::middleware(['auth', 'admin', 'admin.mfa'])->group(function () {
 
     // Profile
     Route::get('/admin/profile', [AdminProfileController::class, 'profile'])->name('admin.profile');
-    Route::put('/admin/profile', [AdminProfileController::class, 'updateProfile'])->name('admin.profile.update');
-    Route::delete('/admin/profile', [AdminProfileController::class, 'destroyAccount'])->name('admin.profile.destroy');
+    Route::put('/admin/profile', [AdminProfileController::class, 'updateProfile'])
+        ->middleware('throttle:10,1')
+        ->name('admin.profile.update');
+    Route::delete('/admin/profile', [AdminProfileController::class, 'destroyAccount'])
+        ->middleware('throttle:5,1')
+        ->name('admin.profile.destroy');
 
     // Reports
     Route::get('/reports', [ReportController::class, 'index'])->name('admin.reports.index');
@@ -180,27 +238,43 @@ Route::middleware(['auth', 'admin', 'admin.mfa'])->group(function () {
 
 
 // =====================================   USER ROUTES    =====================================
-Route::middleware(['auth'])->group(function () {
+// Same pattern as the admin group: a generous baseline for everything,
+// tighter overrides on anything that writes data or sends email.
+Route::middleware(['auth', 'throttle:120,1'])->group(function () {
     Route::get('/my-dashboard', [UserDashboardController::class, 'index'])->name('user.dashboard');
 
     // Book a court
     Route::get('/book', [User_UserController::class, 'createBooking'])->name('book.index');
     Route::get('/book/availability', [User_UserController::class, 'availability'])->name('book.availability');
     Route::get('/book/equipment-availability', [User_UserController::class, 'equipmentAvailability'])->name('book.equipment-availability');
-    Route::get('/book/bookings/{booking}/status', [User_UserController::class, 'bookingStatus'])->name('book.status');
+    // Polled while a payment is pending, so this gets a higher limit
+    // than the group baseline rather than a tighter one.
+    Route::get('/book/bookings/{booking}/status', [User_UserController::class, 'bookingStatus'])
+        ->middleware('throttle:120,1')
+        ->name('book.status');
     // Full-page "waiting for payment" step — see
     // User_UserController::waitingForPayment()'s docblock.
     Route::get('/book/bookings/{booking}/waiting', [User_UserController::class, 'waitingForPayment'])->name('book.waiting');
-    Route::post('/book', [User_UserController::class, 'storeBooking'])->name('book.store');
+    Route::post('/book', [User_UserController::class, 'storeBooking'])
+        ->middleware('throttle:20,1')
+        ->name('book.store');
 
     // Booking history
     Route::get('/my-bookings', [User_UserController::class, 'myBookings'])->name('user.bookings.index');
-    Route::post('/my-bookings/{booking}/cancel', [User_UserController::class, 'cancelBooking'])->name('user.bookings.cancel');
+    // Cancellation typically fires a confirmation email — tighter than
+    // the group baseline.
+    Route::post('/my-bookings/{booking}/cancel', [User_UserController::class, 'cancelBooking'])
+        ->middleware('throttle:10,1')
+        ->name('user.bookings.cancel');
 
     // Profile
     Route::get('/profile', [User_UserController::class, 'profile'])->name('user.profile');
-    Route::put('/profile', [User_UserController::class, 'updateProfile'])->name('user.profile.update');
-    Route::delete('/profile', [User_UserController::class, 'destroyAccount'])->name('user.profile.destroy');
+    Route::put('/profile', [User_UserController::class, 'updateProfile'])
+        ->middleware('throttle:10,1')
+        ->name('user.profile.update');
+    Route::delete('/profile', [User_UserController::class, 'destroyAccount'])
+        ->middleware('throttle:5,1')
+        ->name('user.profile.destroy');
 
     // Notifications
     Route::get('/notifications', [NotificationController::class, 'index'])->name('user.notifications.index');

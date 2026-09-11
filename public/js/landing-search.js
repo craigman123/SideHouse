@@ -105,7 +105,7 @@ document.addEventListener('DOMContentLoaded', function() {
     updateActiveLink();
 });
 
-// "Find Your Booking" modal: open/close, focus trap, and a phone/email
+// "Find Your Booking" modal: open/close, focus trap, and an email + OTP
 // lookup against the guest's own bookings. This modal used to also host a
 // "Quick Links" mode for site navigation, but every one of those links
 // (Home, Rates, Features, FAQ, Find Us) already exists as a normal link in
@@ -116,16 +116,67 @@ document.addEventListener('DOMContentLoaded', function() {
     const navSearchInputMobile = document.getElementById('navSearchInputMobile'); // trigger-only, see below
     const searchModal = document.getElementById('searchModal');
     const searchModalClose = document.getElementById('searchModalClose');
+    const searchModalHint = document.getElementById('searchModalHint');
     const searchModalResults = document.getElementById('searchModalResults');
-    const bookingSearchForm = document.getElementById('bookingSearchForm');
-    const phoneInput = document.getElementById('searchPhoneInput');
+
+    const emailForm = document.getElementById('bookingSearchEmailForm');
     const emailInput = document.getElementById('searchEmailInput');
-    const phoneClear = document.getElementById('searchPhoneClear');
     const emailClear = document.getElementById('searchEmailClear');
-    const bookingsSearchUrl = searchModal ? searchModal.dataset.bookingsSearchUrl : null;
+    const sendCodeBtn = document.getElementById('bookingSearchSendCode');
+
+    const codeForm = document.getElementById('bookingSearchCodeForm');
+    const codeGroup = document.getElementById('searchCodeGroup');
+    const otpInputs = codeGroup ? Array.from(codeGroup.querySelectorAll('.otp-input')) : [];
+    const verifyCodeBtn = document.getElementById('bookingSearchVerifyCode');
+    const resendCodeBtn = document.getElementById('bookingSearchResendCode');
+    const changeEmailBtn = document.getElementById('bookingSearchChangeEmail');
+
+    const requestCodeUrl = searchModal ? searchModal.dataset.requestCodeUrl : null;
+    const verifyCodeUrl = searchModal ? searchModal.dataset.verifyCodeUrl : null;
+    const csrfToken = document.querySelector('meta[name="csrf-token"]');
+    const csrfTokenValue = csrfToken ? csrfToken.content : null;
 
     let previousActive = null;
-    let searchDebounce = null;
+    let resendCooldownTimer = null;
+    let currentEmail = '';
+
+    function showEmailStep() {
+        if (emailForm) emailForm.hidden = false;
+        if (codeForm) codeForm.hidden = true;
+        if (searchModalHint) searchModalHint.textContent = "Enter the email you used when booking — we'll send you a 4-digit code.";
+        renderPrompt();
+    }
+
+    function showCodeStep() {
+        if (emailForm) emailForm.hidden = true;
+        if (codeForm) codeForm.hidden = false;
+        if (searchModalHint) searchModalHint.textContent = `We sent a 4-digit code to ${currentEmail}.`;
+        clearOtpInputs();
+        renderMessage('Enter the code from your email.');
+        window.setTimeout(() => {
+            if (otpInputs[0]) otpInputs[0].focus();
+        }, 50);
+    }
+
+    function startResendCooldown(seconds) {
+        if (!resendCodeBtn) return;
+        let remaining = seconds;
+        resendCodeBtn.disabled = true;
+        resendCodeBtn.textContent = `Resend code (${remaining}s)`;
+
+        if (resendCooldownTimer) clearInterval(resendCooldownTimer);
+        resendCooldownTimer = setInterval(() => {
+            remaining -= 1;
+            if (remaining <= 0) {
+                clearInterval(resendCooldownTimer);
+                resendCooldownTimer = null;
+                resendCodeBtn.disabled = false;
+                resendCodeBtn.textContent = 'Resend code';
+                return;
+            }
+            resendCodeBtn.textContent = `Resend code (${remaining}s)`;
+        }, 1000);
+    }
 
     function openSearchModal() {
         if (!searchModal) return;
@@ -134,14 +185,13 @@ document.addEventListener('DOMContentLoaded', function() {
         searchModal.setAttribute('aria-hidden', 'false');
         document.body.classList.add('no-scroll');
 
-        if (phoneInput) phoneInput.value = '';
         if (emailInput) emailInput.value = '';
-        if (phoneClear) phoneClear.hidden = true;
         if (emailClear) emailClear.hidden = true;
-        renderPrompt();
+        currentEmail = '';
+        showEmailStep();
 
         window.setTimeout(() => {
-            if (phoneInput) phoneInput.focus();
+            if (emailInput) emailInput.focus();
         }, 50);
         document.addEventListener('keydown', onKeyDown);
         searchModal.addEventListener('click', onOverlayClick);
@@ -156,9 +206,9 @@ document.addEventListener('DOMContentLoaded', function() {
         document.removeEventListener('keydown', onKeyDown);
         searchModal.removeEventListener('click', onOverlayClick);
         trapFocus(false);
-        if (searchDebounce) {
-            clearTimeout(searchDebounce);
-            searchDebounce = null;
+        if (resendCooldownTimer) {
+            clearInterval(resendCooldownTimer);
+            resendCooldownTimer = null;
         }
 
         // Restoring focus to the mobile trigger would immediately re-open
@@ -197,9 +247,74 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!searchModal || searchModal.hidden) return;
         if (!searchModal.contains(e.target)) {
             e.stopPropagation();
-            if (phoneInput) phoneInput.focus();
+            const target = codeForm && !codeForm.hidden ? otpInputs[0] : emailInput;
+            if (target) target.focus();
         }
     }
+
+    // ---------- 4-digit code boxes ----------
+
+    function getOtpCode() {
+        return otpInputs.map((input) => input.value).join('');
+    }
+
+    function clearOtpInputs() {
+        otpInputs.forEach((input) => {
+            input.value = '';
+        });
+    }
+
+    function setOtpCode(digits) {
+        otpInputs.forEach((input, i) => {
+            input.value = digits[i] || '';
+        });
+    }
+
+    otpInputs.forEach((input, index) => {
+        input.addEventListener('input', () => {
+            // Keep only the last digit typed, strip anything non-numeric
+            // (covers keyboards/IMEs that can slip in more than one
+            // character per input event).
+            const digits = input.value.replace(/\D/g, '');
+            input.value = digits.slice(-1);
+
+            if (input.value && index < otpInputs.length - 1) {
+                otpInputs[index + 1].focus();
+            }
+
+            if (otpInputs.every((box) => box.value)) {
+                verifyCode();
+            }
+        });
+
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Backspace' && !input.value && index > 0) {
+                e.preventDefault();
+                otpInputs[index - 1].focus();
+                otpInputs[index - 1].value = '';
+            } else if (e.key === 'ArrowLeft' && index > 0) {
+                e.preventDefault();
+                otpInputs[index - 1].focus();
+            } else if (e.key === 'ArrowRight' && index < otpInputs.length - 1) {
+                e.preventDefault();
+                otpInputs[index + 1].focus();
+            }
+        });
+
+        input.addEventListener('paste', (e) => {
+            const pasted = (e.clipboardData || window.clipboardData).getData('text');
+            const digits = pasted.replace(/\D/g, '').slice(0, otpInputs.length);
+            if (!digits) return;
+            e.preventDefault();
+            setOtpCode(digits);
+            const nextEmpty = otpInputs.findIndex((box) => !box.value);
+            const focusTarget = nextEmpty === -1 ? otpInputs[otpInputs.length - 1] : otpInputs[nextEmpty];
+            focusTarget.focus();
+            if (digits.length === otpInputs.length) {
+                verifyCode();
+            }
+        });
+    });
 
     // ---------- Results rendering ----------
 
@@ -233,7 +348,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function renderPrompt() {
-        renderMessage('Enter your phone number or email, then hit "Find Bookings".');
+        renderMessage('Enter your email, then hit "Send Code".');
     }
 
     // Builds one booking result card entirely with createElement/textContent
@@ -302,7 +417,7 @@ document.addEventListener('DOMContentLoaded', function() {
         inner.innerHTML = '';
 
         if (!bookings.length) {
-            renderMessage('No bookings found for that phone number or email.');
+            renderMessage('No bookings found for that email.');
             return;
         }
 
@@ -311,99 +426,150 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // ---------- Search ----------
+    // ---------- Email + OTP ----------
 
-    function isReady() {
-        const phone = phoneInput ? phoneInput.value.trim() : '';
+    function isEmailReady() {
         const email = emailInput ? emailInput.value.trim() : '';
-        const digits = phone.replace(/\D/g, '');
-        // Same readiness bar the backend re-checks — avoids firing a
-        // request for a half-typed digit string or a bare '@' that will
-        // always come back empty anyway.
-        const phoneReady = digits.length >= 7;
-        const emailReady = email.includes('@') && email.includes('.');
-        return phoneReady || emailReady;
+        return email.includes('@') && email.includes('.');
     }
 
-    async function runSearch() {
-        const phone = phoneInput ? phoneInput.value.trim() : '';
+    async function postJson(url, body) {
+        const res = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                Accept: 'application/json',
+                'X-CSRF-TOKEN': csrfTokenValue || '',
+            },
+            body: JSON.stringify(body),
+        });
+
+        const data = await res.json().catch(() => ({}));
+        return { ok: res.ok, status: res.status, data };
+    }
+
+    async function requestCode() {
         const email = emailInput ? emailInput.value.trim() : '';
 
-        if (!phone && !email) {
-            renderPrompt();
+        if (!isEmailReady()) {
+            renderMessage('Enter a complete email address.');
             return;
         }
 
-        if (!isReady()) {
-            renderMessage('Enter a complete phone number or email address.');
-            return;
-        }
-
-        if (!bookingsSearchUrl) {
+        if (!requestCodeUrl) {
             renderMessage('Booking search is unavailable right now.');
             return;
         }
 
-        renderMessage('Searching…');
+        if (sendCodeBtn) sendCodeBtn.disabled = true;
+        renderMessage('Sending code…');
 
         try {
-            const params = new URLSearchParams();
-            if (phone) params.set('phone', phone);
-            if (email) params.set('email', email);
+            const { ok, status, data } = await postJson(requestCodeUrl, { email });
 
-            const res = await fetch(`${bookingsSearchUrl}?${params.toString()}`, {
-                headers: { Accept: 'application/json' },
-            });
-
-            if (!res.ok) {
-                renderMessage('Something went wrong. Please try again.');
+            if (!ok && status !== 429) {
+                renderMessage(data.message || 'Something went wrong. Please try again.');
                 return;
             }
 
-            const data = await res.json();
+            currentEmail = email;
+            showCodeStep();
+            startResendCooldown(60);
+
+            if (status === 429) {
+                renderMessage(data.message || 'Please wait a bit before requesting another code.');
+            }
+        } catch (err) {
+            console.error(err);
+            renderMessage('Something went wrong. Please try again.');
+        } finally {
+            if (sendCodeBtn) sendCodeBtn.disabled = false;
+        }
+    }
+
+    async function verifyCode() {
+        const code = getOtpCode();
+
+        if (!/^\d{4}$/.test(code)) {
+            renderMessage('Enter the 4-digit code from your email.');
+            return;
+        }
+
+        if (!verifyCodeUrl) {
+            renderMessage('Booking search is unavailable right now.');
+            return;
+        }
+
+        if (verifyCodeBtn) verifyCodeBtn.disabled = true;
+        renderMessage('Verifying…');
+
+        try {
+            const { ok, data } = await postJson(verifyCodeUrl, { email: currentEmail, code });
+
+            if (!ok) {
+                renderMessage(data.message || 'Something went wrong. Please try again.');
+                return;
+            }
+
             renderResults(data.bookings || []);
         } catch (err) {
             console.error(err);
             renderMessage('Something went wrong. Please try again.');
+        } finally {
+            if (verifyCodeBtn) verifyCodeBtn.disabled = false;
         }
     }
 
-    function debouncedSearch() {
-        if (searchDebounce) clearTimeout(searchDebounce);
-        searchDebounce = setTimeout(runSearch, 400);
-    }
-
-    function wireField(input, clearBtn) {
-        if (!input) return;
-
-        input.addEventListener('input', () => {
-            if (clearBtn) clearBtn.hidden = !input.value;
-            debouncedSearch();
+    if (emailClear) {
+        emailClear.addEventListener('click', () => {
+            if (!emailInput) return;
+            emailInput.value = '';
+            emailClear.hidden = true;
+            emailInput.focus();
         });
-
-        if (clearBtn) {
-            clearBtn.addEventListener('click', () => {
-                input.value = '';
-                clearBtn.hidden = true;
-                input.focus();
-                if (searchDebounce) clearTimeout(searchDebounce);
-                if (!phoneInput.value && !emailInput.value) {
-                    renderPrompt();
-                } else {
-                    runSearch();
-                }
-            });
-        }
     }
 
-    wireField(phoneInput, phoneClear);
-    wireField(emailInput, emailClear);
+    if (emailInput) {
+        emailInput.addEventListener('input', () => {
+            if (emailClear) emailClear.hidden = !emailInput.value;
+        });
+    }
 
-    if (bookingSearchForm) {
-        bookingSearchForm.addEventListener('submit', (e) => {
+    if (emailForm) {
+        emailForm.addEventListener('submit', (e) => {
             e.preventDefault();
-            if (searchDebounce) clearTimeout(searchDebounce);
-            runSearch();
+            requestCode();
+        });
+    }
+
+    if (codeForm) {
+        codeForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            verifyCode();
+        });
+    }
+
+    if (resendCodeBtn) {
+        resendCodeBtn.addEventListener('click', () => {
+            if (resendCodeBtn.disabled) return;
+            requestCode();
+        });
+    }
+
+    if (changeEmailBtn) {
+        changeEmailBtn.addEventListener('click', () => {
+            if (resendCooldownTimer) {
+                clearInterval(resendCooldownTimer);
+                resendCooldownTimer = null;
+            }
+            if (resendCodeBtn) {
+                resendCodeBtn.disabled = false;
+                resendCodeBtn.textContent = 'Resend code';
+            }
+            currentEmail = '';
+            clearOtpInputs();
+            showEmailStep();
+            if (emailInput) emailInput.focus();
         });
     }
 
