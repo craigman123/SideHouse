@@ -20,12 +20,14 @@ class MfaController extends Controller
 
         $google2fa = new Google2FA();
 
-        // Reuse existing secret if the user is still in the middle of setup
-        $secret = session('mfa_temp_secret');
+        $secret = $this->tempSecretFor($user);
 
         if (!$secret) {
             $secret = $google2fa->generateSecretKey();
-            session(['mfa_temp_secret' => $secret]);
+            session([
+                'mfa_temp_secret' => $secret,
+                'mfa_temp_secret_user_id' => $user->id,
+            ]);
         }
 
         $qrCodeUrl = $google2fa->getQRCodeUrl(
@@ -42,7 +44,6 @@ class MfaController extends Controller
         ]);
     }
 
-    // Used by the modal
     public function initSetup(Request $request)
     {
         $user = $request->user();
@@ -53,12 +54,14 @@ class MfaController extends Controller
 
         $google2fa = new Google2FA();
 
-        // Reuse existing secret if available
-        $secret = session('mfa_temp_secret');
+        $secret = $this->tempSecretFor($user);
 
         if (!$secret) {
             $secret = $google2fa->generateSecretKey();
-            session(['mfa_temp_secret' => $secret]);
+            session([
+                'mfa_temp_secret' => $secret,
+                'mfa_temp_secret_user_id' => $user->id,
+            ]);
         }
 
         $qrCodeUrl = $google2fa->getQRCodeUrl(
@@ -77,7 +80,16 @@ class MfaController extends Controller
     {
         $request->validate(['code' => 'required|string']);
 
-        $secret = session('mfa_temp_secret');
+        $user = $request->user();
+
+        if ($user->hasMfaEnabled()) {
+            if ($request->expectsJson()) {
+                return response()->json(['message' => 'MFA already enabled'], 400);
+            }
+            return redirect()->route('admin.dashboard', absolute: false);
+        }
+
+        $secret = $this->tempSecretFor($user);
         if (!$secret) {
             if ($request->expectsJson()) {
                 return response()->json(['message' => 'Session expired. Please try again.'], 400);
@@ -95,17 +107,19 @@ class MfaController extends Controller
 
         $recoveryCodes = collect(range(1, 8))->map(fn () => Str::random(10))->values()->all();
 
-        $request->user()->update([
+        $user->update([
             'mfa_enabled'        => true,
-            'mfa_secret'         => $secret, // cast handles encryption
+            'mfa_secret'         => $secret,
             'mfa_recovery_codes' => $recoveryCodes,
         ]);
 
-        session()->forget('mfa_temp_secret');
-        session(['mfa_passed_at' => now()->timestamp]);
-        session()->regenerate(); // rotate session ID after successful MFA
+        session()->forget(['mfa_temp_secret', 'mfa_temp_secret_user_id']);
+        session([
+            'mfa_passed_at' => now()->timestamp,
+            'mfa_passed_user_id' => $user->id,
+        ]);
+        session()->regenerate();
 
-        // in enable(), success branch:
         if ($request->expectsJson()) {
             return response()->json([
                 'message'        => 'MFA enabled successfully',
@@ -132,8 +146,6 @@ class MfaController extends Controller
         $user = $request->user();
         $google2fa = new Google2FA();
 
-        // The 'encrypted' cast on User::mfa_secret handles decryption automatically.
-        // If the secret is missing entirely, force re-enrollment.
         $secret = $user->mfa_secret;
 
         if (!$secret) {
@@ -172,10 +184,12 @@ class MfaController extends Controller
             return back()->withErrors(['code' => 'Invalid authentication code.']);
         }
 
-        session(['mfa_passed_at' => now()->timestamp]);
-        session()->regenerate(); // rotate session ID after successful MFA
+        session([
+            'mfa_passed_at' => now()->timestamp,
+            'mfa_passed_user_id' => $user->id,
+        ]);
+        session()->regenerate();
 
-        // in verify(), success branch:
         if ($request->expectsJson()) {
             return response()->json([
                 'message'    => 'Verified',
@@ -185,5 +199,18 @@ class MfaController extends Controller
         }
 
         return redirect()->intended(route('admin.dashboard', absolute: false));
+    }
+
+    /**
+     * Returns the pending temp secret only if it belongs to this user.
+     */
+    private function tempSecretFor($user): ?string
+    {
+        if (session('mfa_temp_secret_user_id') !== $user->id) {
+            session()->forget(['mfa_temp_secret', 'mfa_temp_secret_user_id']);
+            return null;
+        }
+
+        return session('mfa_temp_secret');
     }
 }

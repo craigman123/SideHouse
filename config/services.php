@@ -48,6 +48,7 @@ return [
 
     'brevo' => [
         'key' => env('BREVO_API_KEY'),
+        'dsn' => env('MAILER_DSN'),
     ],
 
     'paymongo' => [

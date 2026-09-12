@@ -10,6 +10,13 @@ use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Mail;
+use Symfony\Component\Mailer\Bridge\Brevo\Transport\BrevoTransportFactory;
+use Symfony\Component\Mailer\Transport\Dsn;
+use Illuminate\Auth\Events\Login;
+use Illuminate\Auth\Events\Logout;
+use Illuminate\Support\Facades\Event;
+
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -44,8 +51,21 @@ class AppServiceProvider extends ServiceProvider
             });
         });
 
+        Mail::extend('brevo', function () {
+            $factory = new BrevoTransportFactory();
+            return $factory->create(Dsn::fromString(config('services.brevo.dsn')));
+        });
+
         RateLimiter::for('register', function (\Illuminate\Http\Request $request) {
             return Limit::perMinute(5)->by($request->ip());
+        });
+
+        Event::listen(function (Login $event) {
+            session()->forget(['mfa_passed_at', 'mfa_passed_user_id', 'mfa_temp_secret', 'mfa_temp_secret_user_id']);
+        });
+
+        Event::listen(function (Logout $event) {
+            session()->forget(['mfa_passed_at', 'mfa_passed_user_id', 'mfa_temp_secret', 'mfa_temp_secret_user_id']);
         });
     }
 }

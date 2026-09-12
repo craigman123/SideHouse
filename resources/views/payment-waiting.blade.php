@@ -30,7 +30,6 @@
         data-expires-at="{{ optional($booking->expires_at)->toIso8601String() }}"
         data-create-qr-url="{{ route('guest.book.payment.qrph') }}"
         data-status-url="{{ $statusUrl }}"
-        data-cancel-url="{{ $cancelUrl }}"
         data-cancel-all-url="{{ $cancelAllUrl }}"
         data-landing-url="{{ $landingUrl }}"
         data-receipt-url="{{ $receiptUrl }}"

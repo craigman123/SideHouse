@@ -90,17 +90,16 @@ Route::get('/guest/bookings/{booking}/receipt', [PaymentReceiptController::class
 // request-code sends an email every hit, so it gets the tightest limit
 // in the file; verify-code is guessable (OTP) so it's tight too.
 Route::post('/guest/bookings/search/request-code', [GuestBookingSearchController::class, 'requestCode'])
-    ->middleware('throttle:3,1')
+    ->middleware('throttle:20,1')
     ->name('guest.book.search.request-code');
 Route::post('/guest/bookings/search/verify-code', [GuestBookingSearchController::class, 'verifyCode'])
     ->middleware('throttle:5,1')
     ->name('guest.book.search.verify-code');
     
-// cancel / cancel-all typically trigger a confirmation email, so keep
-// these tighter than a plain read route.
-Route::post('/guest/bookings/{booking}/cancel', [GuestBookingController::class, 'cancel'])
-    ->middleware('throttle:10,1')
-    ->name('guest.book.cancel');
+// cancel-all typically triggers a confirmation email, so keep it
+// tighter than a plain read route. (The single-date `cancel()` route was
+// removed as dead code — the waiting page always calls cancel-all, even
+// for a single-date checkout.)
 Route::post('/guest/bookings/{booking}/cancel-all', [GuestBookingController::class, 'cancelAll'])
     ->middleware('throttle:10,1')
     ->name('guest.book.cancel-all');
@@ -201,13 +200,19 @@ Route::middleware(['auth', 'admin', 'admin.mfa', 'throttle:120,1'])->group(funct
     Route::get('/customers/data', [CustomerController::class, 'data'])->name('admin.customers.data');
 
     // Profile
+    // NOTE: PUT/DELETE /profile used to be duplicated here as well as in
+    // the USER ROUTES group below, using the same route names
+    // ('user.profile.update' / 'user.profile.destroy'). That duplication
+    // is a bug: Laravel doesn't allow two routes with the same name, and
+    // because this admin group is registered first and includes the
+    // 'admin' middleware (which aborts 403 for any non-admin), it would
+    // have blocked every ordinary customer from updating or deleting
+    // their own profile. The single source of truth for these two routes
+    // now lives in the USER ROUTES group further down, with 'admin.mfa'
+    // added there so admins still get the MFA check (see Finding #2).
     Route::get('/admin/profile', [AdminProfileController::class, 'profile'])->name('admin.profile');
-    Route::put('/admin/profile', [AdminProfileController::class, 'updateProfile'])
-        ->middleware('throttle:10,1')
-        ->name('admin.profile.update');
-    Route::delete('/admin/profile', [AdminProfileController::class, 'destroyAccount'])
-        ->middleware('throttle:5,1')
-        ->name('admin.profile.destroy');
+    Route::put('/admin/profile', [AdminProfileController::class, 'update'])->name('admin.profile.update');
+    Route::delete('/admin/profile', [AdminProfileController::class, 'destroy'])->name('admin.profile.destroy');
 
     // Reports
     Route::get('/reports', [ReportController::class, 'index'])->name('admin.reports.index');
@@ -268,12 +273,18 @@ Route::middleware(['auth', 'throttle:120,1'])->group(function () {
         ->name('user.bookings.cancel');
 
     // Profile
+    // 'admin.mfa' is added to the write routes here (see Finding #2 in the
+    // audit): the middleware is a no-op for non-admin users, so ordinary
+    // customers are unaffected, but an admin hitting these same shared
+    // routes now has to have passed MFA first, closing the bypass that
+    // let an admin update/delete their own account via the generic
+    // /profile endpoints without ever going through /admin/profile.
     Route::get('/profile', [User_UserController::class, 'profile'])->name('user.profile');
     Route::put('/profile', [User_UserController::class, 'updateProfile'])
-        ->middleware('throttle:10,1')
+        ->middleware(['throttle:10,1', 'admin.mfa'])
         ->name('user.profile.update');
     Route::delete('/profile', [User_UserController::class, 'destroyAccount'])
-        ->middleware('throttle:5,1')
+        ->middleware(['throttle:5,1', 'admin.mfa'])
         ->name('user.profile.destroy');
 
     // Notifications

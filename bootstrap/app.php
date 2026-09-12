@@ -13,8 +13,6 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware) {
         $middleware->validateCsrfTokens(except: [
-            'guest/bookings/*/cancel',
-            'guest/bookings/*/cancel-all', // adjust to your actual cancelAllUrl route pattern
             'guest-book/payment/qrph/webhook',
         ]);
         $middleware->preventRequestsDuringMaintenance(except: [

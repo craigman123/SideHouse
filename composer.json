@@ -16,6 +16,8 @@
         "laravel/tinker": "^2.10.1",
         "pragmarx/google2fa-laravel": "^3.0",
         "resend/resend-laravel": "^1.4",
+        "symfony/brevo-mailer": "^7.4",
+        "symfony/http-client": "^7.4",
         "webklex/laravel-imap": "^6.2"
     },
     "require-dev": {

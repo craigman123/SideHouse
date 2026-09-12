@@ -7,7 +7,6 @@
 
     const createQrUrl  = box.dataset.createQrUrl;
     const statusUrl    = box.dataset.statusUrl;
-    const cancelUrl    = box.dataset.cancelUrl;
     const cancelAllUrl = box.dataset.cancelAllUrl;
     const landingUrl   = box.dataset.landingUrl;
     const receiptUrl   = box.dataset.receiptUrl;

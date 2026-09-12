@@ -14,7 +14,7 @@ return [
     |
     */
 
-    'default' => env('MAIL_MAILER', 'resend'),
+    'default' => env('MAIL_MAILER', 'brevo'),
 
     /*
     |--------------------------------------------------------------------------
@@ -49,12 +49,12 @@ return [
             'local_domain' => env('MAIL_EHLO_DOMAIN', parse_url((string) env('APP_URL', 'http://localhost'), PHP_URL_HOST)),
         ],
 
-        'ses' => [
-            'transport' => 'ses',
+        'brevo' => [
+            'transport' => 'brevo',
         ],
 
-        'postmark' => [
-            'transport' => 'postmark',
+        'ses' => [
+            'transport' => 'ses',
         ],
 
         'resend' => [

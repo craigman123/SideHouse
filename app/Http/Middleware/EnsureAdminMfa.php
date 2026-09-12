@@ -8,8 +8,6 @@ use Symfony\Component\HttpFoundation\Response;
 
 class EnsureAdminMfa
 {
-    // How long an MFA verification stays valid, in seconds.
-    // Re-verification required after this window.
     protected int $mfaTtl = 60 * 60 * 8; // 8 hours
 
     public function handle(Request $request, Closure $next): Response
@@ -21,13 +19,17 @@ class EnsureAdminMfa
         }
 
         $passedAt = session('mfa_passed_at');
+        $passedUserId = session('mfa_passed_user_id');
 
-        if ($passedAt && (now()->timestamp - $passedAt) < $this->mfaTtl) {
+        if (
+            $passedAt
+            && $passedUserId === $user->id
+            && (now()->timestamp - $passedAt) < $this->mfaTtl
+        ) {
             return $next($request);
         }
 
-        // Expired or never verified — clear stale flag and force re-check
-        session()->forget('mfa_passed_at');
+        session()->forget(['mfa_passed_at', 'mfa_passed_user_id']);
 
         if ($user->hasMfaEnabled()) {
             return redirect()->route('mfa.challenge');

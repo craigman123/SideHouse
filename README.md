@@ -7,9 +7,9 @@ and GCash/Landbank payment confirmation via SMS webhook.
 ## Tech Stack
 
 - **Backend:** Laravel (PHP)
-- **Database:** MySQL (via XAMPP or your own server)
+- **Database:** MySQL (via XAMPP or your own server) or recommended Postgres Cloud Database (Supabase)
 - **Frontend:** Blade templates + vanilla JS, built assets via Vite
-- **Payments:** GCash & Landbank, confirmed through an SMS-forwarding webhook (no payment gateway API — see [Payment Webhook Setup](#payment-webhook-setup))
+- **Payments:** QRPH, confirmed through an SMS-forwarding webhook (no payment gateway API — see [Payment Webhook Setup](#payment-webhook-setup))
 
 ## Requirements
 
