@@ -753,5 +753,138 @@ tr.row-removing {
     .user-dashboard-page .hero-next-game,
     .user-dashboard-page .card,
     .user-dashboard-page .court-card,
-    .user-dashboard-page .btn-hero-cta { transition: none; transform: none; }
+    .user-dashboard-page .btn-hero-cta,
+    .user-dashboard-page .sidebar { transition: none; transform: none; }
+}
+
+.user-dashboard-page .sidebar {
+    transition: width 180ms ease, flex-basis 180ms ease;
+}
+
+.user-dashboard-page .sidebar-profile {
+    display: flex;
+    align-items: center;
+    gap: var(--s3);
+    padding: var(--s3);
+}
+
+.user-dashboard-page .sidebar-profile .profile-trigger {
+    flex: 1 1 auto;
+    min-width: 0;
+    width: auto;
+}
+
+.user-dashboard-page .sidebar-collapse-toggle {
+    box-sizing: border-box;
+    display: inline-flex;
+    flex: 0 0 44px;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    min-height: 44px;
+    padding: 0;
+    border: 1px solid var(--brand);
+    border-radius: var(--r-md);
+    background: transparent;
+    color: var(--text);
+    cursor: pointer;
+    transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease;
+}
+
+.user-dashboard-page .sidebar-collapse-toggle:hover {
+    border-color: var(--brand-hover);
+    background: color-mix(in srgb, var(--brand) 12%, var(--surface));
+    color: var(--brand-hover);
+}
+
+.user-dashboard-page .sidebar-collapse-toggle:focus-visible {
+    outline: 2px solid var(--brand-hover);
+    outline-offset: 2px;
+}
+
+.user-dashboard-page.is-sidebar-collapsed .sidebar {
+    flex-basis: 72px;
+    width: 72px;
+}
+
+.user-dashboard-page.is-sidebar-collapsed .sidebar-logo {
+    justify-content: center;
+    padding: var(--s2);
+    border-right: 0;
+}
+
+.user-dashboard-page.is-sidebar-collapsed .logo-img {
+    width: 44px;
+    max-width: 44px;
+    max-height: 44px;
+    object-fit: contain;
+}
+
+.user-dashboard-page.is-sidebar-collapsed .sidebar-nav {
+    padding: var(--s2);
+    overflow-x: hidden;
+}
+
+.user-dashboard-page.is-sidebar-collapsed .sidebar-nav a {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    min-height: 44px;
+    margin: 0 auto var(--s1);
+    padding: var(--s2);
+    gap: 0;
+}
+
+.user-dashboard-page.is-sidebar-collapsed .sidebar-nav a > span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
+}
+
+.user-dashboard-page.is-sidebar-collapsed .sidebar-nav .nav-label {
+    height: 0;
+    padding: 0;
+    margin: var(--s3) var(--s2);
+    overflow: hidden;
+    border-top: 1px solid var(--border);
+    color: transparent;
+    font-size: 0;
+}
+
+.user-dashboard-page.is-sidebar-collapsed .sidebar-profile {
+    flex-direction: column;
+    align-items: center;
+    gap: var(--s3);
+    padding: var(--s2);
+}
+
+.user-dashboard-page.is-sidebar-collapsed .sidebar-profile .profile-trigger {
+    flex: 0 0 44px;
+    justify-content: center;
+    width: 44px;
+    min-height: 44px;
+    padding: 0;
+}
+
+.user-dashboard-page.is-sidebar-collapsed .profile-name,
+.user-dashboard-page.is-sidebar-collapsed .sidebar-footer { display: none; }
+
+@media (max-width: 1450px) {
+    .user-dashboard-page .sidebar-collapse-toggle { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .user-dashboard-page .sidebar,
+    .user-dashboard-page .sidebar-collapse-toggle { transition: none; }
 }

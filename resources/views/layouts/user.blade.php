@@ -18,50 +18,51 @@
 </head>
 <body>
 
-    <aside class="sidebar">
+    <aside class="sidebar" id="userSidebar">
         <div class="sidebar-logo">
             <img src="{{ asset('images/logo.png') }}" alt="Side House" class="logo-img">
         </div>
 
         <nav class="sidebar-nav">
             <label class="nav-label">Main</label>
-            <a href="{{ route('user.dashboard') }}" class="{{ request()->routeIs('user.dashboard') ? 'active' : '' }}">
+            <a href="{{ route('user.dashboard') }}" class="{{ request()->routeIs('user.dashboard') ? 'active' : '' }}" aria-label="Overview" title="Overview">
                 <svg class="sidebar-nav-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>
                 <span>Overview</span>
             </a>
 
             <label class="nav-label">Bookings</label>
-            <a href="/book" class="{{ request()->is('book') ? 'active' : '' }}">
+            <a href="/book" class="{{ request()->is('book') ? 'active' : '' }}" aria-label="Book a Court" title="Book a Court">
                 <svg class="sidebar-nav-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="12" y1="14" x2="12" y2="20"/><line x1="9" y1="17" x2="15" y2="17"/></svg>
                 <span>Book a Court</span>
             </a>
-            <a href="/my-bookings" class="{{ request()->is('my-bookings') ? 'active' : '' }}">
+            <a href="/my-bookings" class="{{ request()->is('my-bookings') ? 'active' : '' }}" aria-label="My Bookings" title="My Bookings">
                 <svg class="sidebar-nav-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><path d="m9 16 2 2 4-4"/></svg>
                 <span>My Bookings</span>
             </a>
 
             <label class="nav-label">Personal</label>
-            <a href="{{ route('user.profile') }}" class="{{ request()->routeIs('user.profile') ? 'active' : '' }}">
+            <a href="{{ route('user.profile') }}" class="{{ request()->routeIs('user.profile') ? 'active' : '' }}" aria-label="Profile" title="Profile">
                 <svg class="sidebar-nav-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/></svg>
                 <span>Profile</span>
             </a>
-            <a href="notifications" class="{{ request()->is('notifications') ? 'active' : '' }}">
+            <a href="notifications" class="{{ request()->is('notifications') ? 'active' : '' }}" aria-label="Notifications" title="Notifications">
                 <svg class="sidebar-nav-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/></svg>
                 <span>Notifications</span>
             </a>
 
             <label class="nav-label">Improvements</label>
-            <a href="/feedback" class="{{ request()->is('feedback') ? 'active' : '' }}">
+            <a href="/feedback" class="{{ request()->is('feedback') ? 'active' : '' }}" aria-label="Feedback and Suggestions" title="Feedback and Suggestions">
                 <svg class="sidebar-nav-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.5 8.5 0 0 1-12.7 7.4L3 21l2.1-5.3A8.5 8.5 0 1 1 21 11.5Z"/><path d="M8 12h.01M12 12h.01M16 12h.01"/></svg>
                 <span>Feedback and Suggestions</span>
             </a>
         </nav>
 
         <div class="sidebar-profile">
-            <a href="/profile" class="profile-trigger {{ request()->is('profile') ? 'active' : '' }}">
+            <a href="/profile" class="profile-trigger {{ request()->is('profile') ? 'active' : '' }}" aria-label="Profile" title="Profile">
                 <span class="profile-avatar">{{ strtoupper(substr($userName, 0, 1)) }}</span>
                 <span class="profile-name">{{ ucfirst(explode(' ', $userName)[0]) }}</span>
             </a>
+            @yield('sidebar-actions')
         </div>
 
         <div class="sidebar-footer">&copy; {{ date('Y') }} Side House</div>

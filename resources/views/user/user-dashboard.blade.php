@@ -8,8 +8,16 @@
     @include('partials.guest.theme-toggle', ['placement' => 'toolbar'])
 @endsection
 
+@section('sidebar-actions')
+    <button type="button" class="sidebar-collapse-toggle" aria-label="Collapse sidebar" aria-expanded="true" aria-controls="userSidebar" title="Collapse sidebar">
+        <svg data-sidebar-icon="collapse" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/><path d="m16 15-3-3 3-3"/></svg>
+        <svg data-sidebar-icon="expand" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" hidden><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/><path d="m14 9 3 3-3 3"/></svg>
+    </button>
+@endsection
+
 @push('head-scripts')
     <script src="{{ asset('js/guest/theme-toggle.js') }}"></script>
+    <script src="{{ asset('js/user/sidebar-collapse.js') }}"></script>
 @endpush
 
 @push('styles')
