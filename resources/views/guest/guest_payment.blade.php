@@ -13,6 +13,7 @@
     <link rel="stylesheet" href="{{ asset('css/booking/landing-book.css') }}">
     <link rel="stylesheet" href="{{ asset('css/user/courts.css') }}">
     <link rel="stylesheet" href="{{ asset('css/guest/payment-info-placeholder.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/guest/guest-payment.css') }}">
     <script src="{{ asset('js/guest/payment.js') }}" defer></script>
     <link rel="icon" type="image/png" href="{{ asset('images/tab_icon.png') }}">
     <script src="https://accounts.google.com/gsi/client" async defer></script>

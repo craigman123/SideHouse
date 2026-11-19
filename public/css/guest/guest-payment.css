@@ -1,0 +1,187 @@
+body {
+    font-family: var(--font-family);
+    background: var(--bg);
+    color: var(--text);
+}
+
+.landing-wrapper {
+    min-height: 100vh;
+    align-items: center;
+    justify-content: center;
+    padding: var(--s5) var(--s4);
+    background: var(--bg);
+}
+
+#paymentPage {
+    width: min(880px, 100%);
+    max-height: calc(100vh - 2 * var(--s5));
+    border: 1px solid transparent;
+    border-radius: var(--r-lg);
+    background-image: linear-gradient(var(--surface), var(--surface)), var(--brand-grad);
+    background-origin: border-box;
+    background-clip: padding-box, border-box;
+    color: var(--text);
+    font-family: var(--font-family);
+}
+
+#paymentPage .modal-header {
+    border-bottom: 1px solid var(--border);
+    padding: var(--s4) var(--s5);
+}
+
+#paymentPage .modal-header h3 {
+    color: var(--text);
+    font-size: var(--font-size-h3);
+    font-weight: var(--font-weight-h3);
+}
+
+#paymentPage .modal-back {
+    margin: var(--s3) var(--s5) 0;
+    padding: var(--s2) var(--s4);
+    border: 1px solid var(--brand);
+    border-radius: var(--r-pill);
+    color: var(--text);
+}
+
+#paymentPage .modal-scroll-body {
+    padding: var(--s4) var(--s5);
+}
+
+#paymentPage .booking-section {
+    margin-bottom: var(--s4);
+    padding: var(--s4);
+    border: 1px solid var(--border);
+    border-radius: var(--r-md);
+    background: var(--surface-2);
+}
+
+#paymentPage .booking-section-label,
+#paymentPage .booking-summary-title {
+    color: var(--text);
+    font-weight: var(--font-weight-h3);
+}
+
+#paymentPage .guest-info-grid {
+    gap: var(--s3);
+}
+
+#paymentPage .guest-info-item label,
+#paymentPage .guest-email-label {
+    color: var(--text-muted);
+    font-size: var(--font-size-small);
+    font-weight: var(--font-weight-small);
+}
+
+#paymentPage .guest-info-item input,
+#paymentPage .guest-email-saved-input {
+    min-height: 48px;
+    padding: var(--s3) var(--s4);
+    border: 1px solid var(--border);
+    border-radius: var(--r-md);
+    background: var(--surface);
+    color: var(--text);
+    font-family: var(--font-family);
+}
+
+#paymentPage .guest-info-item input:focus,
+#paymentPage .guest-email-saved-input:focus {
+    outline: 2px solid var(--brand);
+    outline-offset: 1px;
+}
+
+#paymentPage .guest-email-block-invalid {
+    border-color: var(--danger);
+}
+
+#paymentPage .guest-email-confirmed {
+    border: 1px solid var(--brand);
+    border-radius: var(--r-md);
+    background: var(--surface);
+    color: var(--text);
+}
+
+#paymentPage .payment-btn {
+    border: 1px solid var(--brand);
+    border-radius: var(--r-md);
+    background: var(--surface);
+    color: var(--text);
+}
+
+#paymentPage .payment-btn.selected {
+    background: var(--brand);
+    color: var(--text);
+}
+
+#paymentPage .payment-btn-sub {
+    color: var(--text-muted);
+}
+
+#paymentPage .booking-summary {
+    padding: var(--s4);
+    border: 1px solid var(--border);
+    border-radius: var(--r-md);
+    background: var(--surface-2);
+    color: var(--text-muted);
+}
+
+#paymentPage .booking-summary strong,
+#paymentPage .booking-summary-total strong {
+    color: var(--text);
+}
+
+#paymentPage .booking-summary-total strong {
+    color: var(--brand-hover);
+}
+
+#paymentPage .payment-confidence-note {
+    color: var(--warning);
+}
+
+#paymentPage .modal-actions {
+    gap: var(--s3);
+    padding: var(--s4) var(--s5);
+    border-top: 1px solid var(--border);
+    background: var(--surface);
+}
+
+#paymentPage .modal-actions .btn {
+    min-height: 44px;
+    border-radius: var(--r-pill);
+    font-family: var(--font-family);
+    font-weight: var(--font-weight-button);
+}
+
+#paymentPage .modal-actions .btn-primary {
+    border-color: var(--brand);
+    background: var(--brand);
+    color: var(--text);
+}
+
+#paymentPage .modal-actions .btn-secondary {
+    border: 1px solid var(--brand);
+    background: transparent;
+    color: var(--text);
+}
+
+@media (max-width: 767px) {
+    .landing-wrapper {
+        padding: var(--s3) var(--s2);
+    }
+
+    #paymentPage {
+        max-height: calc(100vh - 2 * var(--s3));
+    }
+
+    #paymentPage .guest-info-grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    #paymentPage .modal-scroll-body {
+        padding: var(--s3);
+    }
+
+    #paymentPage .modal-header,
+    #paymentPage .modal-actions {
+        padding: var(--s3);
+    }
+}
