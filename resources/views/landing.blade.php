@@ -645,36 +645,38 @@
                 </div>
             </div>
 
-            <div class="time-picker-day-switch">
-                <button type="button" class="time-picker-day-nav" id="timePickerPrevDay" aria-label="Previous day">&lsaquo;</button>
-                <h3 id="timePickerDateLabel">Pick Your Hours</h3>
-                <button type="button" class="time-picker-day-nav" id="timePickerNextDay" aria-label="Next day">&rsaquo;</button>
-            </div>
-
-            <div class="time-picker-body">
-                <p class="booking-section-label">Select one or more hours</p>
-
-                <div class="time-picker-legend">
-                    <span class="time-picker-legend-item">
-                        <span class="time-picker-legend-swatch"></span> Available
-                    </span>
-                    <span class="time-picker-legend-item">
-                        <span class="time-picker-legend-swatch legend-selected"></span> Selected
-                    </span>
-                    <span class="time-picker-legend-item">
-                        <span class="time-picker-legend-swatch legend-booked"></span> Booked
-                    </span>
+            <div class="time-picker-scroll-area">
+                <div class="time-picker-day-switch">
+                    <button type="button" class="time-picker-day-nav" id="timePickerPrevDay" aria-label="Previous day">&lsaquo;</button>
+                    <h3 id="timePickerDateLabel">Pick Your Hours</h3>
+                    <button type="button" class="time-picker-day-nav" id="timePickerNextDay" aria-label="Next day">&rsaquo;</button>
                 </div>
 
-                <div class="time-slot-list" id="timeSlotGrid"></div>
+                <div class="time-picker-body">
+                    <p class="booking-section-label">Select one or more hours</p>
 
-                <aside class="booking-selection-summary" id="bookingSelectionSummary" aria-live="polite">
-                    <p class="booking-selection-summary-title">Your selection</p>
-                    <p><span>Court</span><strong class="selection-court" id="selectionCourt">{{ $courts->first()->name }}</strong></p>
-                    <p><span>Date &amp; time</span><strong class="selection-date-time" id="selectionDateTime">Choose a date and time</strong></p>
-                    <p><span>Equipment</span><strong class="selection-equipment" id="selectionEquipment">None selected</strong></p>
-                    <p class="booking-selection-total"><span>Estimated total</span><strong class="selection-total" id="selectionTotal">₱0.00</strong></p>
-                </aside>
+                    <div class="time-picker-legend">
+                        <span class="time-picker-legend-item">
+                            <span class="time-picker-legend-swatch"></span> Available
+                        </span>
+                        <span class="time-picker-legend-item">
+                            <span class="time-picker-legend-swatch legend-selected"></span> Selected
+                        </span>
+                        <span class="time-picker-legend-item">
+                            <span class="time-picker-legend-swatch legend-booked"></span> Booked
+                        </span>
+                    </div>
+
+                    <div class="time-slot-list" id="timeSlotGrid"></div>
+
+                    <aside class="booking-selection-summary" id="bookingSelectionSummary" aria-live="polite">
+                        <p class="booking-selection-summary-title">Your selection</p>
+                        <p><span>Court</span><strong class="selection-court" id="selectionCourt">{{ $courts->first()->name }}</strong></p>
+                        <p><span>Date &amp; time</span><strong class="selection-date-time" id="selectionDateTime">Choose a date and time</strong></p>
+                        <p><span>Equipment</span><strong class="selection-equipment" id="selectionEquipment">None selected</strong></p>
+                        <p class="booking-selection-total"><span>Estimated total</span><strong class="selection-total" id="selectionTotal">₱0.00</strong></p>
+                    </aside>
+                </div>
             </div>
 
             <div class="modal-actions">

@@ -693,14 +693,30 @@ body > .landing-wrapper {
 
 /* Guest wizard modal styles. These modals follow .landing-wrapper in the
    document, so their unique IDs provide the page-specific scope. */
+#timePickerModal {
+    padding: var(--s3);
+}
+
 #timePickerModal .modal-box-timepicker {
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
     width: min(560px, calc(100% - 2 * var(--s4)));
+    max-height: calc(100vh - 2 * var(--s3));
+    max-height: calc(100dvh - 2 * var(--s3));
+    min-height: 0;
+    overflow: hidden;
     padding: var(--s4);
     border: 1px solid var(--border);
     border-radius: var(--r-lg);
     background: var(--surface);
     color: var(--text);
     font-family: var(--font-family);
+}
+
+#timePickerModal .modal-header-timepicker,
+#timePickerModal .modal-actions {
+    flex: 0 0 auto;
 }
 
 #timePickerModal .modal-header-timepicker {
@@ -710,6 +726,18 @@ body > .landing-wrapper {
     justify-content: space-between;
     gap: var(--s3);
     margin-bottom: var(--s3);
+}
+
+#timePickerModal .time-picker-scroll-area {
+    box-sizing: border-box;
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-y;
+    scroll-padding-bottom: var(--s4);
 }
 
 #timePickerModal .booking-flow-progress,
@@ -799,6 +827,7 @@ body > .landing-wrapper {
 }
 
 #timePickerModal .time-picker-body {
+    flex: 0 0 auto;
     gap: var(--s3);
     margin: 0;
     padding: 0;
@@ -843,6 +872,7 @@ body > .landing-wrapper {
 
 #timePickerModal .time-slot-list {
     box-sizing: border-box;
+    flex: 0 1 auto;
     gap: var(--s2);
     max-height: min(320px, 38vh);
     padding: var(--s1) var(--s2) var(--s1) 0;
@@ -873,6 +903,7 @@ body > .landing-wrapper {
     align-items: center;
     gap: var(--s2);
     min-width: 0;
+    min-height: 44px;
     font-family: var(--font-family);
 }
 
@@ -993,6 +1024,16 @@ body > .landing-wrapper {
     margin-top: var(--s4);
     padding-top: var(--s4);
     border-top: 1px solid var(--border);
+}
+
+#timePickerModal .modal-actions {
+    position: sticky;
+    bottom: 0;
+    z-index: 2;
+    margin: var(--s3) 0 0;
+    padding: var(--s3) 0 calc(var(--s3) + env(safe-area-inset-bottom, 0px));
+    border-top: 1px solid var(--border);
+    background: var(--surface);
 }
 
 #timePickerModal .modal-actions .btn,
@@ -1281,12 +1322,71 @@ body > .landing-wrapper {
 @media (max-width: 560px) {
     #timePickerModal .modal-box-timepicker {
         width: calc(100% - 2 * var(--s3));
-        max-height: calc(100vh - 2 * var(--s3));
         padding: var(--s3);
     }
 
+    #timePickerModal .booking-flow-progress {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+
+    #timePickerModal .booking-flow-step {
+        min-height: 44px;
+        flex-direction: column;
+        gap: var(--s1);
+        padding: var(--s1) 0;
+        white-space: nowrap;
+    }
+
+    #timePickerModal .time-picker-day-switch {
+        flex: 0 0 auto;
+    }
+
+    #timePickerModal .time-picker-scroll-area {
+        padding-bottom: var(--s3);
+        scroll-padding-bottom: var(--s5);
+    }
+
     #timePickerModal .time-slot-list {
-        max-height: min(280px, 38vh);
+        flex: 1 0 auto;
+        min-height: calc(4 * 44px + 3 * var(--s2));
+        max-height: none;
+        overflow-y: visible;
+    }
+
+    #timePickerModal .time-picker-legend {
+        flex-flow: row wrap;
+        gap: var(--s2);
+    }
+
+    #timePickerModal .booking-selection-summary {
+        padding: var(--s2) var(--s3);
+    }
+
+    #timePickerModal .booking-selection-summary-title {
+        margin-bottom: var(--s1);
+    }
+
+    #timePickerModal .booking-selection-summary p:not(.booking-selection-summary-title) {
+        align-items: center;
+        gap: var(--s2);
+        padding: var(--s1) 0;
+        white-space: nowrap;
+    }
+
+    #timePickerModal .booking-selection-summary p:not(.booking-selection-summary-title) > span {
+        flex: 0 0 auto;
+    }
+
+    #timePickerModal .booking-selection-summary strong {
+        min-width: 0;
+        max-width: none;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    #timePickerModal .modal-actions {
+        padding-bottom: calc(var(--s3) + env(safe-area-inset-bottom, 0px));
     }
 
     #timePickerModal .time-slot-row-peak .time-slot-row-time::after {
@@ -1303,7 +1403,6 @@ body > .landing-wrapper {
         margin-left: auto;
     }
 
-    #timePickerModal .booking-flow-progress,
     #equipmentModal .booking-flow-progress {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
@@ -1311,6 +1410,25 @@ body > .landing-wrapper {
     #timePickerModal .booking-selection-summary,
     #equipmentModal .booking-selection-summary {
         padding: var(--s3);
+    }
+}
+
+@media (max-width: 400px) {
+    #timePickerModal .booking-flow-step {
+        font-size: 0;
+    }
+
+    #timePickerModal .booking-flow-step b {
+        font-size: var(--font-size-small);
+    }
+}
+
+@media (max-height: 480px) {
+    #timePickerModal .time-slot-list {
+        flex: 1 0 auto;
+        min-height: calc(4 * 44px + 3 * var(--s2));
+        max-height: none;
+        overflow-y: visible;
     }
 }
 
@@ -1322,6 +1440,10 @@ body > .landing-wrapper {
 
     #timePickerModal .time-slot-row-time {
         min-height: 40px;
+    }
+
+    #timePickerModal .time-slot-list {
+        min-height: calc(4 * (40px + 44px + var(--s1)) + 3 * var(--s2));
     }
 }
 
