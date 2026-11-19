@@ -89,6 +89,8 @@
             
             // DOM Elements
             this.qrImageEl = options.qrImageEl || document.getElementById('qrImage');
+            this.qrBoxEl = options.qrBoxEl || document.getElementById('qrBox');
+            this.qrSkeletonEl = options.qrSkeletonEl || document.getElementById('qrSkeleton');
             this.qrLoadingEl = options.qrLoadingEl || document.getElementById('qrLoading');
             this.qrImageWrapEl = options.qrImageWrapEl || document.getElementById('qrImageWrap');
             this.qrErrorEl = options.qrErrorEl || document.getElementById('qrError');
@@ -109,6 +111,12 @@
         }
 
         showLoading() {
+            if (this.qrBoxEl) this.qrBoxEl.dataset.state = 'loading';
+            if (this.qrSkeletonEl) this.qrSkeletonEl.hidden = false;
+            if (this.qrImageEl) {
+                this.qrImageEl.onload = null;
+                this.qrImageEl.onerror = null;
+            }
             if (this.qrLoadingEl) this.qrLoadingEl.hidden = false;
             if (this.qrImageWrapEl) this.qrImageWrapEl.hidden = true;
             if (this.qrErrorEl) this.qrErrorEl.hidden = true;
@@ -116,9 +124,24 @@
         }
 
         showQR(qrImageUrl) {
-            if (this.qrImageEl) {
-                this.qrImageEl.src = qrImageUrl;
+            if (!this.qrImageEl) {
+                this.showError('QR unavailable. Please retry.');
+                return;
             }
+
+            this.showLoading();
+            this.qrImageEl.onload = () => this.showImage();
+            this.qrImageEl.onerror = () => this.showError('QR unavailable. Please retry.');
+            this.qrImageEl.src = qrImageUrl;
+
+            if (this.qrImageEl.complete && this.qrImageEl.naturalWidth > 0) {
+                this.showImage();
+            }
+        }
+
+        showImage() {
+            if (this.qrBoxEl) this.qrBoxEl.dataset.state = 'ready';
+            if (this.qrSkeletonEl) this.qrSkeletonEl.hidden = true;
             if (this.qrLoadingEl) this.qrLoadingEl.hidden = true;
             if (this.qrImageWrapEl) this.qrImageWrapEl.hidden = false;
             if (this.qrStatusLineEl) this.qrStatusLineEl.hidden = false;
@@ -126,6 +149,8 @@
         }
 
         showError(message = 'Couldn\'t generate your QR code.') {
+            if (this.qrBoxEl) this.qrBoxEl.dataset.state = 'error';
+            if (this.qrSkeletonEl) this.qrSkeletonEl.hidden = true;
             if (this.qrLoadingEl) this.qrLoadingEl.hidden = true;
             if (this.qrErrorEl) {
                 this.qrErrorEl.hidden = false;

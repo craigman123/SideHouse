@@ -617,11 +617,14 @@ document.addEventListener('DOMContentLoaded', () => {
     let googleEmail = ''; // decoded from the token, for display only (never trusted on its own)
     const CHECKOUT_DRAFT_KEY = 'sidehouse_guest_checkout_draft';
 
-    const selectionDateTime = document.getElementById('selectionDateTime');
-    const selectionEquipment = document.getElementById('selectionEquipment');
-    const selectionTotal = document.getElementById('selectionTotal');
+    const selectionDateTimeFields = document.querySelectorAll('.selection-date-time, #selectionDateTime, #equipmentSelectedTime');
+    const selectionEquipmentFields = document.querySelectorAll('.selection-equipment, #selectionEquipment');
+    const selectionTotalFields = document.querySelectorAll('.selection-total, #selectionTotal, #equipmentSelectedTotal');
     const equipmentSelectedTime = document.getElementById('equipmentSelectedTime');
     const equipmentSelectedTotal = document.getElementById('equipmentSelectedTotal');
+    let continueToEquipmentInFlight = false;
+    let continueToGuestInfoInFlight = false;
+    const continueToGuestInfoLabel = continueToGuestInfoBtn?.textContent || 'Continue';
 
     function updateBookingProgress(step) {
         document.querySelectorAll('[data-booking-step]').forEach((item) => {
@@ -644,24 +647,26 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 0);
         const total = selectedSlotsTotal() + equipmentTotal;
 
-        if (selectionDateTime && selectionEquipment && selectionTotal) {
-            if (!selectedSlots.length) {
-                selectionDateTime.textContent = 'Choose a date and time';
-            } else {
+        const dateTimeLabel = selectedSlots.length
+            ? (() => {
                 const labels = selectedSlots.map((key) => `${formatDate(key.slice(0, 10))} ${formatCompactTime(key.slice(11))}`);
-                selectionDateTime.textContent = labels.length <= 2
+                return labels.length <= 2
                     ? labels.join(', ')
                     : `${labels.length} hours selected across ${new Set(selectedSlots.map((key) => key.slice(0, 10))).size} date(s)`;
-            }
-            selectionEquipment.textContent = equipmentLines.length ? equipmentLines.join(', ') : 'None selected';
-            selectionTotal.textContent = `₱${total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-        }
+            })()
+            : 'Choose a date and time';
+        const equipmentLabel = equipmentLines.length ? equipmentLines.join(', ') : 'None selected';
+        const totalLabel = `₱${total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
-        if (equipmentSelectedTime) {
-            equipmentSelectedTime.textContent = selectedSlots.length ? formatSelectedSlotsSummary(' | ') : 'No time selected';
+        selectionDateTimeFields.forEach((field) => { field.textContent = dateTimeLabel; });
+        selectionEquipmentFields.forEach((field) => { field.textContent = equipmentLabel; });
+        selectionTotalFields.forEach((field) => { field.textContent = totalLabel; });
+
+        if (equipmentSelectedTime && !equipmentSelectedTime.matches('.selection-date-time')) {
+            equipmentSelectedTime.textContent = dateTimeLabel;
         }
-        if (equipmentSelectedTotal) {
-            equipmentSelectedTotal.textContent = `Current total: ₱${total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        if (equipmentSelectedTotal && !equipmentSelectedTotal.matches('.selection-total')) {
+            equipmentSelectedTotal.textContent = totalLabel;
         }
     }
 
@@ -732,6 +737,11 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function openTimePickerModal() {
+        if (continueToEquipmentInFlight) {
+            continueToEquipmentInFlight = false;
+            continueToEquipmentBtn.disabled = false;
+            continueToEquipmentBtn.setAttribute('aria-busy', 'false');
+        }
         updateBookingProgress(1);
         timePickerModal.classList.add('open');
         if (timeSlotGrid) timeSlotGrid.scrollTop = 0;
@@ -1056,11 +1066,15 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     continueToEquipmentBtn.addEventListener('click', () => {
+        if (continueToEquipmentInFlight) return;
         const missing = getMissingBookingRequirements();
         if (missing.length > 0) {
             showToast(`Please select ${formatList(missing)} to continue.`, 'error');
             return;
         }
+        continueToEquipmentInFlight = true;
+        continueToEquipmentBtn.disabled = true;
+        continueToEquipmentBtn.setAttribute('aria-busy', 'true');
         closeTimePickerModal();
         openEquipmentModal();
     });
@@ -1073,9 +1087,13 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     continueToGuestInfoBtn.addEventListener('click', async () => {
-        const originalLabel = continueToGuestInfoBtn.textContent;
+        if (continueToGuestInfoInFlight) return;
+        continueToGuestInfoInFlight = true;
         continueToGuestInfoBtn.disabled = true;
+        continueToGuestInfoBtn.setAttribute('aria-busy', 'true');
+        const originalLabel = continueToGuestInfoLabel;
         continueToGuestInfoBtn.textContent = 'Checking stock…';
+        let shouldUnlockForRetry = false;
 
         try {
             // The equipment grid only reflects stock as of when this step
@@ -1087,6 +1105,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const params = new URLSearchParams({ date: activeSessionDate || selectedDate });
             selectedSlots.forEach((key) => params.append('slots[]', key));
             const res = await fetch(`${equipmentUrl}?${params.toString()}`, { headers: { Accept: 'application/json' } });
+            if (!res.ok) throw new Error('Equipment availability check failed');
             const data = await res.json();
             const freshCatalog = data.equipment || [];
             equipmentCatalog = freshCatalog;
@@ -1111,6 +1130,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (shortages.length > 0) {
                 showToast(`Sorry, ${formatList(shortages)} sold out for this time while you were browsing — please review your rental.`, 'error');
+                shouldUnlockForRetry = true;
                 return;
             }
 
@@ -1133,10 +1153,26 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (err) {
             console.error(err);
             showToast("Couldn't confirm equipment availability. Please try again.", 'error');
+            shouldUnlockForRetry = true;
         } finally {
-            continueToGuestInfoBtn.disabled = false;
-            continueToGuestInfoBtn.textContent = originalLabel;
+            if (shouldUnlockForRetry) {
+                continueToGuestInfoInFlight = false;
+                continueToGuestInfoBtn.disabled = false;
+                continueToGuestInfoBtn.setAttribute('aria-busy', 'false');
+                continueToGuestInfoBtn.textContent = originalLabel;
+            }
         }
+    });
+
+    window.addEventListener('pageshow', (event) => {
+        if (!event.persisted) return;
+        continueToGuestInfoInFlight = false;
+        continueToGuestInfoBtn.disabled = false;
+        continueToGuestInfoBtn.setAttribute('aria-busy', 'false');
+        continueToGuestInfoBtn.textContent = continueToGuestInfoLabel;
+        continueToEquipmentInFlight = false;
+        continueToEquipmentBtn.disabled = false;
+        continueToEquipmentBtn.setAttribute('aria-busy', 'false');
     });
 
     document.getElementById('backToEquipment')?.addEventListener('click', () => {
