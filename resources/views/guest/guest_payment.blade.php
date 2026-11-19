@@ -10,7 +10,8 @@
     <link rel="stylesheet" href="{{ asset('css/landing.css') }}">
     <link rel="stylesheet" href="{{ asset('css/landing-book.css') }}">
     <link rel="stylesheet" href="{{ asset('css/courts.css') }}">
-    <script src="{{ asset('js/payment.js') }}" defer></script>
+    <link rel="stylesheet" href="{{ asset('css/guest/payment-info-placeholder.css') }}">
+    <script src="{{ asset('js/guest/payment.js') }}" defer></script>
     <link rel="icon" type="image/png" href="{{ asset('images/tab_icon.png') }}">
     <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
@@ -39,14 +40,39 @@
             <div class="modal-scroll-body">
                 <div class="booking-section">
                     <p class="booking-section-label">Who's booking?</p>
-                    <div class="guest-info-grid">
-                        <div class="guest-info-item"><label for="guestName">Full Name</label><input type="text" id="guestName" autocomplete="name"></div>
-                        <div class="guest-info-item"><label for="guestContact">Contact Number</label><input type="tel" id="guestContact" autocomplete="tel"></div>
+                   <div class="guest-info-grid">
+                        <div class="guest-info-item">
+                            <label for="guestName">Full Name</label>
+                            <div class="input-wrap">
+                                <input type="text" id="guestName" autocomplete="name">
+                                <span id="guestNameLoading" class="field-loading-dots" hidden>
+                                    <span></span>
+                                    <span></span>
+                                    <span></span>
+                                </span>
+                            </div>
+                        </div>
+
+                        <div class="guest-info-item">
+                            <label for="guestContact">Contact Number</label>
+                            <div class="input-wrap">
+                                <input type="tel" id="guestContact" autocomplete="tel">
+                                <span id="guestContactLoading" class="field-loading-dots" hidden>
+                                    <span></span>
+                                    <span></span>
+                                    <span></span>
+                                </span>
+                            </div>
+                        </div>
                     </div>
                     <div class="guest-email-block">
-                        <label class="guest-email-label" id="guestEmailLabel">Email Address</label>
+                        <label class="guest-email-label" id="guestEmailLabel" for="guestEmailSaved">Email Address</label>
+                        <input type="email" id="guestEmailSaved" class="guest-email-saved-input" readonly hidden>
                         <div id="googleSignInBtn" class="google-signin-btn"></div>
-                        <div class="guest-email-confirmed" id="guestEmailConfirmed" hidden><span>Signed in as <strong id="guestEmailConfirmedAddress"></strong></span><button class="btn btn-link btn-change-email" type="button" id="guestEmailChange">X</button></div>
+                        <div class="guest-email-confirmed" id="guestEmailConfirmed" hidden>
+                            <span>Signed in as <strong id="guestEmailConfirmedAddress"></strong></span>
+                            <button class="btn btn-link btn-change-email" type="button" id="guestEmailChange">X</button>
+                        </div>
                     </div>
                 </div>
                 <div class="booking-section">

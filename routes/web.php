@@ -23,6 +23,11 @@ use App\Http\Controllers\User\User_UserController;
 use App\Http\Controllers\User\UserDashboardController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Maintenance\MaintenanceController;
+use App\Http\Controllers\Guest\GuestBookingLookupController;
+
+Route::get('/guest/booking/latest', [GuestBookingLookupController::class, 'latest'])
+    ->name('guest.booking.latest')
+    ->middleware('throttle:20,1');
 
 Route::match(['get', 'post'], '/test-error/{code}', function ($code) {
     abort((int) $code);

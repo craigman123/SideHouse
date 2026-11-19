@@ -44,7 +44,7 @@ class PaymentReceiptController extends Controller
             ->orderBy('start_time')
             ->get();
 
-        return view('receipt', [
+        return view('guest.receipt', [
             'paymentReference' => $paymentReference,
             'bookings' => $bookings,
         ]);

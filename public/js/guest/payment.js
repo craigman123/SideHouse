@@ -26,6 +26,75 @@
     let googleIdToken = null;
     let googleEmail = null;
     const CHECKOUT_DRAFT_KEY = 'sidehouse_guest_checkout_draft';
+    const GUEST_EMAIL_STORAGE_KEY = 'sh_guest_email';
+
+    // The code who saves the guest email to localStorage named sh_guest_email
+    function saveGuestEmailToDevice(email) {
+        if (!email) return;
+        try {
+            localStorage.setItem(GUEST_EMAIL_STORAGE_KEY, email);
+        } catch (err) {
+            console.warn('Could not save guest email locally:', err);
+        }
+    }
+
+    // Prefill guest info from saved email in localStorage if present
+    // Shows immediately on load — no network wait, since the email is
+    // already known from localStorage.
+    function showSavedEmailBadge() {
+        let savedEmail;
+        try {
+            savedEmail = localStorage.getItem(GUEST_EMAIL_STORAGE_KEY);
+        } catch (err) {
+            return;
+        }
+        if (!savedEmail) return;
+
+        const savedInput = document.getElementById('guestEmailSaved');
+        if (!savedInput) return;
+        savedInput.value = savedEmail;
+        savedInput.hidden = false;
+    }
+
+    // Still async — name/phone genuinely need the server lookup.
+    function prefillFromSavedEmail() {
+        let savedEmail;
+        try {
+            savedEmail = localStorage.getItem(GUEST_EMAIL_STORAGE_KEY);
+        } catch (err) {
+            return;
+        }
+        if (!savedEmail) return;
+
+        const nameLoading = document.getElementById('guestNameLoading');
+        const contactLoading = document.getElementById('guestContactLoading');
+
+        guestNameInput.disabled = true;
+        guestContactInput.disabled = true;
+        if (nameLoading) nameLoading.hidden = false;
+        if (contactLoading) contactLoading.hidden = false;
+
+        fetch(`/guest/booking/latest?email=${encodeURIComponent(savedEmail)}`, {
+            headers: { Accept: 'application/json' },
+        })
+            .then((res) => res.json())
+            .then((data) => {
+                if (!data.found) return;
+                if (data.name && !guestNameInput.value.trim()) {
+                    guestNameInput.value = data.name;
+                }
+                if (data.phone && !guestContactInput.value.trim()) {
+                    guestContactInput.value = data.phone;
+                }
+            })
+            .catch((err) => console.warn('Prefill lookup failed:', err))
+            .finally(() => {
+                guestNameInput.disabled = false;
+                guestContactInput.disabled = false;
+                if (nameLoading) nameLoading.hidden = true;
+                if (contactLoading) contactLoading.hidden = true;
+            });
+    }
 
     // Keep only non-sensitive booking choices. This lets the waiting page
     // return an unpaid checkout to the equipment step without relying on
@@ -120,6 +189,9 @@
     }
 
     syncPaymentQrPanels();
+    showSavedEmailBadge();
+    prefillFromSavedEmail();
+    prefillFromSavedEmail();
 
     // ---------- Google sign-in ----------
 
@@ -174,10 +246,18 @@
         if (!googleClientId || !googleSignInBtnEl) return;
 
         function render() {
+            let savedEmail = null;
+            try {
+                savedEmail = localStorage.getItem(GUEST_EMAIL_STORAGE_KEY);
+            } catch (err) {
+                // ignore — just means no hint
+            }
+
             window.google.accounts.id.initialize({
                 client_id: googleClientId,
                 callback: handleGoogleCredential,
                 auto_select: false,
+                ...(savedEmail ? { login_hint: savedEmail } : {}),
             });
             window.google.accounts.id.renderButton(googleSignInBtnEl, {
                 type: 'standard',
@@ -311,6 +391,8 @@
                 return;
             }
 
+            saveGuestEmailToDevice(googleEmail);
+
             if (data.booking && data.booking.status === 'paid') {
                 clearCheckoutDraft();
                 const params = new URLSearchParams({
@@ -335,3 +417,7 @@
         }
     });
 })();
+
+
+
+

@@ -6,7 +6,7 @@
     <title>Payment Receipt</title>
     <link rel="icon" href="{{ asset('images/tab_icon.png') }}">
     <link rel="stylesheet" href="{{ asset('css/app.css') }}">
-    <link rel="stylesheet" href="{{ asset('css/payment-receipt.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/guest/payment-receipt.css') }}">
 </head>
 <body class="receipt-body">
 

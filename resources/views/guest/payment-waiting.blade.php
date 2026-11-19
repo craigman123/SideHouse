@@ -6,8 +6,8 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Waiting for Payment | Side House Paddlers</title>
     <link rel="stylesheet" href="{{ asset('css/app.css') }}">
-    <link rel="stylesheet" href="{{ asset('css/payment-waiting.css') }}">
-    <link rel="stylesheet" href="{{ asset('css/payment-waiting-modal.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/guest/payment-waiting.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/guest/payment-waiting-modal.css') }}">
     <link rel="icon" type="image/png" href="{{ asset('images/tab_icon.png') }}">
 </head>
 <body class="wt-body">
@@ -138,7 +138,7 @@
         </div>
     </div>
 
-    <script src="{{ asset('js/payment-waiting.js') }}" defer></script>
+    <script src="{{ asset('js/guest/payment-waiting.js') }}" defer></script>
     <script src="{{ asset('js/qr-cache.js') }}" defer></script>
 </body>
 </html>

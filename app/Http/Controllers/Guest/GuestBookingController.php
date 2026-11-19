@@ -580,7 +580,7 @@ class GuestBookingController extends Controller
                 . $start->format('g:i A') . '–' . $end->format('g:i A');
         }
 
-        return view('guest_payment', [
+        return view('guest.guest_payment', [
             'court'              => $court,
             'courtId'            => $court->id,
             'date'               => $validated['date'],
@@ -930,7 +930,7 @@ class GuestBookingController extends Controller
 
         $paymentReference = PaymentReferenceModel::find($booking->payment_reference_id);
 
-        return view('payment-waiting', [
+        return view('guest.payment-waiting', [
             'booking'         => $booking,
             'siblingBookings' => $siblingBookings,
             'totalAmount'     => $paymentReference->amount ?? $siblingBookings->sum('amount'),

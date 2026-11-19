@@ -56,6 +56,8 @@
                     <a href="#bookNow" class="nav-link nav-link-book">Book Now</a>
                 </div>
 
+                @include('guest.guest-session.session-save')
+
                 <button class="nav-toggle" id="navToggle" aria-label="Toggle navigation" aria-expanded="false">
                     <span></span>
                     <span></span>
