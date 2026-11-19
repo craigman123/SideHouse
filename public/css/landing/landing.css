@@ -13,6 +13,7 @@ body {
     background-color: #0d1117;
     display: flex;
     flex-direction: column;
+    padding-bottom: 40px;
 }
 
 /* Nav */
