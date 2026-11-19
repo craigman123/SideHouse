@@ -4,10 +4,10 @@
 @section('page-title', 'Book a Court')
 
 @push('styles')
-    <link rel="stylesheet" href="{{ asset('css/dashboard.css') }}">
-    <link rel="stylesheet" href="{{ asset('css/user-dashboard.css') }}">
-    <link rel="stylesheet" href="{{ asset('css/book.css') }}">
-    <link rel="stylesheet" href="{{ asset('css/landing-book.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/user/dashboard.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/user/user-dashboard.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/booking/book.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/booking/landing-book.css') }}">
 @endpush
 
 @section('content')
@@ -265,5 +265,5 @@
 @endsection
 
 @push('scripts')
-    <script src="{{ asset('js/book.js') }}" defer></script>
+    <script src="{{ asset('js/config/book.js') }}" defer></script>
 @endpush

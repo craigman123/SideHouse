@@ -4,8 +4,8 @@
 @section('page-title', 'Announcements')
 
 @push('styles')
-    <link rel="stylesheet" href="{{ asset('css/announcements.css') }}">
-    <script src="{{ asset('js/announcement.js') }}" defer></script>
+    <link rel="stylesheet" href="{{ asset('css/admin/announcements.css') }}">
+    <script src="{{ asset('js/admin/announcement.js') }}" defer></script>
 @endpush
 
 @section('content')

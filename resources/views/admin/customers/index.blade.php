@@ -4,7 +4,7 @@
 @section('page-title', 'Customers')
 
 @push('styles')
-    <link rel="stylesheet" href="{{ asset('css/admin-customers.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/admin/admin-customers.css') }}">
 @endpush
 
 @section('content')
@@ -66,5 +66,5 @@
 @endsection
 
 @push('scripts')
-    <script src="{{ asset('js/admin-customers.js') }}" defer></script>
+    <script src="{{ asset('js/admin/admin-customers.js') }}" defer></script>
 @endpush

@@ -6,10 +6,10 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Login | Court Booking</title>
     <link rel="stylesheet" href="{{ asset('css/app.css') }}">
-    <link rel="stylesheet" href="{{ asset('css/mfa-modal.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/auth/mfa-modal.css') }}">
     <link rel="icon" type="image/png" href="{{ asset('images/tab_icon.png') }}">
     <script src="{{ asset('js/app.js') }}" defer></script>
-    <script src="{{ asset('js/mfa-modal.js') }}" defer></script>
+    <script src="{{ asset('js/auth/mfa-modal.js') }}" defer></script>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 <body>
@@ -115,13 +115,13 @@
         </div>
     </div>
 
-    <script src="{{ asset('js/google-signin.js') }}" defer></script>
+    <script src="{{ asset('js/auth/google-signin.js') }}" defer></script>
 
     <div id="flashData"
         data-error="{{ $errors->any() ? $errors->first() : '' }}"
         data-success="{{ session('success') }}"
         style="display:none">
     </div>
-    <script src="{{ asset('js/flash-toast.js') }}" defer></script>
+    <script src="{{ asset('js/toast/flash-toast.js') }}" defer></script>
 </body>
 </html>

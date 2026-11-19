@@ -4,7 +4,7 @@
 @section('page-title', 'Overview')
 
 @push('styles')
-    <link rel="stylesheet" href="{{ asset('css/dashboard.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/user/dashboard.css') }}">
 @endpush
 
 @section('content')

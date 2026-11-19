@@ -73,14 +73,14 @@
         </div>
     </div>
 
-    <script src="{{ asset('js/register-form.js') }}" defer></script>
-    <script src="{{ asset('js/google-signin.js') }}" defer></script>
+    <script src="{{ asset('js/payment/register-form.js') }}" defer></script>
+    <script src="{{ asset('js/auth/google-signin.js') }}" defer></script>
 
     <div id="flashData"
         data-error="{{ $errors->any() ? $errors->first() : '' }}"
         data-success="{{ session('success') }}"
         style="display:none">
     </div>
-    <script src="{{ asset('js/flash-toast.js') }}" defer></script>
+    <script src="{{ asset('js/toast/flash-toast.js') }}" defer></script>
 </body>
 </html>

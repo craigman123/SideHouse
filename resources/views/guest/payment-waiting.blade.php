@@ -139,6 +139,6 @@
     </div>
 
     <script src="{{ asset('js/guest/payment-waiting.js') }}" defer></script>
-    <script src="{{ asset('js/qr-cache.js') }}" defer></script>
+    <script src="{{ asset('js/payment/qr-cache.js') }}" defer></script>
 </body>
 </html>

@@ -4,7 +4,7 @@
 @section('title', 'Equipment Availability | Side House')
 
 @push('styles')
-    <link rel="stylesheet" href="{{ asset('css/admin-equipment-availability.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/admin/admin-equipment-availability.css') }}">
 @endpush
 
 @section('content')
@@ -179,5 +179,5 @@
 @endsection
 
 @push('scripts')
-    <script src="{{ asset('js/admin-equipment-availability.js') }}" defer></script>
+    <script src="{{ asset('js/admin/admin-equipment-availability.js') }}" defer></script>
 @endpush

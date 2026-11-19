@@ -4,9 +4,9 @@
 @section('page-title', 'Bookings')
 
 @push('styles')
-    <link rel="stylesheet" href="{{ asset('css/dashboard.css') }}">
-    <link rel="stylesheet" href="{{ asset('css/bookings.css') }}">
-    <link rel="stylesheet" href="{{ asset('css/admin-bookings-board.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/user/dashboard.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/booking/bookings.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/admin/admin-bookings-board.css') }}">
 @endpush
 
 @section('content')
@@ -178,5 +178,5 @@
         ];
     @endphp
     <script id="courtBoardData" type="application/json">{!! json_encode($courtBoardData, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) !!}</script>
-    <script src="{{ asset('js/admin-bookings-board.js') }}" defer></script>
+    <script src="{{ asset('js/admin/admin-bookings-board.js') }}" defer></script>
 @endpush

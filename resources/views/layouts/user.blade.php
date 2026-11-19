@@ -8,7 +8,7 @@
     <meta http-equiv="Expires" content="0">
     <title>@yield('title', 'Side House')</title>
     <link rel="stylesheet" href="{{ asset('css/app.css') }}">
-    <link rel="stylesheet" href="{{ asset('css/user-navbar.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/user/user-navbar.css') }}">
     <link rel="icon" type="image/png" href="{{ asset('images/tab_icon.png') }}">
     <script src="{{ asset('js/app.js') }}" defer></script>
     @stack('styles')

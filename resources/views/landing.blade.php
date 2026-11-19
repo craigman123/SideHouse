@@ -6,12 +6,12 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Side House Paddlers | Guest</title>
     <link rel="stylesheet" href="{{ asset('css/app.css') }}">
-    <link rel="stylesheet" href="{{ asset('css/dashboard.css') }}">
-    <link rel="stylesheet" href="{{ asset('css/user-dashboard.css') }}">
-    <link rel="stylesheet" href="{{ asset('css/book.css') }}">
-    <link rel="stylesheet" href="{{ asset('css/landing.css') }}">
-    <link rel="stylesheet" href="{{ asset('css/landing-book.css') }}">
-    <link rel="stylesheet" href="{{ asset('css/landing-search.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/user/dashboard.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/user/user-dashboard.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/booking/book.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/landing/landing.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/booking/landing-book.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/landing/landing-search.css') }}">
     <link rel="icon" type="image/png" href="{{ asset('images/tab_icon.png') }}">
     <link rel="stylesheet" href="{{ asset('css/skeleton.css') }}">
     <script src="https://accounts.google.com/gsi/client" async defer></script>
@@ -779,8 +779,8 @@
 
     <div class="toast-container" id="toastContainer"></div>
 
-    <script src="{{ asset('js/guest-book.js') }}" defer></script>
-    <script src="{{ asset('js/stats-vacant.js') }}" defer></script>
-    <script src="{{ asset('js/landing-search.js') }}" defer></script>
+    <script src="{{ asset('js/booking/guest-book.js') }}" defer></script>
+    <script src="{{ asset('js/config/stats-vacant.js') }}" defer></script>
+    <script src="{{ asset('js/landing/landing-search.js') }}" defer></script>
 </body>
 </html>

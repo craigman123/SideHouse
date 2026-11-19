@@ -4,8 +4,8 @@
 @section('page-title', 'Feedback & Suggestions')
 
 @push('styles')
-    <link rel="stylesheet" href="{{ asset('css/dashboard.css') }}">
-    <link rel="stylesheet" href="{{ asset('css/feedback.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/user/dashboard.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/user/feedback.css') }}">
 @endpush
 
 @section('content')
@@ -148,5 +148,5 @@
 @endsection
 
 @push('scripts')
-    <script src="{{ asset('js/feedback.js') }}" defer></script>
+    <script src="{{ asset('js/user/feedback.js') }}" defer></script>
 @endpush

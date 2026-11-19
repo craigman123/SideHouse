@@ -6,10 +6,10 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Confirm &amp; Pay | Side House Paddlers</title>
     <link rel="stylesheet" href="{{ asset('css/app.css') }}">
-    <link rel="stylesheet" href="{{ asset('css/book.css') }}">
-    <link rel="stylesheet" href="{{ asset('css/landing.css') }}">
-    <link rel="stylesheet" href="{{ asset('css/landing-book.css') }}">
-    <link rel="stylesheet" href="{{ asset('css/courts.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/booking/book.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/landing/landing.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/booking/landing-book.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/user/courts.css') }}">
     <link rel="stylesheet" href="{{ asset('css/guest/payment-info-placeholder.css') }}">
     <script src="{{ asset('js/guest/payment.js') }}" defer></script>
     <link rel="icon" type="image/png" href="{{ asset('images/tab_icon.png') }}">

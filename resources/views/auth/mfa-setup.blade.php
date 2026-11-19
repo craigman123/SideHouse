@@ -6,7 +6,7 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Set up Two-Factor Authentication | Court Booking</title>
     <link rel="stylesheet" href="{{ asset('css/app.css') }}">
-    <link rel="stylesheet" href="{{ asset('css/mfa-modal.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/auth/mfa-modal.css') }}">
     <link rel="icon" type="image/png" href="{{ asset('images/tab_icon.png') }}">
 </head>
 <body>

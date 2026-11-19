@@ -5,10 +5,10 @@
 
 @push('styles')
     <link rel="stylesheet" href="{{ asset('css/app.css') }}">
-    <link rel="stylesheet" href="{{ asset('css/dashboard.css') }}">
-    <link rel="stylesheet" href="{{ asset('css/user-dashboard.css') }}">
-    <link rel="stylesheet" href="{{ asset('css/book.css') }}">
-    <link rel="stylesheet" href="{{ asset('css/landing-book.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/user/dashboard.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/user/user-dashboard.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/booking/book.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/booking/landing-book.css') }}">
     {{-- Not landing.css — its unscoped `body { display: block; }` rule
          loads after app.css and silently breaks app.css's mobile rule
          `body { flex-direction: column; }` (flex-direction is a no-op
@@ -20,11 +20,11 @@
 @endpush
 
 @push('scripts')
-    <script src="{{ asset('js/user-waiting.js') }}" defer></script>
+    <script src="{{ asset('js/payment/user-waiting.js') }}" defer></script>
     {{-- Same shared loader guest's waiting page uses — token is optional
          on it (see qr-cache.js's initQRLoader), auth ownership alone is
          enough per PaymongoQrPhController::createQr(). --}}
-    <script src="{{ asset('js/qr-cache.js') }}" defer></script>
+    <script src="{{ asset('js/payment/qr-cache.js') }}" defer></script>
 @endpush
 
 @section('content')

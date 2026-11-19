@@ -11,7 +11,7 @@
 @section('page-title', 'Income Reports')
 
 @push('styles')
-    <link rel="stylesheet" href="{{ asset('css/admin-reports.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/admin/admin-reports.css') }}">
 @endpush
 
 @section('content')
@@ -241,5 +241,5 @@
 
 @push('scripts')
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.5.0/chart.umd.min.js"></script>
-    <script src="{{ asset('js/admin-reports.js') }}" defer></script>
+    <script src="{{ asset('js/admin/admin-reports.js') }}" defer></script>
 @endpush

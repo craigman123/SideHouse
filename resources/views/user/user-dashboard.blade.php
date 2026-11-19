@@ -4,8 +4,8 @@
 @section('page-title', 'Good Day, ' . ucfirst(explode(' ', $userName)[0]))
 
 @push('styles')
-    <link rel="stylesheet" href="{{ asset('css/dashboard.css') }}">
-    <link rel="stylesheet" href="{{ asset('css/user-dashboard.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/user/dashboard.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/user/user-dashboard.css') }}">
     <style>
         .countdown-text {
             font-size: 14px;
@@ -258,5 +258,5 @@
 @endsection
 
 @push('scripts')
-    <script src="{{ asset('js/user-dashboard.js') }}" defer></script>
+    <script src="{{ asset('js/user/user-dashboard.js') }}" defer></script>
 @endpush
