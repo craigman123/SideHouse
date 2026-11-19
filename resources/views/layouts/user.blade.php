@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" class="@yield('page-class')">
+<html lang="en" class="user-layout-shell @yield('page-class')">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">

@@ -310,3 +310,147 @@ svg {
     margin: var(--s4) 0 var(--s1);
     text-transform: uppercase;
 }
+
+.user-layout-shell {
+    box-sizing: border-box;
+    width: 100%;
+    height: 100vh;
+    height: 100dvh;
+    overflow: hidden;
+}
+
+.user-layout-shell body {
+    box-sizing: border-box;
+    display: flex;
+    width: 100%;
+    height: 100vh;
+    height: 100dvh;
+    min-height: 0;
+    overflow: hidden;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-family);
+}
+
+.user-layout-shell .sidebar {
+    position: static;
+    box-sizing: border-box;
+    flex: 0 0 240px;
+    width: 240px;
+    height: 100%;
+    min-height: 0;
+    overflow: visible;
+}
+
+.user-layout-shell .sidebar-logo,
+.user-layout-shell .sidebar-profile,
+.user-layout-shell .sidebar-footer { flex-shrink: 0; }
+
+.user-layout-shell .sidebar-nav {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    scrollbar-color: var(--text-muted) var(--surface-2);
+    scrollbar-width: thin;
+}
+
+.user-layout-shell .sidebar-nav::-webkit-scrollbar { width: 6px; }
+.user-layout-shell .sidebar-nav::-webkit-scrollbar-track { background: var(--surface-2); }
+.user-layout-shell .sidebar-nav::-webkit-scrollbar-thumb { border-radius: var(--r-pill); background: var(--text-muted); }
+.user-layout-shell .sidebar-profile { margin-top: auto; }
+
+.user-layout-shell .main {
+    box-sizing: border-box;
+    flex: 1 1 auto;
+    height: 100%;
+    min-width: 0;
+    min-height: 0;
+    margin-left: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    scrollbar-color: var(--text-muted) var(--surface);
+    scrollbar-gutter: stable;
+    scrollbar-width: thin;
+    scroll-padding-top: var(--s8);
+}
+
+.user-layout-shell .main::-webkit-scrollbar { width: 8px; }
+.user-layout-shell .main::-webkit-scrollbar-track { background: var(--surface); }
+.user-layout-shell .main::-webkit-scrollbar-thumb { border-radius: var(--r-pill); background: var(--text-muted); }
+
+.user-layout-shell .topbar {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    background: var(--bg);
+}
+
+.user-layout-shell .content {
+    box-sizing: border-box;
+    flex: 0 0 auto;
+    min-height: auto;
+    overflow: visible;
+}
+
+@media (max-width: 1450px) {
+    .user-layout-shell body { flex-direction: column; }
+    .user-layout-shell .sidebar {
+        position: static;
+        flex: 0 0 auto;
+        flex-direction: row;
+        flex-wrap: wrap;
+        justify-content: space-between;
+        width: 100%;
+        height: auto;
+        min-height: 0;
+        padding-top: env(safe-area-inset-top, 0px);
+        overflow: visible;
+    }
+    .user-layout-shell .sidebar-logo {
+        width: 50px;
+        height: 50px;
+        padding: var(--s1) var(--s2);
+        border-right: 1px solid color-mix(in srgb, var(--text-muted) 70%, var(--surface));
+    }
+    .user-layout-shell .logo-img { max-width: 60px; }
+    .user-layout-shell .sidebar-nav {
+        display: flex;
+        flex: 1 1 0;
+        gap: var(--s1);
+        min-width: 0;
+        padding: var(--s1);
+        overflow-x: auto;
+        overflow-y: hidden;
+        white-space: nowrap;
+        scrollbar-width: none;
+    }
+    .user-layout-shell .sidebar-nav::-webkit-scrollbar { display: none; }
+    .user-layout-shell .sidebar-nav label { display: none; }
+    .user-layout-shell .sidebar-nav a { flex: 0 0 auto; margin-bottom: 0; padding: var(--s1) var(--s2); white-space: nowrap; }
+    .user-layout-shell .sidebar-profile {
+        flex: 0 0 auto;
+        margin-top: 0;
+        padding: var(--s1) var(--s2);
+        border-top: 0;
+        border-left: 1px solid color-mix(in srgb, var(--text-muted) 70%, var(--surface));
+    }
+    .user-layout-shell .profile-avatar { width: 24px; height: 24px; }
+    .user-layout-shell .profile-name { display: none; }
+    .user-layout-shell .sidebar-footer {
+        display: block;
+        flex: 0 0 100%;
+        box-sizing: border-box;
+        padding: var(--s1) var(--s4);
+        text-align: right;
+    }
+    .user-layout-shell .main {
+        flex: 1 1 0;
+        width: 100%;
+        height: auto;
+        min-height: 0;
+        padding-top: env(safe-area-inset-top, 0px);
+        padding-bottom: env(safe-area-inset-bottom, 0px);
+        scroll-padding-top: var(--s9);
+    }
+}
