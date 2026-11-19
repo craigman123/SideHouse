@@ -668,13 +668,6 @@
 
                 <div class="time-slot-list" id="timeSlotGrid"></div>
 
-                <div class="time-picker-fee-panel">
-                    <p class="time-picker-fee-ranges" id="timePickerFeeRanges">Select at least one hour</p>
-                    <div class="time-picker-fee-total-row">
-                        <span>Total</span>
-                        <span id="timePickerFeeTotal">₱0</span>
-                    </div>
-                </div>
                 <aside class="booking-selection-summary" id="bookingSelectionSummary" aria-live="polite">
                     <p class="booking-selection-summary-title">Your selection</p>
                     <p><span>Court</span><strong class="selection-court" id="selectionCourt">{{ $courts->first()->name }}</strong></p>
