@@ -1,7 +1,7 @@
 /* Guest landing page ownership layer. Shared stylesheets remain unchanged. */
 
 body > .landing-wrapper {
-    background: var(--surface);
+    background: transparent;
     color: var(--text);
     font-family: var(--font-family);
 }
@@ -1452,4 +1452,40 @@ body > .landing-wrapper {
     #equipmentModal .equipment-skeleton-line {
         animation: none;
     }
+}
+
+@media (max-width: 640px) {
+    .landing-wrapper .landing-nav-wrap { gap: var(--s1); }
+    .landing-wrapper .landing-nav { gap: var(--s1); padding-right: var(--s2); padding-left: var(--s2); }
+    .landing-wrapper .nav-left { flex: 0 1 auto; min-width: 0; overflow: hidden; }
+    .landing-wrapper .nav-logo { flex: 0 0 auto; }
+    .landing-wrapper .nav-title-landing {
+        display: block;
+        min-width: 0;
+        max-width: clamp(0px, 20vw, 112px);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    .landing-wrapper .nav-center { flex: 1 1 0; min-width: 0; gap: var(--s1); }
+    .landing-wrapper .guest-session-save { display: none; }
+    .landing-wrapper .nav-search-show { display: inline-flex; flex: 0 0 44px; width: 44px; height: 44px; }
+    .landing-wrapper .nav-link-book { flex: 0 0 auto; min-width: 44px; min-height: 44px; }
+    .landing-wrapper .nav-toggle { flex: 0 0 44px; width: 44px; height: 44px; align-items: center; padding: var(--s2); }
+    .landing-wrapper .nav-toggle span { width: 24px; }
+}
+
+@media (max-width: 480px) {
+    .landing-wrapper .nav-search-show { display: inline-flex; width: 44px; height: 44px; }
+    .landing-wrapper .nav-toggle { flex-basis: 44px; width: 44px; height: 44px; }
+    .landing-wrapper .nav-link-book { min-height: 44px; }
+    .landing-wrapper .landing-nav-actions { gap: var(--s1); }
+}
+
+@media (max-width: 340px) {
+    .landing-wrapper .nav-title-landing { display: none; }
+}
+
+@media (min-width: 341px) and (max-width: 400px) {
+    .landing-wrapper .nav-title-landing { margin-left: 0; max-width: 18vw; }
 }

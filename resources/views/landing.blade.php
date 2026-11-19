@@ -21,7 +21,7 @@
     <link rel="stylesheet" href="{{ asset('css/guest/theme-toggle.css') }}">
     <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
-<body>
+<body class="guest-landing-page">
 
     <div class="landing-wrapper">
         <div class="bg-particle"></div>
@@ -108,6 +108,14 @@
                 <a href="#analytics" class="nav-link">Analytics</a>
                 {{-- <a href="#getMore" class="nav-link">Create Account</a> --}}
             </div>
+
+            <a
+                href="https://www.google.com/maps/dir/?api=1&destination=10.246043101731798,123.78949399013447"
+                class="nav-link nav-mobile-directions"
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Get directions to Side House Paddlers"
+            >Get Directions</a>
 
             <div class="nav-search-wrap">
                 <div class="nav-search">
