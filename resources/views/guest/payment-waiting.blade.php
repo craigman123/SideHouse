@@ -5,14 +5,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Waiting for Payment | Side House Paddlers</title>
+    <script src="{{ asset('js/guest/theme-toggle.js') }}"></script>
     <link rel="stylesheet" href="{{ asset('css/tokens.css') }}">
     <link rel="stylesheet" href="{{ asset('css/fonts.css') }}">
     <link rel="stylesheet" href="{{ asset('css/app.css') }}">
     <link rel="stylesheet" href="{{ asset('css/guest/payment-waiting.css') }}">
     <link rel="stylesheet" href="{{ asset('css/guest/payment-waiting-modal.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/guest/theme-toggle.css') }}">
     <link rel="icon" type="image/png" href="{{ asset('images/tab_icon.png') }}">
 </head>
 <body class="wt-body">
+    @include('partials.guest.theme-toggle', ['placement' => 'corner'])
 
     <div class="wt-toast-container" id="toastContainer"></div>
     <div class="bg-particle"></div>

@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Side House Paddlers | Guest</title>
+    <script src="{{ asset('js/guest/theme-toggle.js') }}"></script>
     <link rel="stylesheet" href="{{ asset('css/tokens.css') }}">
     <link rel="stylesheet" href="{{ asset('css/fonts.css') }}">
     <link rel="stylesheet" href="{{ asset('css/app.css') }}">
@@ -17,6 +18,7 @@
     <link rel="icon" type="image/png" href="{{ asset('images/tab_icon.png') }}">
     <link rel="stylesheet" href="{{ asset('css/skeleton.css') }}">
     <link rel="stylesheet" href="{{ asset('css/guest/guest-booking.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/guest/theme-toggle.css') }}">
     <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 <body>
@@ -73,6 +75,7 @@
                  this shared fixed wrapper so it stays on screen and
                  right-aligned under Book Now at every scroll position and
                  screen size, without tracking the nav's height by hand. --}}
+            <div class="landing-nav-actions">
             <a
                 href="https://www.google.com/maps/dir/?api=1&destination=10.246043101731798,123.78949399013447"
                 target="_blank"
@@ -86,6 +89,8 @@
                 </svg>
                 Get Directions
             </a>
+            @include('partials.guest.theme-toggle', ['placement' => 'landing'])
+            </div>
         </div>
 
     <!-- Mobile Menu Overlay -->
