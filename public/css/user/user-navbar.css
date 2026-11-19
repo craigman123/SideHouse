@@ -13,11 +13,11 @@ html, body {
 .sidebar {
     width: 240px;
     height: 100vh;
-    background-color: #010409;
-    color: #c9d1d9;
+    background-color: var(--surface);
+    color: var(--text);
     display: flex;
     flex-direction: column;
-    border-right: 1px solid #30363d;
+    border-right: 1px solid color-mix(in srgb, var(--text-muted) 70%, var(--surface));
     flex-shrink: 0;
     overflow-y: auto; /* only kicks in if nav content overflows a short viewport */
 }
@@ -27,7 +27,7 @@ html, body {
     justify-content: center;
     align-items: center;
     padding: 20px 0;
-    border-bottom: 1px solid #21262d;
+    border-bottom: 1px solid color-mix(in srgb, var(--text-muted) 70%, var(--surface));
 }
 
 .logo-img {
@@ -39,81 +39,101 @@ html, body {
 
 .sidebar-nav {
     flex: 1;
-    padding: 12px;
+    padding: var(--s3);
+    min-width: 0;
 }
 
 .sidebar-nav a {
-    display: block;
-    padding: 10px 14px;
-    margin-bottom: 4px;
-    color: #d6d6d6;
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    gap: var(--s3);
+    min-height: 44px;
+    padding: var(--s2) var(--s3);
+    margin-bottom: var(--s1);
+    color: var(--text);
     text-decoration: none;
-    border-radius: 6px;
-    font-size: 14px;
-    font-weight: 650;
+    border-radius: var(--r-md);
+    font-family: var(--font-family);
+    font-size: var(--font-size-small);
+    font-weight: var(--font-weight-small);
+    line-height: 1.4;
+}
+
+.sidebar-nav-icon {
+    width: 20px;
+    height: 20px;
+    flex: 0 0 20px;
 }
 
 .sidebar-nav a:hover {
-    background-color: #161b22;
-    color: #c9d1d9;
+    background-color: color-mix(in srgb, var(--brand) 12%, var(--surface));
+    color: var(--brand-hover);
 }
 
 .sidebar-nav a.active {
-    background-color: #0d2818;
-    color: #3fb950;
-    font-weight: 700;
+    background-color: color-mix(in srgb, var(--brand) 12%, var(--surface));
+    color: var(--brand-hover);
+    font-weight: var(--font-weight-button);
+}
+
+.sidebar-nav a:focus-visible {
+    outline: 2px solid var(--brand-hover);
+    outline-offset: 2px;
 }
 
 .sidebar-footer {
     padding: 16px 20px;
     font-size: 13px;
-    color: #6e7681;
-    border-top: 1px solid #21262d;
+    color: var(--text-muted);
+    border-top: 1px solid color-mix(in srgb, var(--text-muted) 70%, var(--surface));
 }
 
 .sidebar-profile {
     padding: 12px 20px;
-    border-top: 1px solid #21262d;
+    border-top: 1px solid color-mix(in srgb, var(--text-muted) 70%, var(--surface));
 }
 
 .profile-trigger {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: var(--s2);
     background: none;
     border: none;
     cursor: pointer;
     width: 100%;
-    padding: 8px 6px;
-    border-radius: 6px;
+    min-height: 44px;
+    padding: var(--s2) var(--s3);
+    border-radius: var(--r-md);
     text-decoration: none;
-    color: inherit;
+    color: var(--text);
+    font-family: var(--font-family);
 }
 
 .profile-trigger:hover,
 .profile-trigger.active {
-    background-color: #161b22;
+    background-color: color-mix(in srgb, var(--brand) 12%, var(--surface));
 }
 
 .profile-avatar {
     width: 30px;
     height: 30px;
     border-radius: 50%;
-    background-color: #0d2818;
-    color: #3fb950;
+    background-color: color-mix(in srgb, var(--brand) 12%, var(--surface));
+    color: var(--brand-hover);
     display: flex;
     align-items: center;
     justify-content: center;
     font-weight: 800;
     font-size: 13px;
     flex-shrink: 0;
-    border: 1px solid rgba(63, 185, 80, 0.35);
+    border: 1px solid var(--brand);
 }
 
 .profile-name {
     font-weight: 700;
     font-size: 14px;
-    color: #f0f6fc;
+    color: var(--text);
 }
 
 /* ---------- Main / topbar / content frame ---------- */
@@ -128,12 +148,12 @@ html, body {
 }
 
 .topbar {
-    background-color: #161b22;
+    background-color: var(--surface);
     padding: 16px 24px;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    border-bottom: 1px solid #30363d;
+    border-bottom: 1px solid color-mix(in srgb, var(--text-muted) 70%, var(--surface));
     flex-shrink: 0;
     flex-wrap: wrap;
     gap: 6px;
@@ -141,12 +161,12 @@ html, body {
 
 .topbar h1 {
     font-size: 18px;
-    color: #c9d1d9;
+    color: var(--text);
 }
 
 .topbar .date {
     font-size: 14px;
-    color: #8b949e;
+    color: var(--text-muted);
 }
 
 svg {
@@ -154,12 +174,12 @@ svg {
 }
 
 .date a {
-    color: #8b949e;
+    color: var(--text-muted);
     text-decoration: none;
 }
 
 .content {
-    padding: 24px;
+    padding: var(--s5);
     flex: 1;
     min-width: 0;
     min-height: 0;
@@ -186,7 +206,7 @@ svg {
         align-items: center;
         justify-content: space-between;
         border-right: none;
-        border-bottom: 1px solid #30363d;
+        border-bottom: 1px solid color-mix(in srgb, var(--text-muted) 70%, var(--surface));
         min-height: 0;
         overflow-y: visible; /* the vertical desktop nav can scroll (see base rule); this row never needs to */
     }
@@ -194,7 +214,7 @@ svg {
     .sidebar-logo {
         padding: 8px 10px;
         border-bottom: none;
-        border-right: 1px solid #21262d;
+        border-right: 1px solid color-mix(in srgb, var(--text-muted) 70%, var(--surface));
         flex-shrink: 0;
     }
 
@@ -204,8 +224,8 @@ svg {
 
     .sidebar-nav {
         display: flex;
-        gap: 2px;
-        padding: 6px;
+        gap: var(--s1);
+        padding: var(--s1);
         flex: 1 1 auto;
         min-width: 0;
         white-space: nowrap;
@@ -234,7 +254,7 @@ svg {
 
     .sidebar-profile {
         border-top: none;
-        border-left: 1px solid #21262d;
+        border-left: 1px solid color-mix(in srgb, var(--text-muted) 70%, var(--surface));
         padding: 6px 10px;
         flex-shrink: 0;
     }
@@ -251,41 +271,42 @@ svg {
 
     .topbar {
         display: flex;
-        padding: 14px 16px;
+        padding: var(--s3) var(--s4);
         align-items: flex-end;
     }
 
     .content {
-        padding: 16px;
+        padding: var(--s4);
     }
 }
 
 @media (max-width: 480px) {
     .topbar h1 {
-        font-size: 16px;
+        font-size: var(--font-size-h3);
     }
 
     .sidebar-logo {
-        padding: 6px 8px;
+        padding: var(--s1) var(--s2);
         width: 50px;
         height: 50px;
     }
 
     .sidebar-nav a {
-        font-size: 10px;
-        padding: 4px 6px;
+        font-size: var(--font-size-small);
+        padding: var(--s1) var(--s2);
     }
 
     .topbar .date {
-        font-size: 12px;
+        font-size: var(--font-size-small);
     }
 }
 
 .nav-label {
     display: block;
-    font-size: 11px;
-    font-weight: 700;
-    color: #8b949e;
-    margin: 12px 0 4px 6px;
+    padding: 0 var(--s3);
+    font-size: var(--font-size-small);
+    font-weight: var(--font-weight-small);
+    color: var(--text-muted);
+    margin: var(--s4) 0 var(--s1);
     text-transform: uppercase;
 }
