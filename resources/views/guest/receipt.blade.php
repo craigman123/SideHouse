@@ -4,11 +4,16 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Payment Receipt</title>
+    <script src="{{ asset('js/guest/theme-toggle.js') }}"></script>
     <link rel="icon" href="{{ asset('images/tab_icon.png') }}">
+    <link rel="stylesheet" href="{{ asset('css/tokens.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/fonts.css') }}">
     <link rel="stylesheet" href="{{ asset('css/app.css') }}">
     <link rel="stylesheet" href="{{ asset('css/guest/payment-receipt.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/guest/theme-toggle.css') }}">
 </head>
 <body class="receipt-body">
+    @include('partials.guest.theme-toggle', ['placement' => 'corner'])
 
     <div class="bg-particle"></div>
     <div class="bg-particle"></div>

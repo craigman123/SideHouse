@@ -25,6 +25,7 @@
     const selectedPayment = 'qrph';
     let googleIdToken = null;
     let googleEmail = null;
+    let confirmInFlight = false;
     const CHECKOUT_DRAFT_KEY = 'sidehouse_guest_checkout_draft';
     const GUEST_EMAIL_STORAGE_KEY = 'sh_guest_email';
 
@@ -317,6 +318,7 @@
     }
 
     confirmBtn.addEventListener('click', async () => {
+        if (confirmInFlight) return;
         const missing = getMissingGuestRequirements();
         if (missing.length > 0) {
             showToast(`Please provide ${formatList(missing)} to continue.`, 'error');
@@ -327,7 +329,9 @@
         }
         document.querySelector('.guest-email-block')?.classList.remove('guest-email-block-invalid');
 
+        confirmInFlight = true;
         confirmBtn.disabled = true;
+        confirmBtn.setAttribute('aria-busy', 'true');
         const originalLabel = confirmBtn.textContent;
         confirmBtn.textContent = 'Booking…';
 
@@ -375,7 +379,9 @@
                     guestNameInput.classList.toggle('field-invalid', !!data.errors.guest_name);
                     guestContactInput.classList.toggle('field-invalid', !!data.errors.guest_contact);
 
+                    confirmInFlight = false;
                     confirmBtn.disabled = false;
+                    confirmBtn.setAttribute('aria-busy', 'false');
                     confirmBtn.textContent = originalLabel;
                     return;
                 }
@@ -408,11 +414,13 @@
                 waitingUrlTemplate.replace('__ID__', data.booking_id)
                     + `?token=${encodeURIComponent(data.poll_token)}`
             );
-            window.location.href = waitingUrl;
+            window.location.replace(waitingUrl);
         } catch (err) {
             console.error(err);
             showToast('Something went wrong. Please try again.', 'error');
+            confirmInFlight = false;
             confirmBtn.disabled = false;
+            confirmBtn.setAttribute('aria-busy', 'false');
             confirmBtn.textContent = originalLabel;
         }
     });

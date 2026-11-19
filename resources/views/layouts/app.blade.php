@@ -6,11 +6,13 @@
     <meta http-equiv="Expires" content="0">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>@yield('title', 'Court Booking System')</title>
+    <link rel="stylesheet" href="{{ asset('css/tokens.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/fonts.css') }}">
     <link rel="stylesheet" href="{{ asset('css/app.css') }}">
-    <link rel="stylesheet" href="{{ asset('css/mfa-modal.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/auth/mfa-modal.css') }}">
     <link rel="icon" type="image/png" href="{{ asset('images/tab_icon.png') }}">
     <script src="{{ asset('js/app.js') }}" defer></script>
-    <script src="{{ asset('js/back-guard.js') }}" defer></script>
+    <script src="{{ asset('js/config/back-guard.js') }}" defer></script>
     @stack('styles')
 </head>
 <body>

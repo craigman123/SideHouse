@@ -1,0 +1,374 @@
+body {
+    font-family: var(--font-family);
+    background: var(--bg);
+    color: var(--text);
+}
+
+.landing-wrapper {
+    min-height: 100vh;
+    align-items: center;
+    justify-content: center;
+    padding: var(--s5) var(--s4);
+    background: var(--bg);
+}
+
+#paymentPage {
+    width: min(880px, 100%);
+    max-height: calc(100vh - 2 * var(--s5));
+    border: 1px solid transparent;
+    border-radius: var(--r-lg);
+    background-image: linear-gradient(var(--surface), var(--surface)), var(--brand-grad);
+    background-origin: border-box;
+    background-clip: padding-box, border-box;
+    color: var(--text);
+    font-family: var(--font-family);
+}
+
+#paymentPage .modal-header {
+    border-bottom: 1px solid var(--border);
+    padding: var(--s4) var(--s5);
+}
+
+#paymentPage .modal-header h3 {
+    color: var(--text);
+    font-size: var(--font-size-h3);
+    font-weight: var(--font-weight-h3);
+}
+
+#paymentPage .payment-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--s3);
+}
+
+#paymentPage .payment-header h3 {
+    margin: 0;
+}
+
+#paymentPage .payment-page-exit {
+    width: 40px;
+    height: 40px;
+    flex: 0 0 40px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--danger);
+    border-radius: var(--r-pill);
+    color: var(--danger);
+    font-size: var(--font-size-h3);
+    line-height: 1;
+    text-decoration: none;
+}
+
+#paymentPage .payment-page-exit:hover {
+    border-color: var(--danger);
+    background: color-mix(in srgb, var(--danger) 12%, var(--surface));
+    color: var(--danger);
+}
+
+#paymentPage .payment-page-exit:focus-visible {
+    outline: 2px solid var(--danger);
+    outline-offset: 2px;
+}
+
+#paymentPage .booking-flow-progress {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: var(--s1);
+    margin: 0;
+}
+
+#paymentPage .booking-flow-step {
+    box-sizing: border-box;
+    min-width: 0;
+    min-height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--s1);
+    padding: var(--s1);
+    border: 1px solid var(--border);
+    border-radius: var(--r-pill);
+    background: var(--surface-2);
+    color: var(--text-muted);
+    font-family: var(--font-family);
+    font-size: var(--font-size-small);
+    text-align: center;
+}
+
+#paymentPage .booking-flow-step.active {
+    border-color: var(--brand);
+    background: color-mix(in srgb, var(--brand) 18%, var(--surface));
+    color: var(--text);
+}
+
+#paymentPage .booking-flow-step.complete {
+    border-color: var(--brand);
+    color: var(--text);
+}
+
+#paymentPage .booking-flow-step b {
+    flex: 0 0 auto;
+    color: var(--brand-hover);
+}
+
+#paymentPage .modal-back {
+    margin: var(--s3) var(--s5) 0;
+    padding: var(--s2) var(--s4);
+    border: 1px solid var(--danger);
+    border-radius: var(--r-pill);
+    background: transparent;
+    color: var(--danger);
+}
+
+#paymentPage .modal-back:hover {
+    border-color: var(--danger);
+    background: color-mix(in srgb, var(--danger) 12%, var(--surface));
+    color: var(--danger);
+}
+
+#paymentPage .modal-back:focus-visible {
+    outline: 2px solid var(--danger);
+    outline-offset: 2px;
+}
+
+#paymentPage .modal-scroll-body {
+    padding: var(--s4) var(--s5);
+}
+
+#paymentPage .booking-section {
+    margin-bottom: var(--s4);
+    padding: var(--s4);
+    border: 1px solid var(--border);
+    border-radius: var(--r-md);
+    background: var(--surface-2);
+}
+
+#paymentPage .booking-section-label,
+#paymentPage .booking-summary-title {
+    color: var(--text);
+    font-weight: var(--font-weight-h3);
+}
+
+#paymentPage .guest-info-grid {
+    gap: var(--s3);
+}
+
+#paymentPage .guest-info-item label,
+#paymentPage .guest-email-label {
+    color: var(--text-muted);
+    font-size: var(--font-size-small);
+    font-weight: var(--font-weight-small);
+}
+
+#paymentPage .guest-email-label,
+#paymentPage #guestEmailSaved {
+    display: none;
+}
+
+#paymentPage .guest-info-item input,
+#paymentPage .guest-email-saved-input {
+    min-height: 48px;
+    padding: var(--s3) var(--s4);
+    border: 1px solid var(--border);
+    border-radius: var(--r-md);
+    background: var(--surface);
+    color: var(--text);
+    font-family: var(--font-family);
+}
+
+#paymentPage .guest-info-item input:focus,
+#paymentPage .guest-email-saved-input:focus {
+    outline: 2px solid var(--brand);
+    outline-offset: 1px;
+}
+
+#paymentPage .guest-info-item input,
+#paymentPage .guest-email-saved-input {
+    font-family: var(--font-family);
+    font-size: var(--font-size-body);
+}
+
+#paymentPage .guest-info-item input:hover:not(:disabled),
+#paymentPage .guest-email-saved-input:hover:not(:disabled) {
+    border-color: var(--text-muted);
+}
+
+#paymentPage .guest-info-item input:focus-visible,
+#paymentPage .guest-email-saved-input:focus-visible {
+    outline: 2px solid var(--brand-hover);
+    outline-offset: 2px;
+}
+
+#paymentPage .guest-info-item input.field-invalid,
+#paymentPage .guest-info-item input.field-invalid:focus-visible {
+    border-color: var(--danger);
+    outline-color: var(--danger);
+}
+
+#paymentPage .guest-email-block-invalid {
+    outline-offset: 4px;
+    border-radius: var(--r-md);
+}
+
+#paymentPage .guest-email-block-invalid .google-signin-btn {
+    outline-offset: 4px;
+    border-radius: var(--r-pill);
+}
+
+#paymentPage .btn-change-email {
+    border: 1px solid var(--danger);
+    border-radius: var(--r-pill);
+    color: var(--danger);
+}
+
+#paymentPage .btn-change-email:hover,
+#paymentPage .btn-change-email:focus-visible {
+    border-color: var(--danger);
+    background: color-mix(in srgb, var(--danger) 12%, var(--surface));
+    color: var(--danger);
+}
+
+#paymentPage .btn-change-email:focus-visible {
+    outline: 2px solid var(--danger);
+    outline-offset: 2px;
+}
+
+#paymentPage .guest-email-confirmed {
+    border: 1px solid var(--brand);
+    border-radius: var(--r-md);
+    background: var(--surface);
+    color: var(--text);
+}
+
+#paymentPage .payment-btn {
+    border: 1px solid var(--brand);
+    border-radius: var(--r-md);
+    background: var(--surface);
+    color: var(--text);
+}
+
+#paymentPage .payment-btn.selected {
+    background: var(--surface-2);
+    background: color-mix(in srgb, var(--brand) 18%, var(--surface));
+    border-color: var(--brand-hover);
+    color: var(--text);
+}
+
+#paymentPage .payment-btn:hover,
+#paymentPage .payment-btn:focus-visible {
+    border-color: var(--brand-hover);
+    outline: none;
+}
+
+#paymentPage .payment-btn:focus-visible {
+    outline: 2px solid var(--brand-hover);
+    outline-offset: 2px;
+}
+
+#paymentPage .payment-btn-sub {
+    color: var(--text-muted);
+}
+
+#paymentPage .booking-summary {
+    padding: var(--s4);
+    border: 1px solid var(--border);
+    border-radius: var(--r-md);
+    background: var(--surface-2);
+    color: var(--text-muted);
+}
+
+#paymentPage .booking-summary strong,
+#paymentPage .booking-summary-total strong {
+    color: var(--text);
+}
+
+#paymentPage .booking-summary-total strong {
+    color: var(--brand-hover);
+}
+
+#paymentPage .payment-confidence-note {
+    color: var(--warning);
+}
+
+#paymentPage .modal-actions {
+    gap: var(--s3);
+    padding: var(--s4) var(--s5);
+    border-top: 1px solid var(--border);
+    background: var(--surface);
+}
+
+#paymentPage .modal-actions .btn {
+    min-height: 44px;
+    border-radius: var(--r-pill);
+    font-family: var(--font-family);
+    font-weight: var(--font-weight-button);
+}
+
+#paymentPage .modal-actions .btn-primary {
+    border-color: var(--brand);
+    background: var(--brand);
+    color: var(--text);
+}
+
+#paymentPage .modal-actions .btn-secondary {
+    border: 1px solid var(--danger);
+    background: transparent;
+    color: var(--danger);
+}
+
+#paymentPage .modal-actions .btn:hover:not(:disabled) {
+    border-color: var(--brand-hover);
+}
+
+#paymentPage .modal-actions .btn-secondary:hover:not(:disabled) {
+    border-color: var(--danger);
+    background: color-mix(in srgb, var(--danger) 12%, var(--surface));
+    color: var(--danger);
+}
+
+#paymentPage .modal-actions .btn:focus-visible {
+    outline: 2px solid var(--brand-hover);
+    outline-offset: 2px;
+}
+
+#paymentPage .modal-actions .btn-secondary:focus-visible {
+    outline-color: var(--danger);
+}
+
+#paymentPage .modal-actions .btn:disabled {
+    border-color: var(--border);
+    background: var(--surface-2);
+    color: var(--text-muted);
+    cursor: not-allowed;
+}
+
+@media (max-width: 767px) {
+    .landing-wrapper {
+        padding: var(--s3) var(--s2);
+    }
+
+    #paymentPage {
+        max-height: calc(100vh - 2 * var(--s3));
+    }
+
+    #paymentPage .guest-info-grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    #paymentPage .booking-flow-progress {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    #paymentPage .modal-scroll-body {
+        padding: var(--s3);
+    }
+
+    #paymentPage .modal-header,
+    #paymentPage .modal-actions {
+        padding: var(--s3);
+    }
+}

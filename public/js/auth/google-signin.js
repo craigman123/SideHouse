@@ -1,6 +1,7 @@
 document.addEventListener('DOMContentLoaded', function () {
     var btnEl = document.getElementById('googleSignInBtn');
     if (!btnEl) return;
+    var loadingShell = btnEl.parentElement;
 
     var clientId = btnEl.dataset.googleClientId;
     var authUrl = btnEl.dataset.googleAuthUrl;
@@ -20,6 +21,87 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     var redirectFallback = btnEl.dataset.redirectFallback || '/';
+    var authSubmitBtn = document.getElementById('loginSubmitBtn') || document.getElementById('registerSubmitBtn');
+    var authForm = authSubmitBtn ? authSubmitBtn.form : null;
+    var authFormInFlight = false;
+    var googleInFlight = false;
+    var googleLockedSubmit = false;
+    var submitWasDisabled = false;
+    var redirectFallbackTimer = null;
+
+    function lockGoogleButton() {
+        btnEl.classList.add('google-btn-wrap-locked');
+        btnEl.setAttribute('aria-disabled', 'true');
+    }
+
+    function unlockGoogleButton() {
+        if (googleInFlight || authFormInFlight) return;
+        btnEl.classList.remove('google-btn-wrap-locked');
+        btnEl.removeAttribute('aria-disabled');
+    }
+
+    function startGoogleLoading() {
+        googleInFlight = true;
+        submitWasDisabled = authSubmitBtn ? authSubmitBtn.disabled : false;
+        googleLockedSubmit = Boolean(authSubmitBtn && !submitWasDisabled);
+        if (googleLockedSubmit) authSubmitBtn.disabled = true;
+        btnEl.classList.remove('google-btn-wrap-locked');
+        btnEl.classList.add('google-btn-wrap-loading');
+        loadingShell.classList.add('google-btn-wrap-loading');
+        btnEl.setAttribute('aria-disabled', 'true');
+        btnEl.setAttribute('aria-busy', 'true');
+        var status = loadingShell.querySelector('.google-loading-status');
+        var visual = loadingShell.querySelector('.google-loading-visual');
+        if (status) status.textContent = 'Logging in...';
+        if (visual) visual.hidden = false;
+    }
+
+    function resetGoogleLoading() {
+        if (redirectFallbackTimer) {
+            clearTimeout(redirectFallbackTimer);
+            redirectFallbackTimer = null;
+        }
+        googleInFlight = false;
+        btnEl.classList.remove('google-btn-wrap-loading');
+        loadingShell.classList.remove('google-btn-wrap-loading');
+        btnEl.removeAttribute('aria-busy');
+        var status = loadingShell.querySelector('.google-loading-status');
+        var visual = loadingShell.querySelector('.google-loading-visual');
+        if (status) status.textContent = '';
+        if (visual) visual.hidden = true;
+        if (googleLockedSubmit && authSubmitBtn) authSubmitBtn.disabled = submitWasDisabled;
+        googleLockedSubmit = false;
+        unlockGoogleButton();
+    }
+
+    if (authForm) {
+        authForm.addEventListener('submit', function (event) {
+            if (googleInFlight) {
+                event.preventDefault();
+                event.stopImmediatePropagation();
+                return;
+            }
+            authFormInFlight = true;
+            lockGoogleButton();
+        }, true);
+    }
+
+    if (authSubmitBtn && window.MutationObserver) {
+        var submitObserver = new MutationObserver(function () {
+            if (!authSubmitBtn.disabled && authFormInFlight) {
+                authFormInFlight = false;
+                unlockGoogleButton();
+            }
+        });
+        submitObserver.observe(authSubmitBtn, { attributes: true, attributeFilter: ['disabled'] });
+    }
+
+    window.addEventListener('pageshow', function (event) {
+        if (!event.persisted) return;
+        authFormInFlight = false;
+        resetGoogleLoading();
+        unlockGoogleButton();
+    });
 
     // Only allow same-site paths ("/something", never "//host" or "/\host",
     // which browsers treat as protocol-relative → external redirect) —
@@ -32,7 +114,8 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     async function handleGoogleCredential(response) {
-        btnEl.classList.add('google-btn-wrap-loading');
+        if (googleInFlight || authFormInFlight) return;
+        startGoogleLoading();
 
         try {
             var res = await fetch(authUrl, {
@@ -50,16 +133,17 @@ document.addEventListener('DOMContentLoaded', function () {
                 showToast(data.message || (btnEl.dataset.buttonText === 'signup_with'
                     ? "Couldn't sign up with Google. Please try again."
                     : "Couldn't sign in with Google. Please try again."), 'error');
-                btnEl.classList.remove('google-btn-wrap-loading');
+                resetGoogleLoading();
                 return;
             }
 
             showToast(data.message || (btnEl.dataset.buttonText === 'signup_with' ? 'Account created!' : 'Signed in!'), 'success');
             window.location.href = safeRedirectPath(data.redirect, redirectFallback);
+            redirectFallbackTimer = setTimeout(resetGoogleLoading, 10000);
         } catch (err) {
             console.error(err);
             showToast('Something went wrong. Please try again.', 'error');
-            btnEl.classList.remove('google-btn-wrap-loading');
+            resetGoogleLoading();
         }
     }
 

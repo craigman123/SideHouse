@@ -7,20 +7,20 @@
    ========================================================================== */
 
 :root {
-    --rc-bg: #0d1117;
-    --rc-panel: #161b22;
-    --rc-panel-raised: #1c2128;
-    --rc-border: #30363d;
-    --rc-text: #f0f6fc;
-    --rc-text-muted: #8b949e;
-    --rc-text-faint: #6e7681;
+    --rc-bg: var(--bg);
+    --rc-panel: var(--surface);
+    --rc-panel-raised: var(--surface-2);
+    --rc-border: var(--border);
+    --rc-text: var(--text);
+    --rc-text-muted: var(--text-muted);
+    --rc-text-faint: var(--text-muted);
 
-    --rc-accent: #3fb950;
-    --rc-accent-dim: #238636;
-    --rc-accent-soft: rgba(63, 185, 80, 0.12);
+    --rc-accent: var(--brand);
+    --rc-accent-dim: var(--brand);
+    --rc-accent-soft: var(--surface-2);
 
-    --rc-radius-lg: 16px;
-    --rc-radius-md: 12px;
+    --rc-radius-lg: var(--r-lg);
+    --rc-radius-md: var(--r-md);
 }
 
 * {
@@ -31,7 +31,7 @@ body {
     margin: 0;
     padding: 24px 16px;
     background-color: var(--rc-bg);
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, Helvetica, sans-serif;
+    font-family: var(--font-family);
     color: var(--rc-text);
 }
 
@@ -242,5 +242,60 @@ body {
         width: calc(100% - 40px);
         margin-left: 20px;
         margin-right: 20px;
+    }
+}
+.card {
+    border: 1px solid transparent;
+    border-radius: var(--r-lg);
+    background-image: linear-gradient(var(--surface), var(--surface)), var(--brand-grad);
+    background-origin: border-box;
+    background-clip: padding-box, border-box;
+}
+
+.header .status,
+.section-label {
+    color: var(--brand);
+}
+
+.total {
+    border-color: var(--brand);
+    border-radius: var(--r-md);
+    background: var(--surface-2);
+}
+
+.intro h1 {
+    font-size: var(--font-size-h2);
+    font-weight: var(--font-weight-h2);
+}
+
+.back-link a {
+    display: inline-flex;
+    min-height: 44px;
+    align-items: center;
+    justify-content: center;
+    padding: var(--s2) var(--s4);
+    border: 1px solid var(--brand);
+    border-radius: var(--r-pill);
+    color: var(--text);
+    font-family: var(--font-family);
+}
+
+@media (max-width: 767px) {
+    body {
+        padding: var(--s4) var(--s3);
+    }
+
+    .card {
+        width: 100%;
+    }
+
+    .header {
+        flex-wrap: wrap;
+        gap: var(--s2);
+    }
+
+    .bookings th,
+    .bookings td {
+        overflow-wrap: anywhere;
     }
 }

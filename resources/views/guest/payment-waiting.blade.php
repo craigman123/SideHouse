@@ -5,12 +5,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Waiting for Payment | Side House Paddlers</title>
+    <script src="{{ asset('js/guest/theme-toggle.js') }}"></script>
+    <link rel="stylesheet" href="{{ asset('css/tokens.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/fonts.css') }}">
     <link rel="stylesheet" href="{{ asset('css/app.css') }}">
     <link rel="stylesheet" href="{{ asset('css/guest/payment-waiting.css') }}">
     <link rel="stylesheet" href="{{ asset('css/guest/payment-waiting-modal.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/guest/theme-toggle.css') }}">
     <link rel="icon" type="image/png" href="{{ asset('images/tab_icon.png') }}">
 </head>
 <body class="wt-body">
+    @include('partials.guest.theme-toggle', ['placement' => 'corner'])
 
     <div class="wt-toast-container" id="toastContainer"></div>
     <div class="bg-particle"></div>
@@ -45,9 +50,8 @@
             <div class="wt-section">
                 <p class="wt-section-label">Scan to Pay — QR Ph</p>
 
-                <div class="wt-qr-box" id="qrBox">
-                    <div class="wt-qr-loading" id="qrLoading">Generating your QR code&hellip;</div>
-
+                <div class="wt-qr-box" id="qrBox" data-state="loading">
+                    <div class="wt-qr-skeleton" id="qrSkeleton" aria-hidden="true"></div>
                     <div class="wt-qr-image-wrap" id="qrImageWrap" hidden>
                         <img id="qrImage" src="" alt="QR Ph payment code">
                     </div>
@@ -57,11 +61,13 @@
                         <br>
                         <button type="button" class="wt-qr-retry" id="qrRetryBtn">Try again</button>
                     </div>
+                </div>
 
-                    <div class="wt-qr-status-line" id="qrStatusLine" hidden>
-                        <span class="wt-pulse-dot"></span>
-                        <span>Waiting for payment confirmation&hellip;</span>
-                    </div>
+                <div class="wt-qr-loading" id="qrLoading">Generating your QR code&hellip;</div>
+
+                <div class="wt-qr-status-line" id="qrStatusLine" hidden>
+                    <span class="wt-pulse-dot"></span>
+                    <span>Waiting for payment confirmation&hellip;</span>
                 </div>
             </div>
 
@@ -88,16 +94,15 @@
             </div>
 
             <div class="wt-section">
+                <div class="wt-float-timer" id="floatTimer">
+                    <span class="wt-float-timer-label">Slot held for</span>
+                    <span class="wt-float-timer-value" id="floatTimerValue">--:--</span>
+                </div>
                 <div class="wt-cancel-actions">
                     <button type="button" class="wt-btn-cancel" id="cancelBtn">Cancel this booking</button>
                 </div>
             </div>
         </div>
-    </div>
-
-    <div class="wt-float-timer" id="floatTimer">
-        <span class="wt-float-timer-label">Slot held for</span>
-        <span class="wt-float-timer-value" id="floatTimerValue">--:--</span>
     </div>
 
     {{-- ==================== CANCEL CONFIRMATION MODAL ==================== --}}
@@ -139,6 +144,6 @@
     </div>
 
     <script src="{{ asset('js/guest/payment-waiting.js') }}" defer></script>
-    <script src="{{ asset('js/qr-cache.js') }}" defer></script>
+    <script src="{{ asset('js/payment/qr-cache.js') }}" defer></script>
 </body>
 </html>

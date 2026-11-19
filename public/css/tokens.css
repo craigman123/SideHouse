@@ -1,0 +1,42 @@
+:root {
+  /* Color */
+  --bg: #0A0A0A;
+  --surface: #141414;
+  --surface-2: #1C1C1C;
+  --border: rgba(255,255,255,.08);
+  --text: #FFFFFF;
+  --text-muted: #A3A3A3;
+  --brand: #009D57;
+  --brand-hover: #00B274;
+  --brand-grad: linear-gradient(135deg, #00B274, #27A5FF);
+  --info: #27A5FF;
+  --danger: #F85149;
+  --warning: #D29922;
+  --font-family: 'Montserrat', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-size-h1: clamp(2.25rem, 5vw, 3.5rem);
+  --font-weight-h1: 700;
+  --font-size-h2: clamp(1.5rem, 3vw, 2.25rem);
+  --font-weight-h2: 700;
+  --font-size-h3: 1.125rem;
+  --font-weight-h3: 600;
+  --font-size-body: 1rem;
+  --font-weight-body: 400;
+  --line-height-body: 1.6;
+  --font-size-small: 0.875rem;
+  --font-weight-small: 500;
+  --font-size-button: 1rem;
+  --font-weight-button: 600;
+  --r-sm: 10px;
+  --r-md: 14px;
+  --r-lg: 20px;
+  --r-pill: 999px;
+  --s1: 4px;
+  --s2: 8px;
+  --s3: 12px;
+  --s4: 16px;
+  --s5: 24px;
+  --s6: 32px;
+  --s7: 48px;
+  --s8: 64px;
+  --s9: 96px;
+}

@@ -4,8 +4,8 @@
 @section('page-title', 'Courts')
 
 @push('styles')
-    <link rel="stylesheet" href="{{ asset('css/dashboard.css') }}">
-    <link rel="stylesheet" href="{{ asset('css/courts.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/user/dashboard.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/user/courts.css') }}">
 @endpush
 
 @section('content')
@@ -206,5 +206,5 @@
             };
         }
     </script>
-    <script src="{{ asset('js/courts.js') }}" defer></script>
+    <script src="{{ asset('js/config/courts.js') }}" defer></script>
 @endpush

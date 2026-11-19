@@ -15,88 +15,65 @@
     // BACK NAVIGATION HANDLING
     // ============================================================
     
-    let backNavModalShown = false;
+    let backNavigationInFlight = false;
+    const backGuardState = { page: 'payment-waiting', backGuard: true };
 
     // Push a state to prevent immediate back navigation
-    window.history.pushState({ page: 'payment-waiting' }, '', window.location.href);
+    window.history.pushState(backGuardState, '', window.location.href);
 
     // Handle browser back button
-    window.addEventListener('popstate', function(e) {
-        // If user is trying to go back, show the modal
-        if (!backNavModalShown) {
-            backNavModalShown = true;
-            showBackNavigationModal();
+    window.addEventListener('popstate', function(event) {
+        if (event.state?.backGuard) return;
+        if (backNavigationInFlight) {
+            window.history.pushState(backGuardState, '', window.location.href);
+            return;
         }
+        backNavigationInFlight = true;
+
+        // Keep the waiting page in history while the booking status is checked.
+        window.history.pushState(backGuardState, '', window.location.href);
+        handleBackNavigation();
     });
 
-    function showBackNavigationModal() {
-        const modal = document.getElementById('wt-back-nav-modal');
-        const stayBtn = document.getElementById('wt-back-nav-stay');
-        const leaveBtn = document.getElementById('wt-back-nav-leave');
+    async function handleBackNavigation() {
+        try {
+            const statusResponse = await fetch(`${statusUrl}?token=${encodeURIComponent(token)}`, {
+                headers: { Accept: 'application/json' },
+            });
+            if (!statusResponse.ok) throw new Error('Could not check booking status');
 
-        // Check if booking is still pending before showing modal
-        fetch(`${statusUrl}?token=${encodeURIComponent(token)}`, {
-            headers: { Accept: 'application/json' },
-        })
-        .then(res => res.json())
-        .then(data => {
-            // If booking is already paid or cancelled, just redirect
+            const data = await statusResponse.json();
             if (data.status === 'paid') {
-                window.location.href = `${receiptUrl}?token=${encodeURIComponent(token)}`;
+                window.location.replace(`${receiptUrl}?token=${encodeURIComponent(token)}`);
                 return;
             }
-            if (data.status === 'cancelled') {
-                window.location.href = landingUrl + '?booking_error=This booking was cancelled.';
+            if (data.status === 'confirmed' || data.status === 'cancelled') {
+                window.location.replace('/');
+                return;
+            }
+            if (data.status !== 'pending') {
+                window.location.replace('/');
                 return;
             }
 
-            // Show the modal
-            modal.classList.remove('hidden');
-        })
-        .catch(() => {
-            // If we can't check status, assume booking is still pending
-            modal.classList.remove('hidden');
-        });
-
-        // Stay on page - close modal and push a new state
-        stayBtn.onclick = function() {
-            modal.classList.add('hidden');
-            backNavModalShown = false;
-            // Push a new state so the back button works again
-            window.history.pushState({ page: 'payment-waiting' }, '', window.location.href);
-        };
-
-        // Leave - cancel booking and go home
-        leaveBtn.onclick = function() {
-            modal.classList.add('hidden');
-            cancelBookingAndLeave(cancelAllUrl, 'Your booking has been cancelled.');
-        };
-    }
-
-    function cancelBookingAndLeave(url, message) {
-        // Show loading state
-        const leaveBtn = document.getElementById('wt-back-nav-leave');
-        leaveBtn.disabled = true;
-        leaveBtn.textContent = 'Cancelling...';
-
-        fetch(`${url}?token=${encodeURIComponent(token)}`, {
-            method: 'POST',
-            headers: {
-                Accept: 'application/json',
-                ...csrfHeaders(),
-            },
-        })
-        .then(res => res.json())
-        .then(data => {
-            // Redirect to home with error message
-            const params = new URLSearchParams({ booking_error: message });
-            window.location.href = `${landingUrl}?${params.toString()}`;
-        })
-        .catch(() => {
-            // Even if cancel fails, redirect anyway
-            const params = new URLSearchParams({ booking_error: message });
-            window.location.href = `${landingUrl}?${params.toString()}`;
-        });
+            try {
+                await fetch(`${cancelAllUrl}?token=${encodeURIComponent(token)}`, {
+                    method: 'POST',
+                    keepalive: true,
+                    headers: {
+                        Accept: 'application/json',
+                        ...csrfHeaders(),
+                    },
+                });
+            } catch (cancelError) {
+                console.error(cancelError);
+            }
+            window.location.replace('/');
+        } catch (err) {
+            console.error(err);
+            backNavigationInFlight = false;
+            showToast('Could not check booking status. Please try Back again.', 'error');
+        }
     }
 
     // ============================================================

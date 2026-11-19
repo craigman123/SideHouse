@@ -5,34 +5,50 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Register | Court Booking</title>
+    <script src="{{ asset('js/guest/theme-toggle.js') }}"></script>
+    <link rel="stylesheet" href="{{ asset('css/tokens.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/fonts.css') }}">
     <link rel="stylesheet" href="{{ asset('css/app.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/guest/theme-toggle.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/auth/auth-pages.css') }}">
     <link rel="icon" type="image/png" href="{{ asset('images/tab_icon.png') }}">
     <script src="{{ asset('js/app.js') }}" defer></script>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
-<body>
+<body class="auth-page">
+    @include('partials.guest.theme-toggle', ['placement' => 'corner'])
     <div class="auth-wrapper">
-        <div class="bg-particle"></div>
-        <div class="bg-particle"></div>
-        <div class="bg-particle"></div>
-        <div class="bg-particle"></div>
-        <div class="bg-particle"></div>
-        <div class="bg-particle"></div>
-        <div class="bg-particle"></div>
-        <div class="bg-particle"></div>
+        <div class="auth-bubble-layer">
+            <div class="bg-particle"></div>
+            <div class="bg-particle"></div>
+            <div class="bg-particle"></div>
+            <div class="bg-particle"></div>
+            <div class="bg-particle"></div>
+            <div class="bg-particle"></div>
+            <div class="bg-particle"></div>
+            <div class="bg-particle"></div>
+        </div>
 
         <div class="auth-box">
             <img src="{{ asset('images/logo.png') }}" alt="Side House" style="width: 100%; max-width: 260px; display: block; margin: 0 auto 10px;">
+            <h1>Create your <span class="auth-heading-accent">account</span></h1>
             <p class="subtitle">Create an account to manage bookings</p>
 
-            <div
-                id="googleSignInBtn"
-                class="google-btn-wrap"
-                data-google-client-id="{{ config('services.google.client_id') }}"
-                data-google-auth-url="{{ route('auth.google') }}"
-                data-redirect-fallback="{{ route('user.dashboard') }}"
-                data-button-text="signup_with"
-            ></div>
+            <div class="google-signin-shell">
+                <div
+                    id="googleSignInBtn"
+                    class="google-btn-wrap"
+                    data-google-client-id="{{ config('services.google.client_id') }}"
+                    data-google-auth-url="{{ route('auth.google') }}"
+                    data-redirect-fallback="{{ route('user.dashboard') }}"
+                    data-button-text="signup_with"
+                ></div>
+                <span class="google-loading-status" aria-live="polite" aria-atomic="true"></span>
+                <span class="google-loading-visual" aria-hidden="true" hidden>
+                    <span class="google-loading-spinner"></span>
+                    <span>Logging in...</span>
+                </span>
+            </div>
 
             <div class="auth-divider"><span>or</span></div>
 
@@ -73,14 +89,14 @@
         </div>
     </div>
 
-    <script src="{{ asset('js/register-form.js') }}" defer></script>
-    <script src="{{ asset('js/google-signin.js') }}" defer></script>
+    <script src="{{ asset('js/payment/register-form.js') }}" defer></script>
+    <script src="{{ asset('js/auth/google-signin.js') }}" defer></script>
 
     <div id="flashData"
         data-error="{{ $errors->any() ? $errors->first() : '' }}"
         data-success="{{ session('success') }}"
         style="display:none">
     </div>
-    <script src="{{ asset('js/flash-toast.js') }}" defer></script>
+    <script src="{{ asset('js/toast/flash-toast.js') }}" defer></script>
 </body>
 </html>

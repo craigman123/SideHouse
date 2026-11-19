@@ -4,8 +4,8 @@
 @section('page-title', 'Activity Logs')
 
 @push('styles')
-    <link rel="stylesheet" href="{{ asset('css/dashboard.css') }}">
-    <link rel="stylesheet" href="{{ asset('css/bookings.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/user/dashboard.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/booking/bookings.css') }}">
 @endpush
 
 @section('content')

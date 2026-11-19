@@ -39,7 +39,7 @@
     width: 6px;
     height: 6px;
     border-radius: 50%;
-    background-color: #22c55e;
+    background-color: var(--brand);
     animation: field-loading-bounce 1.2s infinite ease-in-out both;
 }
 
@@ -50,12 +50,12 @@
 #paymentPage .guest-email-saved-input {
     width: 100%;
     padding: 10px 12px;
-    background-color: #0d1117;
-    border: 1.5px solid #30363d;
-    border-radius: 8px;
+    background-color: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: var(--r-md);
     font-size: 14px;
-    font-weight: 600;
-    color: #3fb950;
+    font-weight: var(--font-weight-button);
+    color: var(--brand);
     margin-bottom: 8px;
     cursor: default;
 }

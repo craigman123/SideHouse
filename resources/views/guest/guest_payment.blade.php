@@ -5,17 +5,23 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Confirm &amp; Pay | Side House Paddlers</title>
+    <script src="{{ asset('js/guest/theme-toggle.js') }}"></script>
+    <link rel="stylesheet" href="{{ asset('css/tokens.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/fonts.css') }}">
     <link rel="stylesheet" href="{{ asset('css/app.css') }}">
-    <link rel="stylesheet" href="{{ asset('css/book.css') }}">
-    <link rel="stylesheet" href="{{ asset('css/landing.css') }}">
-    <link rel="stylesheet" href="{{ asset('css/landing-book.css') }}">
-    <link rel="stylesheet" href="{{ asset('css/courts.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/booking/book.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/landing/landing.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/booking/landing-book.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/user/courts.css') }}">
     <link rel="stylesheet" href="{{ asset('css/guest/payment-info-placeholder.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/guest/guest-payment.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/guest/theme-toggle.css') }}">
     <script src="{{ asset('js/guest/payment.js') }}" defer></script>
     <link rel="icon" type="image/png" href="{{ asset('images/tab_icon.png') }}">
     <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
-<body>
+<body class="guest-payment-page">
+    @include('partials.guest.theme-toggle', ['placement' => 'corner'])
     <div class="landing-wrapper">
         <div class="bg-particle"></div>
         <div class="bg-particle"></div>
@@ -35,7 +41,16 @@
             data-waiting-url-template="{{ $waitingUrlTemplate }}"
             data-landing-url="{{ $landingUrl }}"
             data-google-client-id="{{ $googleClientId }}">
-            <div class="modal-header payment-header"><h3>Almost Done</h3></div>
+            <div class="modal-header payment-header">
+                <h3>Almost Done</h3>
+                <a href="{{ $landingUrl }}" class="payment-page-exit" aria-label="Exit booking">&times;</a>
+                <div class="booking-flow-progress booking-flow-progress-compact" aria-label="Booking progress">
+                    <span class="booking-flow-step complete" data-checkout-step="1"><b>1</b>Date &amp; time</span>
+                    <span class="booking-flow-step complete" data-checkout-step="2"><b>2</b>Equipment</span>
+                    <span class="booking-flow-step complete" data-checkout-step="3"><b>3</b>Details</span>
+                    <span class="booking-flow-step active" data-checkout-step="4"><b>4</b>Payment</span>
+                </div>
+            </div>
             <button type="button" class="modal-back" id="backToEquipment">&larr; Back to equipment</button>
             <div class="modal-scroll-body">
                 <div class="booking-section">
@@ -66,7 +81,7 @@
                         </div>
                     </div>
                     <div class="guest-email-block">
-                        <label class="guest-email-label" id="guestEmailLabel" for="guestEmailSaved">Email Address</label>
+                        <label class="guest-email-label" id="guestEmailLabel" for="guestEmailSaved" hidden>Email Address</label>
                         <input type="email" id="guestEmailSaved" class="guest-email-saved-input" readonly hidden>
                         <div id="googleSignInBtn" class="google-signin-btn"></div>
                         <div class="guest-email-confirmed" id="guestEmailConfirmed" hidden>

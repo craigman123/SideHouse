@@ -4,8 +4,8 @@
 @section('page-title', 'My Profile')
 
 @push('styles')
-    <link rel="stylesheet" href="{{ asset('css/dashboard.css') }}">
-    <link rel="stylesheet" href="{{ asset('css/admin-profile.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/user/dashboard.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/admin/admin-profile.css') }}">
 @endpush
 
 @section('content')
@@ -158,7 +158,7 @@
 @endsection
 
 @push('scripts')
-    <script src="{{ asset('js/profile.js') }}" defer></script>
+    <script src="{{ asset('js/user/profile.js') }}" defer></script>
     <script>
         // Logout confirmation modal — same self-contained pattern as the
         // user profile page, kept here rather than in profile.js since it

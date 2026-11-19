@@ -4,9 +4,9 @@
 @section('page-title', 'My Bookings')
 
 @push('styles')
-    <link rel="stylesheet" href="{{ asset('css/dashboard.css') }}">
-    <link rel="stylesheet" href="{{ asset('css/user-dashboard.css') }}">
-    <link rel="stylesheet" href="{{ asset('css/bookings-index.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/user/dashboard.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/user/user-dashboard.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/booking/bookings-index.css') }}">
 @endpush
 
 @section('content')
@@ -136,5 +136,5 @@
 @endsection
 
 @push('scripts')
-    <script src="{{ asset('js/cancel-booking.js') }}" defer></script>
+    <script src="{{ asset('js/config/cancel-booking.js') }}" defer></script>
 @endpush

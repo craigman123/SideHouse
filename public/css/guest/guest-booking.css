@@ -1,0 +1,1486 @@
+/* Guest landing page ownership layer. Shared stylesheets remain unchanged. */
+
+body > .landing-wrapper {
+    background: transparent;
+    color: var(--text);
+    font-family: var(--font-family);
+}
+
+.landing-wrapper .landing-nav-wrap {
+    position: fixed;
+    top: var(--s4);
+    left: var(--s4);
+    right: var(--s4);
+    z-index: 1000;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    gap: var(--s3);
+    margin: 0;
+    pointer-events: none;
+}
+
+.landing-wrapper .landing-nav-wrap > * {
+    pointer-events: auto;
+}
+
+.landing-wrapper .landing-nav {
+    flex: 1 1 auto;
+    min-width: 0;
+    max-width: 1200px;
+    height: 80px;
+    margin: 0;
+    padding: var(--s3) var(--s4);
+    border: 1px solid var(--border);
+    border-radius: var(--r-pill);
+    background: var(--surface);
+    gap: var(--s3);
+}
+
+.landing-wrapper .nav-left {
+    min-width: 0;
+}
+
+.landing-wrapper .nav-logo {
+    width: auto;
+    height: 40px;
+}
+
+.landing-wrapper .nav-title-landing {
+    min-width: 0;
+    margin-left: var(--s2);
+    color: var(--text);
+    font-family: var(--font-family);
+    font-size: var(--font-size-small);
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.landing-wrapper .nav-center {
+    min-width: 0;
+    gap: var(--s2);
+}
+
+.landing-wrapper .nav-links {
+    min-width: 0;
+    gap: var(--s1);
+}
+
+.landing-wrapper .nav-link {
+    min-height: 40px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--s2) var(--s3);
+    border-radius: var(--r-pill);
+    color: var(--text-muted);
+    font-family: var(--font-family);
+    font-size: var(--font-size-small);
+    white-space: nowrap;
+}
+
+.landing-wrapper .nav-link:hover,
+.landing-wrapper .nav-link.active {
+    color: var(--text);
+    background: var(--surface-2);
+}
+
+.landing-wrapper .nav-link-book,
+.landing-wrapper .nav-mobile-cta {
+    min-height: 44px;
+    padding: var(--s2) var(--s4);
+    border: 1px solid var(--brand);
+    border-radius: var(--r-pill);
+    background: var(--brand);
+    color: var(--text);
+    font-weight: var(--font-weight-button);
+}
+
+.landing-wrapper .nav-link-book:hover,
+.landing-wrapper .nav-mobile-cta:hover {
+    border-color: var(--brand-hover);
+    background: var(--brand-hover);
+}
+
+.landing-wrapper .nav-search-show {
+    flex: 0 0 40px;
+    width: 40px;
+    height: 40px;
+    border: 1px solid var(--border);
+    border-radius: var(--r-pill);
+    color: var(--text);
+}
+
+.landing-wrapper .nav-search-show:hover,
+.landing-wrapper .nav-search-show:focus-visible {
+    border-color: var(--brand);
+    color: var(--brand);
+}
+
+.landing-wrapper .nav-toggle {
+    flex: 0 0 28px;
+    width: 28px;
+    height: 20px;
+}
+
+.landing-wrapper .nav-toggle span {
+    background: var(--text);
+}
+
+.landing-wrapper .nav-toggle:hover span {
+    background: var(--brand);
+}
+
+.landing-wrapper .floating-directions {
+    flex: 0 0 auto;
+    width: auto;
+    min-height: 50px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--s2);
+    padding: var(--s2) var(--s3);
+    border: 1px solid var(--border);
+    border-radius: var(--r-pill);
+    background: var(--surface);
+    color: var(--text-muted);
+    font-family: var(--font-family);
+    font-size: var(--font-size-small);
+    font-weight: var(--font-weight-small);
+    white-space: nowrap;
+}
+
+.landing-wrapper .floating-directions:hover {
+    border-color: var(--brand);
+    color: var(--brand);
+}
+
+.landing-wrapper .floating-directions-icon {
+    flex: 0 0 auto;
+    width: 18px;
+    height: 18px;
+}
+
+.landing-wrapper .nav-mobile-menu {
+    box-sizing: border-box;
+    max-width: 100%;
+}
+
+.landing-wrapper .nav-mobile-panel {
+    box-sizing: border-box;
+    width: 100%;
+    border: 1px solid var(--border);
+    border-radius: var(--r-lg);
+    background: var(--surface);
+    color: var(--text);
+    font-family: var(--font-family);
+}
+
+.landing-wrapper .nav-mobile-panel .nav-links {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    width: 100%;
+}
+
+.landing-wrapper .nav-mobile-panel .nav-link {
+    justify-content: flex-start;
+    border-bottom: 1px solid var(--border);
+    border-radius: 0;
+    background: transparent;
+    color: var(--text-muted);
+}
+
+.landing-wrapper .nav-mobile-panel .nav-link:hover,
+.landing-wrapper .nav-mobile-panel .nav-link.active {
+    color: var(--brand);
+}
+
+.landing-wrapper .hero {
+    box-sizing: border-box;
+    width: min(1200px, 100%);
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: var(--s8) var(--s4) var(--s7);
+    text-align: center;
+}
+
+.landing-wrapper .hero-logo {
+    display: block;
+    width: min(240px, 70vw);
+    height: auto;
+    margin: 0 auto var(--s4);
+}
+
+.landing-wrapper .hero h1 {
+    margin: 0 0 var(--s3);
+    color: var(--text);
+    font-family: var(--font-family);
+    font-size: var(--font-size-h1);
+    font-weight: var(--font-weight-h1);
+    line-height: 1.2;
+}
+
+.landing-wrapper .hero h1 span,
+.landing-wrapper .hero-visit-details a {
+    color: var(--brand);
+}
+
+.landing-wrapper .hero p {
+    max-width: 720px;
+    margin: 0 auto var(--s5);
+    color: var(--text-muted);
+    font-family: var(--font-family);
+    font-size: var(--font-size-body);
+    line-height: var(--line-height-body);
+}
+
+.landing-wrapper .hero-actions {
+    display: flex;
+    justify-content: center;
+    gap: var(--s3);
+    margin: 0 0 var(--s4);
+}
+
+.landing-wrapper .btn-hero-primary,
+.landing-wrapper .btn-hero-secondary {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--s2) var(--s5);
+    border: 1px solid var(--brand);
+    border-radius: var(--r-pill);
+    font-family: var(--font-family);
+    font-size: var(--font-size-button);
+    font-weight: var(--font-weight-button);
+    text-decoration: none;
+}
+
+.landing-wrapper .btn-hero-primary {
+    background: var(--brand);
+    color: var(--text);
+}
+
+.landing-wrapper .btn-hero-primary:hover {
+    background: var(--brand-hover);
+}
+
+.landing-wrapper .btn-hero-secondary {
+    background: transparent;
+    color: var(--text);
+}
+
+.landing-wrapper .hero-visit-details {
+    justify-content: center;
+    gap: var(--s2) var(--s4);
+    margin: 0 0 var(--s3);
+    color: var(--text-muted);
+    font-family: var(--font-family);
+}
+
+.landing-wrapper .scroll-cue {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--s2);
+    color: var(--text-muted);
+}
+
+.landing-wrapper .book-now-section {
+    box-sizing: border-box;
+    width: min(480px, calc(100% - 2 * var(--s4)));
+    max-width: none;
+    margin: 0 auto var(--s8);
+    padding: var(--s5) 0;
+    border: 0;
+    background: transparent;
+}
+
+.landing-wrapper .book-now-intro {
+    margin: 0 0 var(--s4);
+    padding: 0 var(--s2);
+    text-align: center;
+}
+
+.landing-wrapper .book-now-intro h2 {
+    margin: 0 0 var(--s2);
+    color: var(--text);
+    font-family: var(--font-family);
+    font-size: var(--font-size-h2);
+    font-weight: var(--font-weight-h2);
+}
+
+.landing-wrapper .book-now-intro p,
+.landing-wrapper .book-now-rate,
+.landing-wrapper .book-now-section .empty-state {
+    color: var(--text-muted);
+    font-family: var(--font-family);
+}
+
+.landing-wrapper .book-now-widget {
+    box-sizing: border-box;
+    width: 100%;
+    max-width: none;
+    margin: 0;
+    padding: var(--s5);
+    border: 1px solid transparent;
+    border-radius: var(--r-lg);
+    background-image: linear-gradient(var(--surface), var(--surface)), var(--brand-grad);
+    background-origin: border-box;
+    background-clip: padding-box, border-box;
+}
+
+.landing-wrapper .booking-flow-progress {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: var(--s2);
+    margin: 0 0 var(--s4);
+}
+
+.landing-wrapper .booking-flow-step {
+    box-sizing: border-box;
+    min-width: 0;
+    min-height: 40px;
+    padding: var(--s2);
+    border: 1px solid var(--border);
+    border-radius: var(--r-pill);
+    color: var(--text-muted);
+    font-family: var(--font-family);
+    font-size: var(--font-size-small);
+    text-align: center;
+}
+
+.landing-wrapper .booking-flow-step.active,
+.landing-wrapper .booking-flow-step.complete {
+    border-color: var(--brand);
+    color: var(--text);
+}
+
+.landing-wrapper .booking-flow-step.active b,
+.landing-wrapper .booking-flow-step.complete b {
+    color: var(--brand);
+}
+
+.landing-wrapper .booking-section {
+    margin: 0;
+    padding: var(--s4);
+    border: 1px solid var(--border);
+    border-radius: var(--r-lg);
+    background: var(--surface);
+}
+
+.landing-wrapper .booking-section-label {
+    margin: 0 0 var(--s3);
+    color: var(--text);
+    font-family: var(--font-family);
+    font-size: var(--font-size-body);
+    font-weight: var(--font-weight-h3);
+}
+
+.landing-wrapper .calendar {
+    box-sizing: border-box;
+    width: 100%;
+    padding: var(--s4);
+    border: 1px solid var(--border);
+    border-radius: var(--r-md);
+    background: var(--surface-2);
+}
+
+.landing-wrapper .calendar-header {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    gap: var(--s2);
+    margin: 0 0 var(--s3);
+    padding: 0 var(--s1);
+}
+
+.landing-wrapper .calendar-header span {
+    flex: 1 1 auto;
+    color: var(--text);
+    font-family: var(--font-family);
+    font-size: var(--font-size-small);
+    text-align: center;
+}
+
+.landing-wrapper .calendar-nav {
+    flex: 0 0 44px;
+    width: 44px;
+    height: 44px;
+    border: 1px solid var(--border);
+    border-radius: var(--r-pill);
+    background: var(--surface);
+    color: var(--text);
+}
+
+.landing-wrapper .calendar-nav:hover {
+    border-color: var(--brand);
+    color: var(--brand);
+}
+
+.landing-wrapper .calendar-weekdays {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: var(--s1);
+    margin: 0 0 var(--s2);
+    color: var(--text-muted);
+    text-align: center;
+}
+
+.landing-wrapper .calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: var(--s2);
+}
+
+.landing-wrapper .calendar-day {
+    box-sizing: border-box;
+    width: 100%;
+    min-width: 0;
+    aspect-ratio: 1;
+    border: 1px solid var(--border);
+    border-radius: var(--r-sm);
+    background: var(--surface);
+    color: var(--text-muted);
+    font-family: var(--font-family);
+}
+
+.landing-wrapper .calendar-day:hover:not(:disabled),
+.landing-wrapper .calendar-day.selected {
+    border-color: var(--brand);
+    background: var(--brand);
+    color: var(--text);
+}
+
+.landing-wrapper .calendar-day.calendar-day-today {
+    border-color: var(--brand);
+}
+
+.landing-wrapper .booking-selection-summary {
+    position: static;
+    margin: var(--s4) 0 0;
+    padding: var(--s4);
+    border: 1px solid var(--border);
+    border-radius: var(--r-md);
+    background: var(--surface-2);
+}
+
+.landing-wrapper .booking-selection-summary-title {
+    margin: 0 0 var(--s2);
+    color: var(--brand);
+    font-size: var(--font-size-small);
+    font-weight: var(--font-weight-small);
+}
+
+.landing-wrapper .booking-selection-summary p:not(.booking-selection-summary-title) {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--s3);
+    margin: 0;
+    padding: var(--s2) 0;
+    border-top: 1px solid var(--border);
+    color: var(--text-muted);
+}
+
+.landing-wrapper .booking-selection-summary strong {
+    max-width: 65%;
+    color: var(--text);
+    text-align: right;
+    overflow-wrap: anywhere;
+}
+
+.landing-wrapper .booking-selection-summary .booking-selection-total strong {
+    color: var(--brand-hover);
+}
+
+.landing-wrapper .modal-box,
+.landing-wrapper .modal-box-search {
+    border: 1px solid var(--border);
+    border-radius: var(--r-lg);
+    background: var(--surface);
+    color: var(--text);
+    font-family: var(--font-family);
+}
+
+.landing-wrapper .modal-box input,
+.landing-wrapper .booking-search-input,
+.landing-wrapper .otp-input-group input {
+    min-height: 48px;
+    border: 1px solid var(--border);
+    border-radius: var(--r-md);
+    background: var(--surface-2);
+    color: var(--text);
+    font-family: var(--font-family);
+}
+
+.landing-wrapper .modal-box input:focus,
+.landing-wrapper .booking-search-input:focus,
+.landing-wrapper .otp-input-group input:focus {
+    outline: 2px solid var(--brand);
+}
+
+.landing-wrapper .btn-primary,
+.landing-wrapper .booking-search-submit {
+    min-height: 44px;
+    border: 1px solid var(--brand);
+    border-radius: var(--r-pill);
+    background: var(--brand);
+    color: var(--text);
+    font-family: var(--font-family);
+    font-weight: var(--font-weight-button);
+}
+
+.landing-wrapper .btn-primary:hover,
+.landing-wrapper .booking-search-submit:hover {
+    border-color: var(--brand-hover);
+    background: var(--brand-hover);
+}
+
+.landing-wrapper .btn-secondary,
+.landing-wrapper .modal-back,
+.landing-wrapper .modal-close {
+    min-height: 44px;
+    border-color: var(--brand);
+    border-radius: var(--r-pill);
+    color: var(--text);
+}
+
+.landing-wrapper .nav-search-results,
+.landing-wrapper .booking-search-results,
+.landing-wrapper .booking-search-result-item {
+    border-color: var(--border);
+    background: var(--surface);
+    color: var(--text);
+}
+
+.landing-wrapper .feature-card,
+.landing-wrapper .weekly-schedule-block,
+.landing-wrapper .stats-section,
+.landing-wrapper .faq-item,
+.landing-wrapper .stats-chart-wrap {
+    border: 1px solid var(--border);
+    border-radius: var(--r-lg);
+    background: var(--surface);
+    color: var(--text);
+    padding: 10px 20px;
+}
+
+.landing-wrapper .feature-card p,
+.landing-wrapper .weekly-schedule-label,
+.landing-wrapper .stats-section p,
+.landing-wrapper .faq-item p {
+    color: var(--text-muted);
+}
+
+.landing-wrapper .landing-footer {
+    border-top: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text-muted);
+}
+
+@media (max-width: 992px) {
+    .landing-wrapper .landing-nav {
+        height: 64px;
+        padding: var(--s2) var(--s3);
+    }
+}
+
+@media (max-width: 768px) {
+    .landing-wrapper .landing-nav-wrap {
+        left: var(--s3);
+        right: var(--s3);
+    }
+
+    .landing-wrapper .landing-nav {
+        height: 80px;
+    }
+
+    .landing-wrapper .nav-logo {
+        height: 32px;
+    }
+
+    .landing-wrapper .book-now-section {
+        margin-bottom: var(--s7);
+    }
+
+    .landing-wrapper .booking-flow-progress {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 480px) {
+    .landing-wrapper .landing-nav-wrap {
+        top: var(--s4);
+        left: var(--s2);
+        right: var(--s2);
+        gap: var(--s2);
+    }
+
+    .landing-wrapper .landing-nav {
+        height: 56px;
+        padding: var(--s2);
+        gap: var(--s2);
+    }
+
+    .landing-wrapper .nav-logo {
+        height: 28px;
+    }
+
+    .landing-wrapper .nav-center {
+        gap: var(--s1);
+    }
+
+    .landing-wrapper .nav-link-book {
+        min-height: 40px;
+        padding: var(--s2) var(--s3);
+    }
+
+    .landing-wrapper .nav-search-show {
+        display: none;
+    }
+
+    .landing-wrapper .nav-toggle {
+        flex-basis: 24px;
+        width: 24px;
+    }
+
+    .landing-wrapper .floating-directions {
+        width: 40px;
+        min-width: 40px;
+        height: 40px;
+        min-height: 40px;
+        padding: 0;
+        gap: 0;
+        font-size: 0;
+    }
+
+    .landing-wrapper .floating-directions-icon {
+        width: 20px;
+        height: 20px;
+    }
+
+    .landing-wrapper .hero {
+        padding: var(--s7) var(--s3) var(--s5);
+    }
+
+    .landing-wrapper .book-now-section {
+        width: calc(100% - 2 * var(--s3));
+        padding-top: var(--s4);
+    }
+
+    .landing-wrapper .book-now-widget {
+        padding: var(--s3);
+    }
+
+    .landing-wrapper .booking-section {
+        padding: var(--s3);
+    }
+
+    .landing-wrapper .calendar {
+        padding: var(--s2);
+    }
+
+    .landing-wrapper .calendar-grid,
+    .landing-wrapper .calendar-weekdays {
+        gap: var(--s1);
+    }
+
+    .landing-wrapper .calendar-day {
+        font-size: var(--font-size-small);
+    }
+}
+
+/* Guest wizard modal styles. These modals follow .landing-wrapper in the
+   document, so their unique IDs provide the page-specific scope. */
+#timePickerModal {
+    padding: var(--s3);
+}
+
+#timePickerModal .modal-box-timepicker {
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    width: min(560px, calc(100% - 2 * var(--s4)));
+    max-height: calc(100vh - 2 * var(--s3));
+    max-height: calc(100dvh - 2 * var(--s3));
+    min-height: 0;
+    overflow: hidden;
+    padding: var(--s4);
+    border: 1px solid var(--border);
+    border-radius: var(--r-lg);
+    background: var(--surface);
+    color: var(--text);
+    font-family: var(--font-family);
+}
+
+#timePickerModal .modal-header-timepicker,
+#timePickerModal .modal-actions {
+    flex: 0 0 auto;
+}
+
+#timePickerModal .modal-header-timepicker {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--s3);
+    margin-bottom: var(--s3);
+}
+
+#timePickerModal .time-picker-scroll-area {
+    box-sizing: border-box;
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-y;
+    scroll-padding-bottom: var(--s4);
+}
+
+#timePickerModal .booking-flow-progress,
+#equipmentModal .booking-flow-progress {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: var(--s1);
+    margin: 0;
+}
+
+#timePickerModal .booking-flow-step,
+#equipmentModal .booking-flow-step {
+    box-sizing: border-box;
+    min-width: 0;
+    min-height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--s1);
+    padding: var(--s1);
+    border: 1px solid var(--border);
+    border-radius: var(--r-pill);
+    background: var(--surface-2);
+    color: var(--text-muted);
+    font-family: var(--font-family);
+    font-size: var(--font-size-small);
+    text-align: center;
+}
+
+#timePickerModal .booking-flow-step.active,
+#equipmentModal .booking-flow-step.active {
+    border-color: var(--brand);
+    background: color-mix(in srgb, var(--brand) 18%, var(--surface));
+    color: var(--text);
+}
+
+#timePickerModal .booking-flow-step.complete,
+#equipmentModal .booking-flow-step.complete {
+    border-color: var(--brand);
+    color: var(--text);
+}
+
+#timePickerModal .booking-flow-step b,
+#equipmentModal .booking-flow-step b {
+    flex: 0 0 auto;
+    color: var(--brand-hover);
+}
+
+#timePickerModal .time-picker-day-switch {
+    gap: var(--s3);
+    margin: 0 0 var(--s3);
+}
+
+#timePickerModal .time-picker-day-switch h3 {
+    flex: 1 1 auto;
+    min-width: 0;
+    color: var(--text);
+    font-family: var(--font-family);
+    font-size: var(--font-size-h3);
+    font-weight: var(--font-weight-h3);
+}
+
+#timePickerModal .time-picker-day-nav {
+    flex: 0 0 44px;
+    width: 44px;
+    height: 44px;
+    border: 1px solid var(--border);
+    border-radius: var(--r-pill);
+    background: var(--surface-2);
+    color: var(--text);
+    font-family: var(--font-family);
+}
+
+#timePickerModal .time-picker-day-nav:hover:not(:disabled) {
+    border-color: var(--brand);
+    background: var(--surface);
+}
+
+#timePickerModal .time-picker-day-nav:focus-visible,
+#timePickerModal .time-slot-row-toggle:focus-visible,
+#timePickerModal .modal-actions .btn:focus-visible,
+#equipmentModal .qty-btn:focus-visible,
+#equipmentModal .modal-actions .btn:focus-visible {
+    outline: 2px solid var(--brand-hover);
+    outline-offset: 2px;
+}
+
+#timePickerModal .time-picker-body {
+    flex: 0 0 auto;
+    gap: var(--s3);
+    margin: 0;
+    padding: 0;
+}
+
+#timePickerModal .time-picker-body .booking-section-label {
+    margin: 0;
+}
+
+#timePickerModal .time-picker-legend {
+    gap: var(--s3);
+    margin: 0;
+}
+
+#timePickerModal .time-picker-legend-item {
+    gap: var(--s2);
+    color: var(--text-muted);
+    font-family: var(--font-family);
+    font-size: var(--font-size-small);
+    font-weight: var(--font-weight-small);
+}
+
+#timePickerModal .time-picker-legend-swatch {
+    width: 16px;
+    height: 16px;
+    border: 1px solid var(--brand);
+    border-radius: var(--r-sm);
+    background: var(--surface-2);
+    opacity: 1;
+}
+
+#timePickerModal .time-picker-legend-swatch.legend-selected {
+    background: var(--surface-2);
+    background: color-mix(in srgb, var(--brand) 18%, var(--surface));
+    border-color: var(--brand-hover);
+}
+
+#timePickerModal .time-picker-legend-swatch.legend-booked {
+    background: var(--surface-2);
+    border-color: var(--border);
+}
+
+#timePickerModal .time-slot-list {
+    box-sizing: border-box;
+    flex: 0 1 auto;
+    gap: var(--s2);
+    max-height: min(320px, 38vh);
+    padding: var(--s1) var(--s2) var(--s1) 0;
+    scrollbar-color: var(--text-muted) var(--surface-2);
+    scrollbar-width: thin;
+}
+
+#timePickerModal .time-slot-list::-webkit-scrollbar,
+#equipmentModal .modal-scroll-body::-webkit-scrollbar {
+    width: 8px;
+}
+
+#timePickerModal .time-slot-list::-webkit-scrollbar-track,
+#equipmentModal .modal-scroll-body::-webkit-scrollbar-track {
+    border-radius: var(--r-pill);
+    background: var(--surface-2);
+}
+
+#timePickerModal .time-slot-list::-webkit-scrollbar-thumb,
+#equipmentModal .modal-scroll-body::-webkit-scrollbar-thumb {
+    border: 2px solid var(--surface-2);
+    border-radius: var(--r-pill);
+    background: var(--text-muted);
+}
+
+#timePickerModal .time-slot-row {
+    grid-template-columns: minmax(0, 200px) minmax(0, 1fr);
+    align-items: center;
+    gap: var(--s2);
+    min-width: 0;
+    min-height: 44px;
+    font-family: var(--font-family);
+}
+
+#timePickerModal .time-slot-row-time {
+    display: flex;
+    align-items: center;
+    min-width: 0;
+    min-height: 44px;
+    color: var(--text);
+    font-family: var(--font-family);
+    font-size: var(--font-size-small);
+    font-weight: var(--font-weight-small);
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+    visibility: visible;
+    opacity: 1;
+}
+
+#timePickerModal .time-slot-row-toggle {
+    box-sizing: border-box;
+    min-width: 0;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--s2);
+    padding: var(--s2) var(--s3);
+    border: 1px solid var(--brand);
+    border-radius: var(--r-md);
+    background: var(--surface-2);
+    color: var(--text);
+    font-family: var(--font-family);
+    font-size: var(--font-size-small);
+    font-weight: var(--font-weight-small);
+    line-height: var(--line-height-body);
+    visibility: visible;
+    opacity: 1;
+}
+
+#timePickerModal .time-slot-row-toggle > span:not(.time-slot-row-check) {
+    display: inline;
+    color: var(--text);
+    font-family: var(--font-family);
+    font-size: inherit;
+    line-height: inherit;
+    visibility: visible;
+    opacity: 1;
+}
+
+#timePickerModal .time-slot-row-toggle:hover:not(:disabled) {
+    border-color: var(--brand-hover);
+    background: var(--surface);
+    color: var(--text);
+}
+
+#timePickerModal .time-slot-row-toggle.selected {
+    border-color: var(--brand-hover);
+    background: var(--surface-2);
+    background: color-mix(in srgb, var(--brand) 18%, var(--surface));
+    color: var(--text);
+}
+
+#timePickerModal .time-slot-row-toggle:disabled,
+#timePickerModal .time-slot-row.disabled .time-slot-row-time {
+    border-color: var(--border);
+    background: var(--surface-2);
+    color: var(--text-muted);
+    cursor: not-allowed;
+    text-decoration: none;
+}
+
+#timePickerModal .time-slot-row-toggle:disabled > span:not(.time-slot-row-check) {
+    color: var(--text-muted);
+}
+
+#timePickerModal .time-slot-row-toggle[title*="already booked"] {
+    border-style: dashed;
+}
+
+#timePickerModal .time-slot-row-peak .time-slot-row-toggle:not(:disabled) {
+    border-color: var(--warning);
+}
+
+#timePickerModal .time-slot-row-peak .time-slot-row-time::after {
+    content: "Peak";
+    margin-left: var(--s2);
+    padding: 0 var(--s2);
+    border: 1px solid var(--warning);
+    border-radius: var(--r-pill);
+    color: var(--warning);
+    font-size: var(--font-size-small);
+    line-height: 1.5;
+}
+
+#timePickerModal .time-slot-row-check {
+    color: var(--brand-hover);
+}
+
+#timePickerModal .time-slot-skeleton {
+    box-sizing: border-box;
+    flex: 0 0 44px;
+    width: 100%;
+    min-height: 44px;
+    height: 44px;
+    border: 1px solid var(--border);
+    border-radius: var(--r-md);
+    background-color: var(--surface-2);
+    background-image: linear-gradient(90deg, var(--surface-2) 25%, var(--surface) 37%, var(--surface-2) 63%);
+    background-size: 400% 100%;
+    animation: skeletonShimmer 1.4s ease infinite;
+}
+
+#timePickerModal .modal-actions,
+#equipmentModal .modal-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--s3);
+    margin-top: var(--s4);
+    padding-top: var(--s4);
+    border-top: 1px solid var(--border);
+}
+
+#timePickerModal .modal-actions {
+    position: sticky;
+    bottom: 0;
+    z-index: 2;
+    margin: var(--s3) 0 0;
+    padding: var(--s3) 0 calc(var(--s3) + env(safe-area-inset-bottom, 0px));
+    border-top: 1px solid var(--border);
+    background: var(--surface);
+}
+
+#timePickerModal .modal-actions .btn,
+#equipmentModal .modal-actions .btn {
+    min-height: 44px;
+    flex: 1 1 140px;
+    border-radius: var(--r-pill);
+    font-family: var(--font-family);
+    font-weight: var(--font-weight-button);
+}
+
+#timePickerModal .modal-actions .btn-primary,
+#equipmentModal .modal-actions .btn-primary {
+    border: 1px solid var(--brand);
+    background: var(--brand);
+    color: var(--text);
+}
+
+#timePickerModal .modal-actions .btn-secondary,
+#equipmentModal .modal-actions .btn-secondary {
+    border: 1px solid var(--brand);
+    background: transparent;
+    color: var(--text);
+}
+
+#timePickerModal .modal-actions .btn:disabled,
+#equipmentModal .modal-actions .btn:disabled {
+    border-color: var(--border);
+    background: var(--surface-2);
+    color: var(--text-muted);
+    cursor: not-allowed;
+}
+
+#timePickerModal .modal-back,
+#equipmentModal .modal-back,
+#timePickerModal .modal-actions .btn-secondary,
+#equipmentModal .modal-actions .btn-secondary,
+#timePickerModal .modal-close,
+#equipmentModal .modal-close {
+    border: 1px solid var(--danger);
+    background: transparent;
+    color: var(--danger);
+}
+
+#timePickerModal .modal-back:hover,
+#equipmentModal .modal-back:hover,
+#timePickerModal .modal-actions .btn-secondary:hover:not(:disabled),
+#equipmentModal .modal-actions .btn-secondary:hover:not(:disabled),
+#timePickerModal .modal-close:hover,
+#equipmentModal .modal-close:hover {
+    border-color: var(--danger);
+    background: color-mix(in srgb, var(--danger) 12%, var(--surface));
+    color: var(--danger);
+}
+
+#timePickerModal .modal-back:focus-visible,
+#equipmentModal .modal-back:focus-visible,
+#timePickerModal .modal-actions .btn-secondary:focus-visible,
+#equipmentModal .modal-actions .btn-secondary:focus-visible,
+#timePickerModal .modal-close:focus-visible,
+#equipmentModal .modal-close:focus-visible {
+    outline: 2px solid var(--danger);
+    outline-offset: 2px;
+}
+
+#equipmentModal .modal-box {
+    border: 1px solid var(--border);
+    border-radius: var(--r-lg);
+    background: var(--surface);
+    color: var(--text);
+    font-family: var(--font-family);
+}
+
+#equipmentModal .equipment-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--s3);
+    margin-bottom: var(--s3);
+    padding-bottom: var(--s3);
+    border-bottom: 1px solid var(--border);
+}
+
+#equipmentModal .equipment-header h3 {
+    margin: 0;
+    color: var(--text);
+    font-family: var(--font-family);
+    font-size: var(--font-size-h3);
+    font-weight: var(--font-weight-h3);
+}
+
+#equipmentModal .equipment-header .booking-flow-progress {
+    flex: 0 0 100%;
+}
+
+#timePickerModal .booking-selection-summary,
+#equipmentModal .booking-selection-summary {
+    position: static;
+    width: 100%;
+    box-sizing: border-box;
+    margin: var(--s3) 0 0;
+    padding: var(--s4);
+    border: 1px solid var(--border);
+    border-radius: var(--r-md);
+    background: var(--surface-2);
+    color: var(--text);
+    font-family: var(--font-family);
+}
+
+#timePickerModal .booking-selection-summary-title,
+#equipmentModal .booking-selection-summary-title {
+    margin: 0 0 var(--s2);
+    color: var(--brand-hover);
+    font-size: var(--font-size-small);
+    font-weight: var(--font-weight-small);
+}
+
+#timePickerModal .booking-selection-summary p:not(.booking-selection-summary-title),
+#equipmentModal .booking-selection-summary p:not(.booking-selection-summary-title) {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--s3);
+    margin: 0;
+    padding: var(--s2) 0;
+    border-top: 1px solid var(--border);
+    color: var(--text-muted);
+}
+
+#timePickerModal .booking-selection-summary strong,
+#equipmentModal .booking-selection-summary strong {
+    max-width: 68%;
+    color: var(--text);
+    text-align: right;
+    overflow-wrap: anywhere;
+}
+
+#timePickerModal .booking-selection-summary .booking-selection-total strong,
+#equipmentModal .booking-selection-summary .booking-selection-total strong {
+    color: var(--text);
+}
+
+#equipmentModal .modal-back,
+#timePickerModal .modal-back {
+    min-height: 44px;
+    padding: var(--s2) var(--s3);
+    border: 1px solid var(--brand);
+    border-radius: var(--r-pill);
+    background: transparent;
+    color: var(--text);
+    font-family: var(--font-family);
+}
+
+#equipmentModal .modal-back:hover,
+#timePickerModal .modal-back:hover {
+    background: var(--surface-2);
+}
+
+#equipmentModal .modal-scroll-body {
+    min-height: 0;
+    padding: var(--s3) var(--s1);
+    scrollbar-color: var(--text-muted) var(--surface-2);
+    scrollbar-width: thin;
+}
+
+#equipmentModal .equipment-booking-recap {
+    gap: var(--s3);
+    margin-bottom: var(--s3);
+    padding: var(--s3);
+    border: 1px solid var(--border);
+    border-radius: var(--r-md);
+    background: var(--surface-2);
+    color: var(--text-muted);
+    font-family: var(--font-family);
+}
+
+#equipmentModal .equipment-booking-recap strong {
+    color: var(--text);
+    font-size: var(--font-size-body);
+}
+
+#equipmentModal .booking-section {
+    margin: 0;
+    padding: var(--s4);
+    border: 1px solid var(--border);
+    border-radius: var(--r-md);
+    background: var(--surface-2);
+}
+
+#equipmentModal .booking-section-label {
+    margin: 0 0 var(--s3);
+    color: var(--text);
+    font-family: var(--font-family);
+    font-weight: var(--font-weight-h3);
+}
+
+#equipmentModal .equipment-grid {
+    gap: var(--s2);
+}
+
+#equipmentModal .equipment-category-label {
+    margin: var(--s3) 0 var(--s2);
+    color: var(--text-muted);
+    font-family: var(--font-family);
+    font-size: var(--font-size-small);
+}
+
+#equipmentModal .equipment-card,
+#equipmentModal .equipment-card-skeleton {
+    box-sizing: border-box;
+    min-width: 0;
+    gap: var(--s3);
+    padding: var(--s3);
+    border: 1px solid var(--border);
+    border-radius: var(--r-md);
+    background: var(--surface);
+    color: var(--text);
+    font-family: var(--font-family);
+}
+
+#equipmentModal .equipment-card.has-qty {
+    border-color: var(--brand);
+    background: var(--surface-2);
+    background: color-mix(in srgb, var(--brand) 12%, var(--surface));
+}
+
+#equipmentModal .equipment-card-name {
+    margin: 0 0 var(--s1);
+    color: var(--text);
+    font-size: var(--font-size-body);
+    font-weight: var(--font-weight-h3);
+}
+
+#equipmentModal .equipment-card-meta {
+    color: var(--text-muted);
+    font-size: var(--font-size-small);
+}
+
+#equipmentModal .equipment-card-meta.equipment-sold-out {
+    color: var(--danger);
+}
+
+#equipmentModal .equipment-qty-stepper {
+    gap: var(--s2);
+}
+
+#equipmentModal .qty-btn {
+    width: 40px;
+    height: 40px;
+    border: 1px solid var(--border);
+    border-radius: var(--r-pill);
+    background: var(--surface-2);
+    color: var(--text);
+    font-family: var(--font-family);
+}
+
+#equipmentModal .qty-btn:hover:not(:disabled) {
+    border-color: var(--brand);
+    color: var(--text);
+}
+
+#equipmentModal .qty-btn:disabled {
+    border-color: var(--border);
+    background: var(--surface-2);
+    color: var(--text-muted);
+    opacity: 1;
+}
+
+#equipmentModal .qty-value {
+    min-width: 24px;
+    color: var(--text);
+    font-family: var(--font-family);
+}
+
+#equipmentModal .equipment-card-skeleton {
+    border-color: var(--border);
+}
+
+#equipmentModal .equipment-skeleton-line {
+    background-color: var(--surface-2);
+    background-image: linear-gradient(90deg, var(--surface-2) 25%, var(--surface) 37%, var(--surface-2) 63%);
+    background-size: 400% 100%;
+    animation: skeletonShimmer 1.4s ease infinite;
+}
+
+@media (max-width: 560px) {
+    #timePickerModal .modal-box-timepicker {
+        width: calc(100% - 2 * var(--s3));
+        padding: var(--s3);
+    }
+
+    #timePickerModal .booking-flow-progress {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+
+    #timePickerModal .booking-flow-step {
+        min-height: 44px;
+        flex-direction: column;
+        gap: var(--s1);
+        padding: var(--s1) 0;
+        white-space: nowrap;
+    }
+
+    #timePickerModal .time-picker-day-switch {
+        flex: 0 0 auto;
+    }
+
+    #timePickerModal .time-picker-scroll-area {
+        padding-bottom: var(--s3);
+        scroll-padding-bottom: var(--s5);
+    }
+
+    #timePickerModal .time-slot-list {
+        flex: 1 0 auto;
+        min-height: calc(4 * 44px + 3 * var(--s2));
+        max-height: none;
+        overflow-y: visible;
+    }
+
+    #timePickerModal .time-picker-legend {
+        flex-flow: row wrap;
+        gap: var(--s2);
+    }
+
+    #timePickerModal .booking-selection-summary {
+        padding: var(--s2) var(--s3);
+    }
+
+    #timePickerModal .booking-selection-summary-title {
+        margin-bottom: var(--s1);
+    }
+
+    #timePickerModal .booking-selection-summary p:not(.booking-selection-summary-title) {
+        align-items: center;
+        gap: var(--s2);
+        padding: var(--s1) 0;
+        white-space: nowrap;
+    }
+
+    #timePickerModal .booking-selection-summary p:not(.booking-selection-summary-title) > span {
+        flex: 0 0 auto;
+    }
+
+    #timePickerModal .booking-selection-summary strong {
+        min-width: 0;
+        max-width: none;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    #timePickerModal .modal-actions {
+        padding-bottom: calc(var(--s3) + env(safe-area-inset-bottom, 0px));
+    }
+
+    #timePickerModal .time-slot-row-peak .time-slot-row-time::after {
+        margin-left: var(--s1);
+        padding: 0 var(--s1);
+    }
+
+    #equipmentModal .equipment-card {
+        align-items: flex-start;
+        flex-wrap: wrap;
+    }
+
+    #equipmentModal .equipment-qty-stepper {
+        margin-left: auto;
+    }
+
+    #equipmentModal .booking-flow-progress {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    #timePickerModal .booking-selection-summary,
+    #equipmentModal .booking-selection-summary {
+        padding: var(--s3);
+    }
+}
+
+@media (max-width: 400px) {
+    #timePickerModal .booking-flow-step {
+        font-size: 0;
+    }
+
+    #timePickerModal .booking-flow-step b {
+        font-size: var(--font-size-small);
+    }
+}
+
+@media (max-height: 480px) {
+    #timePickerModal .time-slot-list {
+        flex: 1 0 auto;
+        min-height: calc(4 * 44px + 3 * var(--s2));
+        max-height: none;
+        overflow-y: visible;
+    }
+}
+
+@media (max-width: 390px) {
+    #timePickerModal .time-slot-row {
+        grid-template-columns: minmax(0, 1fr);
+        gap: var(--s1);
+    }
+
+    #timePickerModal .time-slot-row-time {
+        min-height: 40px;
+    }
+
+    #timePickerModal .time-slot-list {
+        min-height: calc(4 * (40px + 44px + var(--s1)) + 3 * var(--s2));
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    #timePickerModal .time-slot-skeleton,
+    #equipmentModal .equipment-skeleton-line {
+        animation: none;
+    }
+}
+
+@media (max-width: 640px) {
+    .landing-wrapper .landing-nav-wrap { gap: var(--s1); }
+    .landing-wrapper .landing-nav { gap: var(--s1); padding-right: var(--s2); padding-left: var(--s2); }
+    .landing-wrapper .nav-left { flex: 0 1 auto; min-width: 0; overflow: hidden; }
+    .landing-wrapper .nav-logo { flex: 0 0 auto; }
+    .landing-wrapper .nav-title-landing {
+        display: none;
+    }
+    .landing-wrapper .nav-center { flex: 1 1 0; min-width: 0; gap: var(--s1); }
+    .landing-wrapper .guest-session-save { display: none; }
+    .landing-wrapper .nav-search-show { display: inline-flex; flex: 0 0 44px; width: 44px; height: 44px; }
+    .landing-wrapper .nav-link-book { flex: 0 0 auto; min-width: 44px; min-height: 44px; }
+    .landing-wrapper .nav-toggle { flex: 0 0 44px; width: 44px; height: 44px; align-items: center; padding: var(--s2); }
+    .landing-wrapper .nav-toggle span { width: 24px; }
+}
+
+@media (max-width: 480px) {
+    .landing-wrapper .nav-search-show { display: inline-flex; width: 44px; height: 44px; }
+    .landing-wrapper .nav-toggle { flex-basis: 44px; width: 44px; height: 44px; }
+    .landing-wrapper .nav-link-book { min-height: 44px; }
+    .landing-wrapper .landing-nav-actions { gap: var(--s1); }
+}
+
+@media (max-width: 340px) {
+    .landing-wrapper .nav-title-landing { display: none; }
+}
+
+@media (min-width: 341px) and (max-width: 400px) {
+    .landing-wrapper .nav-title-landing { margin-left: 0; max-width: 18vw; }
+}

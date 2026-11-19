@@ -4,9 +4,9 @@
 @section('page-title', 'Notifications')
 
 @push('styles')
-    <link rel="stylesheet" href="{{ asset('css/dashboard.css') }}">
-    <link rel="stylesheet" href="{{ asset('css/user-dashboard.css') }}">
-    <link rel="stylesheet" href="{{ asset('css/notifications.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/user/dashboard.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/user/user-dashboard.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/user/notifications.css') }}">
 @endpush
 
 @section('content')
@@ -73,5 +73,5 @@
 @endsection
 
 @push('scripts')
-    <script src="{{ asset('js/notifications.js') }}" defer></script>
+    <script src="{{ asset('js/user/notifications.js') }}" defer></script>
 @endpush

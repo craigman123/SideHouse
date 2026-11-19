@@ -56,9 +56,6 @@ body.nav-hidden-for-modal .landing-nav-wrap {
    .floating-directions' height by hand at each breakpoint below —
    if either changes, this needs updating too or content will sit
    under the floating button. */
-body {
-    padding-top: 124px;
-}
 
 /* ----- Left: Logo ----- */
 
@@ -599,10 +596,6 @@ body {
         height: 64px;
     }
 
-    body {
-        padding-top: 120px;
-    }
-
     .nav-logo {
         height: 36px;
     }
@@ -650,10 +643,6 @@ body {
     .landing-nav {
         padding: 10px 20px;
         height: 80px;
-    }
-
-    body {
-        padding-top: 116px;
     }
 
     .nav-logo {
@@ -733,10 +722,6 @@ body {
 
     .nav-search-show {
         display: none;
-    }
-
-    body {
-        padding-top: 100px;
     }
 
     .nav-logo {

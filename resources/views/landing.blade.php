@@ -5,18 +5,23 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Side House Paddlers | Guest</title>
+    <script src="{{ asset('js/guest/theme-toggle.js') }}"></script>
+    <link rel="stylesheet" href="{{ asset('css/tokens.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/fonts.css') }}">
     <link rel="stylesheet" href="{{ asset('css/app.css') }}">
-    <link rel="stylesheet" href="{{ asset('css/dashboard.css') }}">
-    <link rel="stylesheet" href="{{ asset('css/user-dashboard.css') }}">
-    <link rel="stylesheet" href="{{ asset('css/book.css') }}">
-    <link rel="stylesheet" href="{{ asset('css/landing.css') }}">
-    <link rel="stylesheet" href="{{ asset('css/landing-book.css') }}">
-    <link rel="stylesheet" href="{{ asset('css/landing-search.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/user/dashboard.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/user/user-dashboard.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/booking/book.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/landing/landing.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/booking/landing-book.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/landing/landing-search.css') }}">
     <link rel="icon" type="image/png" href="{{ asset('images/tab_icon.png') }}">
     <link rel="stylesheet" href="{{ asset('css/skeleton.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/guest/guest-booking.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/guest/theme-toggle.css') }}">
     <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
-<body>
+<body class="guest-landing-page">
 
     <div class="landing-wrapper">
         <div class="bg-particle"></div>
@@ -70,6 +75,7 @@
                  this shared fixed wrapper so it stays on screen and
                  right-aligned under Book Now at every scroll position and
                  screen size, without tracking the nav's height by hand. --}}
+            <div class="landing-nav-actions">
             <a
                 href="https://www.google.com/maps/dir/?api=1&destination=10.246043101731798,123.78949399013447"
                 target="_blank"
@@ -83,6 +89,8 @@
                 </svg>
                 Get Directions
             </a>
+            @include('partials.guest.theme-toggle', ['placement' => 'landing'])
+            </div>
         </div>
 
     <!-- Mobile Menu Overlay -->
@@ -100,6 +108,14 @@
                 <a href="#analytics" class="nav-link">Analytics</a>
                 {{-- <a href="#getMore" class="nav-link">Create Account</a> --}}
             </div>
+
+            <a
+                href="https://www.google.com/maps/dir/?api=1&destination=10.246043101731798,123.78949399013447"
+                class="nav-link nav-mobile-directions"
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Get directions to Side House Paddlers"
+            >Get Directions</a>
 
             <div class="nav-search-wrap">
                 <div class="nav-search">
@@ -247,13 +263,6 @@
                             <div class="calendar-grid" id="calendarGrid"></div>
                         </div>
                     </div>
-                    <aside class="booking-selection-summary" id="bookingSelectionSummary" aria-live="polite">
-                        <p class="booking-selection-summary-title">Your selection</p>
-                        <p><span>Court</span><strong id="selectionCourt">{{ $courts->first()->name }}</strong></p>
-                        <p><span>Date &amp; time</span><strong id="selectionDateTime">Choose a date and time</strong></p>
-                        <p><span>Equipment</span><strong id="selectionEquipment">None selected</strong></p>
-                        <p class="booking-selection-total"><span>Estimated total</span><strong id="selectionTotal">₱0.00</strong></p>
-                    </aside>
                 </div>
             @endif
         </section>
@@ -382,11 +391,11 @@
                 <p>No calls, no messages, no account required — just book online and show up ready to play.</p>
             </div>
 
-            {{-- <div class="feature-card fade-in feature-card-exclusive">
+            <div class="feature-card fade-in feature-card-exclusive">
                 <div class="feature-icon">🌟</div>
                 <h3>Exclusive</h3>
                 <p>Create a free account to unlock member-only perks: discounted equipment rentals and booking discounts.</p>
-            </div> --}}
+            </div>
 
             <div class="feature-card fade-in">
                 <div class="feature-icon">🚻</div>
@@ -551,7 +560,7 @@
             <p class="faq-outro" style="text-align:center; max-width: 560px; margin: 32px auto 0; color: var(--text-muted, #9aa0a6); font-size: 0.95rem; line-height: 1.6;">Still have questions? We're happy to help — but honestly, the fastest way to see what makes Side House Paddlers different is to book a court and experience it yourself.</p>
         </section>
 
-        <section class="member-cta fade-in" id="getMore" style="display: none;">
+        <section class="member-cta fade-in" id="getMore">
             <div class="member-cta-inner">
                 <h2>Get More From Every Visit</h2>
                 <p>Create a free Side House account to view a detailed history of your bookings, rebook your favorite court and time slot in a single click, and unlock member-only perks like hourly rates discounts and discounted equipment rentals. It only takes a minute.</p>
@@ -641,37 +650,45 @@
             <div class="modal-header-timepicker">
                 <button type="button" class="modal-back modal-back-time" id="backToCalendar">&larr; Back to date</button>
                 <button type="button" class="modal-close" id="timePickerModalClose" aria-label="Close">&times;</button>
+                <div class="booking-flow-progress booking-flow-progress-compact" aria-label="Booking progress">
+                    <span class="booking-flow-step active" data-booking-step="1"><b>1</b>Date &amp; time</span>
+                    <span class="booking-flow-step" data-booking-step="2"><b>2</b>Equipment</span>
+                    <span class="booking-flow-step" data-booking-step="3"><b>3</b>Details</span>
+                    <span class="booking-flow-step" data-booking-step="4"><b>4</b>Payment</span>
+                </div>
             </div>
 
-            <div class="time-picker-day-switch">
-                <button type="button" class="time-picker-day-nav" id="timePickerPrevDay" aria-label="Previous day">&lsaquo;</button>
-                <h3 id="timePickerDateLabel">Pick Your Hours</h3>
-                <button type="button" class="time-picker-day-nav" id="timePickerNextDay" aria-label="Next day">&rsaquo;</button>
-            </div>
-
-            <div class="time-picker-body">
-                <p class="booking-section-label">Select one or more hours</p>
-
-                <div class="time-picker-legend">
-                    <span class="time-picker-legend-item">
-                        <span class="time-picker-legend-swatch"></span> Available
-                    </span>
-                    <span class="time-picker-legend-item">
-                        <span class="time-picker-legend-swatch legend-selected"></span> Selected
-                    </span>
-                    <span class="time-picker-legend-item">
-                        <span class="time-picker-legend-swatch legend-booked"></span> Booked
-                    </span>
+            <div class="time-picker-scroll-area">
+                <div class="time-picker-day-switch">
+                    <button type="button" class="time-picker-day-nav" id="timePickerPrevDay" aria-label="Previous day">&lsaquo;</button>
+                    <h3 id="timePickerDateLabel">Pick Your Hours</h3>
+                    <button type="button" class="time-picker-day-nav" id="timePickerNextDay" aria-label="Next day">&rsaquo;</button>
                 </div>
 
-                <div class="time-slot-list" id="timeSlotGrid"></div>
+                <div class="time-picker-body">
+                    <p class="booking-section-label">Select one or more hours</p>
 
-                <div class="time-picker-fee-panel">
-                    <p class="time-picker-fee-ranges" id="timePickerFeeRanges">Select at least one hour</p>
-                    <div class="time-picker-fee-total-row">
-                        <span>Total</span>
-                        <span id="timePickerFeeTotal">₱0</span>
+                    <div class="time-picker-legend">
+                        <span class="time-picker-legend-item">
+                            <span class="time-picker-legend-swatch"></span> Available
+                        </span>
+                        <span class="time-picker-legend-item">
+                            <span class="time-picker-legend-swatch legend-selected"></span> Selected
+                        </span>
+                        <span class="time-picker-legend-item">
+                            <span class="time-picker-legend-swatch legend-booked"></span> Booked
+                        </span>
                     </div>
+
+                    <div class="time-slot-list" id="timeSlotGrid"></div>
+
+                    <aside class="booking-selection-summary" id="bookingSelectionSummary" aria-live="polite">
+                        <p class="booking-selection-summary-title">Your selection</p>
+                        <p><span>Court</span><strong class="selection-court" id="selectionCourt">{{ $courts->first()->name }}</strong></p>
+                        <p><span>Date &amp; time</span><strong class="selection-date-time" id="selectionDateTime">Choose a date and time</strong></p>
+                        <p><span>Equipment</span><strong class="selection-equipment" id="selectionEquipment">None selected</strong></p>
+                        <p class="booking-selection-total"><span>Estimated total</span><strong class="selection-total" id="selectionTotal">₱0.00</strong></p>
+                    </aside>
                 </div>
             </div>
 
@@ -687,21 +704,31 @@
         <div class="modal-box modal-box-lg modal-box-scrollable">
             <div class="modal-header equipment-header">
                 <h3>Rent Equipment</h3>
+                <button type="button" class="modal-close" id="equipmentModalClose" aria-label="Close">&times;</button>
+                <div class="booking-flow-progress booking-flow-progress-compact" aria-label="Booking progress">
+                    <span class="booking-flow-step" data-booking-step="1"><b>1</b>Date &amp; time</span>
+                    <span class="booking-flow-step active" data-booking-step="2"><b>2</b>Equipment</span>
+                    <span class="booking-flow-step" data-booking-step="3"><b>3</b>Details</span>
+                    <span class="booking-flow-step" data-booking-step="4"><b>4</b>Payment</span>
+                </div>
             </div>
 
             <button type="button" class="modal-back" id="backToBookingFromEquipment">&larr; Back to date &amp; time</button>
 
             <div class="modal-scroll-body">
-                <div class="equipment-booking-recap" aria-live="polite">
-                    <span id="equipmentSelectedTime">No time selected</span>
-                    <strong id="equipmentSelectedTotal">₱0.00</strong>
-                </div>
                 <div class="booking-section">
                     <p class="booking-section-label">Need a racket or paddle? (optional)</p>
                     <div class="equipment-grid" id="equipmentGrid">
                         <p class="loading-text">Loading equipment…</p>
                     </div>
                 </div>
+                <aside class="booking-selection-summary" id="equipmentBookingSelectionSummary" aria-live="polite">
+                    <p class="booking-selection-summary-title">Your selection</p>
+                    <p><span>Court</span><strong class="selection-court">{{ $courts->first()->name }}</strong></p>
+                    <p><span>Date &amp; time</span><strong class="selection-date-time" id="equipmentSelectedTime">No time selected</strong></p>
+                    <p><span>Equipment</span><strong class="selection-equipment">None selected</strong></p>
+                    <p class="booking-selection-total"><span>Estimated total</span><strong class="selection-total" id="equipmentSelectedTotal">₱0.00</strong></p>
+                </aside>
             </div>
 
             <div class="modal-actions">
@@ -779,8 +806,8 @@
 
     <div class="toast-container" id="toastContainer"></div>
 
-    <script src="{{ asset('js/guest-book.js') }}" defer></script>
-    <script src="{{ asset('js/stats-vacant.js') }}" defer></script>
-    <script src="{{ asset('js/landing-search.js') }}" defer></script>
+    <script src="{{ asset('js/booking/guest-book.js') }}" defer></script>
+    <script src="{{ asset('js/config/stats-vacant.js') }}" defer></script>
+    <script src="{{ asset('js/landing/landing-search.js') }}" defer></script>
 </body>
 </html>

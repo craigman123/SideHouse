@@ -4,10 +4,10 @@
 @section('page-title', 'Configuration')
     
 @push('styles')
-    <link rel="stylesheet" href="{{ asset('css/specific-date-closures.css') }}">
-    <link rel="stylesheet" href="{{ asset('css/admin-profile.css') }}">
-    <link rel="stylesheet" href="{{ asset('css/admin-schedule.css') }}">
-    <link rel="stylesheet" href="{{ asset('css/manual-booking.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/admin/specific-date-closures.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/admin/admin-profile.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/admin/admin-schedule.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/booking/manual-booking.css') }}">
 @endpush
 
 @section('content')
@@ -702,10 +702,10 @@
 @endsection
 
 @push('scripts')
-    <script src="{{ asset('js/admin-schedule.js') }}" defer></script>
-    <script src="{{ asset('js/manual-booking.js') }}" defer></script>
-    <script src="{{ asset('js/closure-edit.js') }}" defer></script>
-    <script src="{{ asset('js/specific-date-closures.js') }}" defer></script>
+    <script src="{{ asset('js/admin/admin-schedule.js') }}" defer></script>
+    <script src="{{ asset('js/config/manual-booking.js') }}" defer></script>
+    <script src="{{ asset('js/booking/closure-edit.js') }}" defer></script>
+    <script src="{{ asset('js/user/specific-date-closures.js') }}" defer></script>
     <script type="application/json" id="sh-closures-data">{!! $closures->map(fn ($c) => [
         'id' => $c->id,
         'date' => $c->date->toDateString(),
