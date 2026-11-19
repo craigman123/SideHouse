@@ -1,7 +1,7 @@
 /* Guest landing page ownership layer. Shared stylesheets remain unchanged. */
 
 body > .landing-wrapper {
-    background: var(--bg);
+    background: var(--surface);
     color: var(--text);
     font-family: var(--font-family);
 }

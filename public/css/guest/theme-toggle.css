@@ -57,7 +57,6 @@ html[data-theme="light"] #paymentPage,
 html[data-theme="light"] #paymentPage .booking-summary,
 html[data-theme="light"] #paymentPage .guest-info-item input,
 html[data-theme="light"] #paymentPage .guest-email-saved-input {
-    background-color: var(--surface);
     color: var(--text);
     border-color: var(--border);
 }
