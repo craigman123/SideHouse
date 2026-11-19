@@ -89,8 +89,39 @@ body {
     outline-offset: 1px;
 }
 
-#paymentPage .guest-email-block-invalid {
+#paymentPage .guest-info-item input,
+#paymentPage .guest-email-saved-input {
+    font-family: var(--font-family);
+    font-size: var(--font-size-body);
+}
+
+#paymentPage .guest-info-item input:hover:not(:disabled),
+#paymentPage .guest-email-saved-input:hover:not(:disabled) {
+    border-color: var(--text-muted);
+}
+
+#paymentPage .guest-info-item input:focus-visible,
+#paymentPage .guest-email-saved-input:focus-visible {
+    outline: 2px solid var(--brand-hover);
+    outline-offset: 2px;
+}
+
+#paymentPage .guest-info-item input.field-invalid,
+#paymentPage .guest-info-item input.field-invalid:focus-visible {
     border-color: var(--danger);
+    outline-color: var(--danger);
+}
+
+#paymentPage .guest-email-block-invalid {
+    outline: 2px solid var(--danger);
+    outline-offset: 4px;
+    border-radius: var(--r-md);
+}
+
+#paymentPage .guest-email-block-invalid .google-signin-btn {
+    outline: 2px solid var(--danger);
+    outline-offset: 4px;
+    border-radius: var(--r-pill);
 }
 
 #paymentPage .guest-email-confirmed {
@@ -108,8 +139,21 @@ body {
 }
 
 #paymentPage .payment-btn.selected {
-    background: var(--brand);
+    background: var(--surface-2);
+    background: color-mix(in srgb, var(--brand) 18%, var(--surface));
+    border-color: var(--brand-hover);
     color: var(--text);
+}
+
+#paymentPage .payment-btn:hover,
+#paymentPage .payment-btn:focus-visible {
+    border-color: var(--brand-hover);
+    outline: none;
+}
+
+#paymentPage .payment-btn:focus-visible {
+    outline: 2px solid var(--brand-hover);
+    outline-offset: 2px;
 }
 
 #paymentPage .payment-btn-sub {
@@ -161,6 +205,22 @@ body {
     border: 1px solid var(--brand);
     background: transparent;
     color: var(--text);
+}
+
+#paymentPage .modal-actions .btn:hover:not(:disabled) {
+    border-color: var(--brand-hover);
+}
+
+#paymentPage .modal-actions .btn:focus-visible {
+    outline: 2px solid var(--brand-hover);
+    outline-offset: 2px;
+}
+
+#paymentPage .modal-actions .btn:disabled {
+    border-color: var(--border);
+    background: var(--surface-2);
+    color: var(--text-muted);
+    cursor: not-allowed;
 }
 
 @media (max-width: 767px) {

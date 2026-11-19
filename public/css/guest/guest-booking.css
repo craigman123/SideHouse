@@ -689,3 +689,524 @@ body > .landing-wrapper {
         font-size: var(--font-size-small);
     }
 }
+
+/* Guest wizard modal styles. These modals follow .landing-wrapper in the
+   document, so their unique IDs provide the page-specific scope. */
+#timePickerModal .modal-box-timepicker {
+    width: min(560px, calc(100% - 2 * var(--s4)));
+    padding: var(--s4);
+    border: 1px solid var(--border);
+    border-radius: var(--r-lg);
+    background: var(--surface);
+    color: var(--text);
+    font-family: var(--font-family);
+}
+
+#timePickerModal .modal-header-timepicker {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--s3);
+    margin-bottom: var(--s3);
+}
+
+#timePickerModal .time-picker-day-switch {
+    gap: var(--s3);
+    margin: 0 0 var(--s3);
+}
+
+#timePickerModal .time-picker-day-switch h3 {
+    flex: 1 1 auto;
+    min-width: 0;
+    color: var(--text);
+    font-family: var(--font-family);
+    font-size: var(--font-size-h3);
+    font-weight: var(--font-weight-h3);
+}
+
+#timePickerModal .time-picker-day-nav {
+    flex: 0 0 44px;
+    width: 44px;
+    height: 44px;
+    border: 1px solid var(--border);
+    border-radius: var(--r-pill);
+    background: var(--surface-2);
+    color: var(--text);
+    font-family: var(--font-family);
+}
+
+#timePickerModal .time-picker-day-nav:hover:not(:disabled) {
+    border-color: var(--brand);
+    background: var(--surface);
+}
+
+#timePickerModal .time-picker-day-nav:focus-visible,
+#timePickerModal .time-slot-row-toggle:focus-visible,
+#timePickerModal .modal-actions .btn:focus-visible,
+#equipmentModal .qty-btn:focus-visible,
+#equipmentModal .modal-actions .btn:focus-visible {
+    outline: 2px solid var(--brand-hover);
+    outline-offset: 2px;
+}
+
+#timePickerModal .time-picker-body {
+    gap: var(--s3);
+    margin: 0;
+    padding: 0;
+}
+
+#timePickerModal .time-picker-body .booking-section-label {
+    margin: 0;
+}
+
+#timePickerModal .time-picker-legend {
+    gap: var(--s3);
+    margin: 0;
+}
+
+#timePickerModal .time-picker-legend-item {
+    gap: var(--s2);
+    color: var(--text-muted);
+    font-family: var(--font-family);
+    font-size: var(--font-size-small);
+    font-weight: var(--font-weight-small);
+}
+
+#timePickerModal .time-picker-legend-swatch {
+    width: 16px;
+    height: 16px;
+    border: 1px solid var(--brand);
+    border-radius: var(--r-sm);
+    background: var(--surface-2);
+    opacity: 1;
+}
+
+#timePickerModal .time-picker-legend-swatch.legend-selected {
+    background: var(--surface-2);
+    background: color-mix(in srgb, var(--brand) 18%, var(--surface));
+    border-color: var(--brand-hover);
+}
+
+#timePickerModal .time-picker-legend-swatch.legend-booked {
+    background: var(--surface-2);
+    border-color: var(--border);
+}
+
+#timePickerModal .time-slot-list {
+    box-sizing: border-box;
+    gap: var(--s2);
+    max-height: min(320px, 38vh);
+    padding: var(--s1) var(--s2) var(--s1) 0;
+    scrollbar-color: var(--text-muted) var(--surface-2);
+    scrollbar-width: thin;
+}
+
+#timePickerModal .time-slot-list::-webkit-scrollbar,
+#timePickerModal .time-picker-fee-ranges::-webkit-scrollbar,
+#equipmentModal .modal-scroll-body::-webkit-scrollbar {
+    width: 8px;
+}
+
+#timePickerModal .time-slot-list::-webkit-scrollbar-track,
+#timePickerModal .time-picker-fee-ranges::-webkit-scrollbar-track,
+#equipmentModal .modal-scroll-body::-webkit-scrollbar-track {
+    border-radius: var(--r-pill);
+    background: var(--surface-2);
+}
+
+#timePickerModal .time-slot-list::-webkit-scrollbar-thumb,
+#timePickerModal .time-picker-fee-ranges::-webkit-scrollbar-thumb,
+#equipmentModal .modal-scroll-body::-webkit-scrollbar-thumb {
+    border: 2px solid var(--surface-2);
+    border-radius: var(--r-pill);
+    background: var(--text-muted);
+}
+
+#timePickerModal .time-slot-row {
+    grid-template-columns: minmax(0, 108px) minmax(0, 1fr);
+    align-items: center;
+    gap: var(--s2);
+    min-width: 0;
+    font-family: var(--font-family);
+}
+
+#timePickerModal .time-slot-row-time {
+    display: flex;
+    align-items: center;
+    min-width: 0;
+    min-height: 44px;
+    color: var(--text);
+    font-family: var(--font-family);
+    font-size: var(--font-size-small);
+    font-weight: var(--font-weight-small);
+    white-space: normal;
+    visibility: visible;
+    opacity: 1;
+}
+
+#timePickerModal .time-slot-row-toggle {
+    box-sizing: border-box;
+    min-width: 0;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--s2);
+    padding: var(--s2) var(--s3);
+    border: 1px solid var(--brand);
+    border-radius: var(--r-md);
+    background: var(--surface-2);
+    color: var(--text);
+    font-family: var(--font-family);
+    font-size: var(--font-size-small);
+    font-weight: var(--font-weight-small);
+    line-height: var(--line-height-body);
+    visibility: visible;
+    opacity: 1;
+}
+
+#timePickerModal .time-slot-row-toggle > span:not(.time-slot-row-check) {
+    display: inline;
+    color: var(--text);
+    font-family: var(--font-family);
+    font-size: inherit;
+    line-height: inherit;
+    visibility: visible;
+    opacity: 1;
+}
+
+#timePickerModal .time-slot-row-toggle:hover:not(:disabled) {
+    border-color: var(--brand-hover);
+    background: var(--surface);
+    color: var(--text);
+}
+
+#timePickerModal .time-slot-row-toggle.selected {
+    border-color: var(--brand-hover);
+    background: var(--surface-2);
+    background: color-mix(in srgb, var(--brand) 18%, var(--surface));
+    color: var(--text);
+}
+
+#timePickerModal .time-slot-row-toggle:disabled,
+#timePickerModal .time-slot-row.disabled .time-slot-row-time {
+    border-color: var(--border);
+    background: var(--surface-2);
+    color: var(--text-muted);
+    cursor: not-allowed;
+    text-decoration: none;
+}
+
+#timePickerModal .time-slot-row-toggle:disabled > span:not(.time-slot-row-check) {
+    color: var(--text-muted);
+}
+
+#timePickerModal .time-slot-row-toggle[title*="already booked"] {
+    border-style: dashed;
+}
+
+#timePickerModal .time-slot-row-peak .time-slot-row-toggle:not(:disabled) {
+    border-color: var(--warning);
+}
+
+#timePickerModal .time-slot-row-peak .time-slot-row-time::after {
+    content: "Peak";
+    margin-left: var(--s2);
+    padding: 0 var(--s2);
+    border: 1px solid var(--warning);
+    border-radius: var(--r-pill);
+    color: var(--warning);
+    font-size: var(--font-size-small);
+    line-height: 1.5;
+}
+
+#timePickerModal .time-slot-row-check {
+    color: var(--brand-hover);
+}
+
+#timePickerModal .time-slot-skeleton {
+    min-height: 44px;
+    height: auto;
+    border: 1px solid var(--border);
+    border-radius: var(--r-md);
+    background: var(--surface-2);
+    animation: none;
+}
+
+#timePickerModal .time-picker-fee-panel {
+    flex: 0 0 auto;
+    padding: var(--s3);
+    border: 1px solid var(--border);
+    border-radius: var(--r-md);
+    background: var(--surface-2);
+    color: var(--text);
+}
+
+#timePickerModal .time-picker-fee-ranges {
+    box-sizing: border-box;
+    min-height: 24px;
+    height: auto;
+    max-height: 72px;
+    margin: 0 0 var(--s2);
+    color: var(--text);
+    font-family: var(--font-family);
+    font-size: var(--font-size-small);
+    line-height: var(--line-height-body);
+    scrollbar-color: var(--text-muted) var(--surface-2);
+    scrollbar-width: thin;
+}
+
+#timePickerModal .time-picker-fee-ranges.is-empty {
+    color: var(--text-muted);
+}
+
+#timePickerModal .time-picker-fee-total-row {
+    gap: var(--s3);
+    padding-top: var(--s2);
+    border-color: var(--border);
+    color: var(--text);
+    font-family: var(--font-family);
+    font-size: var(--font-size-body);
+}
+
+#timePickerModal .time-picker-fee-total-row span:last-child {
+    color: var(--text);
+}
+
+#timePickerModal .modal-actions,
+#equipmentModal .modal-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--s3);
+    margin-top: var(--s4);
+    padding-top: var(--s4);
+    border-top: 1px solid var(--border);
+}
+
+#timePickerModal .modal-actions .btn,
+#equipmentModal .modal-actions .btn {
+    min-height: 44px;
+    flex: 1 1 140px;
+    border-radius: var(--r-pill);
+    font-family: var(--font-family);
+    font-weight: var(--font-weight-button);
+}
+
+#timePickerModal .modal-actions .btn-primary,
+#equipmentModal .modal-actions .btn-primary {
+    border: 1px solid var(--brand);
+    background: var(--brand);
+    color: var(--text);
+}
+
+#timePickerModal .modal-actions .btn-secondary,
+#equipmentModal .modal-actions .btn-secondary {
+    border: 1px solid var(--brand);
+    background: transparent;
+    color: var(--text);
+}
+
+#timePickerModal .modal-actions .btn:disabled,
+#equipmentModal .modal-actions .btn:disabled {
+    border-color: var(--border);
+    background: var(--surface-2);
+    color: var(--text-muted);
+    cursor: not-allowed;
+}
+
+#equipmentModal .modal-box {
+    border: 1px solid var(--border);
+    border-radius: var(--r-lg);
+    background: var(--surface);
+    color: var(--text);
+    font-family: var(--font-family);
+}
+
+#equipmentModal .equipment-header {
+    margin-bottom: var(--s3);
+    padding-bottom: var(--s3);
+    border-bottom: 1px solid var(--border);
+}
+
+#equipmentModal .equipment-header h3 {
+    color: var(--text);
+    font-family: var(--font-family);
+    font-size: var(--font-size-h3);
+    font-weight: var(--font-weight-h3);
+}
+
+#equipmentModal .modal-back,
+#timePickerModal .modal-back {
+    min-height: 44px;
+    padding: var(--s2) var(--s3);
+    border: 1px solid var(--brand);
+    border-radius: var(--r-pill);
+    background: transparent;
+    color: var(--text);
+    font-family: var(--font-family);
+}
+
+#equipmentModal .modal-back:hover,
+#timePickerModal .modal-back:hover {
+    background: var(--surface-2);
+}
+
+#equipmentModal .modal-scroll-body {
+    min-height: 0;
+    padding: var(--s3) var(--s1);
+    scrollbar-color: var(--text-muted) var(--surface-2);
+    scrollbar-width: thin;
+}
+
+#equipmentModal .equipment-booking-recap {
+    gap: var(--s3);
+    margin-bottom: var(--s3);
+    padding: var(--s3);
+    border: 1px solid var(--border);
+    border-radius: var(--r-md);
+    background: var(--surface-2);
+    color: var(--text-muted);
+    font-family: var(--font-family);
+}
+
+#equipmentModal .equipment-booking-recap strong {
+    color: var(--text);
+    font-size: var(--font-size-body);
+}
+
+#equipmentModal .booking-section {
+    margin: 0;
+    padding: var(--s4);
+    border: 1px solid var(--border);
+    border-radius: var(--r-md);
+    background: var(--surface-2);
+}
+
+#equipmentModal .booking-section-label {
+    margin: 0 0 var(--s3);
+    color: var(--text);
+    font-family: var(--font-family);
+    font-weight: var(--font-weight-h3);
+}
+
+#equipmentModal .equipment-grid {
+    gap: var(--s2);
+}
+
+#equipmentModal .equipment-category-label {
+    margin: var(--s3) 0 var(--s2);
+    color: var(--text-muted);
+    font-family: var(--font-family);
+    font-size: var(--font-size-small);
+}
+
+#equipmentModal .equipment-card,
+#equipmentModal .equipment-card-skeleton {
+    box-sizing: border-box;
+    min-width: 0;
+    gap: var(--s3);
+    padding: var(--s3);
+    border: 1px solid var(--border);
+    border-radius: var(--r-md);
+    background: var(--surface);
+    color: var(--text);
+    font-family: var(--font-family);
+}
+
+#equipmentModal .equipment-card.has-qty {
+    border-color: var(--brand);
+    background: var(--surface-2);
+    background: color-mix(in srgb, var(--brand) 12%, var(--surface));
+}
+
+#equipmentModal .equipment-card-name {
+    margin: 0 0 var(--s1);
+    color: var(--text);
+    font-size: var(--font-size-body);
+    font-weight: var(--font-weight-h3);
+}
+
+#equipmentModal .equipment-card-meta {
+    color: var(--text-muted);
+    font-size: var(--font-size-small);
+}
+
+#equipmentModal .equipment-card-meta.equipment-sold-out {
+    color: var(--danger);
+}
+
+#equipmentModal .equipment-qty-stepper {
+    gap: var(--s2);
+}
+
+#equipmentModal .qty-btn {
+    width: 40px;
+    height: 40px;
+    border: 1px solid var(--border);
+    border-radius: var(--r-pill);
+    background: var(--surface-2);
+    color: var(--text);
+    font-family: var(--font-family);
+}
+
+#equipmentModal .qty-btn:hover:not(:disabled) {
+    border-color: var(--brand);
+    color: var(--text);
+}
+
+#equipmentModal .qty-btn:disabled {
+    border-color: var(--border);
+    background: var(--surface-2);
+    color: var(--text-muted);
+    opacity: 1;
+}
+
+#equipmentModal .qty-value {
+    min-width: 24px;
+    color: var(--text);
+    font-family: var(--font-family);
+}
+
+#equipmentModal .equipment-card-skeleton {
+    border-color: var(--border);
+}
+
+#equipmentModal .equipment-skeleton-line {
+    background: var(--surface-2);
+    animation: none;
+}
+
+@media (max-width: 560px) {
+    #timePickerModal .modal-box-timepicker {
+        width: calc(100% - 2 * var(--s3));
+        max-height: calc(100vh - 2 * var(--s3));
+        padding: var(--s3);
+    }
+
+    #timePickerModal .time-slot-list {
+        max-height: min(280px, 38vh);
+    }
+
+    #timePickerModal .time-slot-row {
+        grid-template-columns: minmax(0, 88px) minmax(0, 1fr);
+        gap: var(--s2);
+    }
+
+    #timePickerModal .time-slot-row-time {
+        font-size: var(--font-size-small);
+    }
+
+    #timePickerModal .time-slot-row-peak .time-slot-row-time::after {
+        margin-left: var(--s1);
+        padding: 0 var(--s1);
+    }
+
+    #equipmentModal .equipment-card {
+        align-items: flex-start;
+        flex-wrap: wrap;
+    }
+
+    #equipmentModal .equipment-qty-stepper {
+        margin-left: auto;
+    }
+}
