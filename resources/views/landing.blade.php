@@ -16,6 +16,7 @@
     <link rel="stylesheet" href="{{ asset('css/landing/landing-search.css') }}">
     <link rel="icon" type="image/png" href="{{ asset('images/tab_icon.png') }}">
     <link rel="stylesheet" href="{{ asset('css/skeleton.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/guest/guest-booking.css') }}">
     <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 <body>
