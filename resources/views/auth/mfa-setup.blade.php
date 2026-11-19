@@ -17,14 +17,16 @@
 <body class="auth-page">
     @include('partials.guest.theme-toggle', ['placement' => 'corner'])
     <div class="auth-wrapper">
-        <div class="bg-particle"></div>
-        <div class="bg-particle"></div>
-        <div class="bg-particle"></div>
-        <div class="bg-particle"></div>
-        <div class="bg-particle"></div>
-        <div class="bg-particle"></div>
-        <div class="bg-particle"></div>
-        <div class="bg-particle"></div>
+        <div class="auth-bubble-layer">
+            <div class="bg-particle"></div>
+            <div class="bg-particle"></div>
+            <div class="bg-particle"></div>
+            <div class="bg-particle"></div>
+            <div class="bg-particle"></div>
+            <div class="bg-particle"></div>
+            <div class="bg-particle"></div>
+            <div class="bg-particle"></div>
+        </div>
 
         {{-- Re-uses the same visual language as the mfa-modal, but as a full page
              for users who land here directly (e.g. redirected by admin.mfa

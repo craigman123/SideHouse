@@ -12,21 +12,29 @@
 
 .auth-page .auth-wrapper {
     box-sizing: border-box;
+    position: relative;
     min-height: 100vh;
     min-height: 100dvh;
     align-items: center;
     justify-content: center;
-    overflow-x: hidden;
-    overflow-y: auto;
+    overflow: visible;
     padding: calc(env(safe-area-inset-top, 0px) + var(--s8)) var(--s4) calc(env(safe-area-inset-bottom, 0px) + var(--s5));
     background: transparent;
+}
+
+.auth-page .auth-bubble-layer {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    z-index: 0;
+    pointer-events: none;
 }
 
 .auth-page .auth-wrapper::before {
     background: radial-gradient(circle, color-mix(in srgb, var(--brand) 12%, transparent) 0%, transparent 70%);
 }
 
-html[data-theme="light"] .auth-page .auth-wrapper > .bg-particle {
+html[data-theme="light"] .auth-page .auth-bubble-layer > .bg-particle {
     background: radial-gradient(circle at 35% 35%, var(--brand), color-mix(in srgb, var(--brand) 25%, transparent) 60%, transparent 100%);
     animation-name: authFloatUpLight;
 }
@@ -207,6 +215,10 @@ html[data-theme="light"] .auth-page .auth-wrapper > .bg-particle {
     padding: var(--s5);
     animation-duration: 180ms;
 }
+.auth-page .auth-wrapper > .mfa-modal-content {
+    max-height: none;
+    overflow: visible;
+}
 .auth-page #mfa-modal .mfa-modal-content {
     margin-top: var(--s8);
     max-height: calc(100vh - 2 * var(--s4) - var(--s8));
@@ -279,7 +291,7 @@ html[data-theme="light"] .auth-page .auth-wrapper > .bg-particle {
 @media (prefers-reduced-motion: reduce) {
     .auth-page .auth-wrapper::before,
     .auth-page .mfa-modal-content { animation: none; }
-    html[data-theme="light"] .auth-page .auth-wrapper > .bg-particle { animation: none; opacity: 0.07; }
+    html[data-theme="light"] .auth-page .auth-bubble-layer > .bg-particle { animation: none; opacity: 0.07; }
     .auth-page *,
     .auth-page *::before,
     .auth-page *::after { scroll-behavior: auto; transition-duration: 0.01ms; }

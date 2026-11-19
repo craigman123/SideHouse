@@ -17,14 +17,16 @@
 <body class="auth-page">
     @include('partials.guest.theme-toggle', ['placement' => 'corner'])
     <div class="auth-wrapper">
-        <div class="bg-particle"></div>
-        <div class="bg-particle"></div>
-        <div class="bg-particle"></div>
-        <div class="bg-particle"></div>
-        <div class="bg-particle"></div>
-        <div class="bg-particle"></div>
-        <div class="bg-particle"></div>
-        <div class="bg-particle"></div>
+        <div class="auth-bubble-layer">
+            <div class="bg-particle"></div>
+            <div class="bg-particle"></div>
+            <div class="bg-particle"></div>
+            <div class="bg-particle"></div>
+            <div class="bg-particle"></div>
+            <div class="bg-particle"></div>
+            <div class="bg-particle"></div>
+            <div class="bg-particle"></div>
+        </div>
 
         <div class="mfa-modal-content" style="position: relative; z-index: 1;">
             <div class="mfa-modal-header">

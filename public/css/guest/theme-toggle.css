@@ -52,6 +52,9 @@ html[data-theme="light"] body.guest-landing-page > .landing-wrapper > .bg-partic
 }
 .guest-theme-toggle:hover { border-color: var(--brand); color: var(--brand); }
 .guest-theme-toggle:focus-visible { outline: 2px solid var(--brand); outline-offset: 3px; }
+html[data-theme="dark"] .guest-theme-toggle [data-theme-icon="moon"],
+html[data-theme="light"] .guest-theme-toggle [data-theme-icon="sun"],
+.guest-theme-toggle [data-theme-icon][hidden] { display: none; }
 .guest-theme-toggle--landing { flex: 0 0 auto; }
 .guest-theme-toggle--corner {
     position: fixed;
