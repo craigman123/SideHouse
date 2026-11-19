@@ -5,14 +5,18 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Register | Court Booking</title>
+    <script src="{{ asset('js/guest/theme-toggle.js') }}"></script>
     <link rel="stylesheet" href="{{ asset('css/tokens.css') }}">
     <link rel="stylesheet" href="{{ asset('css/fonts.css') }}">
     <link rel="stylesheet" href="{{ asset('css/app.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/guest/theme-toggle.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/auth/auth-pages.css') }}">
     <link rel="icon" type="image/png" href="{{ asset('images/tab_icon.png') }}">
     <script src="{{ asset('js/app.js') }}" defer></script>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
-<body>
+<body class="auth-page">
+    @include('partials.guest.theme-toggle', ['placement' => 'corner'])
     <div class="auth-wrapper">
         <div class="bg-particle"></div>
         <div class="bg-particle"></div>
@@ -25,6 +29,7 @@
 
         <div class="auth-box">
             <img src="{{ asset('images/logo.png') }}" alt="Side House" style="width: 100%; max-width: 260px; display: block; margin: 0 auto 10px;">
+            <h1>Create your <span class="auth-heading-accent">account</span></h1>
             <p class="subtitle">Create an account to manage bookings</p>
 
             <div

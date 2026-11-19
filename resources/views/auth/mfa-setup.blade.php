@@ -5,13 +5,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Set up Two-Factor Authentication | Court Booking</title>
+    <script src="{{ asset('js/guest/theme-toggle.js') }}"></script>
     <link rel="stylesheet" href="{{ asset('css/tokens.css') }}">
     <link rel="stylesheet" href="{{ asset('css/fonts.css') }}">
     <link rel="stylesheet" href="{{ asset('css/app.css') }}">
     <link rel="stylesheet" href="{{ asset('css/auth/mfa-modal.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/guest/theme-toggle.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/auth/auth-pages.css') }}">
     <link rel="icon" type="image/png" href="{{ asset('images/tab_icon.png') }}">
 </head>
-<body>
+<body class="auth-page">
+    @include('partials.guest.theme-toggle', ['placement' => 'corner'])
     <div class="auth-wrapper">
         <div class="bg-particle"></div>
         <div class="bg-particle"></div>
@@ -27,7 +31,7 @@
              middleware) instead of through the login-page modal flow. --}}
         <div class="mfa-modal-content" style="position: relative; z-index: 1;">
             <div class="mfa-modal-header">
-                <h2>Set up Two-Factor Authentication</h2>
+                <h2>Set up <span class="auth-heading-accent">Two-Factor</span> Authentication</h2>
             </div>
 
             <div class="mfa-modal-body">
