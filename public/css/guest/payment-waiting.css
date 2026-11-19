@@ -42,10 +42,10 @@
 
 /* ---------- Shell ---------- */
 
-.wt-shell {
+#waitingPage.wt-shell {
     max-width: 480px;
     margin: 0 auto;
-    padding: 24px 20px 120px;
+    padding: 24px 20px var(--s5);
 }
 
 .wt-back {
@@ -99,37 +99,49 @@
 
 /* ---------- QR panel ---------- */
 
-.wt-qr-box {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 14px;
-    padding: 4px 0;
-}
-
-.wt-qr-image-wrap {
+#waitingPage .wt-qr-box {
+    position: relative;
     width: 220px;
     height: 220px;
-    border-radius: var(--wt-radius-md);
+    flex: 0 0 220px;
+    margin: 0 auto;
     overflow: hidden;
-    background: var(--text);
+    border-radius: var(--wt-radius-md);
+    background: transparent;
+}
+
+#waitingPage .wt-qr-image-wrap {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    overflow: hidden;
+    border-radius: inherit;
     display: flex;
     align-items: center;
     justify-content: center;
 }
 
-.wt-qr-image-wrap img {
+#qrBox[data-state="ready"] .wt-qr-image-wrap {
+    background: var(--text);
+}
+
+#waitingPage .wt-qr-image-wrap img {
     width: 100%;
     height: 100%;
+    padding: 0;
+    border: 0;
+    background: transparent;
     object-fit: contain;
 }
 
-.wt-qr-skeleton {
-    width: 220px;
-    height: 220px;
-    flex: 0 0 220px;
+#waitingPage .wt-qr-skeleton {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    width: 100%;
+    height: 100%;
     border: 1px solid var(--border);
-    border-radius: var(--wt-radius-md);
+    border-radius: inherit;
     background-color: var(--surface-2);
     background-image: linear-gradient(90deg, var(--surface-2) 25%, var(--surface) 37%, var(--surface-2) 63%);
     background-size: 400% 100%;
@@ -145,9 +157,21 @@
     font-size: 0;
 }
 
-#qrBox[data-state="loading"] #qrImage {
+#waitingPage .wt-qr-image-wrap[hidden],
+#waitingPage .wt-qr-loading[hidden],
+#waitingPage .wt-qr-error[hidden],
+#waitingPage .wt-qr-status-line[hidden] {
+    display: none;
+}
+
+#qrBox:not([data-state="ready"]) #qrImage {
     opacity: 0;
     visibility: hidden;
+}
+
+#qrBox[data-state="ready"] #qrImage {
+    opacity: 1;
+    visibility: visible;
 }
 
 @keyframes wt-qr-shimmer {
@@ -156,7 +180,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-    .wt-qr-skeleton {
+    #waitingPage .wt-qr-skeleton {
         animation: none;
     }
 }
@@ -166,6 +190,27 @@
     font-size: 13.5px;
     color: var(--wt-text-muted);
     text-align: center;
+}
+
+#waitingPage #qrLoading {
+    margin-top: var(--s3);
+}
+
+#qrBox .wt-qr-error {
+    position: absolute;
+    inset: 0;
+    z-index: 3;
+    box-sizing: border-box;
+    align-items: center;
+    justify-content: center;
+    gap: var(--s2);
+    padding: var(--s3);
+    border-radius: inherit;
+    background: var(--surface);
+}
+
+#qrBox[data-state="error"] .wt-qr-error {
+    display: flex;
 }
 
 .wt-qr-error { color: var(--wt-danger); }
@@ -189,6 +234,11 @@
     gap: 8px;
     font-size: 13px;
     color: var(--wt-text-muted);
+}
+
+#waitingPage #qrStatusLine {
+    justify-content: center;
+    margin-top: var(--s3);
 }
 
 .wt-pulse-dot {
@@ -318,11 +368,9 @@
 
 /* ---------- Floating countdown ---------- */
 
-.wt-float-timer {
-    position: fixed;
-    left: 50%;
-    bottom: 24px;
-    transform: translateX(-50%);
+#waitingPage #floatTimer {
+    position: static;
+    margin: 0 auto var(--s3);
     background: var(--wt-panel-raised);
     border: 1.5px solid var(--wt-accent-dim);
     border-radius: 999px;
@@ -331,7 +379,6 @@
     align-items: center;
     gap: 10px;
     box-shadow: 0 12px 32px color-mix(in srgb, var(--bg) 50%, transparent);
-    z-index: 50;
     width: max-content;
     max-width: calc(100% - 32px);
 }
@@ -406,8 +453,8 @@
 }
 
 @media (max-width: 420px) {
-    .wt-shell { padding: 20px 16px 130px; }
-    .wt-qr-image-wrap { width: 190px; height: 190px; }
+    #waitingPage.wt-shell { padding: 20px 16px var(--s5); }
+    #waitingPage .wt-qr-box { width: 190px; height: 190px; flex-basis: 190px; }
 }
 
 .wt-body {
@@ -478,8 +525,8 @@
 }
 
 @media (max-width: 767px) {
-    .wt-shell {
-        padding: var(--s5) var(--s4) 120px;
+    #waitingPage.wt-shell {
+        padding: var(--s5) var(--s4) var(--s5);
     }
 
     .wt-card {

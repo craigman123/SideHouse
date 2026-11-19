@@ -49,8 +49,6 @@
 
                 <div class="wt-qr-box" id="qrBox" data-state="loading">
                     <div class="wt-qr-skeleton" id="qrSkeleton" aria-hidden="true"></div>
-                    <div class="wt-qr-loading" id="qrLoading">Generating your QR code&hellip;</div>
-
                     <div class="wt-qr-image-wrap" id="qrImageWrap" hidden>
                         <img id="qrImage" src="" alt="QR Ph payment code">
                     </div>
@@ -60,11 +58,13 @@
                         <br>
                         <button type="button" class="wt-qr-retry" id="qrRetryBtn">Try again</button>
                     </div>
+                </div>
 
-                    <div class="wt-qr-status-line" id="qrStatusLine" hidden>
-                        <span class="wt-pulse-dot"></span>
-                        <span>Waiting for payment confirmation&hellip;</span>
-                    </div>
+                <div class="wt-qr-loading" id="qrLoading">Generating your QR code&hellip;</div>
+
+                <div class="wt-qr-status-line" id="qrStatusLine" hidden>
+                    <span class="wt-pulse-dot"></span>
+                    <span>Waiting for payment confirmation&hellip;</span>
                 </div>
             </div>
 
@@ -91,16 +91,15 @@
             </div>
 
             <div class="wt-section">
+                <div class="wt-float-timer" id="floatTimer">
+                    <span class="wt-float-timer-label">Slot held for</span>
+                    <span class="wt-float-timer-value" id="floatTimerValue">--:--</span>
+                </div>
                 <div class="wt-cancel-actions">
                     <button type="button" class="wt-btn-cancel" id="cancelBtn">Cancel this booking</button>
                 </div>
             </div>
         </div>
-    </div>
-
-    <div class="wt-float-timer" id="floatTimer">
-        <span class="wt-float-timer-label">Slot held for</span>
-        <span class="wt-float-timer-value" id="floatTimerValue">--:--</span>
     </div>
 
     {{-- ==================== CANCEL CONFIRMATION MODAL ==================== --}}
