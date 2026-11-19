@@ -391,11 +391,11 @@
                 <p>No calls, no messages, no account required — just book online and show up ready to play.</p>
             </div>
 
-            {{-- <div class="feature-card fade-in feature-card-exclusive">
+            <div class="feature-card fade-in feature-card-exclusive">
                 <div class="feature-icon">🌟</div>
                 <h3>Exclusive</h3>
                 <p>Create a free account to unlock member-only perks: discounted equipment rentals and booking discounts.</p>
-            </div> --}}
+            </div>
 
             <div class="feature-card fade-in">
                 <div class="feature-icon">🚻</div>
@@ -560,7 +560,7 @@
             <p class="faq-outro" style="text-align:center; max-width: 560px; margin: 32px auto 0; color: var(--text-muted, #9aa0a6); font-size: 0.95rem; line-height: 1.6;">Still have questions? We're happy to help — but honestly, the fastest way to see what makes Side House Paddlers different is to book a court and experience it yourself.</p>
         </section>
 
-        <section class="member-cta fade-in" id="getMore" style="display: none;">
+        <section class="member-cta fade-in" id="getMore">
             <div class="member-cta-inner">
                 <h2>Get More From Every Visit</h2>
                 <p>Create a free Side House account to view a detailed history of your bookings, rebook your favorite court and time slot in a single click, and unlock member-only perks like hourly rates discounts and discounted equipment rentals. It only takes a minute.</p>

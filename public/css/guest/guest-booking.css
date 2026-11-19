@@ -1460,12 +1460,7 @@ body > .landing-wrapper {
     .landing-wrapper .nav-left { flex: 0 1 auto; min-width: 0; overflow: hidden; }
     .landing-wrapper .nav-logo { flex: 0 0 auto; }
     .landing-wrapper .nav-title-landing {
-        display: block;
-        min-width: 0;
-        max-width: clamp(0px, 20vw, 112px);
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
+        display: none;
     }
     .landing-wrapper .nav-center { flex: 1 1 0; min-width: 0; gap: var(--s1); }
     .landing-wrapper .guest-session-save { display: none; }
