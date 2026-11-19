@@ -35,12 +35,104 @@ body {
     font-weight: var(--font-weight-h3);
 }
 
+#paymentPage .payment-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--s3);
+}
+
+#paymentPage .payment-header h3 {
+    margin: 0;
+}
+
+#paymentPage .payment-page-exit {
+    width: 40px;
+    height: 40px;
+    flex: 0 0 40px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--danger);
+    border-radius: var(--r-pill);
+    color: var(--danger);
+    font-size: var(--font-size-h3);
+    line-height: 1;
+    text-decoration: none;
+}
+
+#paymentPage .payment-page-exit:hover {
+    border-color: var(--danger);
+    background: color-mix(in srgb, var(--danger) 12%, var(--surface));
+    color: var(--danger);
+}
+
+#paymentPage .payment-page-exit:focus-visible {
+    outline: 2px solid var(--danger);
+    outline-offset: 2px;
+}
+
+#paymentPage .booking-flow-progress {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: var(--s1);
+    margin: 0;
+}
+
+#paymentPage .booking-flow-step {
+    box-sizing: border-box;
+    min-width: 0;
+    min-height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--s1);
+    padding: var(--s1);
+    border: 1px solid var(--border);
+    border-radius: var(--r-pill);
+    background: var(--surface-2);
+    color: var(--text-muted);
+    font-family: var(--font-family);
+    font-size: var(--font-size-small);
+    text-align: center;
+}
+
+#paymentPage .booking-flow-step.active {
+    border-color: var(--brand);
+    background: color-mix(in srgb, var(--brand) 18%, var(--surface));
+    color: var(--text);
+}
+
+#paymentPage .booking-flow-step.complete {
+    border-color: var(--brand);
+    color: var(--text);
+}
+
+#paymentPage .booking-flow-step b {
+    flex: 0 0 auto;
+    color: var(--brand-hover);
+}
+
 #paymentPage .modal-back {
     margin: var(--s3) var(--s5) 0;
     padding: var(--s2) var(--s4);
-    border: 1px solid var(--brand);
+    border: 1px solid var(--danger);
     border-radius: var(--r-pill);
-    color: var(--text);
+    background: transparent;
+    color: var(--danger);
+}
+
+#paymentPage .modal-back:hover {
+    border-color: var(--danger);
+    background: color-mix(in srgb, var(--danger) 12%, var(--surface));
+    color: var(--danger);
+}
+
+#paymentPage .modal-back:focus-visible {
+    outline: 2px solid var(--danger);
+    outline-offset: 2px;
 }
 
 #paymentPage .modal-scroll-body {
@@ -70,6 +162,11 @@ body {
     color: var(--text-muted);
     font-size: var(--font-size-small);
     font-weight: var(--font-weight-small);
+}
+
+#paymentPage .guest-email-label,
+#paymentPage #guestEmailSaved {
+    display: none;
 }
 
 #paymentPage .guest-info-item input,
@@ -122,6 +219,24 @@ body {
     outline: 2px solid var(--danger);
     outline-offset: 4px;
     border-radius: var(--r-pill);
+}
+
+#paymentPage .btn-change-email {
+    border: 1px solid var(--danger);
+    border-radius: var(--r-pill);
+    color: var(--danger);
+}
+
+#paymentPage .btn-change-email:hover,
+#paymentPage .btn-change-email:focus-visible {
+    border-color: var(--danger);
+    background: color-mix(in srgb, var(--danger) 12%, var(--surface));
+    color: var(--danger);
+}
+
+#paymentPage .btn-change-email:focus-visible {
+    outline: 2px solid var(--danger);
+    outline-offset: 2px;
 }
 
 #paymentPage .guest-email-confirmed {
@@ -202,18 +317,28 @@ body {
 }
 
 #paymentPage .modal-actions .btn-secondary {
-    border: 1px solid var(--brand);
+    border: 1px solid var(--danger);
     background: transparent;
-    color: var(--text);
+    color: var(--danger);
 }
 
 #paymentPage .modal-actions .btn:hover:not(:disabled) {
     border-color: var(--brand-hover);
 }
 
+#paymentPage .modal-actions .btn-secondary:hover:not(:disabled) {
+    border-color: var(--danger);
+    background: color-mix(in srgb, var(--danger) 12%, var(--surface));
+    color: var(--danger);
+}
+
 #paymentPage .modal-actions .btn:focus-visible {
     outline: 2px solid var(--brand-hover);
     outline-offset: 2px;
+}
+
+#paymentPage .modal-actions .btn-secondary:focus-visible {
+    outline-color: var(--danger);
 }
 
 #paymentPage .modal-actions .btn:disabled {
@@ -234,6 +359,10 @@ body {
 
     #paymentPage .guest-info-grid {
         grid-template-columns: minmax(0, 1fr);
+    }
+
+    #paymentPage .booking-flow-progress {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
     #paymentPage .modal-scroll-body {

@@ -47,7 +47,8 @@
             <div class="wt-section">
                 <p class="wt-section-label">Scan to Pay — QR Ph</p>
 
-                <div class="wt-qr-box" id="qrBox">
+                <div class="wt-qr-box" id="qrBox" data-state="loading">
+                    <div class="wt-qr-skeleton" id="qrSkeleton" aria-hidden="true"></div>
                     <div class="wt-qr-loading" id="qrLoading">Generating your QR code&hellip;</div>
 
                     <div class="wt-qr-image-wrap" id="qrImageWrap" hidden>

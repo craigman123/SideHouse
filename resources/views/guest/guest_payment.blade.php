@@ -38,7 +38,16 @@
             data-waiting-url-template="{{ $waitingUrlTemplate }}"
             data-landing-url="{{ $landingUrl }}"
             data-google-client-id="{{ $googleClientId }}">
-            <div class="modal-header payment-header"><h3>Almost Done</h3></div>
+            <div class="modal-header payment-header">
+                <h3>Almost Done</h3>
+                <a href="{{ $landingUrl }}" class="payment-page-exit" aria-label="Exit booking">&times;</a>
+                <div class="booking-flow-progress booking-flow-progress-compact" aria-label="Booking progress">
+                    <span class="booking-flow-step complete" data-checkout-step="1"><b>1</b>Date &amp; time</span>
+                    <span class="booking-flow-step complete" data-checkout-step="2"><b>2</b>Equipment</span>
+                    <span class="booking-flow-step complete" data-checkout-step="3"><b>3</b>Details</span>
+                    <span class="booking-flow-step active" data-checkout-step="4"><b>4</b>Payment</span>
+                </div>
+            </div>
             <button type="button" class="modal-back" id="backToEquipment">&larr; Back to equipment</button>
             <div class="modal-scroll-body">
                 <div class="booking-section">
@@ -69,7 +78,7 @@
                         </div>
                     </div>
                     <div class="guest-email-block">
-                        <label class="guest-email-label" id="guestEmailLabel" for="guestEmailSaved">Email Address</label>
+                        <label class="guest-email-label" id="guestEmailLabel" for="guestEmailSaved" hidden>Email Address</label>
                         <input type="email" id="guestEmailSaved" class="guest-email-saved-input" readonly hidden>
                         <div id="googleSignInBtn" class="google-signin-btn"></div>
                         <div class="guest-email-confirmed" id="guestEmailConfirmed" hidden>

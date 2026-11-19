@@ -250,13 +250,6 @@
                             <div class="calendar-grid" id="calendarGrid"></div>
                         </div>
                     </div>
-                    <aside class="booking-selection-summary" id="bookingSelectionSummary" aria-live="polite">
-                        <p class="booking-selection-summary-title">Your selection</p>
-                        <p><span>Court</span><strong id="selectionCourt">{{ $courts->first()->name }}</strong></p>
-                        <p><span>Date &amp; time</span><strong id="selectionDateTime">Choose a date and time</strong></p>
-                        <p><span>Equipment</span><strong id="selectionEquipment">None selected</strong></p>
-                        <p class="booking-selection-total"><span>Estimated total</span><strong id="selectionTotal">₱0.00</strong></p>
-                    </aside>
                 </div>
             @endif
         </section>
@@ -644,6 +637,12 @@
             <div class="modal-header-timepicker">
                 <button type="button" class="modal-back modal-back-time" id="backToCalendar">&larr; Back to date</button>
                 <button type="button" class="modal-close" id="timePickerModalClose" aria-label="Close">&times;</button>
+                <div class="booking-flow-progress booking-flow-progress-compact" aria-label="Booking progress">
+                    <span class="booking-flow-step active" data-booking-step="1"><b>1</b>Date &amp; time</span>
+                    <span class="booking-flow-step" data-booking-step="2"><b>2</b>Equipment</span>
+                    <span class="booking-flow-step" data-booking-step="3"><b>3</b>Details</span>
+                    <span class="booking-flow-step" data-booking-step="4"><b>4</b>Payment</span>
+                </div>
             </div>
 
             <div class="time-picker-day-switch">
@@ -676,6 +675,13 @@
                         <span id="timePickerFeeTotal">₱0</span>
                     </div>
                 </div>
+                <aside class="booking-selection-summary" id="bookingSelectionSummary" aria-live="polite">
+                    <p class="booking-selection-summary-title">Your selection</p>
+                    <p><span>Court</span><strong class="selection-court" id="selectionCourt">{{ $courts->first()->name }}</strong></p>
+                    <p><span>Date &amp; time</span><strong class="selection-date-time" id="selectionDateTime">Choose a date and time</strong></p>
+                    <p><span>Equipment</span><strong class="selection-equipment" id="selectionEquipment">None selected</strong></p>
+                    <p class="booking-selection-total"><span>Estimated total</span><strong class="selection-total" id="selectionTotal">₱0.00</strong></p>
+                </aside>
             </div>
 
             <div class="modal-actions">
@@ -690,21 +696,31 @@
         <div class="modal-box modal-box-lg modal-box-scrollable">
             <div class="modal-header equipment-header">
                 <h3>Rent Equipment</h3>
+                <button type="button" class="modal-close" id="equipmentModalClose" aria-label="Close">&times;</button>
+                <div class="booking-flow-progress booking-flow-progress-compact" aria-label="Booking progress">
+                    <span class="booking-flow-step" data-booking-step="1"><b>1</b>Date &amp; time</span>
+                    <span class="booking-flow-step active" data-booking-step="2"><b>2</b>Equipment</span>
+                    <span class="booking-flow-step" data-booking-step="3"><b>3</b>Details</span>
+                    <span class="booking-flow-step" data-booking-step="4"><b>4</b>Payment</span>
+                </div>
             </div>
 
             <button type="button" class="modal-back" id="backToBookingFromEquipment">&larr; Back to date &amp; time</button>
 
             <div class="modal-scroll-body">
-                <div class="equipment-booking-recap" aria-live="polite">
-                    <span id="equipmentSelectedTime">No time selected</span>
-                    <strong id="equipmentSelectedTotal">₱0.00</strong>
-                </div>
                 <div class="booking-section">
                     <p class="booking-section-label">Need a racket or paddle? (optional)</p>
                     <div class="equipment-grid" id="equipmentGrid">
                         <p class="loading-text">Loading equipment…</p>
                     </div>
                 </div>
+                <aside class="booking-selection-summary" id="equipmentBookingSelectionSummary" aria-live="polite">
+                    <p class="booking-selection-summary-title">Your selection</p>
+                    <p><span>Court</span><strong class="selection-court">{{ $courts->first()->name }}</strong></p>
+                    <p><span>Date &amp; time</span><strong class="selection-date-time" id="equipmentSelectedTime">No time selected</strong></p>
+                    <p><span>Equipment</span><strong class="selection-equipment">None selected</strong></p>
+                    <p class="booking-selection-total"><span>Estimated total</span><strong class="selection-total" id="equipmentSelectedTotal">₱0.00</strong></p>
+                </aside>
             </div>
 
             <div class="modal-actions">
