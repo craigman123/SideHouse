@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Bookings | Court Booking')
+@section('title', 'Bookings | Side House')
 @section('page-title', 'Bookings')
 
 @push('styles')

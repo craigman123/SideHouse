@@ -5,7 +5,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>@yield('title', 'Court Booking System')</title>
+    <title>@yield('title', 'Side House')</title>
     <script src="{{ asset('js/admin/admin-shell.js') }}"></script>
     <script src="{{ asset('js/guest/theme-toggle.js') }}"></script>
     <link rel="stylesheet" href="{{ asset('css/tokens.css') }}">
@@ -53,7 +53,7 @@
             </a>
             <a href="{{ route('admin.equipment.availability') }}" class="{{ request()->routeIs('admin.equipment.availability') ? 'active' : '' }}" aria-label="Equipment Availability" title="Equipment Availability">
                 <svg class="sidebar-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 3 9 5-9 5-9-5 9-5Z"/><path d="m3 12 9 5 9-5M3 16l9 5 9-5M12 13v8"/></svg>
-                <span class="admin-nav-text">Equipment Availability</span>
+                <span class="admin-nav-text equipment-availability-nav-text">Equipment Availability</span>
             </a>
 
             <label class="nav-label">Users</label>

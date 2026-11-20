@@ -153,6 +153,12 @@ html.admin-layout-shell .admin-nav-text {
     white-space: nowrap;
 }
 
+html.admin-layout-shell .equipment-availability-nav-text {
+    overflow: visible;
+    text-overflow: clip;
+    white-space: normal;
+}
+
 html.admin-layout-shell .sidebar-profile {
     display: flex;
     flex: 0 0 auto;
