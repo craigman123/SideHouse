@@ -22,7 +22,7 @@
     applySavedState(savedState);
 
     function initializeButton() {
-        const button = document.querySelector('.user-dashboard-page .sidebar-collapse-toggle');
+        const button = document.querySelector('.user-layout-shell .sidebar-collapse-toggle');
         if (!button || !document.getElementById(button.getAttribute('aria-controls'))) return;
 
         const collapseIcon = button.querySelector('[data-sidebar-icon="collapse"]');

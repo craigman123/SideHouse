@@ -8,10 +8,12 @@
     <meta http-equiv="Expires" content="0">
     <title>@yield('title', 'Side House')</title>
     @stack('head-scripts')
+    <script src="{{ asset('js/user/sidebar-collapse.js') }}"></script>
     <link rel="stylesheet" href="{{ asset('css/tokens.css') }}">
     <link rel="stylesheet" href="{{ asset('css/fonts.css') }}">
     <link rel="stylesheet" href="{{ asset('css/app.css') }}">
     <link rel="stylesheet" href="{{ asset('css/user/user-navbar.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/user/sidebar-collapse.css') }}">
     <link rel="icon" type="image/png" href="{{ asset('images/tab_icon.png') }}">
     <script src="{{ asset('js/app.js') }}" defer></script>
     @stack('styles')
@@ -71,7 +73,10 @@
                 <span class="profile-avatar">{{ strtoupper(substr($userName, 0, 1)) }}</span>
                 <span class="profile-name">{{ ucfirst(explode(' ', $userName)[0]) }}</span>
             </a>
-            @yield('sidebar-actions')
+            <button type="button" class="sidebar-collapse-toggle" aria-label="Collapse sidebar" aria-expanded="true" aria-controls="userSidebar" title="Collapse sidebar">
+                <svg data-sidebar-icon="collapse" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/><path d="m14 9 3 3-3 3"/></svg>
+                <svg data-sidebar-icon="expand" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" hidden><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/><path d="m16 15-3-3 3-3"/></svg>
+            </button>
         </div>
 
         <div class="sidebar-footer">&copy; {{ date('Y') }} Side House</div>
