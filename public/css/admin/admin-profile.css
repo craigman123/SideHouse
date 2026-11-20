@@ -175,7 +175,7 @@ html.admin-layout-shell .profile-page .btn-primary {
     border: 1px solid var(--brand);
     border-radius: var(--r-pill);
     background: var(--brand);
-    color: var(--text);
+    color: var(--bg);
     font-family: var(--font-family);
     font-size: var(--font-size-button);
     font-weight: var(--font-weight-button);
@@ -185,6 +185,7 @@ html.admin-layout-shell .profile-page .btn-primary {
 html.admin-layout-shell .profile-page .btn-primary:hover {
     border-color: var(--brand-hover);
     background: var(--brand-hover);
+    color: var(--bg);
 }
 
 html.admin-layout-shell .profile-page .delete-confirm-input {
