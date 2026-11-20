@@ -37,10 +37,14 @@
     const blockForm = document.getElementById('courtBlockForm');
     const blockFormPanel = document.getElementById('courtBlockFormPanel');
     const blockDetailsPanel = document.getElementById('courtBlockDetailsPanel');
+    const blockEditPanel = document.getElementById('courtBlockEditPanel');
+    const bookingDetailsPanel = document.getElementById('courtBookingDetailsPanel');
+    const bookingEditPanel = document.getElementById('courtBookingEditPanel');
     const blockCourtSelect = document.getElementById('courtBlockCourt');
     const blockFormMessage = document.getElementById('courtBlockFormMessage');
     const blockDeleteMessage = document.getElementById('courtBlockDeleteMessage');
     let selectedBlock = null;
+    let selectedBooking = null;
     let savingBlock = false;
     const walkInFields = [...blockForm.querySelectorAll('.walk-in-field')];
     const blockTitleLabel = document.getElementById('courtBlockTitle').closest('label');
@@ -134,13 +138,39 @@
         if (savingBlock && !force) return;
         blockModal.hidden = true;
         selectedBlock = null;
+        selectedBooking = null;
         document.getElementById('courtWalkInCustomer').value = '';
         document.getElementById('courtWalkInContact').value = '';
         document.getElementById('courtWalkInEmail').value = '';
         document.getElementById('courtWalkInNotes').value = '';
     };
 
+    const showModalPanel = (panel, titleId) => {
+        [blockFormPanel, blockDetailsPanel, blockEditPanel, bookingDetailsPanel, bookingEditPanel]
+            .forEach((item) => { item.hidden = item !== panel; });
+        blockModal.classList.toggle('is-details', panel !== blockFormPanel);
+        blockModal.querySelector('[role="dialog"]').setAttribute('aria-labelledby', titleId);
+    };
+
+    const fillCourtOptions = (select, includeAll = false) => {
+        select.replaceChildren();
+        courts.forEach((court) => {
+            const option = document.createElement('option');
+            option.value = String(court.id);
+            option.textContent = court.name;
+            select.append(option);
+        });
+        if (includeAll) {
+            const option = document.createElement('option');
+            option.value = 'all';
+            option.textContent = 'All courts';
+            select.append(option);
+        }
+    };
+
     const openCreateModal = (selection) => {
+        selectedBlock = null;
+        selectedBooking = null;
         populateCourtSelect();
         blockModal.classList.remove('is-details');
         blockModal.querySelector('[role="dialog"]').setAttribute('aria-labelledby', 'courtBlockModalTitle');
@@ -148,6 +178,9 @@
         updateTypeFields();
         blockFormPanel.hidden = false;
         blockDetailsPanel.hidden = true;
+        blockEditPanel.hidden = true;
+        bookingDetailsPanel.hidden = true;
+        bookingEditPanel.hidden = true;
         blockFormMessage.textContent = '';
         blockFormMessage.classList.remove('is-error');
         document.getElementById('courtBlockDate').value = selection.date;
@@ -162,10 +195,8 @@
 
     const openBlockDetails = (block) => {
         selectedBlock = block;
-        blockModal.classList.add('is-details');
-        blockModal.querySelector('[role="dialog"]').setAttribute('aria-labelledby', 'courtBlockDetailsTitle');
-        blockFormPanel.hidden = true;
-        blockDetailsPanel.hidden = false;
+        selectedBooking = null;
+        showModalPanel(blockDetailsPanel, 'courtBlockDetailsTitle');
         blockDeleteMessage.textContent = '';
         blockDeleteMessage.classList.remove('is-error');
         document.getElementById('courtBlockDetailsTitle').textContent = block.title || 'Calendar event';
@@ -180,12 +211,71 @@
         document.getElementById('courtBlockDetailsClose').focus();
     };
 
+    const openBlockEdit = () => {
+        if (!selectedBlock) return;
+        const form = document.getElementById('courtBlockEditForm');
+        fillCourtOptions(form.elements.court_id, true);
+        form.elements.type.value = selectedBlock.type;
+        form.elements.court_id.value = selectedBlock.court_id === null ? 'all' : String(selectedBlock.court_id);
+        form.elements.title.value = selectedBlock.title || '';
+        form.elements.notes.value = selectedBlock.notes || '';
+        form.elements.block_date.value = selectedBlock.block_date;
+        form.elements.start_time.value = selectedBlock.start_time;
+        form.elements.end_time.value = selectedBlock.end_time;
+        document.getElementById('courtBlockEditMessage').textContent = '';
+        showModalPanel(blockEditPanel, 'courtBlockEditTitle');
+        form.elements.type.focus();
+    };
+
+    const openBookingDetails = (booking) => {
+        selectedBooking = booking;
+        selectedBlock = null;
+        const panel = bookingDetailsPanel;
+        document.getElementById('courtBookingDetailsTitle').textContent = booking.customer || 'Booking details';
+        const courtLabel = courts.find((court) => Number(court.id) === Number(booking.court_id))?.name || booking.court || 'Court';
+        document.getElementById('courtBookingDetailsMeta').textContent =
+            `${booking.source === 'walk_in' ? 'Walk-in · ' : ''}${courtLabel} · ${formatDate(booking.date)} · ${booking.start}–${booking.end} · ${booking.status}`;
+        const notes = document.getElementById('courtBookingDetailsNotes');
+        notes.textContent = booking.notes || '';
+        notes.hidden = !booking.notes;
+        document.getElementById('courtBookingDetailsMessage').textContent = '';
+        showModalPanel(panel, 'courtBookingDetailsTitle');
+        blockModal.hidden = false;
+        document.getElementById('courtBookingDetailsClose').focus();
+    };
+
+    const openBookingEdit = () => {
+        if (!selectedBooking) return;
+        const booking = selectedBooking;
+        const form = document.getElementById('courtBookingEditForm');
+        fillCourtOptions(form.elements.court_id);
+        form.elements.customer_name.value = booking.customer || '';
+        form.elements.contact_number.value = booking.contact_number || '';
+        form.elements.email.value = booking.email || '';
+        form.elements.court_id.value = String(booking.court_id);
+        form.elements.date.value = booking.date;
+        form.elements.start_time.value = booking.start;
+        form.elements.end_time.value = booking.end;
+        form.elements.amount.value = Number(booking.amount || 0).toFixed(2);
+        form.elements.notes.value = booking.notes || '';
+        form.elements.acknowledge_price_change.checked = false;
+        form.querySelector('.court-booking-price-ack-field').hidden = !['paid', 'confirmed'].includes(booking.status);
+        document.getElementById('courtBookingEditMessage').textContent = '';
+        showModalPanel(bookingEditPanel, 'courtBookingEditTitle');
+        form.elements.customer_name.focus();
+    };
+
     document.getElementById('courtBlockModalClose').addEventListener('click', closeBlockModal);
     walkInType.addEventListener('change', updateTypeFields);
     [blockCourtSelect, document.getElementById('courtBlockStart'), document.getElementById('courtBlockEnd')]
         .forEach((input) => input.addEventListener('change', updateWalkInAmount));
     document.getElementById('courtBlockCancel').addEventListener('click', closeBlockModal);
     document.getElementById('courtBlockDetailsClose').addEventListener('click', closeBlockModal);
+    document.getElementById('courtBlockEditOpen').addEventListener('click', openBlockEdit);
+    document.getElementById('courtBlockEditCancel').addEventListener('click', () => selectedBlock && openBlockDetails(selectedBlock));
+    document.getElementById('courtBookingDetailsClose').addEventListener('click', closeBlockModal);
+    document.getElementById('courtBookingEditOpen').addEventListener('click', openBookingEdit);
+    document.getElementById('courtBookingEditCancel').addEventListener('click', () => selectedBooking && openBookingDetails(selectedBooking));
     blockModal.addEventListener('click', (event) => {
         if (event.target === blockModal) closeBlockModal();
     });
@@ -261,6 +351,122 @@
         } finally {
             savingBlock = false;
             saveButton.disabled = false;
+        }
+    });
+
+    const bookingEditForm = document.getElementById('courtBookingEditForm');
+    const bookingEditMessage = document.getElementById('courtBookingEditMessage');
+    const updatePriceAcknowledgementVisibility = () => {
+        const amountChanged = Number(bookingEditForm.elements.amount.value) !== Number(selectedBooking?.amount || 0);
+        const acknowledgement = bookingEditForm.elements.acknowledge_price_change;
+        const eligible = ['paid', 'confirmed'].includes(selectedBooking?.status);
+        bookingEditForm.querySelector('.court-booking-price-ack-field').hidden = !eligible || !amountChanged;
+        acknowledgement.required = false;
+        if (!amountChanged) acknowledgement.checked = false;
+    };
+    bookingEditForm.elements.amount.addEventListener('input', updatePriceAcknowledgementVisibility);
+    bookingEditForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        if (!selectedBooking || savingBlock) return;
+        const token = csrfToken();
+        if (!token) {
+            bookingEditMessage.textContent = 'Your security token is missing. Reload the page and try again.';
+            bookingEditMessage.classList.add('is-error');
+            return;
+        }
+        const payload = Object.fromEntries(new FormData(bookingEditForm).entries());
+        payload.court_id = Number(payload.court_id);
+        payload.amount = Number(payload.amount);
+        if (Math.abs(payload.amount - Number(selectedBooking.amount || 0)) < 0.005) delete payload.amount;
+        payload.email = payload.email.trim() || null;
+        payload.notes = payload.notes.trim() || null;
+        payload.acknowledge_price_change = bookingEditForm.elements.acknowledge_price_change.checked;
+        savingBlock = true;
+        bookingEditForm.querySelector('[type="submit"]').disabled = true;
+        bookingEditMessage.textContent = '';
+        bookingEditMessage.classList.remove('is-error');
+        try {
+            const response = await fetch(`/admin/bookings/${encodeURIComponent(selectedBooking.id)}`, {
+                method: 'PATCH',
+                credentials: 'same-origin',
+                headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': token },
+                body: JSON.stringify(payload),
+            });
+            const result = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                const fieldErrors = Object.values(result.errors || {}).flat();
+                const conflict = result.conflict;
+                if (result.new_amount !== undefined && result.old_amount !== undefined) {
+                    bookingEditForm.elements.amount.value = Number(result.new_amount).toFixed(2);
+                    updatePriceAcknowledgementVisibility();
+                }
+                const conflictMessage = conflict ? ` ${conflict.title || conflict.type}${conflict.start_time ? ` (${conflict.start_time}–${conflict.end_time})` : ''}.` : '';
+                bookingEditMessage.textContent = `${result.message || (response.status === 419 ? 'Your session or security token expired. Refresh the page and try again.' : 'Could not update this booking.')}${conflictMessage}${fieldErrors.length ? ` ${fieldErrors.join(' ')}` : ''}`;
+                bookingEditMessage.classList.add('is-error');
+                return;
+            }
+            const index = bookings.findIndex((booking) => String(booking.id) === String(result.booking.id));
+            if (index >= 0) bookings[index] = result.booking;
+            selectedBooking = result.booking;
+            closeBlockModal(true);
+            renderMonth();
+            renderBoard();
+            notify(result.message || 'Booking updated.', 'success');
+        } catch (error) {
+            bookingEditMessage.textContent = 'Something went wrong. Please try again.';
+            bookingEditMessage.classList.add('is-error');
+        } finally {
+            savingBlock = false;
+            bookingEditForm.querySelector('[type="submit"]').disabled = false;
+        }
+    });
+
+    const blockEditForm = document.getElementById('courtBlockEditForm');
+    const blockEditMessage = document.getElementById('courtBlockEditMessage');
+    blockEditForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        if (!selectedBlock || savingBlock) return;
+        const token = csrfToken();
+        if (!token) {
+            blockEditMessage.textContent = 'Your security token is missing. Reload the page and try again.';
+            blockEditMessage.classList.add('is-error');
+            return;
+        }
+        const payload = Object.fromEntries(new FormData(blockEditForm).entries());
+        payload.court_id = payload.court_id === 'all' ? null : Number(payload.court_id);
+        payload.notes = payload.notes.trim() || null;
+        savingBlock = true;
+        blockEditForm.querySelector('[type="submit"]').disabled = true;
+        blockEditMessage.textContent = '';
+        blockEditMessage.classList.remove('is-error');
+        try {
+            const response = await fetch(`/admin/blocks/${encodeURIComponent(selectedBlock.id)}`, {
+                method: 'PATCH',
+                credentials: 'same-origin',
+                headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': token },
+                body: JSON.stringify(payload),
+            });
+            const result = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                const fieldErrors = Object.values(result.errors || {}).flat();
+                const conflict = result.conflict;
+                const conflictMessage = conflict ? ` ${conflict.title || conflict.type}${conflict.start_time ? ` (${conflict.start_time}–${conflict.end_time})` : ''}.` : '';
+                blockEditMessage.textContent = `${result.message || (response.status === 419 ? 'Your session or security token expired. Refresh the page and try again.' : 'Could not update this event.')}${conflictMessage}${fieldErrors.length ? ` ${fieldErrors.join(' ')}` : ''}`;
+                blockEditMessage.classList.add('is-error');
+                return;
+            }
+            const index = blocks.findIndex((item) => String(item.id) === String(result.block.id));
+            if (index >= 0) blocks[index] = normalizeBlock(result.block);
+            closeBlockModal(true);
+            renderMonth();
+            renderBoard();
+            notify(result.message || 'Calendar event updated.', 'success');
+        } catch (error) {
+            blockEditMessage.textContent = 'Something went wrong. Please try again.';
+            blockEditMessage.classList.add('is-error');
+        } finally {
+            savingBlock = false;
+            blockEditForm.querySelector('[type="submit"]').disabled = false;
         }
     });
 
@@ -472,12 +678,14 @@
         return [];
     };
 
-    const rangeHasConflict = (date, startMinutes, endMinutes) => {
+    const rangeHasConflict = (date, startMinutes, endMinutes, ignoreBookingId = null, courtId = null, ignoreBlockId = null) => {
         const weekday = new Date(`${date}T00:00:00`).getDay();
         if (BIZ_CLOSED_WEEKDAYS.includes(weekday)
             || closures.some((closure) => closure.date === date)) return true;
 
         const bookingConflict = bookings.some((booking) => {
+            if (ignoreBookingId !== null && String(booking.id) === String(ignoreBookingId)) return false;
+            if (courtId !== null && Number(booking.court_id) !== Number(courtId)) return false;
             if (booking.status === 'cancelled') return false;
             return eventWindows(booking, date).some((window) => {
                 const start = toMinutes(window.start);
@@ -488,7 +696,9 @@
         });
         if (bookingConflict) return true;
 
-        return blocks.some((block) => blockWindowsForDate(block, date).some((window) =>
+        return blocks.some((block) => (ignoreBlockId === null || String(block.id) !== String(ignoreBlockId))
+            && (courtId === null || block.court_id === null || Number(block.court_id) === Number(courtId))
+            && blockWindowsForDate(block, date).some((window) =>
             overlaps(startMinutes, endMinutes, window.startMinutes, window.endMinutes)
         ));
     };
@@ -892,9 +1102,128 @@
                     event.title = `${block.title || block.type} · ${block.start_time}–${block.end_time}`;
                     event.setAttribute('aria-label', `${block.title || block.type}, ${block.type.replace('_', ' ')}, ${formatDate(block.block_date)}. Open event details.`);
                     event.addEventListener('click', (clickEvent) => {
+                        if (event._suppressCalendarClick) {
+                            event._suppressCalendarClick = false;
+                            clickEvent.preventDefault();
+                            clickEvent.stopPropagation();
+                            return;
+                        }
                         clickEvent.stopPropagation();
                         openBlockDetails(block);
                     });
+                    event.addEventListener('pointerdown', (pointerEvent) => {
+                        if ((pointerEvent.pointerType === 'mouse' && pointerEvent.button !== 0) || event._calendarDrag) return;
+                        console.debug('[board] bar pointerdown', {
+                            kind: 'block', id: block.id, pointerType: pointerEvent.pointerType,
+                            target: document.elementFromPoint(pointerEvent.clientX, pointerEvent.clientY)?.className,
+                        });
+                        event.setPointerCapture(pointerEvent.pointerId);
+                        event._calendarDrag = {
+                            pointerId: pointerEvent.pointerId,
+                            startX: pointerEvent.clientX,
+                            startY: pointerEvent.clientY,
+                            moved: false,
+                            duration: (() => {
+                                const start = toMinutes(block.start_time);
+                                let end = toMinutes(block.end_time);
+                                if (end <= start) end += 1440;
+                                return end - start;
+                            })(),
+                            ghost: null,
+                            target: null,
+                        };
+                    });
+                    event.addEventListener('pointermove', (pointerEvent) => {
+                        const drag = event._calendarDrag;
+                        if (!drag || drag.pointerId !== pointerEvent.pointerId) return;
+                        if (!drag.moved && Math.hypot(pointerEvent.clientX - drag.startX, pointerEvent.clientY - drag.startY) > 5) {
+                            drag.moved = true;
+                            beginMonthDrag(pointerEvent.pointerId);
+                            monthGrid.classList.add('is-booking-drag');
+                            console.debug('[board] threshold reached', { kind: 'block', id: block.id });
+                        }
+                        if (!drag.moved) return;
+                        pointerEvent.preventDefault();
+                        lockMonthScroll();
+                        const targetColumn = document.elementsFromPoint(pointerEvent.clientX, pointerEvent.clientY)
+                            .map((elementAtPoint) => elementAtPoint.closest?.('.court-month-date-col'))
+                            .find((candidate) => candidate && monthGrid.contains(candidate));
+                        const slot = targetColumn ? slotFromPoint(pointerEvent, targetColumn) : null;
+                        if (!targetColumn || !slot) {
+                            drag.target = null;
+                            drag.ghost?.remove();
+                            drag.ghost = null;
+                            return;
+                        }
+                        const startMinutes = slot.minutes;
+                        const endMinutes = startMinutes + drag.duration;
+                        if (!drag.ghost) {
+                            drag.ghost = document.createElement('div');
+                            drag.ghost.className = 'court-month-selection-ghost is-booking-drag-ghost';
+                            drag.ghost.setAttribute('aria-hidden', 'true');
+                        }
+                        if (drag.ghost.parentElement !== targetColumn) targetColumn.append(drag.ghost);
+                        const yForTarget = targetColumn._monthYForMinute || (() => 0);
+                        drag.ghost.style.top = `${yForTarget(startMinutes)}px`;
+                        drag.ghost.style.height = `${Math.max(8, yForTarget(endMinutes) - yForTarget(startMinutes))}px`;
+                        const conflict = rangeHasConflict(slot.date, startMinutes, endMinutes, null, block.court_id, block.id);
+                        drag.ghost.classList.toggle('is-conflict', conflict);
+                        drag.target = { date: slot.date, startMinutes, endMinutes, conflict };
+                    });
+                    const stopBlockDrag = async (pointerEvent, cancelled = false) => {
+                        const drag = event._calendarDrag;
+                        if (!drag || drag.pointerId !== pointerEvent.pointerId) return;
+                        event._calendarDrag = null;
+                        if (event.hasPointerCapture(pointerEvent.pointerId)) event.releasePointerCapture(pointerEvent.pointerId);
+                        drag.ghost?.remove();
+                        if (!drag.moved) return;
+                        pointerEvent.preventDefault();
+                        event._suppressCalendarClick = true;
+                        window.setTimeout(() => { event._suppressCalendarClick = false; }, 0);
+                        endMonthDrag(pointerEvent.pointerId);
+                        monthGrid.classList.remove('is-booking-drag');
+                        if (cancelled || !drag.target) return;
+                        console.debug('[board] drop target', { kind: 'block', id: block.id, ...drag.target });
+                        if (drag.target.conflict) {
+                            notify('That time overlaps a booking, closure, or another calendar event.', 'error');
+                            return;
+                        }
+                        const token = csrfToken();
+                        if (!token) {
+                            notify('Your security token is missing. Reload the page and try again.', 'error');
+                            return;
+                        }
+                        const payload = {
+                            block_date: drag.target.date,
+                            start_time: formatTimeInput(drag.target.startMinutes),
+                            end_time: formatTimeInput(drag.target.endMinutes),
+                        };
+                        try {
+                            const response = await fetch(`/admin/blocks/${encodeURIComponent(block.id)}`, {
+                                method: 'PATCH',
+                                credentials: 'same-origin',
+                                headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': token },
+                                body: JSON.stringify(payload),
+                            });
+                            const result = await response.json().catch(() => ({}));
+                            console.debug('[board] PATCH response', { kind: 'block', id: block.id, status: response.status, ok: response.ok, message: result.message, conflict: result.conflict?.type });
+                            if (!response.ok) {
+                                notify(result.message || 'Could not move this calendar event.', 'error');
+                                return;
+                            }
+                            const index = blocks.findIndex((item) => String(item.id) === String(result.block.id));
+                            if (index >= 0) blocks[index] = normalizeBlock(result.block);
+                            renderMonth();
+                            renderBoard();
+                            notify(result.message || 'Calendar event moved.', 'success');
+                        } catch (error) {
+                            console.debug('[board] PATCH response', { kind: 'block', id: block.id, error: error?.message });
+                            notify('Could not move this calendar event. Please try again.', 'error');
+                        }
+                    };
+                    event.addEventListener('pointerup', (pointerEvent) => { void stopBlockDrag(pointerEvent); });
+                    event.addEventListener('pointercancel', (pointerEvent) => { void stopBlockDrag(pointerEvent, true); });
+                    event.addEventListener('lostpointercapture', (pointerEvent) => { void stopBlockDrag(pointerEvent, true); });
                     col.append(event);
                     return;
                 }
@@ -930,7 +1259,150 @@
                 bar.textContent = booking.source === 'walk_in' ? 'Walk-in' : initials;
                 if (booking.source === 'walk_in') bar.classList.add('source-walk-in');
                 bar.title = `${booking.source === 'walk_in' ? 'Walk-in · ' : ''}${booking.customer || 'Booking'} · ${booking.court || ''} · ${booking.status}`;
-                bar.addEventListener('click', () => jumpToDay(dateStr));
+                bar.addEventListener('click', (clickEvent) => {
+                    if (bar._suppressCalendarClick) {
+                        bar._suppressCalendarClick = false;
+                        clickEvent.preventDefault();
+                        return;
+                    }
+                    openBookingDetails(booking);
+                });
+                bar.addEventListener('pointerdown', (pointerEvent) => {
+                    if ((pointerEvent.pointerType === 'mouse' && pointerEvent.button !== 0) || bar._calendarDrag) return;
+                    console.debug('[board] bar pointerdown', {
+                        kind: 'booking', id: booking.id, status: booking.status,
+                        pointerType: pointerEvent.pointerType,
+                        target: document.elementFromPoint(pointerEvent.clientX, pointerEvent.clientY)?.className,
+                    });
+                    bar.setPointerCapture(pointerEvent.pointerId);
+                    bar._calendarDrag = {
+                        pointerId: pointerEvent.pointerId,
+                        startX: pointerEvent.clientX,
+                        startY: pointerEvent.clientY,
+                        moved: false,
+                        booking,
+                        duration: Math.max(stepMinutes, (() => {
+                            const startMinutes = toMinutes(booking.start);
+                            let endMinutes = toMinutes(booking.end);
+                            if (endMinutes <= startMinutes) endMinutes += 1440;
+                            return endMinutes - startMinutes;
+                        })()),
+                        ghost: null,
+                        target: null,
+                    };
+                });
+                bar.addEventListener('pointermove', (pointerEvent) => {
+                    const drag = bar._calendarDrag;
+                    if (!drag || drag.pointerId !== pointerEvent.pointerId) return;
+                    if (!drag.moved && Math.hypot(pointerEvent.clientX - drag.startX, pointerEvent.clientY - drag.startY) > 5) {
+                        drag.moved = true;
+                        beginMonthDrag(pointerEvent.pointerId);
+                        monthGrid.classList.add('is-booking-drag');
+                        console.debug('[board] threshold reached', { kind: 'booking', id: booking.id });
+                    }
+                    if (!drag.moved) return;
+                    pointerEvent.preventDefault();
+                    lockMonthScroll();
+                    const targetColumn = document.elementsFromPoint(pointerEvent.clientX, pointerEvent.clientY)
+                        .map((element) => element.closest?.('.court-month-date-col'))
+                        .find((column) => column && monthGrid.contains(column));
+                    const slot = targetColumn ? slotFromPoint(pointerEvent, targetColumn) : null;
+                    if (!targetColumn || !slot) {
+                        drag.target = null;
+                        drag.ghost?.remove();
+                        drag.ghost = null;
+                        return;
+                    }
+                    const startMinutes = slot.minutes;
+                    const endMinutes = startMinutes + drag.duration;
+                    if (!drag.ghost) {
+                        drag.ghost = document.createElement('div');
+                        drag.ghost.className = 'court-month-selection-ghost is-booking-drag-ghost';
+                        drag.ghost.setAttribute('aria-hidden', 'true');
+                    }
+                    if (drag.ghost.parentElement !== targetColumn) targetColumn.append(drag.ghost);
+                    const yForTarget = targetColumn._monthYForMinute || ((minutes) => {
+                        const matching = targetColumn.querySelector(`.court-month-hour-cell[data-hour="${Math.floor(minutes / 60)}"]`);
+                        return matching ? matching.offsetTop + ((minutes % 60) / 60) * matching.offsetHeight : 0;
+                    });
+                    const top = yForTarget(startMinutes);
+                    const bottom = yForTarget(endMinutes);
+                    drag.ghost.style.top = `${top}px`;
+                    drag.ghost.style.height = `${Math.max(8, bottom - top)}px`;
+                    const conflict = rangeHasConflict(slot.date, startMinutes, endMinutes, booking.id, booking.court_id);
+                    drag.ghost.classList.toggle('is-conflict', conflict);
+                    drag.target = { date: slot.date, startMinutes, endMinutes, conflict };
+                });
+                const stopBookingDrag = async (pointerEvent, cancelled = false) => {
+                    const drag = bar._calendarDrag;
+                    if (!drag || drag.pointerId !== pointerEvent.pointerId) return;
+                    bar._calendarDrag = null;
+                    if (bar.hasPointerCapture(pointerEvent.pointerId)) bar.releasePointerCapture(pointerEvent.pointerId);
+                    drag.ghost?.remove();
+                    if (drag.moved) {
+                        pointerEvent.preventDefault();
+                        bar._suppressCalendarClick = true;
+                        window.setTimeout(() => { bar._suppressCalendarClick = false; }, 0);
+                        endMonthDrag(pointerEvent.pointerId);
+                        monthGrid.classList.remove('is-booking-drag');
+                        if (cancelled || !drag.target) return;
+                        console.debug('[board] drop target', { kind: 'booking', id: booking.id, ...drag.target });
+                        if (drag.target.conflict) {
+                            notify('That time overlaps another booking or calendar event.', 'error');
+                            return;
+                        }
+                        const token = csrfToken();
+                        if (!token) {
+                            notify('Your security token is missing. Reload the page and try again.', 'error');
+                            return;
+                        }
+                        const payload = {
+                            date: drag.target.date,
+                            start_time: formatTimeInput(drag.target.startMinutes),
+                            end_time: formatTimeInput(drag.target.endMinutes),
+                        };
+                        try {
+                            const response = await fetch(`/admin/bookings/${encodeURIComponent(booking.id)}`, {
+                                method: 'PATCH',
+                                credentials: 'same-origin',
+                                headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': token },
+                                body: JSON.stringify(payload),
+                            });
+                            const result = await response.json().catch(() => ({}));
+                            console.debug('[board] PATCH response', { kind: 'booking', id: booking.id, status: response.status, ok: response.ok, message: result.message, conflict: result.conflict?.type });
+                            if (!response.ok) {
+                                if (result.new_amount !== undefined) {
+                                    openBookingDetails(booking);
+                                    openBookingEdit();
+                                    const form = document.getElementById('courtBookingEditForm');
+                                    form.elements.date.value = payload.date;
+                                    form.elements.start_time.value = payload.start_time;
+                                    form.elements.end_time.value = payload.end_time;
+                                    form.elements.amount.value = Number(result.new_amount).toFixed(2);
+                                    updatePriceAcknowledgementVisibility();
+                                    bookingEditMessage.textContent = result.message || 'Review and acknowledge the price change to finish rescheduling.';
+                                    bookingEditMessage.classList.add('is-error');
+                                } else {
+                                    notify(result.message || 'Could not reschedule this booking.', 'error');
+                                }
+                                return;
+                            }
+                            const index = bookings.findIndex((item) => String(item.id) === String(result.booking.id));
+                            if (index >= 0) bookings[index] = result.booking;
+                            renderMonth();
+                            renderBoard();
+                            notify(result.message || 'Booking rescheduled.', 'success');
+                        } catch (error) {
+                            console.debug('[board] PATCH response', { kind: 'booking', id: booking.id, error: error?.message });
+                            notify('Could not reschedule this booking. Please try again.', 'error');
+                        }
+                        return;
+                    }
+                    if (cancelled) return;
+                };
+                bar.addEventListener('pointerup', (pointerEvent) => { void stopBookingDrag(pointerEvent); });
+                bar.addEventListener('pointercancel', (pointerEvent) => { void stopBookingDrag(pointerEvent, true); });
+                bar.addEventListener('lostpointercapture', (pointerEvent) => { void stopBookingDrag(pointerEvent, true); });
                 col.append(bar);
             });
 
@@ -943,6 +1415,7 @@
                 }
                 return 0;
             };
+            col._monthYForMinute = yForMinute;
             const showGhost = (selection) => {
                 if (!selection.ghost) {
                     selection.ghost = document.createElement('div');

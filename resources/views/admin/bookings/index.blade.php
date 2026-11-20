@@ -6,7 +6,7 @@
 @push('styles')
     <link rel="stylesheet" href="{{ asset('css/user/dashboard.css') }}">
     <link rel="stylesheet" href="{{ asset('css/booking/bookings.css') }}">
-    <link rel="stylesheet" href="{{ asset('css/admin/admin-bookings-board.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/admin/admin-bookings-board.css') . '?v=' . filemtime(public_path('css/admin/admin-bookings-board.css')) }}">
 @endpush
 
 @section('content')
@@ -254,8 +254,63 @@
                 <p class="court-block-modal-message" id="courtBlockDeleteMessage" role="status" aria-live="polite"></p>
                 <div class="court-block-modal-actions">
                     <button type="button" class="court-block-secondary" id="courtBlockDetailsClose">Close</button>
+                    <button type="button" class="court-block-secondary" id="courtBlockEditOpen">Edit event</button>
                     <button type="button" class="court-block-danger" id="courtBlockDelete">Delete event</button>
                 </div>
+            </div>
+
+            <div id="courtBlockEditPanel" hidden>
+                <h2 id="courtBlockEditTitle">Edit calendar event</h2>
+                <form id="courtBlockEditForm">
+                    <div class="court-block-form-grid">
+                        <label>Type<select name="type" required><option value="closed">Closed</option><option value="maintenance">Maintenance</option><option value="open_play">Open play</option></select></label>
+                        <label>Court<select name="court_id" required></select></label>
+                        <label>Title<input name="title" type="text" maxlength="255" required></label>
+                        <label>Date<input name="block_date" type="date" required></label>
+                        <label>Start time<input name="start_time" type="time" required></label>
+                        <label>End time<input name="end_time" type="time" required></label>
+                        <label class="court-block-notes-field">Notes<textarea name="notes" rows="3" maxlength="5000"></textarea></label>
+                    </div>
+                    <p class="court-block-modal-message" id="courtBlockEditMessage" role="status" aria-live="polite"></p>
+                    <div class="court-block-modal-actions">
+                        <button type="button" class="court-block-secondary" id="courtBlockEditCancel">Back</button>
+                        <button type="submit" class="court-block-primary">Save event</button>
+                    </div>
+                </form>
+            </div>
+
+            <div id="courtBookingDetailsPanel" hidden>
+                <h2 id="courtBookingDetailsTitle">Booking details</h2>
+                <p id="courtBookingDetailsMeta" class="court-block-modal-intro"></p>
+                <p id="courtBookingDetailsNotes"></p>
+                <p class="court-block-modal-message" id="courtBookingDetailsMessage" role="status" aria-live="polite"></p>
+                <div class="court-block-modal-actions">
+                    <button type="button" class="court-block-secondary" id="courtBookingDetailsClose">Close</button>
+                    <button type="button" class="court-block-primary" id="courtBookingEditOpen">Edit booking</button>
+                </div>
+            </div>
+
+            <div id="courtBookingEditPanel" hidden>
+                <h2 id="courtBookingEditTitle">Edit booking</h2>
+                <form id="courtBookingEditForm">
+                    <div class="court-block-form-grid">
+                        <label>Customer name<input name="customer_name" type="text" maxlength="255" required></label>
+                        <label>Contact number<input name="contact_number" type="tel" maxlength="30" required></label>
+                        <label>Email<input name="email" type="email" maxlength="255"></label>
+                        <label>Court<select name="court_id" required></select></label>
+                        <label>Date<input name="date" type="date" required></label>
+                        <label>Start time<input name="start_time" type="time" required></label>
+                        <label>End time<input name="end_time" type="time" required></label>
+                        <label>Amount<input name="amount" type="number" min="0" step="0.01" required></label>
+                        <label class="court-booking-price-ack-field" hidden><span><input name="acknowledge_price_change" type="checkbox" value="1"> I acknowledge the booking price change</span></label>
+                        <label class="court-block-notes-field">Notes<textarea name="notes" rows="3" maxlength="5000"></textarea></label>
+                    </div>
+                    <p class="court-block-modal-message" id="courtBookingEditMessage" role="status" aria-live="polite"></p>
+                    <div class="court-block-modal-actions">
+                        <button type="button" class="court-block-secondary" id="courtBookingEditCancel">Back</button>
+                        <button type="submit" class="court-block-primary">Save booking</button>
+                    </div>
+                </form>
             </div>
         </section>
     </div>
@@ -283,5 +338,5 @@
         ];
     @endphp
     <script id="courtBoardData" type="application/json">{!! json_encode($courtBoardData, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) !!}</script>
-    <script src="{{ asset('js/admin/admin-bookings-board.js') }}" defer></script>
+    <script src="{{ asset('js/admin/admin-bookings-board.js') . '?v=' . filemtime(public_path('js/admin/admin-bookings-board.js')) }}" defer></script>
 @endpush

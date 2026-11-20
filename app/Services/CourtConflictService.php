@@ -21,7 +21,8 @@ class CourtConflictService
         string $date,
         string $startTime,
         string $endTime,
-        ?int $ignoreBookingId = null
+        ?int $ignoreBookingId = null,
+        ?int $ignoreBlockId = null
     ): ?array {
         $timezone = config('app.timezone');
         $start = CarbonImmutable::parse("{$date} {$startTime}", $timezone);
@@ -173,6 +174,7 @@ class CourtConflictService
             ->where(function ($query) use ($courtId) {
                 $query->whereNull('court_id')->orWhere('court_id', $courtId);
             })
+            ->when($ignoreBlockId !== null, fn ($query) => $query->where('id', '!=', $ignoreBlockId))
             ->whereDate('block_date', '>=', $firstDate->subDay()->toDateString())
             ->whereDate('block_date', '<=', $lastDate->toDateString())
             ->get();

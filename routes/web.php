@@ -181,12 +181,18 @@ Route::middleware(['auth', 'admin', 'admin.mfa', 'throttle:120,1'])->group(funct
 
     // Bookings CRUD
     Route::get('/bookings', [BookingController::class, 'index'])->name('bookings.index');
+    Route::patch('/admin/bookings/{booking}', [BookingController::class, 'update'])
+        ->middleware('throttle:20,1')
+        ->name('admin.bookings.update');
     Route::post('/admin/bookings', [App\Http\Controllers\Admin\WalkInBookingController::class, 'store'])
         ->middleware('throttle:20,1')
         ->name('admin.bookings.walk-in.store');
     Route::post('/admin/blocks', [CourtBlockController::class, 'store'])
         ->middleware('throttle:20,1')
         ->name('admin.blocks.store');
+    Route::patch('/admin/blocks/{block}', [CourtBlockController::class, 'update'])
+        ->middleware('throttle:20,1')
+        ->name('admin.blocks.update');
     Route::delete('/admin/blocks/{block}', [CourtBlockController::class, 'destroy'])
         ->middleware('throttle:20,1')
         ->name('admin.blocks.destroy');

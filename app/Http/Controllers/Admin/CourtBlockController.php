@@ -118,6 +118,107 @@ class CourtBlockController extends Controller
         return response()->json(['message' => 'Court block deleted.', 'id' => $block->id]);
     }
 
+    public function update(Request $request, CourtBlock $block, CourtConflictService $conflicts): JsonResponse
+    {
+        $validated = $request->validate([
+            'type' => ['sometimes', 'required', Rule::in(['closed', 'maintenance', 'open_play'])],
+            'title' => ['sometimes', 'required', 'string', 'max:255'],
+            'notes' => ['sometimes', 'nullable', 'string', 'max:5000'],
+            'court_id' => ['sometimes', 'nullable', 'integer', 'exists:courts,id'],
+            'block_date' => ['sometimes', 'required', 'date_format:Y-m-d', 'after_or_equal:today'],
+            'start_time' => ['sometimes', 'required', 'date_format:H:i'],
+            'end_time' => ['sometimes', 'required', 'date_format:H:i', 'different:start_time'],
+        ]);
+
+        $result = DB::transaction(function () use ($block, $validated, $conflicts) {
+            $locked = CourtBlock::query()->whereKey($block->id)->lockForUpdate()->firstOrFail();
+            $courtId = array_key_exists('court_id', $validated) ? $validated['court_id'] : $locked->court_id;
+            $date = $validated['block_date'] ?? $locked->block_date->toDateString();
+            $startTime = $validated['start_time'] ?? substr((string) $locked->start_time, 0, 5);
+            $endTime = $validated['end_time'] ?? substr((string) $locked->end_time, 0, 5);
+            $duration = $this->minutes($endTime) <= $this->minutes($startTime)
+                ? (1440 - $this->minutes($startTime)) + $this->minutes($endTime)
+                : $this->minutes($endTime) - $this->minutes($startTime);
+            if ($duration <= 0 || $duration > 1440) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'end_time' => 'The block duration must be between one minute and 24 hours.',
+                ]);
+            }
+
+            $allCourtIds = $locked->court_id === null || $courtId === null;
+            if ($allCourtIds) {
+                $courtRows = Court::query()->orderBy('id')->lockForUpdate()->get(['id']);
+            } else {
+                $ids = array_values(array_unique([(int) $locked->court_id, (int) $courtId]));
+                sort($ids);
+                $courtRows = Court::query()->whereIn('id', $ids)->orderBy('id')->lockForUpdate()->get(['id']);
+            }
+            $targetCourts = $courtId === null
+                ? $courtRows
+                : $courtRows->where('id', (int) $courtId)->values();
+            if ($targetCourts->isEmpty()) {
+                return ['conflict' => ['type' => 'court', 'id' => null, 'title' => 'No courts are available.']];
+            }
+
+            foreach ($targetCourts as $court) {
+                $conflict = $conflicts->findConflict(
+                    (int) $court->id,
+                    $date,
+                    $startTime,
+                    $endTime,
+                    null,
+                    (int) $locked->id,
+                );
+                if ($conflict !== null) {
+                    $conflict['court_id'] = (int) $court->id;
+                    return ['conflict' => $conflict];
+                }
+            }
+
+            $locked->fill([
+                'type' => $validated['type'] ?? $locked->type,
+                'title' => $validated['title'] ?? $locked->title,
+                'notes' => array_key_exists('notes', $validated) ? $validated['notes'] : $locked->notes,
+                'court_id' => $courtId,
+                'block_date' => $date,
+                'start_time' => $startTime,
+                'end_time' => $endTime,
+            ])->save();
+
+            return ['block' => $locked->load('court')];
+        });
+
+        if (isset($result['conflict'])) {
+            return response()->json([
+                'message' => 'The selected time conflicts with an existing booking, block, or closure.',
+                'conflict' => $result['conflict'],
+            ], 422);
+        }
+
+        /** @var CourtBlock $updated */
+        $updated = $result['block'];
+        ActivityLogger::log(
+            'court_block.updated',
+            sprintf('%s edited the %s block (%s) for %s.', auth()->user()->name, $updated->type, $updated->title, $updated->block_date->format('M j, Y')),
+            subject: $updated,
+            properties: $updated->only(['court_id', 'type', 'title', 'block_date', 'start_time', 'end_time']),
+        );
+
+        return response()->json([
+            'message' => 'Calendar event updated.',
+            'block' => [
+                'id' => $updated->id,
+                'court_id' => $updated->court_id,
+                'type' => $updated->type,
+                'title' => $updated->title,
+                'notes' => $updated->notes,
+                'block_date' => $updated->block_date->toDateString(),
+                'start_time' => substr((string) $updated->start_time, 0, 5),
+                'end_time' => substr((string) $updated->end_time, 0, 5),
+            ],
+        ]);
+    }
+
     private function minutes(string $time): int
     {
         [$hour, $minute] = array_map('intval', explode(':', $time));
