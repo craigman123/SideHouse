@@ -21,12 +21,16 @@
     const exitDescription = document.getElementById('waitingExitDescription');
     const exitStayBtn = document.getElementById('waitingExitStay');
     const exitConfirmBtn = document.getElementById('waitingExitConfirm');
+    const backToBookingLink = box.querySelector('.wt-back');
+    const waitingPageUrl = window.location.href;
+    const waitingBackTrapKey = '__sideHouseWaitingPageBackTrap';
     let pollTimer;
     let countdownTimer;
     let resolved = box.dataset.initialStatus !== 'pending';
     let exitAction = null;
     let exitOpener = null;
     let exitBusy = false;
+    let historyTrapInFlight = false;
     let previousPageOverflow = null;
 
     const csrfHeaders = () => {
@@ -37,7 +41,41 @@
         const seconds = Math.max(0, Math.floor(milliseconds / 1000));
         return `${Math.floor(seconds / 60)}:${(seconds % 60).toString().padStart(2, '0')}`;
     };
+    function writeWaitingBackEntry() {
+        const currentState = window.history.state;
+        const nextState = currentState && typeof currentState === 'object' ? { ...currentState } : {};
+        nextState[waitingBackTrapKey] = true;
+        window.history.pushState(nextState, '', waitingPageUrl);
+    }
+    function pushWaitingBackEntry() {
+        if (resolved || historyTrapInFlight || window.history.state?.[waitingBackTrapKey]) return;
+        historyTrapInFlight = true;
+        try {
+            writeWaitingBackEntry();
+        } finally {
+            historyTrapInFlight = false;
+        }
+    }
+    function handleWaitingPopState() {
+        if (resolved || historyTrapInFlight) return;
+        historyTrapInFlight = true;
+        try {
+            if (!exitDialog.open && backToBookingLink) openExitDialog(backToBookingLink, false);
+            writeWaitingBackEntry();
+        } finally {
+            historyTrapInFlight = false;
+        }
+    }
+    function installWaitingBackTrap() {
+        if (resolved) return;
+        window.addEventListener('popstate', handleWaitingPopState);
+        pushWaitingBackEntry();
+    }
+    function removeWaitingBackTrap() {
+        window.removeEventListener('popstate', handleWaitingPopState);
+    }
     function showResolved(status) {
+        removeWaitingBackTrap();
         resolved = true;
         clearTimeout(pollTimer);
         clearInterval(countdownTimer);
@@ -126,6 +164,7 @@
             await cancelBooking();
             closeExitDialog(!resolved);
         } else {
+            removeWaitingBackTrap();
             window.location.href = exitAction.href;
         }
     });
@@ -141,8 +180,12 @@
     });
     resolvedDialogObserver.observe(actionsEl, { attributes: true, attributeFilter: ['style'] });
     window.addEventListener('pageshow', (event) => {
-        if (event.persisted) closeExitDialog(false);
+        if (!event.persisted) return;
+        historyTrapInFlight = false;
+        closeExitDialog(false);
+        installWaitingBackTrap();
     });
+    installWaitingBackTrap();
     // QR generation itself is now handled entirely by qr-cache.js's
     // auto-init (it reads #waitingPage's data-booking-id/data-create-qr-url/
     // data-status-url and wires up #qrLoading/#qrImageWrap/#qrImage/#qrError/
