@@ -295,10 +295,8 @@ html.admin-layout-shell .topbar .date {
 
 html.admin-layout-shell .topbar-actions .guest-theme-toggle {
     display: inline-flex;
-    flex: 0 0 44px;
     align-items: center;
     justify-content: center;
-    width: 44px;
     min-width: 44px;
     min-height: 44px;
     padding: var(--s2);
