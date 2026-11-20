@@ -1,7 +1,6 @@
 .user-feedback-page .content .feedback-content {
     box-sizing: border-box;
     width: 100%;
-    max-width: 1200px;
     margin-inline: auto;
     padding: var(--s4);
     color: var(--text);
@@ -19,7 +18,7 @@
 
 .user-feedback-page .content .feedback-content .feedback-columns {
     display: grid;
-    grid-template-columns: minmax(0, 1fr);
+    grid-template-columns: minmax(0, 2fr);
     gap: var(--s5);
     align-items: start;
 }
@@ -316,7 +315,7 @@
 
 @media (min-width: 1024px) {
     .user-feedback-page .content .feedback-content .feedback-columns {
-        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+        grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
     }
 }
 
