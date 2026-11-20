@@ -2,7 +2,7 @@
 
 @section('title', 'Feedback & Suggestions | Side House')
 @section('page-class', 'user-feedback-page')
-@section('page-title')Feedback &amp; <span>Suggestions</span>@endsection
+@section('page-title', 'Feedback & Suggestions')
 
 @push('styles')
     <link rel="stylesheet" href="{{ asset('css/user/dashboard.css') }}">
@@ -11,6 +11,7 @@
 
 @section('content')
 
+    <div class="feedback-content">
     <div class="feedback-page-heading">
         <p>Tell us about your visit and help us improve Side House Paddlers.</p>
     </div>
@@ -153,6 +154,7 @@
             </div>
         @endforelse
     </section>
+    </div>
     </div>
 
 @endsection
