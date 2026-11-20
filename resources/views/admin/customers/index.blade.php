@@ -4,6 +4,7 @@
 @section('page-title', 'Customers')
 
 @push('styles')
+    <link rel="stylesheet" href="{{ asset('css/admin/admin-base.css') }}">
     <link rel="stylesheet" href="{{ asset('css/admin/admin-customers.css') }}">
 @endpush
 
