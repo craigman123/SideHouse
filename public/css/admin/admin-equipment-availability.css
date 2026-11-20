@@ -69,7 +69,7 @@ html.admin-layout-shell .equip-flash-error {
 }
 
 html.admin-layout-shell .equip-add-panel {
-    padding: var(--s4) var(--s5);
+    padding: calc(var(--s4) - 15px) var(--s5);
     border: 1px solid transparent;
     border-radius: var(--r-lg);
     background-image: linear-gradient(var(--surface), var(--surface)), var(--brand-grad);
