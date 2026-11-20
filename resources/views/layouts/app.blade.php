@@ -91,10 +91,16 @@
         <div class="sidebar-footer">&copy; {{ date('Y') }} Court Booking</div>
     </aside>
 
+    <button type="button" id="adminSidebarBackdrop" class="admin-sidebar-backdrop" data-admin-sidebar-backdrop aria-hidden="true" tabindex="-1" hidden></button>
+
     <div class="main">
         <header class="topbar">
             <h1>@yield('page-title', 'Dashboard')</h1>
             <div class="topbar-actions">
+                <button type="button" class="admin-mobile-menu-toggle" data-admin-mobile-menu-toggle aria-label="Open navigation" aria-expanded="false" aria-controls="adminSidebar" title="Open navigation">
+                    <svg data-admin-menu-icon="open" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+                    <svg data-admin-menu-icon="close" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true" hidden><path d="m6 6 12 12M18 6 6 18"/></svg>
+                </button>
                 <div class="date">{{ now()->format('F d, Y') }}</div>
                 @include('partials.guest.theme-toggle', ['placement' => 'toolbar'])
             </div>
