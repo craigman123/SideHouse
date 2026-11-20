@@ -1,7 +1,8 @@
 @extends('layouts.user')
 
 @section('title', 'Feedback & Suggestions | Side House')
-@section('page-title', 'Feedback & Suggestions')
+@section('page-class', 'user-feedback-page')
+@section('page-title')Feedback &amp; <span>Suggestions</span>@endsection
 
 @push('styles')
     <link rel="stylesheet" href="{{ asset('css/user/dashboard.css') }}">
@@ -10,8 +11,13 @@
 
 @section('content')
 
-    <div class="panel feedback-form-panel">
-        <h2>Share Your Experience</h2>
+    <div class="feedback-page-heading">
+        <p>Tell us about your visit and help us improve Side House Paddlers.</p>
+    </div>
+
+    <div class="feedback-columns">
+    <section class="panel feedback-form-panel" aria-labelledby="feedback-form-title">
+        <h2 id="feedback-form-title">Share Your Experience</h2>
         <p class="panel-subtext">Rate your overall experience and let us know how we can make Side House Paddlers better.</p>
 
         @if (session('success'))
@@ -66,10 +72,10 @@
 
             <button type="submit" class="btn btn-primary-sm">Submit Feedback</button>
         </form>
-    </div>
+    </section>
 
-    <div class="panel">
-        <h2>Your Previous Feedback</h2>
+    <section class="panel feedback-history-panel" aria-labelledby="feedback-history-title">
+        <h2 id="feedback-history-title">Your Previous Feedback</h2>
 
         @forelse ($feedbacks as $feedback)
             <div class="feedback-entry">
@@ -141,8 +147,12 @@
                 </form>
             </div>
         @empty
-            <p class="empty-row">You haven't submitted any feedback yet — your review after a session helps us improve.</p>
+            <div class="empty-row">
+                <svg class="feedback-empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M21 11.5a8.5 8.5 0 0 1-12.7 7.4L3 21l2.1-5.3A8.5 8.5 0 1 1 21 11.5Z"/><path d="M8 12h.01M12 12h.01M16 12h.01"/></svg>
+                <p>You haven't submitted any feedback yet — your review after a session helps us improve.</p>
+            </div>
         @endforelse
+    </section>
     </div>
 
 @endsection
