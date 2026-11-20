@@ -18,6 +18,9 @@
     <link rel="stylesheet" href="{{ asset('css/guest/theme-toggle.css') }}">
     <link rel="icon" type="image/png" href="{{ asset('images/tab_icon.png') }}">
     <script src="{{ asset('js/app.js') }}" defer></script>
+    @push('scripts')
+        <script src="{{ asset('js/user/user-shell.js') }}" defer></script>
+    @endpush
     @stack('styles')
 </head>
 <body>
@@ -87,18 +90,31 @@
         <div class="sidebar-footer">&copy; {{ date('Y') }} Side House</div>
     </aside>
 
+    <button type="button" id="userSidebarBackdrop" class="user-sidebar-backdrop" data-user-sidebar-backdrop aria-hidden="true" tabindex="-1" hidden></button>
+
     <div class="main">
         <header class="topbar">
+            <div class="user-mobile-menu-group">
+                <button type="button" class="user-mobile-menu-toggle" data-user-mobile-menu-toggle aria-label="Open navigation" aria-expanded="false" aria-controls="userSidebar" title="Open navigation">
+                    <svg data-user-menu-icon="open" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+                    <svg data-user-menu-icon="close" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true" hidden><path d="m6 6 12 12M18 6 6 18"/></svg>
+                </button>
+                <a href="{{ route('user.dashboard') }}" class="user-mobile-brand" aria-label="Side House home">
+                    <img src="{{ asset('images/logo.png') }}" alt="" class="user-mobile-brand-logo">
+                    <span>Side House</span>
+                </a>
+            </div>
             <h1>@yield('page-title', 'Dashboard')</h1>
             <div class="date">
                 @include('partials.guest.theme-toggle', ['placement' => 'toolbar'])
-                 <a href="notifications" data-unread-url="{{ route('user.notifications.unread-count') }}" style="position: relative;">
+                 <a href="notifications" class="user-notification-bell" data-unread-url="{{ route('user.notifications.unread-count') }}" style="position: relative;" aria-label="Notifications">
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 24 24" >
                         <path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"></path>
                     </svg>  
                 <span class="bell-unread-dot" hidden></span>
             </a>
-                {{ now()->format('F d, Y') }}</div>
+                <span class="user-topbar-date">{{ now()->format('F d, Y') }}</span>
+            </div>
         </header>
 
         <main class="content">

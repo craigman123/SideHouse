@@ -379,6 +379,233 @@ svg {
 .user-layout-shell .main::-webkit-scrollbar-track { background: var(--surface); }
 .user-layout-shell .main::-webkit-scrollbar-thumb { border-radius: var(--r-pill); background: var(--text-muted); }
 
+.user-mobile-menu-group,
+.user-sidebar-backdrop,
+.user-mobile-brand { display: none; }
+
+.user-mobile-menu-toggle {
+    align-items: center;
+    justify-content: center;
+    min-width: 44px;
+    min-height: 44px;
+    padding: var(--s2);
+    border: 1px solid var(--border);
+    border-radius: var(--r-md);
+    background: var(--surface);
+    color: var(--text);
+    cursor: pointer;
+}
+
+.user-mobile-menu-toggle:focus-visible,
+.user-mobile-brand:focus-visible,
+.user-notification-bell:focus-visible {
+    outline: 2px solid var(--brand-hover);
+    outline-offset: 2px;
+}
+
+.user-notification-bell {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 44px;
+    min-height: 44px;
+    color: var(--text);
+}
+
+@media (max-width: 800px) {
+    html.user-layout-shell body { display: block; }
+
+    html.user-layout-shell .sidebar {
+        position: fixed;
+        z-index: 41;
+        inset: 0 auto 0 0;
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+        justify-content: flex-start;
+        width: min(320px, 85vw);
+        height: 100vh;
+        height: 100dvh;
+        max-height: 100dvh;
+        padding-top: env(safe-area-inset-top, 0px);
+        padding-bottom: env(safe-area-inset-bottom, 0px);
+        overflow: hidden;
+        border-right: 1px solid var(--border);
+        border-bottom: 0;
+        transform: translateX(-100%);
+        transition: transform 200ms ease;
+        will-change: transform;
+    }
+
+    html.user-layout-shell.is-user-mobile-drawer-open .sidebar { transform: translateX(0); }
+
+    html.user-layout-shell .sidebar-logo {
+        width: auto;
+        height: auto;
+        padding: var(--s4);
+        border-right: 0;
+        border-bottom: 1px solid var(--border);
+    }
+
+    html.user-layout-shell .sidebar-brand-link {
+        display: flex;
+        align-items: center;
+        gap: var(--s3);
+        width: 100%;
+        min-width: 0;
+        min-height: 44px;
+        color: var(--text);
+        text-decoration: none;
+    }
+
+    html.user-layout-shell .sidebar-brand-link:focus-visible {
+        outline: 2px solid var(--brand-hover);
+        outline-offset: 2px;
+    }
+
+    html.user-layout-shell .logo-img {
+        width: 44px;
+        height: 44px;
+        flex: 0 0 44px;
+        object-fit: contain;
+    }
+
+    html.user-layout-shell .sidebar-brand {
+        min-width: 0;
+        overflow: hidden;
+        color: var(--text);
+        font-family: var(--font-family);
+        font-size: var(--font-size-body);
+        font-weight: var(--font-weight-button);
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    html.user-layout-shell .sidebar-nav {
+        display: block;
+        flex: 1 1 auto;
+        min-height: 0;
+        padding: var(--s3);
+        overflow-x: hidden;
+        overflow-y: auto;
+        white-space: normal;
+        scrollbar-width: thin;
+    }
+
+    html.user-layout-shell .sidebar-nav a {
+        min-height: 44px;
+        margin-bottom: var(--s1);
+        padding: var(--s2) var(--s3);
+        font-size: var(--font-size-small);
+        white-space: normal;
+    }
+
+    html.user-layout-shell .sidebar-nav label { display: block; }
+    html.user-layout-shell .sidebar-footer {
+        display: block;
+        flex: 0 0 auto;
+        padding: var(--s3) var(--s4);
+        text-align: left;
+    }
+    html.user-layout-shell .sidebar-profile {
+        display: flex;
+        flex: 0 0 auto;
+        align-items: center;
+        justify-content: space-between;
+        margin-top: 0;
+        padding: var(--s2) var(--s3);
+        border-top: 1px solid var(--border);
+        border-left: 0;
+    }
+    html.user-layout-shell .profile-trigger {
+        flex: 1 1 auto;
+        min-width: 0;
+        padding: var(--s2);
+    }
+    html.user-layout-shell .profile-avatar { width: 30px; height: 30px; }
+    html.user-layout-shell .profile-name { display: block; }
+    html.user-layout-shell .sidebar-collapse-toggle { display: none; }
+
+    html.user-layout-shell .user-sidebar-backdrop:not([hidden]) {
+        position: fixed;
+        z-index: 40;
+        inset: 0;
+        display: block;
+        width: 100%;
+        height: 100%;
+        padding: 0;
+        border: 0;
+        background: rgba(0, 0, 0, .65);
+    }
+
+    html.user-layout-shell .main {
+        width: 100%;
+        height: 100vh;
+        height: 100dvh;
+        min-height: 0;
+        padding-top: env(safe-area-inset-top, 0px);
+        padding-bottom: env(safe-area-inset-bottom, 0px);
+        overflow-x: hidden;
+        overflow-y: auto;
+    }
+
+    html.user-layout-shell .topbar {
+        display: flex;
+        flex-wrap: nowrap;
+        align-items: center;
+        gap: var(--s2);
+        padding: var(--s2) var(--s3);
+        padding-left: max(var(--s3), env(safe-area-inset-left, 0px));
+        padding-right: max(var(--s3), env(safe-area-inset-right, 0px));
+    }
+
+    html.user-layout-shell .user-mobile-menu-group {
+        display: flex;
+        flex: 1 1 auto;
+        align-items: center;
+        gap: var(--s2);
+        min-width: 0;
+    }
+
+    html.user-layout-shell .user-mobile-menu-toggle { display: inline-flex; flex: 0 0 44px; }
+    html.user-layout-shell .user-mobile-brand {
+        display: flex;
+        align-items: center;
+        gap: var(--s2);
+        min-width: 0;
+        min-height: 44px;
+        overflow: hidden;
+        color: var(--text);
+        font-family: var(--font-family);
+        font-size: var(--font-size-small);
+        font-weight: var(--font-weight-button);
+        text-decoration: none;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    html.user-layout-shell .user-mobile-brand-logo {
+        width: 32px;
+        height: 32px;
+        flex: 0 0 32px;
+        object-fit: contain;
+    }
+    html.user-layout-shell .topbar h1,
+    html.user-layout-shell .user-topbar-date { display: none; }
+    html.user-layout-shell .topbar .date {
+        display: flex;
+        flex: 0 0 auto;
+        align-items: center;
+        gap: var(--s1);
+        margin: 0;
+        font-size: var(--font-size-small);
+    }
+    html.user-layout-shell .topbar .date [data-theme-toggle] { min-width: 44px; min-height: 44px; }
+}
+
+@media (max-width: 800px) and (prefers-reduced-motion: reduce) {
+    html.user-layout-shell .sidebar { transition: none; }
+}
+
 .user-layout-shell .topbar {
     position: sticky;
     top: 0;
