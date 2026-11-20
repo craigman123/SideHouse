@@ -804,6 +804,18 @@ tr.row-removing {
     outline-offset: 2px;
 }
 
+.user-dashboard-page .sidebar-collapse-toggle [data-sidebar-icon="expand"] {
+    display: none;
+}
+
+.user-dashboard-page.is-sidebar-collapsed .sidebar-collapse-toggle [data-sidebar-icon="collapse"] {
+    display: none;
+}
+
+.user-dashboard-page.is-sidebar-collapsed .sidebar-collapse-toggle [data-sidebar-icon="expand"] {
+    display: inline-block;
+}
+
 .user-dashboard-page.is-sidebar-collapsed .sidebar {
     flex-basis: 72px;
     width: 72px;
