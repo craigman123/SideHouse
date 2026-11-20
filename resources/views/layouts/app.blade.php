@@ -88,7 +88,7 @@
             </button>
         </div>
 
-        <div class="sidebar-footer">&copy; {{ date('Y') }} Court Booking</div>
+        <div class="sidebar-footer">&copy; {{ date('Y') }} Side House</div>
     </aside>
 
     <button type="button" id="adminSidebarBackdrop" class="admin-sidebar-backdrop" data-admin-sidebar-backdrop aria-hidden="true" tabindex="-1" hidden></button>

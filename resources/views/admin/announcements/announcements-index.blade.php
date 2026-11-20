@@ -4,23 +4,25 @@
 @section('page-title', 'Announcements')
 
 @push('styles')
+    <link rel="stylesheet" href="{{ asset('css/admin/admin-base.css') }}">
     <link rel="stylesheet" href="{{ asset('css/admin/announcements.css') }}">
     <script src="{{ asset('js/admin/announcement.js') }}" defer></script>
 @endpush
 
 @section('content')
 
+    <div class="announcements-page">
     <div
         id="flash-data"
         data-success="{{ session('success') }}"
     ></div>
 
-    <div class="panel" style="max-width: 900px;">
+    <div class="panel">
         <div class="panel-header">
             <p class="modal-text">
                 Everything sent to your users' bell icon, most recent first.
             </p>
-            <button type="button" class="btn btn-filter" id="openAnnouncementModal" style="white-space: nowrap;">
+            <button type="button" class="btn btn-filter" id="openAnnouncementModal">
                 New Announcement
             </button>
         </div>
@@ -34,7 +36,7 @@
                 <button type="button" class="modal-close" id="closeAnnouncementModal" aria-label="Close">&times;</button>
             </div>
 
-            <p class="modal-text" style="margin-bottom: 18px;">
+            <p class="modal-text announcement-intro">
                 Sends a notification to every registered user's bell icon and
                 notifications page. There's no "draft" or "undo" — it goes out
                 the moment you hit send, so give it a read-through first.
@@ -43,23 +45,21 @@
             <form id="announcementForm" data-store-url="{{ route('admin.announcements.store') }}">
                 @csrf
 
-                <div class="filter-group" style="margin-bottom: 16px;">
+                <div class="filter-group announcement-field">
                     <label for="title">Title</label>
                     <input type="text" id="title" name="title" maxlength="150" required
-                           placeholder="e.g. Court closed this Saturday"
-                           style="width: 100%;">
-                    <p id="titleError" style="color: #f85149; font-size: 12px; margin-top: 4px; display: none;"></p>
+                           placeholder="e.g. Court closed this Saturday">
+                    <p id="titleError" class="announcement-field-error"></p>
                 </div>
 
-                <div class="filter-group" style="margin-bottom: 20px;">
+                <div class="filter-group announcement-field">
                     <label for="body">Message</label>
                     <textarea id="body" name="body" maxlength="2000" rows="5" required
-                              placeholder="What do your users need to know?"
-                              style="width: 100%; resize: vertical;"></textarea>
-                    <p id="bodyError" style="color: #f85149; font-size: 12px; margin-top: 4px; display: none;"></p>
+                              placeholder="What do your users need to know?"></textarea>
+                    <p id="bodyError" class="announcement-field-error"></p>
                 </div>
 
-                <div style="display: flex; gap: 10px;">
+                <div class="announcement-form-actions">
                     <button type="submit" class="btn btn-filter" id="sendAnnouncementBtn">Send to All Users</button>
                     <button type="button" class="btn" id="cancelAnnouncementModal">Cancel</button>
                 </div>
@@ -69,16 +69,16 @@
 
     {{-- ---------- Confirm-send modal ---------- --}}
     <div class="modal-overlay" id="confirmSendModal">
-        <div class="modal-box" style="max-width: 420px;">
+        <div class="modal-box modal-box-sm">
             <div class="modal-header">
                 <h2>Send this announcement?</h2>
             </div>
 
-            <p class="modal-text" style="margin-bottom: 20px;">
+            <p class="modal-text announcement-confirm-copy">
                 This will notify every registered user immediately. There's no "draft" or "undo," so make sure it's ready.
             </p>
 
-            <div style="display: flex; gap: 10px; justify-content: flex-end;">
+            <div class="announcement-confirm-actions">
                 <button type="button" class="btn" id="cancelSendConfirm">Cancel</button>
                 <button type="button" class="btn btn-filter" id="confirmSendBtn">Send to All Users</button>
             </div>
@@ -92,17 +92,17 @@
          because "delete" right next to "send to all users" could easily
          read as "unsend" if it isn't said outright. --}}
     <div class="modal-overlay" id="confirmDeleteModal">
-        <div class="modal-box" style="max-width: 420px;">
+        <div class="modal-box modal-box-sm">
             <div class="modal-header">
                 <h2>Delete this announcement?</h2>
             </div>
 
-            <p class="modal-text" style="margin-bottom: 20px;">
+            <p class="modal-text announcement-confirm-copy">
                 This only removes it from your list here — it does not un-send
                 the notification, which every user already received.
             </p>
 
-            <div style="display: flex; gap: 10px; justify-content: flex-end;">
+            <div class="announcement-confirm-actions">
                 <button type="button" class="btn" id="cancelDeleteConfirm">Cancel</button>
                 <button type="button" class="btn btn-danger" id="confirmDeleteBtn">Delete</button>
             </div>
@@ -113,7 +113,7 @@
             @if($announcements->isEmpty())
                 <p class="modal-text" id="noAnnouncementsMsg">No announcements have been sent yet.</p>
             @else
-                <table class="data-table" style="width: 100%;" id="announcementsTable">
+                <table class="data-table" id="announcementsTable">
                     <thead>
                         <tr>
                             <th>Title</th>
@@ -141,7 +141,7 @@
                     </tbody>
                 </table>
 
-                <div style="margin-top: 16px;">
+                <div class="announcement-pagination">
                     {{ $announcements->links() }}
                 </div>
             @endif
@@ -149,5 +149,6 @@
     
 
     <div class="toast-container" id="toastContainer"></div>
+    </div>
 
 @endsection

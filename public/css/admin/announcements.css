@@ -1,291 +1,278 @@
-/* ---------- Announcements (Admin) ---------- */
-
-.panel {
-    background-color: #161b22;
-    border: 1px solid #21262d;
-    border-radius: 12px;
-    padding: 20px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-}
-
-.panel-header {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-direction: column;
-    gap: 16px;
-    margin-bottom: 20px;
-}
-
-.modal-text {
-    color: #8b949e;
-    font-size: 14px;
-    line-height: 1.6;
-    margin: 0;
-    display: block;
-    text-align: center;
+html.admin-layout-shell .announcements-page {
+    display: grid;
+    gap: var(--s5);
     width: 100%;
+    max-width: 1200px;
+    min-width: 0;
+    margin-inline: auto;
 }
 
-/* ---------- Form fields ---------- */
-
-.filter-group label {
-    display: block;
-    font-size: 13px;
-    font-weight: 600;
-    color: #c9d1d9;
-    margin-bottom: 6px;
-}
-
-.filter-group input[type="text"],
-.filter-group textarea {
-    background-color: #0d1117;
-    border: 1px solid #30363d;
-    border-radius: 8px;
-    padding: 10px 12px;
-    color: #f0f6fc;
-    font-size: 14px;
-    font-family: inherit;
-    transition: border-color 0.15s ease;
-}
-
-.filter-group input[type="text"]:focus,
-.filter-group textarea:focus {
-    outline: none;
-    border-color: #3fb950;
-}
-
-.filter-group input.field-invalid,
-.filter-group textarea.field-invalid {
-    border-color: #f85149;
-}
-
-/* ---------- Buttons ---------- */
-
-.btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    padding: 10px 18px;
-    border-radius: 8px;
-    border: 1px solid #30363d;
-    background: none;
-    color: #c9d1d9;
-    font-size: 14px;
-    font-weight: 600;
-    cursor: pointer;
-    text-decoration: none;
-    transition: border-color 0.15s ease, color 0.15s ease, background-color 0.15s ease;
-}
-
-.btn:hover {
-    border-color: #3fb950;
-    color: #3fb950;
-}
-
-.btn-filter {
-    background-color: #3fb950;
-    border-color: #3fb950;
-    color: #0d1117;
-}
-
-.btn-filter:hover {
-    background-color: #34a745;
-    border-color: #34a745;
-    color: #0d1117;
-}
-
-.btn-filter:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-}
-
-.btn-danger {
-    background-color: #f85149;
-    border-color: #f85149;
-    color: #0d1117;
-}
-
-.btn-danger:hover {
-    background-color: #da3633;
-    border-color: #da3633;
-    color: #f0f6fc;
-}
-
-.btn-danger:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-}
-
-/* Inline per-row delete link — deliberately understated compared to
-   .btn-danger above (which is reserved for the actual confirm step) so
-   the table doesn't read as "a row full of danger buttons" at a glance. */
-.row-delete-btn {
-    background: none;
-    border: none;
-    color: #000000;
-    font-size: 13px;
-    font-weight: 600;
-    cursor: pointer;
-    padding: 4px 8px;
-    border-radius: 6px;
-    transition: color 0.15s ease, background-color 0.15s ease;
-    background-color: #620000;
-}
-
-.row-delete-btn:hover {
-    color: #f85149;
-    background-color: rgba(248, 81, 73, 0.1);
-}
-
-.row-delete-btn:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-}
-
-/* ---------- Table ---------- */
-
-.data-table {
-    border-collapse: collapse;
-}
-
-.data-table th,
-.data-table td {
-    text-align: left;
-    padding: 10px 12px;
-    border-bottom: 1px solid #21262d;
-    font-size: 13px;
-    color: #c9d1d9;
-}
-
-.data-table th {
-    color: #6e7681;
-    text-transform: uppercase;
-    font-size: 11px;
-    letter-spacing: 0.5px;
-    font-weight: 700;
-}
-
-.data-table tbody tr:hover {
-    background-color: #0d1117;
-}
-
-/* ---------- Modal ---------- */
-
-.modal-overlay {
-    display: none;
-    position: fixed;
-    inset: 0;
-    background: rgba(1, 4, 9, 0.72);
-    align-items: center;
-    justify-content: center;
-    z-index: 100;
-    padding: 20px;
-}
-
-.modal-overlay.open {
-    display: flex;
-}
-
-.modal-box {
-    background-color: #161b22;
-    border: 1px solid #21262d;
-    border-radius: 12px;
-    padding: 24px;
-    width: 100%;
-    max-width: 480px;
-    max-height: 90vh;
-    overflow-y: auto;
-}
-
-.modal-header {
+html.admin-layout-shell .announcements-page .panel {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-bottom: 12px;
+    gap: var(--s4);
+    min-width: 0;
+    padding: var(--s5);
+    border: 1px solid var(--text-muted);
+    border-radius: var(--r-lg);
+    background: var(--surface);
+    color: var(--text);
 }
 
-.modal-header h2 {
-    font-size: 17px;
-    color: #f0f6fc;
-    margin: 0;
-}
-
-.modal-close {
-    background: none;
-    border: none;
-    color: #6e7681;
-    font-size: 22px;
-    line-height: 1;
-    cursor: pointer;
-    padding: 0;
-}
-
-.modal-close:hover {
-    color: #f0f6fc;
-}
-
-/* ---------- Toasts ---------- */
-
-.toast-container {
-    position: fixed;
-    bottom: 20px;
-    right: 20px;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    z-index: 200;
-}
-
-.toast {
-    background-color: #161b22;
-    border: 1px solid #21262d;
-    border-radius: 8px;
-    padding: 12px 16px;
+html.admin-layout-shell .announcements-page .panel-header {
     display: flex;
     align-items: center;
-    gap: 12px;
-    color: #f0f6fc;
-    font-size: 14px;
-    box-shadow: 0 8px 24px rgba(1, 4, 9, 0.4);
-    animation: toastIn 0.2s ease;
+    justify-content: space-between;
+    gap: var(--s4);
+    width: 100%;
+    min-width: 0;
 }
 
-.toast-success { border-left: 3px solid #3fb950; }
-.toast-error { border-left: 3px solid #f85149; }
+html.admin-layout-shell .announcements-page .modal-text {
+    margin: 0;
+    color: var(--text-muted);
+    font-size: var(--font-size-body);
+    line-height: var(--line-height-body);
+}
 
-.toast-close {
-    background: none;
-    border: none;
-    color: #6e7681;
-    font-size: 18px;
+html.admin-layout-shell .announcements-page .announcement-intro {
+    margin-bottom: var(--s4);
+}
+
+html.admin-layout-shell .announcements-page .announcement-field {
+    margin-bottom: var(--s4);
+}
+
+html.admin-layout-shell .announcements-page .announcement-field-error {
+    display: none;
+}
+
+html.admin-layout-shell .announcements-page .modal-box-sm {
+    max-width: 420px;
+}
+
+html.admin-layout-shell .announcements-page .announcement-field:last-of-type {
+    margin-bottom: var(--s5);
+}
+
+html.admin-layout-shell .announcements-page .announcement-confirm-copy {
+    margin-bottom: var(--s5);
+}
+
+html.admin-layout-shell .announcements-page .announcement-pagination {
+    margin-top: var(--s4);
+}
+
+html.admin-layout-shell .announcements-page .btn,
+html.admin-layout-shell .announcements-page .btn-filter {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    padding: var(--s2) var(--s4);
+    border: 1px solid var(--text-muted);
+    border-radius: var(--r-pill);
+    background: transparent;
+    color: var(--text);
+    font-family: var(--font-family);
+    font-size: var(--font-size-button);
+    font-weight: var(--font-weight-button);
+    text-decoration: none;
     cursor: pointer;
-    line-height: 1;
 }
 
-#announcementsListWrap {
-    display: block;
-    flex-direction: column;;
-    max-height: 400px;
-    overflow: auto;
-    margin-top: 24px;
-    border: 1px solid #21262d;
-    border-radius: 8px;
-    padding: 12px 16px;
-    color: #f0f6fc;
-    font-size: 14px;
-    box-shadow: 0 8px 24px rgba(1, 4, 9, 0.4);
+html.admin-layout-shell .announcements-page .btn:hover {
+    border-color: var(--brand);
+    color: var(--brand-hover);
 }
 
-.toast-out { animation: toastOut 0.3s ease forwards; }
-
-@keyframes toastIn {
-    from { opacity: 0; transform: translateY(8px); }
-    to { opacity: 1; transform: translateY(0); }
+html.admin-layout-shell .announcements-page .btn-filter {
+    border-color: var(--brand);
+    background: var(--brand);
+    color: var(--text);
 }
 
-@keyframes toastOut {
-    to { opacity: 0; transform: translateY(8px); }
+html.admin-layout-shell .announcements-page .btn-filter:hover {
+    border-color: var(--brand-hover);
+    background: var(--brand-hover);
+}
+
+html.admin-layout-shell .announcements-page .btn-danger,
+html.admin-layout-shell .announcements-page .row-delete-btn {
+    border-color: var(--danger);
+    color: var(--danger);
+}
+
+html.admin-layout-shell .announcements-page .btn-danger:hover,
+html.admin-layout-shell .announcements-page .row-delete-btn:hover {
+    background: var(--danger);
+    color: var(--text);
+}
+
+html.admin-layout-shell .announcements-page .btn:disabled,
+html.admin-layout-shell .announcements-page .btn-filter:disabled,
+html.admin-layout-shell .announcements-page .btn-danger:disabled,
+html.admin-layout-shell .announcements-page .row-delete-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+html.admin-layout-shell .announcements-page .filter-group {
+    display: grid;
+    gap: var(--s2);
+    min-width: 0;
+}
+
+html.admin-layout-shell .announcements-page .filter-group label {
+    color: var(--text);
+    font-size: var(--font-size-small);
+    font-weight: var(--font-weight-button);
+}
+
+html.admin-layout-shell .announcements-page .filter-group input[type="text"],
+html.admin-layout-shell .announcements-page .filter-group textarea {
+    width: 100%;
+    min-height: 48px;
+    padding: var(--s3);
+    border: 1px solid var(--text-muted);
+    border-radius: var(--r-md);
+    background: var(--surface-2);
+    color: var(--text);
+    font-family: var(--font-family);
+    font-size: var(--font-size-body);
+}
+
+html.admin-layout-shell .announcements-page .filter-group textarea {
+    resize: vertical;
+}
+
+html.admin-layout-shell .announcements-page .filter-group input:focus,
+html.admin-layout-shell .announcements-page .filter-group textarea:focus {
+    border-color: var(--brand);
+}
+
+html.admin-layout-shell .announcements-page .field-invalid {
+    border-color: var(--danger);
+}
+
+html.admin-layout-shell .announcements-page #titleError,
+html.admin-layout-shell .announcements-page #bodyError {
+    margin: 0;
+    color: var(--danger);
+    font-size: var(--font-size-small);
+}
+
+html.admin-layout-shell .announcements-page .modal-header h2 {
+    margin: 0;
+    color: var(--text);
+    font-size: var(--font-size-h3);
+}
+
+html.admin-layout-shell .announcements-page .modal-close {
+    min-width: 44px;
+    min-height: 44px;
+    border: 1px solid var(--text-muted);
+    border-radius: var(--r-md);
+    background: transparent;
+    color: var(--text-muted);
+    font-size: var(--font-size-h3);
+    cursor: pointer;
+}
+
+html.admin-layout-shell .announcements-page .modal-close:hover {
+    border-color: var(--danger);
+    color: var(--danger);
+}
+
+html.admin-layout-shell .announcements-page .announcement-form-actions,
+html.admin-layout-shell .announcements-page .announcement-confirm-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: var(--s3);
+}
+
+html.admin-layout-shell .announcements-page #announcementsListWrap {
+    min-width: 0;
+    margin-top: 0;
+    padding: var(--s4);
+    overflow-x: auto;
+    border: 1px solid var(--text-muted);
+    border-radius: var(--r-lg);
+    background: var(--surface);
+    color: var(--text);
+    scrollbar-color: var(--text-muted) var(--surface);
+    scrollbar-width: thin;
+}
+
+html.admin-layout-shell .announcements-page .data-table {
+    width: 100%;
+    border-collapse: collapse;
+    color: var(--text);
+}
+
+html.admin-layout-shell .announcements-page .data-table th,
+html.admin-layout-shell .announcements-page .data-table td {
+    padding: var(--s3) var(--s4);
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+    text-align: left;
+    vertical-align: top;
+}
+
+html.admin-layout-shell .announcements-page .data-table th {
+    background: var(--surface-2);
+    color: var(--text-muted);
+    font-size: var(--font-size-small);
+    font-weight: var(--font-weight-button);
+    text-transform: uppercase;
+}
+
+html.admin-layout-shell .announcements-page .data-table tbody tr:hover {
+    background: var(--surface-2);
+}
+
+html.admin-layout-shell .announcements-page .row-delete-btn {
+    min-width: 44px;
+    min-height: 44px;
+    padding: var(--s2) var(--s3);
+    border: 1px solid var(--danger);
+    border-radius: var(--r-pill);
+    background: transparent;
+    font: inherit;
+    font-weight: var(--font-weight-button);
+    cursor: pointer;
+}
+
+html.admin-layout-shell .announcements-page .toast-out {
+    animation: announcementToastOut 0.3s ease forwards;
+}
+
+@keyframes announcementToastOut {
+    to { opacity: 0; transform: translateY(var(--s2)); }
+}
+
+@media (max-width: 767px) {
+    html.admin-layout-shell .announcements-page .panel-header {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    html.admin-layout-shell .announcements-page .announcement-form-actions,
+    html.admin-layout-shell .announcements-page .announcement-confirm-actions {
+        flex-direction: column-reverse;
+        align-items: stretch;
+    }
+
+    html.admin-layout-shell .announcements-page .announcement-form-actions > button,
+    html.admin-layout-shell .announcements-page .announcement-confirm-actions > button {
+        width: 100%;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    html.admin-layout-shell .announcements-page .toast-out {
+        animation: none;
+    }
 }
