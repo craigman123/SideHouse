@@ -4,18 +4,9 @@
 @section('title', 'Dashboard | Side House')
 @section('page-title', 'Good Day, ' . ucfirst(explode(' ', $userName)[0]))
 
-@section('topbar-actions')
-    @include('partials.guest.theme-toggle', ['placement' => 'toolbar'])
-@endsection
-
-@push('head-scripts')
-    <script src="{{ asset('js/guest/theme-toggle.js') }}"></script>
-@endpush
-
 @push('styles')
     <link rel="stylesheet" href="{{ asset('css/user/dashboard.css') }}">
     <link rel="stylesheet" href="{{ asset('css/user/user-dashboard.css') }}">
-    <link rel="stylesheet" href="{{ asset('css/guest/theme-toggle.css') }}">
 @endpush
 
 @section('content')

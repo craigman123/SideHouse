@@ -4,16 +4,11 @@
 @section('title', 'Book a Court | Side House')
 @section('page-title', 'Book a Court')
 
-@push('head-scripts')
-    <script src="{{ asset('js/guest/theme-toggle.js') }}"></script>
-@endpush
-
 @push('styles')
     <link rel="stylesheet" href="{{ asset('css/user/dashboard.css') }}">
     <link rel="stylesheet" href="{{ asset('css/user/user-dashboard.css') }}">
     <link rel="stylesheet" href="{{ asset('css/booking/book.css') }}">
     <link rel="stylesheet" href="{{ asset('css/booking/landing-book.css') }}">
-    <link rel="stylesheet" href="{{ asset('css/guest/theme-toggle.css') }}">
     <link rel="stylesheet" href="{{ asset('css/user/book-court.css') }}">
     <link rel="stylesheet" href="{{ asset('css/user/user-booking-flow.css') }}">
 @endpush

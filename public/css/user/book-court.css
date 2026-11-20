@@ -1379,3 +1379,73 @@
         animation: none;
     }
 }
+
+html[data-theme="light"] .user-book-court-page :is(.modal-box,.court-modal-details,.booking-section,.calendar,.time-picker-fee-panel,.equipment-card,.payment-btn,.booking-summary,.guest-info-item input,.guest-info-item textarea,.guest-info-item select) {
+    border-color: var(--border);
+    background-color: var(--surface);
+    color: var(--text);
+}
+
+html[data-theme="light"] .user-book-court-page :is(.time-slot-skeleton,.equipment-skeleton-line,.calendar-day-empty,.court-card-graphic) {
+    border-color: var(--border);
+    background-color: var(--surface-2);
+    background-image: none;
+    color: var(--text-muted);
+}
+
+html[data-theme="light"] .user-book-court-page .time-slot-btn[data-tooltip]:hover::after {
+    background: var(--surface-2);
+    color: var(--text);
+    box-shadow: 0 6px 16px color-mix(in srgb, var(--text) 25%, transparent);
+}
+
+html[data-theme="light"] .user-book-court-page .time-slot-btn[data-tooltip]:hover::before {
+    border-top-color: var(--surface-2);
+}
+
+html[data-theme="light"] .user-book-court-page .payment-confidence-note {
+    margin-top: var(--s4) !important;
+    padding: var(--s3) !important;
+    border: 1px solid color-mix(in srgb, var(--brand) 40%, transparent) !important;
+    background: color-mix(in srgb, var(--brand) 8%, var(--surface));
+    color: var(--text) !important;
+}
+
+html[data-theme="light"] .user-book-court-page .payment-confidence-note strong {
+    color: var(--brand) !important;
+}
+
+html[data-theme="light"] .user-book-court-page :is(.modal-box h2,.modal-box h3,.modal-box p,.modal-box label,.court-modal-row,.court-modal-row strong,.booking-section-label,.booking-summary strong,.booking-summary-total,.payment-btn-title,.guest-info-item label,.calendar-header span,.calendar-weekdays span) {
+    color: var(--text);
+}
+
+html[data-theme="light"] .user-book-court-page :is(.panel-subtext,.court-dimensions,.court-price span,.booking-summary p,.payment-btn-sub,.time-slot-row-time,.time-picker-legend,.equipment-card-meta,.guest-info-item small,.loading-text) {
+    color: var(--text-muted);
+}
+
+html[data-theme="light"] .user-book-court-page :is(.calendar-day,.time-slot-btn,.duration-btn,.qty-btn,.calendar-nav,.time-picker-day-nav,.modal-close) {
+    border-color: var(--border);
+    background-color: var(--surface-2);
+    color: var(--text);
+}
+
+html[data-theme="light"] .user-book-court-page :is(.calendar-day.selected,.time-slot-btn.selected,.duration-btn.selected,.payment-btn.selected) {
+    border-color: var(--brand);
+    background-color: var(--brand);
+    color: var(--on-brand);
+}
+
+html[data-theme="light"] .user-book-court-page :is(.time-slot-btn.booked,.time-slot-btn:disabled,.calendar-day:disabled,.qty-btn:disabled) {
+    border-color: var(--border);
+    background-color: var(--surface-2);
+    color: var(--text-muted);
+}
+
+html[data-theme="light"] .user-book-court-page .booking-summary-total strong,
+html[data-theme="light"] .user-book-court-page .court-price { color: var(--brand); }
+
+html[data-theme="light"] .user-book-court-page .btn-primary { color: var(--on-brand); }
+
+html[data-theme="light"] .user-book-court-page :is(.booking-summary,.modal-box,.court-modal-details,.payment-btn,.equipment-card,.calendar-day,.time-slot-btn,.duration-btn,.qty-btn,.guest-info-item input):focus-visible {
+    outline-color: var(--brand);
+}

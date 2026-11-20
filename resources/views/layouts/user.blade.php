@@ -8,12 +8,14 @@
     <meta http-equiv="Expires" content="0">
     <title>@yield('title', 'Side House')</title>
     @stack('head-scripts')
+    <script src="{{ asset('js/guest/theme-toggle.js') }}"></script>
     <script src="{{ asset('js/user/sidebar-collapse.js') }}"></script>
     <link rel="stylesheet" href="{{ asset('css/tokens.css') }}">
     <link rel="stylesheet" href="{{ asset('css/fonts.css') }}">
     <link rel="stylesheet" href="{{ asset('css/app.css') }}">
     <link rel="stylesheet" href="{{ asset('css/user/user-navbar.css') }}">
     <link rel="stylesheet" href="{{ asset('css/user/sidebar-collapse.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/guest/theme-toggle.css') }}">
     <link rel="icon" type="image/png" href="{{ asset('images/tab_icon.png') }}">
     <script src="{{ asset('js/app.js') }}" defer></script>
     @stack('styles')
@@ -86,7 +88,7 @@
         <header class="topbar">
             <h1>@yield('page-title', 'Dashboard')</h1>
             <div class="date">
-                @yield('topbar-actions')
+                @include('partials.guest.theme-toggle', ['placement' => 'toolbar'])
                  <a href="notifications" data-unread-url="{{ route('user.notifications.unread-count') }}" style="position: relative;">
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 24 24" >
                         <path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"></path>

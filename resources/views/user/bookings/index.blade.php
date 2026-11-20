@@ -2,6 +2,7 @@
 
 @section('title', 'My Bookings | Side House')
 @section('page-title', 'My Bookings')
+@section('page-class', 'my-bookings-page')
 
 @push('styles')
     <link rel="stylesheet" href="{{ asset('css/user/dashboard.css') }}">
@@ -11,10 +12,10 @@
 
 @section('content')
 
-    <div class="panel">
+    <div class="panel my-bookings-panel">
         <div class="bookings-toolbar">
             <div>
-                <h2 class="bookings-toolbar-title">Booking History</h2>
+                <h2 class="bookings-toolbar-title" id="bookingHistoryTitle">Booking History</h2>
                 <span class="count-badge">{{ $bookings->total() }} booking(s)</span>
             </div>
 
@@ -23,13 +24,19 @@
                 <select name="status" id="statusFilter" class="status-filter-select" onchange="this.form.submit()">
                     <option value="all" {{ $status === 'all' ? 'selected' : '' }}>All</option>
                     <option value="pending" {{ $status === 'pending' ? 'selected' : '' }}>Pending</option>
-                    <option value="paid" {{ $status === 'paid' ? 'selected' : '' }}>Paid</option>
+                    <option value="paid" {{ $status === 'paid' ? 'selected' : '' }}>Confirmed</option>
                     <option value="cancelled" {{ $status === 'cancelled' ? 'selected' : '' }}>Cancelled</option>
                 </select>
             </form>
         </div>
 
-        <div class="table-responsive">
+        @if (session('error'))
+            <div class="bookings-message bookings-error" role="alert">{{ session('error') }}</div>
+        @endif
+
+        <div class="bookings-skeleton" aria-hidden="true"><span></span><span></span><span></span></div>
+
+        <div class="table-responsive" aria-busy="true">
             <table>
                 <thead>
                     <tr>
@@ -47,20 +54,27 @@
                         @php
                             $isCancellable = $booking->status === 'pending'
                                 && $booking->date->copy()->startOfDay()->gte(today());
+                            $isExpired = $booking->status === 'pending'
+                                && $booking->expires_at
+                                && $booking->expires_at->isPast();
+                            $displayStatus = $isExpired ? 'expired' : ($booking->status === 'paid' ? 'confirmed' : $booking->status);
+                            $statusClass = $isExpired ? 'expired' : $booking->status;
                         @endphp
                         <tr
                             data-booking-id="{{ $booking->id }}"
                             data-booking="Court {{ $booking->court_id }} &middot; {{ $booking->date->format('D j M') }}, {{ \Carbon\Carbon::parse($booking->start_time)->format('g:i A') }}"
+                            class="booking-row booking-row-{{ $displayStatus }}"
+                            @if ($booking->expires_at) data-book-again-url="{{ route('book.index', ['openBooking' => 1, 'court_id' => $booking->court_id]) }}" @endif
                         >
-                            <td class="cell-name">Court {{ $booking->court_id }}</td>
-                            <td>{{ $booking->date->format('d M Y') }}</td>
-                            <td>
+                            <td class="cell-name" data-label="Court">{{ $booking->court?->name ?? 'Court ' . $booking->court_id }}</td>
+                            <td data-label="Date">{{ $booking->date->format('d M Y') }}</td>
+                            <td data-label="Time">
                                 {{ \Carbon\Carbon::parse($booking->start_time)->format('g:i A') }}
                                 &ndash;
                                 {{ \Carbon\Carbon::parse($booking->end_time)->format('g:i A') }}
                             </td>
-                            <td>&#8369;{{ number_format($booking->amount, 0) }}</td>
-                            <td class="cell-muted">
+                            <td data-label="Total">&#8369;{{ number_format($booking->amount, 2) }}</td>
+                            <td class="cell-muted" data-label="Payment">
                                 {{ match ($booking->payment_method) {
                                     'gcash' => 'GCash',
                                     'landbank' => 'Landbank',
@@ -68,14 +82,24 @@
                                     default => ucfirst($booking->payment_method ?? 'Unknown'),
                                 } }}
                             </td>
-                            <td>
-                                <span class="status status-{{ $booking->status === 'paid' ? 'paid' : ($booking->status === 'cancelled' ? 'cancelled' : 'pending') }}">
-                                    {{ ucfirst($booking->status) }}
+                            <td data-label="Status">
+                                <span class="status status-{{ $statusClass }}">
+                                    {{ $displayStatus === 'confirmed' ? 'Confirmed' : ucfirst($displayStatus) }}
                                 </span>
+                                @if ($booking->status === 'pending' && !$isExpired && $booking->expires_at)
+                                    <span class="booking-countdown" data-expires-at="{{ $booking->expires_at->toIso8601String() }}">Time remaining <strong>--:--</strong></span>
+                                @endif
                             </td>
-                            <td class="actions-cell">
-                                @if ($isCancellable)
+                            <td class="actions-cell" data-label="Actions">
+                                @if ($booking->status === 'pending' && !$isExpired)
+                                    <a class="booking-action booking-pay-action" href="{{ route('book.waiting', ['booking' => $booking->id]) }}">Pay now / View QR</a>
+                                    @if ($isCancellable)
                                     <button type="button" class="btn-icon btn-delete" data-cancel>Cancel</button>
+                                    @endif
+                                @elseif ($isExpired)
+                                    <a class="booking-action booking-retry-action" href="{{ route('book.index', ['openBooking' => 1, 'court_id' => $booking->court_id]) }}">Book again</a>
+                                @elseif ($booking->status === 'cancelled')
+                                    <span class="cell-muted">&mdash;</span>
                                 @else
                                     <span class="cell-muted">&mdash;</span>
                                 @endif
@@ -85,9 +109,10 @@
                         <tr>
                             <td colspan="7" class="empty-row">
                                 @if ($status !== 'all')
-                                    No {{ $status }} bookings found.
+                                    No {{ $status === 'paid' ? 'confirmed' : $status }} bookings found.
                                 @else
-                                    No bookings yet — <a href="{{ route('book.index') }}">book a court</a> to get started.
+                                    <span class="empty-bookings-title">No bookings yet</span>
+                                    <a class="booking-action booking-pay-action" href="{{ route('book.index') }}">Book a court</a>
                                 @endif
                             </td>
                         </tr>
@@ -137,4 +162,5 @@
 
 @push('scripts')
     <script src="{{ asset('js/config/cancel-booking.js') }}" defer></script>
+    <script src="{{ asset('js/user/my-bookings.js') }}" defer></script>
 @endpush
