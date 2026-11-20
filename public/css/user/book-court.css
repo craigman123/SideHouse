@@ -202,6 +202,29 @@
     overflow: hidden;
 }
 
+.user-book-court-page #timePickerModal .modal-box,
+.user-book-court-page #equipmentModal .modal-box,
+.user-book-court-page #courtPaymentModal .modal-box {
+    display: flex;
+    flex-direction: column;
+    max-height: calc(100vh - var(--s4) - var(--s4));
+    max-height: calc(100dvh - var(--s4) - var(--s4));
+    overflow: hidden;
+}
+
+.user-book-court-page #timePickerModal .modal-header,
+.user-book-court-page #timePickerModal .booking-flow-progress,
+.user-book-court-page #timePickerModal .time-picker-day-switch,
+.user-book-court-page #timePickerModal .time-picker-legend,
+.user-book-court-page #equipmentModal .modal-header,
+.user-book-court-page #equipmentModal .booking-flow-progress,
+.user-book-court-page #equipmentModal > .modal-box > .modal-back,
+.user-book-court-page #courtPaymentModal .modal-header,
+.user-book-court-page #courtPaymentModal .booking-flow-progress,
+.user-book-court-page #courtPaymentModal > .modal-box > .modal-back {
+    flex-shrink: 0;
+}
+
 .user-book-court-page .modal-header {
     flex-shrink: 0;
     align-items: center;
@@ -455,9 +478,14 @@
 .user-book-court-page .time-picker-body {
     display: flex;
     flex-direction: column;
+    flex: 1 1 auto;
     gap: var(--s3);
     min-height: 0;
     margin: 0;
+}
+
+.user-book-court-page #timePickerModal .time-picker-body {
+    overflow: hidden;
 }
 
 .user-book-court-page .time-picker-legend {
@@ -495,14 +523,19 @@
 
 .user-book-court-page .time-slot-list {
     display: flex;
+    flex: 1 1 auto;
     flex-direction: column;
     gap: var(--s2);
-    max-height: min(320px, 42vh);
+    min-height: 0;
     padding: var(--s1);
     overflow-y: auto;
     overscroll-behavior: contain;
     scrollbar-color: var(--text-muted) var(--surface-2);
     scrollbar-width: thin;
+}
+
+.user-book-court-page #timePickerModal .booking-selection-summary {
+    flex: 0 0 auto;
 }
 
 .user-book-court-page .time-slot-list::-webkit-scrollbar,
@@ -1087,6 +1120,17 @@
     border-top: 1px solid var(--text-muted);
 }
 
+.user-book-court-page #timePickerModal .modal-actions,
+.user-book-court-page #equipmentModal .modal-actions,
+.user-book-court-page #courtPaymentModal .modal-actions {
+    position: static;
+    flex-shrink: 0;
+    margin: 0;
+    padding: var(--s4) 0 calc(var(--s3) + env(safe-area-inset-bottom, 0px));
+    border-top: 1px solid var(--border);
+    background: var(--surface);
+}
+
 .user-book-court-page .btn {
     box-sizing: border-box;
     display: inline-flex;
@@ -1268,9 +1312,7 @@
     }
 
     .user-book-court-page .time-slot-list {
-        max-height: none;
         padding: 0;
-        overflow: visible;
     }
 
     .user-book-court-page .time-slot-row-time {
@@ -1286,12 +1328,18 @@
         padding: var(--s3);
     }
 
-    .user-book-court-page .modal-actions {
-        gap: var(--s2);
+.user-book-court-page #timePickerModal .modal-actions,
+.user-book-court-page #equipmentModal .modal-actions,
+.user-book-court-page #courtPaymentModal .modal-actions {
+    flex-direction: column;
+    gap: var(--s3);
     }
 
-    .user-book-court-page .modal-actions .btn {
-        flex: 1 1 120px;
+.user-book-court-page #timePickerModal .modal-actions .btn,
+.user-book-court-page #equipmentModal .modal-actions .btn,
+.user-book-court-page #courtPaymentModal .modal-actions .btn {
+    width: 100%;
+    min-height: 44px;
     }
 }
 
@@ -1308,11 +1356,6 @@
 @media (max-height: 480px) and (orientation: landscape) {
     .user-book-court-page .modal-overlay {
         align-items: flex-start;
-    }
-
-    .user-book-court-page .time-slot-list {
-        max-height: none;
-        overflow: visible;
     }
 }
 
