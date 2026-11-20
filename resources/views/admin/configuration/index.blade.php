@@ -4,14 +4,15 @@
 @section('page-title', 'Configuration')
     
 @push('styles')
+    <link rel="stylesheet" href="{{ asset('css/admin/admin-base.css') }}">
     <link rel="stylesheet" href="{{ asset('css/admin/specific-date-closures.css') }}">
-    <link rel="stylesheet" href="{{ asset('css/admin/admin-profile.css') }}">
     <link rel="stylesheet" href="{{ asset('css/admin/admin-schedule.css') }}">
     <link rel="stylesheet" href="{{ asset('css/booking/manual-booking.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/admin/admin-configuration.css') }}">
 @endpush
 
 @section('content')
-    <div class="schedule-page">
+    <div class="schedule-page admin-configuration-page">
 
         <div class="schedule-header">
             <div>
