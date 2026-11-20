@@ -24,7 +24,10 @@
 
     <aside class="sidebar" id="userSidebar">
         <div class="sidebar-logo">
-            <img src="{{ asset('images/logo.png') }}" alt="Side House" class="logo-img">
+            <a href="{{ route('user.dashboard') }}" class="sidebar-brand-link">
+                <img src="{{ asset('images/logo.png') }}" alt="" class="logo-img">
+                <span class="sidebar-brand">Side House</span>
+            </a>
         </div>
 
         <nav class="sidebar-nav">

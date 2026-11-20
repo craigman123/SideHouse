@@ -44,6 +44,62 @@
     display: inline-block;
 }
 
+.user-layout-shell .sidebar-logo {
+    box-sizing: border-box;
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: flex-start;
+    width: 100%;
+    min-width: 0;
+    height: 80px;
+    min-height: 80px;
+    padding: var(--s4);
+    border-right: 0;
+    border-bottom: 1px solid var(--border);
+}
+
+.user-layout-shell .sidebar-brand-link {
+    display: flex;
+    flex: 1 1 auto;
+    align-items: center;
+    gap: var(--s3);
+    min-width: 0;
+    min-height: 44px;
+    color: var(--text);
+    text-decoration: none;
+}
+
+.user-layout-shell .sidebar-brand-link:focus-visible {
+    border-radius: var(--r-md);
+    outline: 2px solid var(--brand);
+    outline-offset: 2px;
+}
+
+.user-layout-shell .sidebar-brand-link:hover .sidebar-brand {
+    color: var(--brand);
+}
+
+.user-layout-shell .sidebar-brand-link .logo-img {
+    display: block;
+    flex: 0 0 44px;
+    width: 44px;
+    max-width: 44px;
+    height: 44px;
+    margin: 0;
+    object-fit: contain;
+}
+
+.user-layout-shell .sidebar-brand {
+    min-width: 0;
+    overflow: hidden;
+    color: var(--text);
+    font-size: var(--font-size-h3);
+    font-weight: 700;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
 @media (min-width: 1451px) {
     .user-layout-shell .sidebar-profile {
         display: flex;
@@ -69,11 +125,27 @@
         border-right: 0;
     }
 
-    .user-layout-shell.is-sidebar-collapsed .logo-img {
+    .user-layout-shell.is-sidebar-collapsed .sidebar-brand-link {
+        flex: 0 0 44px;
+        justify-content: center;
         width: 44px;
-        max-width: 44px;
-        max-height: 44px;
-        object-fit: contain;
+        padding: 0;
+    }
+
+    .user-layout-shell.is-sidebar-collapsed .sidebar-brand-link .logo-img {
+        flex-basis: 40px;
+        width: 40px;
+        max-width: 40px;
+        height: 40px;
+    }
+
+    .user-layout-shell.is-sidebar-collapsed .sidebar-brand {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip-path: inset(50%);
+        white-space: nowrap;
     }
 
     .user-layout-shell.is-sidebar-collapsed .sidebar-nav {
@@ -138,8 +210,30 @@
 }
 
 @media (max-width: 1450px) {
+    .user-layout-shell .sidebar-logo {
+        width: auto;
+        height: auto;
+        min-height: 80px;
+        padding: var(--s4);
+        border-right: 0;
+    }
+
+    .user-layout-shell .sidebar-brand-link {
+        flex: 0 1 auto;
+        width: auto;
+        max-width: 100%;
+    }
+
     .user-layout-shell .sidebar-collapse-toggle {
         display: none;
+    }
+}
+
+@media (max-width: 768px) {
+    .user-layout-shell .sidebar-logo {
+        height: 75px;
+        min-height: 75px;
+        padding: var(--s3) var(--s4);
     }
 }
 
