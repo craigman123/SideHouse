@@ -1,0 +1,1334 @@
+.user-book-court-page .content {
+    box-sizing: border-box;
+    width: 100%;
+    padding: var(--s5);
+}
+
+.user-book-court-page .panel {
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: var(--s5);
+    border: 1px solid transparent;
+    border-radius: var(--r-lg);
+    background-image: linear-gradient(var(--surface), var(--surface)), var(--brand-grad);
+    background-origin: border-box;
+    background-clip: padding-box, border-box;
+    color: var(--text);
+}
+
+.user-book-court-page .panel h2 {
+    margin: 0 0 var(--s3);
+    padding: 0 0 var(--s3);
+    border-bottom: 1px solid var(--text-muted);
+    color: var(--text);
+    font-size: var(--font-size-h3);
+    font-weight: var(--font-weight-h3);
+}
+
+.user-book-court-page .book-court-title-accent,
+.user-book-court-page .court-price {
+    color: var(--brand);
+}
+
+.user-book-court-page .panel-subtext {
+    margin: 0 0 var(--s4);
+    color: var(--text-muted);
+    font-size: var(--font-size-body);
+    line-height: var(--line-height-body);
+}
+
+.user-book-court-page .count-badge,
+.user-book-court-page .court-type-badge {
+    display: inline-flex;
+    align-items: center;
+    min-height: 32px;
+    padding: var(--s1) var(--s3);
+    border: 1px solid var(--text-muted);
+    border-radius: var(--r-pill);
+    background: var(--surface-2);
+    color: var(--text);
+    font-size: var(--font-size-small);
+    font-weight: var(--font-weight-small);
+}
+
+.user-book-court-page .court-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    grid-auto-rows: 1fr;
+    gap: var(--s4);
+    width: 100%;
+    min-width: 0;
+    margin-top: var(--s4);
+}
+
+.user-book-court-page #courtGrid .court-card-clickable {
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    min-width: 0;
+    min-height: 100%;
+    padding: 0;
+    overflow: hidden;
+    border: 1px solid transparent;
+    border-radius: var(--r-lg);
+    background-image: linear-gradient(var(--surface), var(--surface)), var(--brand-grad);
+    background-origin: border-box;
+    background-clip: padding-box, border-box;
+    color: var(--text);
+    text-align: left;
+    cursor: pointer;
+    transition: border-color 180ms ease, transform 180ms ease;
+}
+
+.user-book-court-page #courtGrid .court-card-clickable:hover {
+    border-color: var(--brand);
+    transform: translateY(-2px);
+}
+
+.user-book-court-page #courtGrid .court-card-clickable:active {
+    transform: none;
+}
+
+.user-book-court-page .court-card-clickable:focus-visible {
+    outline: 2px solid var(--brand);
+    outline-offset: 2px;
+}
+
+.user-book-court-page .court-card-graphic {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 180px;
+    padding: var(--s4);
+    background: var(--surface-2);
+}
+
+.user-book-court-page .court-card-graphic svg {
+    display: block;
+    width: auto;
+    max-width: 100%;
+    height: 160px;
+}
+
+.user-book-court-page .court-mini-surface {
+    fill: color-mix(in srgb, var(--brand) 12%, var(--surface));
+    stroke: var(--brand);
+}
+
+.user-book-court-page .court-mini-boundary,
+.user-book-court-page .court-mini-line {
+    stroke: var(--text-muted);
+}
+
+.user-book-court-page .court-mini-net {
+    stroke: var(--text);
+}
+
+.user-book-court-page .court-card-body {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--s2);
+    width: 100%;
+    padding: var(--s5);
+}
+
+.user-book-court-page .court-card-body h3 {
+    margin: 0;
+    color: var(--text);
+    font-size: var(--font-size-h3);
+    font-weight: var(--font-weight-h3);
+}
+
+.user-book-court-page .court-dimensions,
+.user-book-court-page .court-price span {
+    color: var(--text-muted);
+    font-size: var(--font-size-small);
+}
+
+.user-book-court-page .court-price {
+    margin: auto 0 0;
+    font-size: var(--font-size-body);
+    font-weight: var(--font-weight-button);
+}
+
+.user-book-court-page .empty-state,
+.user-book-court-page .loading-text {
+    grid-column: 1 / -1;
+    margin: 0;
+    padding: var(--s5);
+    border: 1px dashed var(--text-muted);
+    border-radius: var(--r-md);
+    color: var(--text-muted);
+    text-align: center;
+    font-size: var(--font-size-body);
+}
+
+.user-book-court-page .modal-overlay {
+    box-sizing: border-box;
+    align-items: center;
+    justify-content: center;
+    padding: max(var(--s4), env(safe-area-inset-top, 0px)) max(var(--s4), env(safe-area-inset-right, 0px)) max(var(--s4), env(safe-area-inset-bottom, 0px)) max(var(--s4), env(safe-area-inset-left, 0px));
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+}
+
+.user-book-court-page .modal-box {
+    box-sizing: border-box;
+    width: min(560px, 100%);
+    max-width: 560px;
+    max-height: calc(100vh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - var(--s4) - var(--s4));
+    max-height: calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - var(--s4) - var(--s4));
+    padding: var(--s5);
+    overflow-y: auto;
+    border: 1px solid transparent;
+    border-radius: var(--r-lg);
+    background-image: linear-gradient(var(--surface), var(--surface)), var(--brand-grad);
+    background-origin: border-box;
+    background-clip: padding-box, border-box;
+    color: var(--text);
+    scrollbar-color: var(--text-muted) var(--surface-2);
+    scrollbar-width: thin;
+}
+
+.user-book-court-page .modal-box-scrollable {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.user-book-court-page .modal-header {
+    flex-shrink: 0;
+    align-items: center;
+    gap: var(--s3);
+    margin: 0 0 var(--s4);
+}
+
+.user-book-court-page .modal-header h3,
+.user-book-court-page .time-picker-day-switch h3 {
+    margin: 0;
+    color: var(--text);
+    font-size: var(--font-size-h3);
+    font-weight: var(--font-weight-h3);
+}
+
+.user-book-court-page .modal-close,
+.user-book-court-page .calendar-nav,
+.user-book-court-page .time-picker-day-nav {
+    box-sizing: border-box;
+    display: inline-flex;
+    flex: 0 0 44px;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    min-height: 44px;
+    padding: 0;
+    border: 1px solid var(--text-muted);
+    border-radius: var(--r-md);
+    background: var(--surface-2);
+    color: var(--text);
+    font-size: var(--font-size-body);
+    line-height: 1;
+    cursor: pointer;
+}
+
+.user-book-court-page .modal-close:hover,
+.user-book-court-page .calendar-nav:hover:not(:disabled),
+.user-book-court-page .time-picker-day-nav:hover:not(:disabled) {
+    border-color: var(--brand);
+    background: color-mix(in srgb, var(--brand) 12%, var(--surface-2));
+    color: var(--text);
+}
+
+.user-book-court-page .calendar-nav:disabled,
+.user-book-court-page .time-picker-day-nav:disabled {
+    border-color: var(--text-muted);
+    background: var(--surface-2);
+    color: var(--text-muted);
+    cursor: not-allowed;
+    opacity: 1;
+}
+
+.user-book-court-page .modal-back {
+    display: inline-flex;
+    align-items: center;
+    justify-content: flex-start;
+    min-height: 44px;
+    margin: 0 0 var(--s4);
+    padding: var(--s2) var(--s3);
+    border: 1px solid var(--brand);
+    border-radius: var(--r-pill);
+    background: transparent;
+    color: var(--text);
+    font: inherit;
+    cursor: pointer;
+}
+
+.user-book-court-page .modal-back:hover {
+    background: color-mix(in srgb, var(--brand) 12%, var(--surface));
+    color: var(--text);
+}
+
+.user-book-court-page .court-modal-graphic {
+    width: min(160px, 100%);
+    margin: 0 auto var(--s4);
+}
+
+.user-book-court-page .court-modal-graphic svg {
+    display: block;
+    width: 100%;
+    height: auto;
+}
+
+.user-book-court-page .court-modal-details {
+    margin-bottom: var(--s4);
+}
+
+.user-book-court-page .court-modal-details .court-type-badge {
+    margin: 0 0 var(--s3);
+}
+
+.user-book-court-page .court-modal-row {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--s3);
+    margin: 0;
+    padding: var(--s3) 0;
+    border-bottom: 1px solid var(--text-muted);
+    color: var(--text-muted);
+    font-size: var(--font-size-body);
+}
+
+.user-book-court-page .court-modal-row strong {
+    color: var(--text);
+    text-align: right;
+}
+
+.user-book-court-page .booking-section {
+    margin: 0 0 var(--s4);
+}
+
+.user-book-court-page .booking-section-label {
+    margin: 0 0 var(--s3);
+    color: var(--text);
+    font-size: var(--font-size-small);
+    font-weight: var(--font-weight-small);
+}
+
+.user-book-court-page .calendar {
+    padding: var(--s4);
+    border: 1px solid var(--text-muted);
+    border-radius: var(--r-lg);
+    background: var(--surface-2);
+}
+
+.user-book-court-page .calendar-header {
+    align-items: center;
+    gap: var(--s3);
+    margin: 0 0 var(--s3);
+}
+
+.user-book-court-page .calendar-header span {
+    color: var(--text);
+    font-size: var(--font-size-body);
+    font-weight: var(--font-weight-button);
+    text-align: center;
+}
+
+.user-book-court-page .calendar-weekdays,
+.user-book-court-page .calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    text-align: center;
+}
+
+.user-book-court-page .calendar-weekdays {
+    gap: var(--s1);
+    margin: 0 0 var(--s2);
+    color: var(--text-muted);
+    font-size: var(--font-size-small);
+    font-weight: var(--font-weight-small);
+}
+
+.user-book-court-page .calendar-day {
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    min-width: 0;
+    min-height: 44px;
+    padding: 0;
+    border: 1px solid var(--text-muted);
+    border-radius: var(--r-sm);
+    background: var(--surface);
+    color: var(--text);
+    position: relative;
+    font-family: var(--font-family);
+    font-size: var(--font-size-small);
+    font-weight: var(--font-weight-small);
+    cursor: pointer;
+    transition: border-color 160ms ease, background-color 160ms ease, color 160ms ease;
+}
+
+.user-book-court-page .calendar-day:hover:not(:disabled) {
+    border-color: var(--brand);
+    background: color-mix(in srgb, var(--brand) 12%, var(--surface));
+    color: var(--text);
+}
+
+.user-book-court-page .calendar-day.calendar-day-today {
+    border-color: var(--brand);
+}
+
+.user-book-court-page .calendar-day.selected {
+    border-color: var(--brand);
+    background: color-mix(in srgb, var(--brand) 16%, var(--surface));
+    color: var(--text);
+}
+
+.user-book-court-page .calendar-day.selected:not(.calendar-day-closed)::after {
+    content: "✓";
+    position: absolute;
+    right: var(--s1);
+    bottom: 0;
+    color: var(--text);
+    font-size: var(--font-size-small);
+}
+
+.user-book-court-page .calendar-day.calendar-day-closed {
+    border-style: dashed;
+    background-color: color-mix(in srgb, var(--danger) 14%, var(--surface)) !important;
+    border-color: var(--danger) !important;
+    color: var(--text) !important;
+    opacity: 1;
+}
+
+.user-book-court-page .calendar-day.calendar-day-closed:hover {
+    background-color: color-mix(in srgb, var(--danger) 20%, var(--surface)) !important;
+    border-color: var(--danger) !important;
+    color: var(--text) !important;
+    transform: none;
+}
+
+.user-book-court-page .calendar-day.calendar-day-closed::after {
+    content: "×";
+    position: absolute;
+    right: var(--s1);
+    bottom: 0;
+    color: var(--text);
+    font-size: var(--font-size-small);
+}
+
+.user-book-court-page .calendar-day:disabled {
+    background: var(--surface-2);
+    border-color: var(--text-muted);
+    color: var(--text-muted);
+    cursor: not-allowed;
+    opacity: 1;
+}
+
+.user-book-court-page .calendar-day-empty {
+    border: 0;
+    background: transparent;
+    visibility: hidden;
+    pointer-events: none;
+}
+
+.user-book-court-page .time-picker-day-switch {
+    align-items: center;
+    gap: var(--s3);
+    margin: 0 0 var(--s3);
+}
+
+.user-book-court-page .time-picker-day-switch h3 {
+    text-align: center;
+}
+
+.user-book-court-page .time-picker-body {
+    display: flex;
+    flex-direction: column;
+    gap: var(--s3);
+    min-height: 0;
+    margin: 0;
+}
+
+.user-book-court-page .time-picker-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--s3);
+    margin: 0;
+}
+
+.user-book-court-page .time-picker-legend-item {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--s2);
+    color: var(--text-muted);
+    font-size: var(--font-size-small);
+}
+
+.user-book-court-page .time-picker-legend-swatch {
+    width: 14px;
+    height: 14px;
+    border: 1px solid var(--brand);
+    border-radius: var(--r-sm);
+    background: color-mix(in srgb, var(--brand) 12%, var(--surface-2));
+}
+
+.user-book-court-page .time-picker-legend-swatch.legend-selected {
+    border-color: var(--brand);
+    background: color-mix(in srgb, var(--brand) 28%, var(--surface-2));
+}
+
+.user-book-court-page .time-picker-legend-swatch.legend-booked {
+    border-color: var(--text-muted);
+    background: var(--surface-2);
+}
+
+.user-book-court-page .time-slot-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--s2);
+    max-height: min(320px, 42vh);
+    padding: var(--s1);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-color: var(--text-muted) var(--surface-2);
+    scrollbar-width: thin;
+}
+
+.user-book-court-page .time-slot-list::-webkit-scrollbar,
+.user-book-court-page .modal-scroll-body::-webkit-scrollbar,
+.user-book-court-page .modal-box::-webkit-scrollbar {
+    width: 8px;
+}
+
+.user-book-court-page .time-slot-list::-webkit-scrollbar-track,
+.user-book-court-page .modal-scroll-body::-webkit-scrollbar-track,
+.user-book-court-page .modal-box::-webkit-scrollbar-track {
+    background: var(--surface-2);
+}
+
+.user-book-court-page .time-slot-list::-webkit-scrollbar-thumb,
+.user-book-court-page .modal-scroll-body::-webkit-scrollbar-thumb,
+.user-book-court-page .modal-box::-webkit-scrollbar-thumb {
+    border-radius: var(--r-pill);
+    background: var(--text-muted);
+}
+
+.user-book-court-page .time-slot-row {
+    display: grid;
+    grid-template-columns: minmax(0, max-content) minmax(0, 1fr);
+    align-items: stretch;
+    gap: var(--s3);
+}
+
+.user-book-court-page .time-slot-row-time {
+    display: flex;
+    align-items: center;
+    gap: var(--s2);
+    color: var(--text-muted);
+    font-size: var(--font-size-small);
+    font-variant-numeric: tabular-nums;
+    font-weight: var(--font-weight-button);
+    white-space: nowrap;
+}
+
+.user-book-court-page .time-slot-row-peak .time-slot-row-time::after {
+    content: "Peak";
+    padding: var(--s1) var(--s2);
+    border: 1px solid var(--warning);
+    border-radius: var(--r-pill);
+    color: var(--text);
+    font-size: var(--font-size-small);
+    font-weight: var(--font-weight-small);
+}
+
+.user-book-court-page .time-slot-row.disabled .time-slot-row-time {
+    color: var(--text-muted);
+}
+
+.user-book-court-page .time-slot-row-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    min-width: 0;
+    min-height: 44px;
+    padding: var(--s2) var(--s3);
+    border: 1px solid var(--brand);
+    border-radius: var(--r-md);
+    background: color-mix(in srgb, var(--brand) 10%, var(--surface-2));
+    color: var(--text);
+    font-family: var(--font-family);
+    font-size: var(--font-size-small);
+    font-weight: var(--font-weight-button);
+    cursor: pointer;
+    transition: border-color 160ms ease, background-color 160ms ease;
+}
+
+.user-book-court-page .time-slot-row-toggle:not(.selected):not(:disabled)::before {
+    content: "Available";
+    margin-right: auto;
+    color: var(--text-muted);
+    font-size: var(--font-size-small);
+}
+
+.user-book-court-page .time-slot-row-toggle:hover:not(:disabled) {
+    border-color: var(--brand-hover);
+    background: color-mix(in srgb, var(--brand) 18%, var(--surface-2));
+}
+
+.user-book-court-page .time-slot-row-toggle.selected {
+    border-color: var(--brand);
+    background: color-mix(in srgb, var(--brand) 28%, var(--surface-2));
+    color: var(--text);
+}
+
+.user-book-court-page .time-slot-row-toggle.selected::before {
+    content: "Selected";
+    margin-right: auto;
+    color: var(--text);
+    font-size: var(--font-size-small);
+}
+
+.user-book-court-page .time-slot-row-peak .time-slot-row-toggle {
+    border-color: var(--warning);
+}
+
+.user-book-court-page .time-slot-row-toggle:disabled {
+    border-color: var(--text-muted);
+    background: var(--surface-2);
+    color: var(--text-muted);
+    cursor: not-allowed;
+}
+
+.user-book-court-page .time-slot-row-check {
+    display: none;
+    margin-left: var(--s2);
+    color: var(--text);
+}
+
+.user-book-court-page .time-slot-row-toggle.selected .time-slot-row-check {
+    display: inline;
+}
+
+.user-book-court-page .time-slot-skeleton,
+.user-book-court-page .equipment-card-skeleton,
+.user-book-court-page .equipment-skeleton-line {
+    border: 1px solid var(--text-muted);
+    border-radius: var(--r-md);
+    background-color: var(--surface-2);
+    background-image: linear-gradient(90deg, var(--surface-2), color-mix(in srgb, var(--surface-2) 65%, var(--text-muted)), var(--surface-2));
+    background-size: 240% 100%;
+    animation: userBookShimmer 1.4s ease-in-out infinite;
+}
+
+.user-book-court-page .time-slot-skeleton {
+    flex: 0 0 52px;
+    height: 52px;
+}
+
+.user-book-court-page .time-picker-fee-panel {
+    padding: var(--s4);
+    border: 1px solid var(--text-muted);
+    border-radius: var(--r-lg);
+    background: var(--surface-2);
+    color: var(--text);
+}
+
+.user-book-court-page .time-picker-fee-ranges {
+    height: auto;
+    max-height: 60px;
+    margin: 0 0 var(--s3);
+    overflow: auto;
+    color: var(--text);
+    font-size: var(--font-size-small);
+    line-height: var(--line-height-body);
+}
+
+.user-book-court-page .time-picker-fee-ranges.is-empty {
+    color: var(--text-muted);
+}
+
+.user-book-court-page .time-picker-fee-total-row {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--s3);
+    padding-top: var(--s3);
+    border-top: 1px solid var(--text-muted);
+    color: var(--text);
+    font-size: var(--font-size-body);
+    font-weight: var(--font-weight-button);
+}
+
+.user-book-court-page .time-picker-fee-total-row span:last-child {
+    color: var(--brand);
+}
+
+@keyframes userBookShimmer {
+    to { background-position: -240% 0; }
+}
+
+.user-book-court-page .equipment-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--s3);
+}
+
+.user-book-court-page .equipment-category-label {
+    grid-column: 1 / -1;
+    margin: var(--s3) 0 0;
+    color: var(--text-muted);
+    font-size: var(--font-size-small);
+    font-weight: var(--font-weight-small);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.user-book-court-page .equipment-category-label:first-child {
+    margin-top: 0;
+}
+
+.user-book-court-page .equipment-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--s3);
+    min-width: 0;
+    min-height: 72px;
+    padding: var(--s4);
+    border: 1px solid var(--text-muted);
+    border-radius: var(--r-lg);
+    background: var(--surface-2);
+    color: var(--text);
+}
+
+.user-book-court-page .equipment-card.has-qty {
+    border-color: var(--brand);
+    background: color-mix(in srgb, var(--brand) 10%, var(--surface-2));
+}
+
+.user-book-court-page .equipment-card-skeleton {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--s3);
+    min-height: 72px;
+    padding: var(--s4);
+}
+
+.user-book-court-page .equipment-skeleton-name {
+    width: 120px;
+    height: 14px;
+    margin-bottom: var(--s2);
+}
+
+.user-book-court-page .equipment-skeleton-meta {
+    width: 160px;
+    height: 11px;
+}
+
+.user-book-court-page .equipment-skeleton-stepper {
+    width: 84px;
+    height: 44px;
+    flex: 0 0 auto;
+}
+
+.user-book-court-page .equipment-card-name {
+    margin: 0 0 var(--s1);
+    color: var(--text);
+    font-size: var(--font-size-body);
+    font-weight: var(--font-weight-button);
+    overflow-wrap: anywhere;
+}
+
+.user-book-court-page .equipment-card > div {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.user-book-court-page .equipment-card-meta {
+    color: var(--text-muted);
+    font-size: var(--font-size-small);
+}
+
+.user-book-court-page .equipment-card-meta.equipment-sold-out {
+    color: var(--danger);
+}
+
+.user-book-court-page .equipment-qty-stepper {
+    display: flex;
+    align-items: center;
+    gap: var(--s2);
+    flex: 0 0 auto;
+}
+
+.user-book-court-page .qty-btn {
+    box-sizing: border-box;
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    min-height: 44px;
+    padding: 0;
+    border: 1px solid var(--brand);
+    border-radius: var(--r-md);
+    background: transparent;
+    color: var(--text);
+    font-family: var(--font-family);
+    font-size: var(--font-size-body);
+    font-weight: var(--font-weight-button);
+    cursor: pointer;
+}
+
+.user-book-court-page .qty-btn:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--brand) 12%, var(--surface));
+}
+
+.user-book-court-page .qty-btn:disabled {
+    border-color: var(--text-muted);
+    background: var(--surface-2);
+    color: var(--text-muted);
+    cursor: not-allowed;
+    opacity: 1;
+}
+
+.user-book-court-page .qty-value {
+    min-width: 24px;
+    color: var(--text);
+    font-size: var(--font-size-body);
+    font-weight: var(--font-weight-button);
+    text-align: center;
+}
+
+.user-book-court-page .modal-scroll-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    margin: 0;
+    padding: 0 var(--s1);
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-color: var(--text-muted) var(--surface-2);
+    scrollbar-width: thin;
+}
+
+.user-book-court-page .guest-info-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    width: 100%;
+    gap: var(--s3);
+    margin: 0 0 var(--s4);
+}
+
+.user-book-court-page .guest-info-item {
+    display: flex;
+    flex-direction: column;
+    gap: var(--s2);
+    min-width: 0;
+}
+
+.user-book-court-page .guest-info-item label {
+    color: var(--text);
+    font-size: var(--font-size-small);
+    font-weight: var(--font-weight-small);
+}
+
+.user-book-court-page .guest-info-item input {
+    box-sizing: border-box;
+    width: 100%;
+    min-width: 0;
+    min-height: 48px;
+    padding: var(--s3);
+    border: 1px solid var(--text-muted);
+    border-radius: var(--r-md);
+    background: var(--surface-2);
+    color: var(--text);
+    font-family: var(--font-family);
+    font-size: 16px;
+    font-weight: var(--font-weight-body);
+}
+
+.user-book-court-page .guest-info-item input::placeholder {
+    color: var(--text-muted);
+    opacity: 1;
+}
+
+.user-book-court-page .guest-info-item input:focus {
+    outline: 2px solid var(--brand);
+    outline-offset: 1px;
+    border-color: var(--brand);
+    box-shadow: none;
+}
+
+.user-book-court-page .book-court-field-error {
+    display: none;
+    margin: 0;
+    color: var(--danger);
+    font-size: var(--font-size-small);
+}
+
+.user-book-court-page #contactNumber.field-invalid + .book-court-field-error {
+    display: block;
+}
+
+.user-book-court-page #contactNumber.field-invalid {
+    border-color: var(--danger) !important;
+}
+
+.user-book-court-page #contactNumber.field-invalid:focus {
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--danger) 35%, transparent) !important;
+}
+
+.user-book-court-page .booking-summary {
+    margin: var(--s4) 0 0;
+    padding: var(--s4);
+    border: 1px solid transparent;
+    border-radius: var(--r-lg);
+    background-image: linear-gradient(var(--surface-2), var(--surface-2)), var(--brand-grad);
+    background-origin: border-box;
+    background-clip: padding-box, border-box;
+    color: var(--text);
+    font-size: var(--font-size-body);
+}
+
+.user-book-court-page .booking-summary p {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--s3);
+    margin: 0;
+    padding: var(--s2) 0;
+    border-bottom: 1px solid var(--text-muted);
+    color: var(--text-muted);
+    overflow-wrap: anywhere;
+}
+
+.user-book-court-page .booking-summary p:last-child {
+    border-bottom: 0;
+}
+
+.user-book-court-page .booking-summary strong,
+.user-book-court-page .booking-summary-total {
+    color: var(--text);
+}
+
+.user-book-court-page .booking-summary-total strong {
+    color: var(--brand);
+}
+
+.user-book-court-page .payment-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--s3);
+}
+
+.user-book-court-page .payment-btn {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: var(--s2);
+    min-width: 0;
+    min-height: 64px;
+    padding: var(--s4);
+    border: 1px solid var(--text-muted);
+    border-radius: var(--r-lg);
+    background: var(--surface-2);
+    color: var(--text);
+    text-align: left;
+    cursor: pointer;
+}
+
+.user-book-court-page .payment-btn:hover {
+    border-color: var(--brand);
+}
+
+.user-book-court-page .payment-btn.selected {
+    border-color: var(--brand);
+    background: color-mix(in srgb, var(--brand) 12%, var(--surface-2));
+    color: var(--text);
+}
+
+.user-book-court-page .payment-btn-title {
+    color: var(--text);
+    font-size: var(--font-size-body);
+    font-weight: var(--font-weight-button);
+}
+
+.user-book-court-page .payment-btn-sub {
+    color: var(--text-muted);
+    font-size: var(--font-size-small);
+    line-height: var(--line-height-body);
+}
+
+.user-book-court-page #paymentPage .booking-section {
+    margin: 0 0 var(--s4);
+    padding: var(--s4);
+    border: 1px solid var(--text-muted);
+    border-radius: var(--r-lg);
+    background: var(--surface-2);
+}
+
+.user-book-court-page #paymentPage .booking-section + .booking-section {
+    margin-top: var(--s4);
+}
+
+.user-book-court-page #paymentPage .booking-section-label {
+    display: flex;
+    align-items: center;
+    gap: var(--s2);
+    margin: 0 0 var(--s3);
+    color: var(--brand);
+    font-size: var(--font-size-small);
+    font-weight: var(--font-weight-small);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.user-book-court-page #paymentPage .booking-section-label::before {
+    content: "";
+    width: 14px;
+    height: 2px;
+    flex: 0 0 14px;
+    background: var(--brand);
+}
+
+.user-book-court-page #paymentPage .payment-btn {
+    width: 100%;
+    border: 1px solid var(--text-muted);
+    border-radius: var(--r-lg);
+    background: var(--surface);
+    color: var(--text);
+    transition: border-color 160ms ease, background-color 160ms ease;
+}
+
+.user-book-court-page #paymentPage .payment-btn:hover {
+    border-color: var(--brand);
+    transform: none;
+}
+
+.user-book-court-page #paymentPage .payment-btn.selected {
+    border-color: var(--brand);
+    background: color-mix(in srgb, var(--brand) 12%, var(--surface));
+    box-shadow: none;
+    transform: none;
+    color: var(--text);
+}
+
+.user-book-court-page #paymentPage .payment-btn-title,
+.user-book-court-page #paymentPage .payment-btn.selected .payment-btn-title {
+    color: var(--text);
+}
+
+.user-book-court-page #paymentPage .payment-btn-sub {
+    color: var(--text-muted);
+    font-size: var(--font-size-small);
+}
+
+.user-book-court-page #paymentPage .booking-summary {
+    margin-top: var(--s4);
+    padding: var(--s4);
+    border: 1px solid transparent;
+    border-top: 1px solid transparent;
+    border-radius: var(--r-lg);
+    background-image: linear-gradient(var(--surface-2), var(--surface-2)), var(--brand-grad);
+    background-origin: border-box;
+    background-clip: padding-box, border-box;
+    color: var(--text);
+}
+
+.user-book-court-page #paymentPage .booking-summary-title {
+    margin: 0 0 var(--s3);
+    padding: 0;
+    border: 0;
+    color: var(--brand);
+    font-size: var(--font-size-small);
+    font-weight: var(--font-weight-small);
+}
+
+.user-book-court-page #paymentPage .booking-summary p {
+    padding: var(--s2) 0;
+    border-color: var(--text-muted);
+    color: var(--text-muted);
+    font-size: var(--font-size-small);
+}
+
+.user-book-court-page #paymentPage .booking-summary strong {
+    color: var(--text);
+}
+
+.user-book-court-page #paymentPage .booking-summary-total {
+    margin-top: var(--s3) !important;
+    padding-top: var(--s3) !important;
+    border-top: 1px solid var(--text-muted);
+    color: var(--text);
+}
+
+.user-book-court-page #paymentPage .booking-summary-total strong {
+    color: var(--brand);
+    font-size: var(--font-size-h3);
+}
+
+.user-book-court-page .modal-actions {
+    display: flex;
+    flex-shrink: 0;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: var(--s3);
+    margin-top: var(--s4);
+    padding-top: var(--s4);
+    border-top: 1px solid var(--text-muted);
+}
+
+.user-book-court-page .btn {
+    box-sizing: border-box;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 112px;
+    min-height: 44px;
+    padding: var(--s2) var(--s4);
+    border-radius: var(--r-pill);
+    font-family: var(--font-family);
+    font-size: var(--font-size-button);
+    font-weight: var(--font-weight-button);
+    line-height: 1.25;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.user-book-court-page .btn-primary {
+    border: 1px solid var(--brand);
+    background: var(--brand);
+    color: var(--bg);
+}
+
+.user-book-court-page .btn-primary:hover:not(:disabled) {
+    border-color: var(--brand-hover);
+    background: var(--brand-hover);
+    color: var(--bg);
+}
+
+.user-book-court-page .btn-secondary {
+    border: 1px solid var(--brand);
+    background: transparent;
+    color: var(--text);
+}
+
+.user-book-court-page .btn-secondary:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--brand) 12%, var(--surface));
+    color: var(--text);
+}
+
+.user-book-court-page .btn:disabled {
+    border-color: var(--text-muted);
+    background: var(--surface-2);
+    color: var(--text-muted);
+    cursor: not-allowed;
+}
+
+.user-book-court-page button:focus-visible,
+.user-book-court-page input:focus-visible,
+.user-book-court-page a:focus-visible {
+    outline: 2px solid var(--brand);
+    outline-offset: 2px;
+}
+
+.user-book-court-page .calendar-day.calendar-day-closed:focus-visible,
+.user-book-court-page .btn-primary:focus-visible {
+    outline-color: var(--text);
+}
+
+.user-book-court-page .time-slot-closed-divider-label,
+.user-book-court-page .time-slot-open-divider-label {
+    color: var(--text);
+    font-weight: var(--font-weight-button);
+}
+
+.user-book-court-page .time-slot-closed-divider-label {
+    color: var(--danger);
+}
+
+.user-book-court-page .time-slot-open-divider-label {
+    color: var(--brand);
+}
+
+.user-book-court-page .time-slot-closed-divider {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: var(--s2);
+    margin: var(--s4) 0;
+    color: var(--text-muted);
+    font-size: var(--font-size-small);
+    text-align: center;
+}
+
+.user-book-court-page .toast-container {
+    color: var(--text);
+}
+
+.user-book-court-page .toast {
+    border-color: var(--text-muted);
+    border-left-color: var(--brand);
+    border-radius: var(--r-md);
+    background: var(--surface);
+    color: var(--text);
+}
+
+.user-book-court-page .toast.toast-error {
+    border-left-color: var(--danger);
+}
+
+.user-book-court-page .toast-message {
+    color: var(--text);
+    font-size: var(--font-size-small);
+}
+
+.user-book-court-page .toast-close {
+    min-width: 44px;
+    min-height: 44px;
+    color: var(--text-muted);
+}
+
+.user-book-court-page .toast-close:hover {
+    color: var(--text);
+}
+
+@media (min-width: 768px) {
+    .user-book-court-page .court-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .user-book-court-page .equipment-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (min-width: 1024px) {
+    .user-book-court-page .court-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 560px) {
+    .user-book-court-page .content {
+        padding: var(--s4);
+    }
+
+    .user-book-court-page .panel {
+        padding: var(--s4);
+    }
+
+    .user-book-court-page .modal-overlay {
+        align-items: flex-start;
+        padding: max(var(--s1), env(safe-area-inset-top, 0px)) max(var(--s1), env(safe-area-inset-right, 0px)) max(var(--s1), env(safe-area-inset-bottom, 0px)) max(var(--s1), env(safe-area-inset-left, 0px));
+    }
+
+    .user-book-court-page .modal-box {
+        width: 100%;
+        max-width: 100%;
+        max-height: calc(100vh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - var(--s1) - var(--s1));
+        max-height: calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - var(--s1) - var(--s1));
+        padding: var(--s3);
+    }
+
+    .user-book-court-page .calendar {
+        padding: var(--s2);
+    }
+
+    .user-book-court-page .calendar-weekdays,
+    .user-book-court-page .calendar-grid {
+        width: calc(100% + var(--s5) + var(--s5) - var(--s2));
+        margin-right: calc(0px - var(--s5) + var(--s1));
+        margin-left: calc(0px - var(--s5) + var(--s1));
+        gap: 0;
+    }
+
+    .user-book-court-page .calendar-day {
+        min-height: 44px;
+        border-radius: var(--r-sm);
+    }
+
+    .user-book-court-page .calendar-weekdays {
+        margin-bottom: var(--s2);
+    }
+
+    .user-book-court-page .time-slot-row {
+        grid-template-columns: minmax(0, 1fr);
+        gap: var(--s2);
+    }
+
+    .user-book-court-page .time-slot-list {
+        max-height: none;
+        padding: 0;
+        overflow: visible;
+    }
+
+    .user-book-court-page .time-slot-row-time {
+        min-height: 24px;
+    }
+
+    .user-book-court-page .time-picker-fee-panel {
+        padding: var(--s3);
+    }
+
+    .user-book-court-page .equipment-card {
+        gap: var(--s2);
+        padding: var(--s3);
+    }
+
+    .user-book-court-page .modal-actions {
+        gap: var(--s2);
+    }
+
+    .user-book-court-page .modal-actions .btn {
+        flex: 1 1 120px;
+    }
+}
+
+@media (max-width: 360px) {
+    .user-book-court-page .panel {
+        padding: var(--s3);
+    }
+
+    .user-book-court-page .court-card-body {
+        padding: var(--s4);
+    }
+}
+
+@media (max-height: 480px) and (orientation: landscape) {
+    .user-book-court-page .modal-overlay {
+        align-items: flex-start;
+    }
+
+    .user-book-court-page .time-slot-list {
+        max-height: none;
+        overflow: visible;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .user-book-court-page .court-card-clickable,
+    .user-book-court-page .calendar-day,
+    .user-book-court-page .booking-section:not([hidden]),
+    .user-book-court-page .time-slot-row-toggle,
+    .user-book-court-page .time-slot-skeleton,
+    .user-book-court-page .equipment-skeleton-line {
+        animation: none;
+        transition: none;
+        transform: none;
+    }
+
+    .user-book-court-page .toast {
+        animation: none;
+    }
+}

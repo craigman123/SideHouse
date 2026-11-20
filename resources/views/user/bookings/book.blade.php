@@ -1,19 +1,26 @@
 @extends('layouts.user')
 
+@section('page-class', 'user-book-court-page')
 @section('title', 'Book a Court | Side House')
 @section('page-title', 'Book a Court')
+
+@push('head-scripts')
+    <script src="{{ asset('js/guest/theme-toggle.js') }}"></script>
+@endpush
 
 @push('styles')
     <link rel="stylesheet" href="{{ asset('css/user/dashboard.css') }}">
     <link rel="stylesheet" href="{{ asset('css/user/user-dashboard.css') }}">
     <link rel="stylesheet" href="{{ asset('css/booking/book.css') }}">
     <link rel="stylesheet" href="{{ asset('css/booking/landing-book.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/guest/theme-toggle.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/user/book-court.css') }}">
 @endpush
 
 @section('content')
 
     <div class="panel">
-        <h2>Available Courts</h2><span class="count-badge">{{ $courts->count() }} Court(s) Available</span>
+        <h2>Available <span class="book-court-title-accent">Courts</span></h2><span class="count-badge">{{ $courts->count() }} Court(s) Available</span>
         <p class="panel-subtext">Tap a court to see its details, then pick a date and time to book it.</p>
 
         <div
@@ -230,6 +237,7 @@
                         <div class="guest-info-item">
                             <label for="contactNumber">Contact Number</label>
                             <input type="tel" id="contactNumber" placeholder="09XX XXX XXXX" autocomplete="tel">
+                            <p class="book-court-field-error" role="alert">Enter a contact number to continue.</p>
                         </div>
                     </div>
                 </div>
