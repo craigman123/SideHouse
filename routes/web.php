@@ -216,7 +216,7 @@ Route::middleware(['auth', 'admin', 'admin.mfa', 'throttle:120,1'])->group(funct
     // now lives in the USER ROUTES group further down, with 'admin.mfa'
     // added there so admins still get the MFA check (see Finding #2).
     Route::get('/admin/profile', [AdminProfileController::class, 'profile'])->name('admin.profile');
-    Route::put('/admin/profile', [AdminProfileController::class, 'update'])->name('admin.profile.update');
+    Route::put('/admin/profile', [AdminProfileController::class, 'updateProfile'])->name('admin.profile.update');
     Route::delete('/admin/profile', [AdminProfileController::class, 'destroy'])->name('admin.profile.destroy');
 
     // Reports
