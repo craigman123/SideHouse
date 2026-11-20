@@ -231,16 +231,16 @@
     // Replaces the neon rainbow. Colours are readable on dark backgrounds
     // without screaming for attention.
     const STATUS_COLORS = {
-        paid:      { bg: '#1e3a5f', border: '#2d6a9f', text: '#a8c8e8' },
-        pending:   { bg: '#3d2e0a', border: '#7a5c1e', text: '#c9a84c' },
-        cancelled: { bg: '#2a1515', border: '#5c2626', text: '#a05050' },
+        paid:      { bg: 'var(--surface)', border: 'var(--brand)', text: 'var(--text)' },
+        pending:   { bg: 'var(--surface)', border: 'var(--warning)', text: 'var(--warning)' },
+        cancelled: { bg: 'var(--surface)', border: 'var(--danger)', text: 'var(--danger)' },
     };
 
     // Per-booking accent border — muted, distinct, cycles by booking index.
     const LANE_ACCENTS = [
-        '#2d6a9f', '#3d7a5c', '#6b4d8a', '#7a6a2d',
-        '#2d6a6a', '#7a3d5c', '#5c6a2d', '#4d5c8a',
-        '#8a4d3d', '#3d5c7a', '#6a5c3d', '#4d8a6b',
+        'var(--brand)', 'var(--info)', 'var(--warning)', 'var(--danger)',
+        'var(--text-muted)', 'var(--brand)', 'var(--info)', 'var(--warning)',
+        'var(--danger)', 'var(--text-muted)', 'var(--brand)', 'var(--info)',
     ];
 
     // ── Month view day layout ────────────────────────────────────────────
@@ -319,12 +319,12 @@
         header.style.position = 'sticky';
         header.style.top = '0';
         header.style.zIndex = '3';
-        header.style.background = '#161b22';
+        header.style.background = 'var(--surface-2)';
 
         // Corner cell
         const corner = document.createElement('div');
         corner.className = 'court-month-corner';
-        corner.style.cssText = `flex:0 0 ${TIME_LABEL_W}px;width:${TIME_LABEL_W}px;border-right:1px solid #21262d;border-bottom:1px solid #21262d;`;
+        corner.style.cssText = `flex:0 0 ${TIME_LABEL_W}px;width:${TIME_LABEL_W}px;border-right:1px solid var(--text-muted);border-bottom:1px solid var(--text-muted);`;
         header.append(corner);
 
         dates.forEach((dateStr) => {
@@ -383,18 +383,18 @@
         // Time label column (sticky left).
         const timeCol = document.createElement('div');
         timeCol.className = 'court-month-time-col';
-        timeCol.style.cssText = `flex:0 0 ${TIME_LABEL_W}px;width:${TIME_LABEL_W}px;position:sticky;left:0;z-index:2;background:#0d1117;border-right:1px solid #21262d;`;
+        timeCol.style.cssText = `flex:0 0 ${TIME_LABEL_W}px;width:${TIME_LABEL_W}px;position:sticky;left:0;z-index:2;background:var(--surface);border-right:1px solid var(--text-muted);`;
 
         rowPlan.forEach((row) => {
             const cell = document.createElement('div');
             if (row.type === 'hour') {
                 cell.className = 'court-month-time-cell';
-                cell.style.cssText = `height:${ROW_H}px;display:flex;align-items:flex-start;justify-content:center;padding-top:6px;border-bottom:1px solid #21262d;color:#6e7681;font-size:10px;font-weight:700;`;
+                cell.style.cssText = `height:${ROW_H}px;display:flex;align-items:flex-start;justify-content:center;padding-top:var(--s2);border-bottom:1px solid var(--text-muted);color:var(--text-muted);font-size:var(--font-size-small);font-weight:700;`;
                 cell.textContent = formatHourLabel(row.hour);
             } else {
                 cell.className = 'court-month-time-divider';
-                cell.style.cssText = `height:${DIVIDER_H}px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;border-top:1px solid #21262d;border-bottom:1px solid #21262d;background:rgba(255,255,255,.02);font-size:11px;font-weight:800;line-height:1.35;text-align:center;padding:4px;`;
-                cell.innerHTML = `<span style="color:#f85149;font-style:italic;">Closes<br><span style="color:#8b949e;font-style:normal;font-weight:600;">${formatHourLabel(BIZ_CLOSE_HOUR)}</span></span><span style="color:#3fb950;font-style:italic;">Opens<br><span style="color:#8b949e;font-style:normal;font-weight:600;">${formatHourLabel(BIZ_OPEN_HOUR)}</span></span>`;
+                cell.style.cssText = `height:${DIVIDER_H}px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:var(--s1);border-top:1px solid var(--text-muted);border-bottom:1px solid var(--text-muted);background:var(--surface-2);font-size:var(--font-size-small);font-weight:800;line-height:1.35;text-align:center;padding:var(--s1);`;
+                cell.innerHTML = `<span style="color:var(--danger);font-style:italic;">Closes<br><span style="color:var(--text-muted);font-style:normal;font-weight:600;">${formatHourLabel(BIZ_CLOSE_HOUR)}</span></span><span style="color:var(--brand);font-style:italic;">Opens<br><span style="color:var(--text-muted);font-style:normal;font-weight:600;">${formatHourLabel(BIZ_OPEN_HOUR)}</span></span>`;
             }
             timeCol.append(cell);
         });
@@ -416,8 +416,8 @@
             col.className = 'court-month-date-col' + (isToday ? ' is-today' : '') + (isWeekdayClosed ? ' is-closed-weekday' : '') + (hasAnyClosure ? ' is-closed' : '');
             col.style.cssText = `flex:0 0 ${COL_W}px;width:${COL_W}px;position:relative;box-sizing:border-box;` +
                 (hasAnyClosure
-                    ? `border-right:2px solid #7a1f1f;background:rgba(248,81,73,.14);`
-                    : `border-right:1px solid #21262d;`);
+                    ? `border-right:2px solid var(--danger);background:var(--surface-2);`
+                    : `border-right:1px solid var(--text-muted);`);
 
             // Hour grid lines — skipped for closed columns so the red fill
             // reads as one solid block instead of a striped grid.
@@ -425,10 +425,10 @@
                 const cell = document.createElement('div');
                 if (row.type === 'hour') {
                     cell.style.cssText = `height:${ROW_H}px;box-sizing:border-box;` +
-                        (hasAnyClosure ? '' : `border-bottom:1px solid #21262d;`);
+                        (hasAnyClosure ? '' : `border-bottom:1px solid var(--text-muted);`);
                 } else {
-                    cell.style.cssText = `height:${DIVIDER_H}px;box-sizing:border-box;background:rgba(255,255,255,.02);` +
-                        (hasAnyClosure ? '' : `border-top:1px solid #21262d;border-bottom:1px solid #21262d;`);
+                    cell.style.cssText = `height:${DIVIDER_H}px;box-sizing:border-box;background:var(--surface-2);` +
+                        (hasAnyClosure ? '' : `border-top:1px solid var(--text-muted);border-bottom:1px solid var(--text-muted);`);
                 }
                 col.append(cell);
             });
@@ -444,7 +444,7 @@
                 const label = document.createElement('span');
                 label.className = 'court-month-closed-label';
                 label.textContent = 'CLOSED';
-                label.style.cssText = `writing-mode:vertical-rl;transform:rotate(180deg);color:#ffb3ab;font-size:40px;font-weight:800;letter-spacing:30px;text-shadow:0 1px 2px rgba(0,0,0,.5);`;
+                label.style.cssText = `writing-mode:vertical-rl;transform:rotate(180deg);color:var(--danger);font-size:var(--font-size-h1);font-weight:800;letter-spacing:var(--s5);text-shadow:0 1px 2px var(--surface);`;
                 strip.append(label);
 
                 col.append(strip);
@@ -484,9 +484,9 @@
                     background: ${colors.bg};
                     border: 1px solid ${colors.border};
                     border-left: 3px solid ${accentColor};
-                    border-radius: 4px;
+                    border-radius: var(--r-sm);
                     color: ${colors.text};
-                    font-size: 11px;
+                    font-size: var(--font-size-small);
                     font-weight: 800;
                     display: flex;
                     align-items: center;
@@ -526,16 +526,16 @@
             `;
             banner.innerHTML = `
                 <span style="
-                    background: rgba(13, 17, 23, .9);
-                    border: 1px solid #30363d;
-                    border-radius: 8px;
-                    padding: 8px 20px;
-                    font-size: 14px;
+                    background: var(--surface-2);
+                    border: 1px solid var(--text-muted);
+                    border-radius: var(--r-md);
+                    padding: var(--s2) var(--s5);
+                    font-size: var(--font-size-body);
                     font-weight: 700;
                     letter-spacing: .01em;
                     white-space: nowrap;
-                    color: #8b949e;
-                "><span style="color:#f85149;font-style:italic;font-weight:800;">Closes</span> at ${formatHourLabel(BIZ_CLOSE_HOUR)} &nbsp;·&nbsp; <span style="color:#3fb950;font-style:italic;font-weight:800;">Opens</span> at ${formatHourLabel(BIZ_OPEN_HOUR)}</span>
+                    color: var(--text-muted);
+                "><span style="color:var(--danger);font-style:italic;font-weight:800;">Closes</span> at ${formatHourLabel(BIZ_CLOSE_HOUR)} &nbsp;·&nbsp; <span style="color:var(--brand);font-style:italic;font-weight:800;">Opens</span> at ${formatHourLabel(BIZ_OPEN_HOUR)}</span>
             `;
             body.append(banner);
         }

@@ -6,10 +6,17 @@
 @push('styles')
     <link rel="stylesheet" href="{{ asset('css/user/dashboard.css') }}">
     <link rel="stylesheet" href="{{ asset('css/booking/bookings.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/guest/theme-toggle.css') }}">
     <link rel="stylesheet" href="{{ asset('css/admin/admin-bookings-board.css') }}">
 @endpush
 
 @section('content')
+
+    <div class="admin-bookings-page">
+        <header class="admin-bookings-heading">
+            <h2>Manage <span>bookings</span></h2>
+            <p>Review reservations, payment status, and court schedules.</p>
+        </header>
 
     <div class="bookings-workspace" id="bookingsWorkspace">
         <div class="bookings-view-tabs" role="tablist" aria-label="Bookings views">
@@ -57,7 +64,7 @@
                 </form>
             </div>
 
-            <div class="panel">
+            <div class="panel bookings-table-panel">
                 <h2>All Bookings <span class="count-badge">{{ $bookings->total() }}</span></h2>
 
                 <div class="table-responsive">
@@ -68,19 +75,21 @@
                         <th>Court</th>
                         <th>Date</th>
                         <th>Time</th>
-                        <th>Amount</th>
+                        <th class="booking-amount-heading">Amount</th>
+                        <th>Payment method</th>
                         <th>Status</th>
                     </tr>
                 </thead>
                 <tbody>
                     @forelse ($bookings as $booking)
                         <tr>
-                            <td class="cell-name">{{ $booking->customer_name }}</td>
-                            <td>{{ $booking->court_id ? 'Court ' . $booking->court_id : '—' }}</td>
-                            <td>{{ \Carbon\Carbon::parse($booking->date)->format('M d, Y') }}</td>
-                            <td>{{ \Carbon\Carbon::parse($booking->start_time)->format('g:i A') }} - {{ \Carbon\Carbon::parse($booking->end_time)->format('g:i A') }}</td>
-                            <td>₱{{ number_format($booking->amount, 2) }}</td>
-                            <td>
+                            <td class="cell-name" data-label="Customer">{{ $booking->customer_name }}</td>
+                            <td data-label="Court">{{ $booking->court_id ? 'Court ' . $booking->court_id : '—' }}</td>
+                            <td data-label="Date">{{ \Carbon\Carbon::parse($booking->date)->format('M d, Y') }}</td>
+                            <td data-label="Time">{{ \Carbon\Carbon::parse($booking->start_time)->format('g:i A') }} - {{ \Carbon\Carbon::parse($booking->end_time)->format('g:i A') }}</td>
+                            <td class="booking-amount" data-label="Amount">₱{{ number_format($booking->amount, 2) }}</td>
+                            <td data-label="Payment method"><span class="payment-method-badge">{{ $booking->payment_method ?: 'Not recorded' }}</span></td>
+                            <td data-label="Status">
                                 <span class="status status-{{ $booking->status }}">
                                     {{ ucfirst($booking->status) }}
                                 </span>
@@ -88,7 +97,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="6" class="empty-row">No bookings found.</td>
+                            <td colspan="7" class="empty-row">No bookings found. <a href="{{ route('bookings.index') }}" class="reset-booking-filters">Reset filters</a></td>
                         </tr>
                     @endforelse
                 </tbody>
@@ -160,6 +169,7 @@
                 </div>
             </div>
         </section>
+    </div>
     </div>
 
 @endsection
