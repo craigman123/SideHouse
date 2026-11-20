@@ -4,7 +4,7 @@
 @section('page-title', 'My Profile')
 
 @push('styles')
-    <link rel="stylesheet" href="{{ asset('css/user/dashboard.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/admin/admin-base.css') }}">
     <link rel="stylesheet" href="{{ asset('css/admin/admin-profile.css') }}">
 @endpush
 
