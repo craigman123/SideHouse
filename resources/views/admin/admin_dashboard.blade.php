@@ -4,10 +4,13 @@
 @section('page-title', 'Overview')
 
 @push('styles')
-    <link rel="stylesheet" href="{{ asset('css/user/dashboard.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/admin/admin-overview.css') }}">
 @endpush
 
 @section('content')
+
+    <section class="admin-overview-page" aria-label="Admin overview">
+    <p class="overview-intro">A quick look at bookings and earnings at <strong>Side House</strong>.</p>
 
     <div class="card-grid">
         <div class="card">
@@ -48,12 +51,12 @@
             <tbody>
                 @forelse ($upcomingBookings as $booking)
                     <tr>
-                        <td>{{ $booking->customer_name }}</td>
-                        <td>{{ $booking->date }}</td>
-                        <td>{{ $booking->start_time }} - {{ $booking->end_time }}</td>
-                        <td>₱{{ number_format($booking->amount, 2) }}</td>
-                        <td>
-                            <span class="status {{ $booking->status === 'paid' ? 'status-paid' : 'status-pending' }}">
+                        <td data-label="Customer">{{ $booking->customer_name }}</td>
+                        <td data-label="Date">{{ \Illuminate\Support\Carbon::parse($booking->date)->format('M j, Y') }}</td>
+                        <td data-label="Time">{{ \Illuminate\Support\Carbon::parse($booking->start_time)->format('g:i A') }} - {{ \Illuminate\Support\Carbon::parse($booking->end_time)->format('g:i A') }}</td>
+                        <td data-label="Amount">₱{{ number_format($booking->amount, 2) }}</td>
+                        <td data-label="Status">
+                            <span class="status {{ $booking->status === 'paid' ? 'status-paid' : 'status-pending' }} {{ $booking->status === 'confirmed' ? 'status-confirmed' : '' }} {{ $booking->status === 'cancelled' ? 'status-cancelled' : '' }} {{ $booking->status === 'expired' ? 'status-expired' : '' }}">
                                 {{ ucfirst($booking->status) }}
                             </span>
                         </td>
@@ -67,5 +70,6 @@
         </table>
     </div>
 </div>
+</section>
 
 @endsection

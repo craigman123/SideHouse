@@ -6,7 +6,6 @@
 @push('styles')
     <link rel="stylesheet" href="{{ asset('css/user/dashboard.css') }}">
     <link rel="stylesheet" href="{{ asset('css/booking/bookings.css') }}">
-    <link rel="stylesheet" href="{{ asset('css/guest/theme-toggle.css') }}">
     <link rel="stylesheet" href="{{ asset('css/admin/admin-bookings-board.css') }}">
 @endpush
 
