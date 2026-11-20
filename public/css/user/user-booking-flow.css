@@ -278,6 +278,142 @@ body.user-booking-waiting-page #waitingPage .wt-qr-status-line[hidden] { display
     outline-offset: 2px;
 }
 
+.user-booking-waiting-page .wt-confirm-overlay {
+    box-sizing: border-box;
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    max-width: none;
+    height: 100%;
+    max-height: none;
+    margin: 0;
+    display: grid;
+    place-items: center;
+    padding: max(var(--s4), env(safe-area-inset-top, 0px)) max(var(--s4), env(safe-area-inset-right, 0px)) max(var(--s4), env(safe-area-inset-bottom, 0px)) max(var(--s4), env(safe-area-inset-left, 0px));
+    overflow: hidden;
+    overscroll-behavior: contain;
+    border: 0;
+    background: transparent;
+    color: var(--text);
+}
+
+.user-booking-waiting-page .wt-confirm-overlay::backdrop {
+    background: color-mix(in srgb, var(--bg) 65%, transparent);
+}
+
+html[data-theme="light"] .user-booking-waiting-page .wt-confirm-overlay::backdrop {
+    background: color-mix(in srgb, var(--text) 65%, transparent);
+}
+
+.user-booking-waiting-page .wt-confirm-overlay:not([open]) {
+    display: none;
+}
+
+.user-booking-waiting-page .wt-confirm-card {
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 420px;
+    max-height: calc(100vh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - var(--s4) - var(--s4));
+    max-height: calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - var(--s4) - var(--s4));
+    padding: var(--s5);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    border: 1px solid transparent;
+    border-radius: var(--r-lg);
+    background-image: linear-gradient(var(--surface), var(--surface)), var(--brand-grad);
+    background-origin: border-box;
+    background-clip: padding-box, border-box;
+    color: var(--text);
+}
+
+.user-booking-waiting-page .wt-confirm-card h2 {
+    margin: 0 0 var(--s3);
+    color: var(--text);
+    font-size: var(--font-size-h3);
+    font-weight: var(--font-weight-h3);
+}
+
+.user-booking-waiting-page .wt-confirm-card p {
+    margin: 0;
+    color: var(--text);
+    font-size: var(--font-size-body);
+    line-height: var(--line-height-body);
+}
+
+.user-booking-waiting-page .wt-confirm-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--s3);
+    margin-top: var(--s5);
+}
+
+.user-booking-waiting-page .wt-confirm-actions button {
+    box-sizing: border-box;
+    min-height: 44px;
+    padding: var(--s2) var(--s4);
+    border-radius: var(--r-pill);
+    font: inherit;
+    font-weight: var(--font-weight-button);
+    cursor: pointer;
+    transition: border-color 160ms ease, background-color 160ms ease, color 160ms ease;
+}
+
+.user-booking-waiting-page .wt-confirm-stay {
+    border: 1px solid var(--brand);
+    background: var(--brand);
+    color: var(--bg);
+}
+
+.user-booking-waiting-page .wt-confirm-stay:hover:not(:disabled) {
+    border-color: var(--brand-hover);
+    background: var(--brand-hover);
+    color: var(--bg);
+}
+
+html[data-theme="light"] .user-booking-waiting-page .wt-confirm-stay:hover:not(:disabled) {
+    border-color: var(--brand);
+    background: var(--brand);
+    color: var(--on-brand);
+}
+
+.user-booking-waiting-page .wt-confirm-accept-leave {
+    border: 1px solid var(--text-muted);
+    background: transparent;
+    color: var(--text);
+}
+
+.user-booking-waiting-page .wt-confirm-accept-leave:hover:not(:disabled),
+.user-booking-waiting-page .wt-confirm-accept-leave:focus,
+.user-booking-waiting-page .wt-confirm-accept-leave:focus-visible {
+    border-color: var(--danger);
+    background: transparent;
+    color: var(--danger);
+}
+
+.user-booking-waiting-page .wt-confirm-accept-cancel {
+    border: 1px solid var(--danger);
+    background: transparent;
+    color: var(--danger);
+}
+
+.user-booking-waiting-page .wt-confirm-accept-cancel:hover:not(:disabled),
+.user-booking-waiting-page .wt-confirm-accept-cancel:focus,
+.user-booking-waiting-page .wt-confirm-accept-cancel:focus-visible {
+    border-color: var(--danger);
+    background: var(--danger);
+    color: var(--bg);
+}
+
+.user-booking-waiting-page .wt-confirm-actions button:focus,
+.user-booking-waiting-page .wt-confirm-actions button:focus-visible {
+    outline: 2px solid var(--text);
+    outline-offset: 2px;
+}
+
+.user-booking-waiting-page .wt-confirm-actions button:disabled {
+    cursor: wait;
+}
+
 @keyframes userQrShimmer {
     to { background-position: -200% 0; }
 }
@@ -289,10 +425,13 @@ body.user-booking-waiting-page #waitingPage .wt-qr-status-line[hidden] { display
     .user-book-court-page .booking-flow-step b { flex-basis: 20px; width: 20px; height: 20px; }
     .user-book-court-page .user-booking-selection { padding: var(--s3); }
     body.user-booking-waiting-page #waitingPage.wt-shell { width: min(100% - var(--s3) * 2, 720px); }
+    .user-booking-waiting-page .wt-confirm-actions { flex-direction: column; }
+    .user-booking-waiting-page .wt-confirm-actions button { width: 100%; }
 }
 
 @media (prefers-reduced-motion: reduce) {
     .user-book-court-page .user-equipment-skeleton span,
     .user-booking-waiting-page .wt-qr-skeleton,
     body.user-booking-waiting-page #waitingPage .wt-qr-skeleton { animation: none; }
+    .user-booking-waiting-page .wt-confirm-actions button { transition: none; }
 }

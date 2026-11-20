@@ -128,6 +128,17 @@
         </div>
     </div>
 
+    <dialog class="wt-confirm-overlay" id="waitingExitDialog" role="alertdialog" aria-modal="true" aria-labelledby="waitingExitTitle" aria-describedby="waitingExitDescription">
+        <section class="wt-confirm-card">
+            <h2 id="waitingExitTitle">Leave this page?</h2>
+            <p id="waitingExitDescription">Your slot stays held until the timer runs out. You can return from My Bookings.</p>
+            <div class="wt-confirm-actions">
+                <button type="button" class="wt-confirm-stay" id="waitingExitStay">Stay here</button>
+                <button type="button" class="wt-confirm-accept wt-confirm-accept-leave" id="waitingExitConfirm">Yes, leave</button>
+            </div>
+        </section>
+    </dialog>
+
     <script src="{{ asset('js/payment/user-waiting.js') }}" defer></script>
     <script src="{{ asset('js/payment/qr-cache.js') }}" defer></script>
 </body>

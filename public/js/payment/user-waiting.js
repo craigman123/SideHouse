@@ -16,9 +16,18 @@
     const doneActionsEl = document.getElementById('waitDoneActions');
     const cancelBtn = document.getElementById('waitCancelBtn');
     const qrphPanel = document.getElementById('qrphWaitPanel');
+    const exitDialog = document.getElementById('waitingExitDialog');
+    const exitTitle = document.getElementById('waitingExitTitle');
+    const exitDescription = document.getElementById('waitingExitDescription');
+    const exitStayBtn = document.getElementById('waitingExitStay');
+    const exitConfirmBtn = document.getElementById('waitingExitConfirm');
     let pollTimer;
     let countdownTimer;
     let resolved = box.dataset.initialStatus !== 'pending';
+    let exitAction = null;
+    let exitOpener = null;
+    let exitBusy = false;
+    let previousPageOverflow = null;
 
     const csrfHeaders = () => {
         const token = document.querySelector('meta[name="csrf-token"]')?.content;
@@ -63,11 +72,81 @@
         }
         poll();
     }
+    function closeExitDialog(restoreFocus = true) {
+        const wasOpen = exitDialog.open;
+        const opener = exitOpener;
+        exitBusy = false;
+        exitAction = null;
+        exitDialog.removeAttribute('aria-busy');
+        exitConfirmBtn.removeAttribute('aria-busy');
+        exitConfirmBtn.disabled = false;
+        if (wasOpen) exitDialog.close();
+        if (previousPageOverflow) {
+            document.documentElement.style.overflow = previousPageOverflow.html;
+            document.body.style.overflow = previousPageOverflow.body;
+            previousPageOverflow = null;
+        }
+        exitOpener = null;
+        if (restoreFocus && wasOpen && opener?.isConnected && opener.offsetParent !== null) opener.focus({ preventScroll: true });
+    }
+    function openExitDialog(control, cancel) {
+        if (exitBusy || exitDialog.open) return;
+        exitOpener = control;
+        exitTitle.textContent = cancel ? 'Cancel this booking?' : 'Leave this page?';
+        exitDescription.textContent = cancel
+            ? 'Your held slot will be released and the QR code stops working.'
+            : 'Your slot stays held until the timer runs out. You can return from My Bookings.';
+        exitStayBtn.textContent = cancel ? 'Keep waiting' : 'Stay here';
+        exitConfirmBtn.textContent = cancel ? 'Yes, cancel booking' : 'Yes, leave';
+        exitConfirmBtn.className = `wt-confirm-accept wt-confirm-accept-${cancel ? 'cancel' : 'leave'}`;
+        exitAction = cancel ? { type: 'cancel' } : { type: 'back', href: control.href };
+        previousPageOverflow = {
+            html: document.documentElement.style.overflow,
+            body: document.body.style.overflow,
+        };
+        document.documentElement.style.overflow = 'hidden';
+        document.body.style.overflow = 'hidden';
+        exitDialog.showModal();
+        exitStayBtn.focus({ preventScroll: true });
+    }
+    box.addEventListener('click', (event) => {
+        const control = event.target.closest('.wt-back, .wt-btn-cancel');
+        if (!control || !box.contains(control)) return;
+        event.preventDefault();
+        openExitDialog(control, control === cancelBtn || control.classList.contains('wt-btn-cancel'));
+    });
+    exitStayBtn.addEventListener('click', () => closeExitDialog());
+    exitConfirmBtn.addEventListener('click', async () => {
+        if (exitBusy || !exitAction) return;
+        exitBusy = true;
+        exitConfirmBtn.disabled = true;
+        exitConfirmBtn.setAttribute('aria-busy', 'true');
+        exitDialog.setAttribute('aria-busy', 'true');
+        if (exitAction.type === 'cancel') {
+            await cancelBooking();
+            closeExitDialog(!resolved);
+        } else {
+            window.location.href = exitAction.href;
+        }
+    });
+    exitDialog.addEventListener('cancel', (event) => {
+        event.preventDefault();
+        if (!exitBusy) closeExitDialog();
+    });
+    exitDialog.addEventListener('click', (event) => {
+        if (event.target === exitDialog && !exitBusy) closeExitDialog();
+    });
+    const resolvedDialogObserver = new MutationObserver(() => {
+        if (resolved && exitDialog.open && !exitBusy) closeExitDialog(false);
+    });
+    resolvedDialogObserver.observe(actionsEl, { attributes: true, attributeFilter: ['style'] });
+    window.addEventListener('pageshow', (event) => {
+        if (event.persisted) closeExitDialog(false);
+    });
     // QR generation itself is now handled entirely by qr-cache.js's
     // auto-init (it reads #waitingPage's data-booking-id/data-create-qr-url/
     // data-status-url and wires up #qrLoading/#qrImageWrap/#qrImage/#qrError/
     // #qrRetryBtn/#qrStatusLine on its own). Nothing to do here for that.
-    cancelBtn?.addEventListener('click', cancelBooking);
     if (!resolved) {
         if (expiresAt) {
             const updateCountdown = () => {
