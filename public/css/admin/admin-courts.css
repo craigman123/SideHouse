@@ -1,0 +1,142 @@
+html.admin-layout-shell .admin-courts-page {
+    max-width: 1440px;
+    min-width: 0;
+    margin-inline: auto;
+    color: var(--text);
+}
+
+html.admin-layout-shell .admin-courts-page .panel {
+    padding: var(--s5);
+    border: 1px solid transparent;
+    border-radius: var(--r-lg);
+    background-image: linear-gradient(var(--surface), var(--surface)), var(--brand-grad);
+    background-origin: border-box;
+    background-clip: padding-box, border-box;
+}
+
+html.admin-layout-shell .admin-courts-page .panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: var(--s3);
+    margin-bottom: var(--s4);
+    padding-bottom: var(--s3);
+    border-bottom: 1px solid var(--text-muted);
+}
+
+html.admin-layout-shell .admin-courts-page .panel-header h2 {
+    margin: 0;
+    color: var(--text);
+    font-size: var(--font-size-h3);
+}
+
+html.admin-layout-shell .admin-courts-page .table-responsive {
+    border-radius: var(--r-md);
+}
+
+html.admin-layout-shell .admin-courts-page table {
+    width: 100%;
+    min-width: 880px;
+    border-collapse: collapse;
+}
+
+html.admin-layout-shell .admin-courts-page th,
+html.admin-layout-shell .admin-courts-page td {
+    padding: var(--s3) var(--s4);
+    border-bottom: 1px solid var(--border);
+}
+
+html.admin-layout-shell .admin-courts-page .status {
+    text-transform: capitalize;
+}
+
+html.admin-layout-shell .admin-courts-page .btn-icon.btn-delete {
+    border-color: var(--danger);
+    color: var(--danger);
+}
+
+html.admin-layout-shell .admin-courts-page .btn-icon.btn-delete:hover {
+    border-color: var(--danger);
+    background: var(--danger);
+    color: var(--on-brand, var(--text));
+}
+
+html.admin-layout-shell .admin-courts-page .status-active {
+    background: color-mix(in srgb, var(--brand) 14%, var(--surface));
+    color: var(--brand-hover);
+}
+
+html.admin-layout-shell .admin-courts-page .status-maintenance {
+    background: color-mix(in srgb, var(--warning) 14%, var(--surface));
+    color: var(--warning);
+}
+
+html.admin-layout-shell .admin-courts-page .status-inactive {
+    background: var(--surface-2);
+    color: var(--text-muted);
+}
+
+html.admin-layout-shell .admin-courts-page .empty-row {
+    padding: var(--s5);
+    color: var(--text-muted);
+    text-align: center;
+}
+
+html.admin-layout-shell .admin-courts-page .modal-box {
+    max-width: 560px;
+}
+
+html.admin-layout-shell .admin-courts-page .modal-box-sm {
+    max-width: 420px;
+}
+
+html.admin-layout-shell .admin-courts-page .modal-text {
+    margin: 0 0 var(--s4);
+    color: var(--text-muted);
+    line-height: var(--line-height-body);
+}
+
+html.admin-layout-shell .admin-courts-page .form-row {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--s3);
+}
+
+html.admin-layout-shell .admin-courts-page .form-group {
+    display: grid;
+    min-width: 0;
+    gap: var(--s2);
+    margin-bottom: var(--s4);
+}
+
+html.admin-layout-shell .admin-courts-page .form-group label {
+    color: var(--text);
+    font-size: var(--font-size-small);
+    font-weight: var(--font-weight-small);
+}
+
+html.admin-layout-shell .admin-courts-page .form-group :is(input, select, textarea):has(+ .field-error:not(:empty)) {
+    border-color: var(--danger);
+}
+
+html.admin-layout-shell .admin-courts-page textarea {
+    min-height: 96px;
+    resize: vertical;
+}
+
+html.admin-layout-shell .admin-courts-page .error-text {
+    min-height: 0;
+    font-size: var(--font-size-small);
+}
+
+@media (max-width: 767px) {
+    html.admin-layout-shell .admin-courts-page .panel {
+        padding: var(--s4);
+    }
+
+    html.admin-layout-shell .admin-courts-page .form-row {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 0;
+    }
+}

@@ -1,14 +1,15 @@
 @extends('layouts.app')
 
-@section('title', 'Courts | Court Booking')
+@section('title', 'Courts | Side House')
 @section('page-title', 'Courts')
 
 @push('styles')
-    <link rel="stylesheet" href="{{ asset('css/user/dashboard.css') }}">
-    <link rel="stylesheet" href="{{ asset('css/user/courts.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/admin/admin-base.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/admin/admin-courts.css') }}">
 @endpush
 
 @section('content')
+    <div class="admin-courts-page">
 
     {{-- Flash message data attributes, read by courts.js to trigger a toast --}}
     <div id="flash-data"
@@ -174,6 +175,7 @@
         </div>
     </div>
 
+    </div>
 @endsection
 
 @push('scripts')
