@@ -153,6 +153,9 @@
 .pagination .page-item.disabled .page-link {
     color: #6e7681;
     cursor: not-allowed;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
 }
 
 .pagination .page-link:hover {
