@@ -78,6 +78,7 @@
     <section class="panel feedback-history-panel" aria-labelledby="feedback-history-title">
         <h2 id="feedback-history-title">Your Previous Feedback</h2>
 
+        <div class="feedback-list" role="region" aria-label="Previous feedback list" @if ($feedbacks->isEmpty()) tabindex="0" @endif>
         @forelse ($feedbacks as $feedback)
             <div class="feedback-entry">
                 <div class="feedback-view">
@@ -153,6 +154,7 @@
                 <p>You haven't submitted any feedback yet — your review after a session helps us improve.</p>
             </div>
         @endforelse
+        </div>
     </section>
     </div>
     </div>
