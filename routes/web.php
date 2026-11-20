@@ -7,6 +7,7 @@ use App\Http\Controllers\Admin\AnnouncementController;
 use App\Http\Controllers\Admin\BookingController;
 use App\Http\Controllers\Admin\ConfigurationController;
 use App\Http\Controllers\Admin\CourtController;
+use App\Http\Controllers\Admin\CourtBlockController;
 use App\Http\Controllers\Admin\CustomerController;
 use App\Http\Controllers\Admin\EquipmentAvailabilityController;
 use App\Http\Controllers\Admin\ReportController;
@@ -180,6 +181,12 @@ Route::middleware(['auth', 'admin', 'admin.mfa', 'throttle:120,1'])->group(funct
 
     // Bookings CRUD
     Route::get('/bookings', [BookingController::class, 'index'])->name('bookings.index');
+    Route::post('/admin/blocks', [CourtBlockController::class, 'store'])
+        ->middleware('throttle:20,1')
+        ->name('admin.blocks.store');
+    Route::delete('/admin/blocks/{block}', [CourtBlockController::class, 'destroy'])
+        ->middleware('throttle:20,1')
+        ->name('admin.blocks.destroy');
 
     // Courts CRUD
     Route::get('/courts', [CourtController::class, 'index'])->name('courts.index');

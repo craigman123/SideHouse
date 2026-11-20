@@ -164,6 +164,7 @@ html.admin-layout-shell .profile-actions .btn,
 html.admin-layout-shell .logout-form .btn,
 html.admin-layout-shell .danger-zone .btn {
     min-height: 44px;
+    margin: 0;
 }
 
 html.admin-layout-shell .profile-page .btn-primary {
