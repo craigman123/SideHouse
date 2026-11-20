@@ -1,134 +1,166 @@
-/* Notifications Page Styles */
-
-.notifications-page {
-    max-width: 720px;
+html.user-notifications-page:not([data-theme="light"]) .notifications-page {
+    --border: color-mix(in srgb, var(--text-muted) 65%, var(--surface));
 }
 
-.notifications-header {
+.user-notifications-page .notifications-page {
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 960px;
+    margin: 0 auto;
+    padding: var(--s2);
+    color: var(--text);
+}
+
+.user-notifications-page .notifications-header {
     display: flex;
-    align-items: center;
+    align-items: flex-end;
     justify-content: space-between;
-    gap: 12px;
-    margin-bottom: 20px;
+    flex-wrap: wrap;
+    gap: var(--s4);
+    margin-bottom: var(--s4);
 }
 
-.notifications-header h2 {
-    font-size: 20px;
-    font-weight: 800;
-    color: #f0f6fc;
-    margin: 0;
-}
+.user-notifications-page .notifications-heading { min-width: 0; }
+.user-notifications-page .notifications-title { margin: 0 0 var(--s1); color: var(--text); font-size: var(--font-size-h2); font-weight: var(--font-weight-h2); }
+.user-notifications-page .notifications-title span { color: var(--brand); }
+.user-notifications-page .notifications-subtitle { margin: 0; color: var(--text-muted); font-size: var(--font-size-body); line-height: var(--line-height-body); }
+.user-notifications-page .notifications-mark-all-form { flex: 0 0 auto; }
 
-.btn-sm {
-    padding: 8px 14px;
-    font-size: 13px;
-}
-
-.notifications-empty {
-    background-color: #161b22;
-    border: 1.5px solid #30363d;
-    border-radius: 10px;
-    padding: 40px 20px;
-    text-align: center;
-    color: #8b949e;
-    font-size: 14px;
-}
-
-.notifications-list {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-}
-
-.notification-row {
-    display: flex;
-    align-items: flex-start;
-    gap: 12px;
-    background-color: #161b22;
-    border: 1.5px solid #30363d;
-    border-radius: 10px;
-    padding: 14px 16px;
-    position: relative;
-}
-
-/* Unread rows get a quiet green tint and a left accent bar — enough to
-   scan the list and see what's new without every row shouting for
-   attention. */
-.notification-row.is-unread {
-    background-color: rgba(63, 185, 80, 0.06);
-    border-color: rgba(63, 185, 80, 0.35);
-}
-
-.notification-row.is-unread::before {
-    content: '';
-    position: absolute;
-    left: 0;
-    top: 10px;
-    bottom: 10px;
-    width: 3px;
-    border-radius: 3px;
-    background-color: #3fb950;
-}
-
-.notification-row-icon {
-    font-size: 20px;
-    line-height: 1;
-    flex-shrink: 0;
-    width: 32px;
-    height: 32px;
-    display: flex;
+.user-notifications-page .btn-sm,
+.user-notifications-page .notifications-filter,
+.user-notifications-page .notifications-book-link,
+.user-notifications-page .notifications-retry {
+    box-sizing: border-box;
+    display: inline-flex;
     align-items: center;
     justify-content: center;
-    background-color: #0d1117;
-    border-radius: 8px;
-}
-
-.notification-row-body {
-    flex: 1;
-    min-width: 0;
-}
-
-.notification-row-title {
-    margin: 0 0 4px;
-    font-size: 14px;
-    font-weight: 700;
-    color: #f0f6fc;
-}
-
-.notification-row-text {
-    margin: 0 0 6px;
-    font-size: 13px;
-    color: #c9d1d9;
-    line-height: 1.5;
-}
-
-.notification-row-time {
+    min-height: 44px;
+    padding: var(--s2) var(--s4);
+    border: 1px solid var(--text-muted);
+    border-radius: var(--r-pill);
+    background: transparent;
+    color: var(--text);
+    width: auto;
     margin: 0;
-    font-size: 12px;
-    color: #6e7681;
-}
-
-/* A small unlabeled dot the guest clicks to dismiss the unread state —
-   deliberately not a big "Mark as read" button competing for attention
-   next to the notification text itself. */
-.notification-mark-read-btn {
-    flex-shrink: 0;
-    width: 12px;
-    height: 12px;
-    border-radius: 50%;
-    background-color: #3fb950;
-    border: none;
+    font-family: var(--font-family);
+    font-size: var(--font-size-button);
+    font-weight: var(--font-weight-button);
+    line-height: var(--line-height-body);
+    text-decoration: none;
     cursor: pointer;
-    margin-top: 4px;
-    padding: 0;
-    transition: transform 0.15s ease, opacity 0.15s ease;
 }
 
-.notification-mark-read-btn:hover {
-    transform: scale(1.3);
+.user-notifications-page .btn-sm:hover:not(:disabled),
+.user-notifications-page .notifications-filter:hover,
+.user-notifications-page .notifications-retry:hover { border-color: var(--brand); color: var(--brand-hover); }
+.user-notifications-page .notifications-book-link { border-color: var(--brand); background: var(--brand); color: var(--bg); }
+html[data-theme="light"] .user-notifications-page .notifications-book-link { color: var(--on-brand); }
+.user-notifications-page .notifications-book-link:hover { border-color: var(--brand-hover); background: var(--brand-hover); }
+.user-notifications-page .notifications-filters { display: flex; flex-wrap: wrap; gap: var(--s2); margin-bottom: var(--s4); }
+.user-notifications-page .notifications-filter.is-active { border-color: var(--brand); background: color-mix(in srgb, var(--brand) 12%, var(--surface)); color: var(--brand-hover); }
+
+.user-notifications-page .notifications-list { display: flex; flex-direction: column; gap: var(--s3); min-width: 0; }
+.user-notifications-page .notifications-list[hidden],
+.user-notifications-page .notification-row[hidden] { display: none; }
+.user-notifications-page .notification-row {
+    position: relative;
+    box-sizing: border-box;
+    display: flex;
+    align-items: flex-start;
+    gap: var(--s3);
+    width: 100%;
+    min-width: 0;
+    padding: var(--s4);
+    border: 1px solid var(--border);
+    border-radius: var(--r-md);
+    background: var(--surface);
+    color: var(--text);
+}
+.user-notifications-page .notification-row.is-unread { background: color-mix(in srgb, var(--brand) 8%, var(--surface)); }
+.user-notifications-page .notification-row.is-unread::before { position: absolute; top: var(--s3); bottom: var(--s3); left: 0; width: var(--s1); border-radius: var(--r-pill); background: var(--brand); content: ''; }
+.user-notifications-page .notification-row-icon { display: inline-flex; flex: 0 0 var(--s7); align-items: center; justify-content: center; width: var(--s7); height: var(--s7); border-radius: var(--r-md); background: var(--surface-2); color: var(--text-muted); }
+.user-notifications-page .notification-row-icon svg { display: block; width: var(--s5); height: var(--s5); }
+.user-notifications-page .notification-type-booking_status .notification-row-icon { color: var(--brand-hover); }
+.user-notifications-page .notification-type-booking_reminder .notification-row-icon { color: var(--warning); }
+.user-notifications-page .notification-type-announcement .notification-row-icon { color: var(--info); }
+.user-notifications-page .notification-row-body { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; }
+.user-notifications-page .notification-row-title { display: flex; align-items: center; flex-wrap: wrap; gap: var(--s2); margin: 0 0 var(--s2); color: var(--text-muted); font-size: var(--font-size-body); font-weight: var(--font-weight-small); line-height: var(--line-height-body); overflow-wrap: anywhere; }
+.user-notifications-page .notification-row.is-unread .notification-row-title { color: var(--text); font-weight: var(--font-weight-button); }
+.user-notifications-page .notification-row:not(.is-unread) .notification-unread-indicator,
+.user-notifications-page .notification-row:not(.is-unread) .visually-hidden { display: none; }
+.user-notifications-page .notification-row-text { margin: 0 0 var(--s2); color: var(--text-muted); font-size: var(--font-size-body); line-height: var(--line-height-body); overflow-wrap: anywhere; }
+.user-notifications-page .notification-row.is-unread .notification-row-text { color: var(--text); }
+.user-notifications-page .notification-row-time { display: block; color: var(--text-muted); font-size: var(--font-size-small); line-height: var(--line-height-body); }
+.user-notifications-page .notification-unread-indicator { width: var(--s2); height: var(--s2); flex: 0 0 var(--s2); border-radius: var(--r-pill); background: var(--brand); }
+.user-notifications-page .notification-mark-read-btn { box-sizing: border-box; display: inline-flex; flex: 0 0 44px; align-items: center; justify-content: center; width: 44px; min-width: 44px; height: 44px; min-height: 44px; padding: 0; border: 1px solid var(--text-muted); border-radius: var(--r-pill); background: transparent; color: var(--text-muted); cursor: pointer; transition: border-color 160ms ease, color 160ms ease, background-color 160ms ease; }
+.user-notifications-page .notification-mark-read-btn svg { width: var(--s4); height: var(--s4); }
+.user-notifications-page .notification-mark-read-btn:hover:not(:disabled) { border-color: var(--brand); background: color-mix(in srgb, var(--brand) 12%, var(--surface)); color: var(--brand-hover); }
+.user-notifications-page .notification-mark-read-btn:disabled { background: var(--surface-2); color: var(--text-muted); cursor: wait; }
+
+.user-notifications-page .notifications-empty,
+.user-notifications-page .notifications-error {
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--s3);
+    width: 100%;
+    padding: var(--s6) var(--s4);
+    border: 1px solid var(--border);
+    border-radius: var(--r-lg);
+    background: var(--surface);
+    color: var(--text-muted);
+    text-align: center;
+}
+.user-notifications-page .notifications-empty-icon { width: var(--s7); height: var(--s7); color: var(--brand-hover); }
+.user-notifications-page .notifications-empty h3 { margin: 0; color: var(--text); font-size: var(--font-size-h3); }
+.user-notifications-page .notifications-empty p,
+.user-notifications-page .notifications-error p { margin: 0; color: var(--text-muted); line-height: var(--line-height-body); overflow-wrap: anywhere; }
+.user-notifications-page .notifications-error { align-items: flex-start; border-color: var(--danger); text-align: left; }
+.user-notifications-page .notifications-error p { color: var(--text); }
+.user-notifications-page .notifications-filter-empty { margin: 0 0 var(--s4); color: var(--text-muted); }
+.user-notifications-page .notifications-loading[hidden],
+.user-notifications-page .notifications-filter-empty[hidden] { display: none; }
+.user-notifications-page .notifications-loading { display: flex; flex-direction: column; gap: var(--s3); }
+.user-notifications-page .notification-skeleton { box-sizing: border-box; display: flex; align-items: flex-start; gap: var(--s3); min-height: var(--s8); padding: var(--s4); border: 1px solid var(--border); border-radius: var(--r-md); background: var(--surface); }
+.user-notifications-page .notification-skeleton-icon,
+.user-notifications-page .notification-skeleton-copy i { display: block; border-radius: var(--r-sm); background: linear-gradient(90deg, var(--surface-2), color-mix(in srgb, var(--surface-2) 55%, var(--text-muted)), var(--surface-2)); background-size: 200% 100%; animation: notification-shimmer 1.2s ease-in-out infinite; }
+.user-notifications-page .notification-skeleton-icon { flex: 0 0 var(--s7); width: var(--s7); height: var(--s7); }
+.user-notifications-page .notification-skeleton-copy { display: flex; flex: 1 1 auto; flex-direction: column; gap: var(--s2); min-width: 0; }
+.user-notifications-page .notification-skeleton-copy i { width: 100%; height: var(--s2); }
+.user-notifications-page .notification-skeleton-copy i:first-child { width: 65%; height: var(--s3); }
+.user-notifications-page .notification-skeleton-copy i:last-child { width: 28%; height: var(--s1); }
+@keyframes notification-shimmer { to { background-position: -200% 0; } }
+.user-notifications-page .visually-hidden { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+.user-notifications-page .pagination-wrapper { display: flex; justify-content: center; flex-wrap: wrap; margin-top: var(--s4); }
+.user-notifications-page .pagination-wrapper nav { display: flex; justify-content: center; flex-wrap: wrap; gap: var(--s2); max-width: 100%; }
+.user-notifications-page .pagination-wrapper nav > div { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: var(--s2); max-width: 100%; }
+.user-notifications-page .pagination-wrapper :is(a, [aria-current="page"] > span, [aria-disabled="true"] > span) { box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; min-width: 44px; min-height: 44px; padding: var(--s2) var(--s3); border: 1px solid var(--border); border-radius: var(--r-pill); background: var(--surface); color: var(--text); font-size: var(--font-size-small); text-decoration: none; }
+.user-notifications-page .pagination-wrapper a:hover { border-color: var(--brand); color: var(--brand-hover); }
+.user-notifications-page .pagination-wrapper [aria-disabled="true"] > span { color: var(--text-muted); }
+.user-notifications-page :is(button, a):focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+.user-notifications-page .toast { border-color: var(--border); border-left-color: var(--brand); border-radius: var(--r-md); background: var(--surface); color: var(--text); }
+.user-notifications-page .toast.toast-error { border-left-color: var(--danger); }
+.user-notifications-page .toast-message { color: var(--text); font-size: var(--font-size-small); }
+.user-notifications-page .toast-close { display: inline-flex; align-items: center; justify-content: center; min-width: 44px; min-height: 44px; color: var(--text-muted); }
+
+@media (max-width: 560px) {
+    .user-notifications-page .notifications-page { padding: 0; }
+    .user-notifications-page .notifications-header { align-items: stretch; flex-direction: column; }
+    .user-notifications-page .notifications-mark-all-form,
+    .user-notifications-page .notifications-mark-all-form .btn-sm { width: 100%; }
+    .user-notifications-page .notification-row { gap: var(--s2); padding: var(--s3); }
+    .user-notifications-page .notification-row-icon { flex-basis: var(--s6); width: var(--s6); height: var(--s6); }
+    .user-notifications-page .notification-row-icon svg { width: var(--s4); height: var(--s4); }
+    .user-notifications-page .notification-row-title,
+    .user-notifications-page .notification-row-text { font-size: var(--font-size-small); }
+    .user-notifications-page .notification-mark-read-btn { flex-basis: 44px; }
+    .user-notifications-page .notifications-empty { padding: var(--s5) var(--s3); }
+    .user-notifications-page .pagination-wrapper { justify-content: flex-start; }
 }
 
-.notification-mark-read-btn:disabled {
-    opacity: 0.4;
-    cursor: not-allowed;
+@media (prefers-reduced-motion: reduce) {
+    .user-notifications-page .notification-skeleton-icon,
+    .user-notifications-page .notification-skeleton-copy i,
+    .user-notifications-page .notification-mark-read-btn { animation: none; transition: none; }
 }

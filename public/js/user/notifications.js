@@ -67,4 +67,61 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     });
+
+    function initializeNotificationFilters() {
+        const rows = Array.from(document.querySelectorAll('.notification-row'));
+        const buttons = Array.from(document.querySelectorAll('[data-notification-filter]'));
+        const emptyMessage = document.querySelector('.notifications-filter-empty');
+        let activeFilter = 'all';
+
+        function applyFilter() {
+            const visibleRows = rows.filter((row) => {
+                const visible = activeFilter === 'all' || row.classList.contains('is-unread');
+                row.hidden = !visible;
+                return visible;
+            });
+
+            if (emptyMessage) emptyMessage.hidden = activeFilter !== 'unread' || visibleRows.length > 0;
+            buttons.forEach((button) => {
+                const active = button.dataset.notificationFilter === activeFilter;
+                button.classList.toggle('is-active', active);
+                button.setAttribute('aria-pressed', String(active));
+            });
+        }
+
+        buttons.forEach((button) => {
+            button.addEventListener('click', () => {
+                activeFilter = button.dataset.notificationFilter === 'unread' ? 'unread' : 'all';
+                applyFilter();
+            });
+        });
+
+        const unreadObserver = new MutationObserver(applyFilter);
+        rows.forEach((row) => unreadObserver.observe(row, { attributes: true, attributeFilter: ['class'] }));
+    }
+
+    function initializeNotificationsLoading() {
+        const list = document.querySelector('.notifications-list');
+        const skeleton = document.querySelector('.notifications-loading');
+        if (!list || !skeleton) return;
+
+        function showLoading() {
+            list.hidden = true;
+            list.setAttribute('aria-busy', 'true');
+            skeleton.hidden = false;
+        }
+
+        function hideLoading() {
+            list.hidden = false;
+            list.setAttribute('aria-busy', 'false');
+            skeleton.hidden = true;
+        }
+
+        document.querySelector('.notifications-mark-all-form')?.addEventListener('submit', showLoading);
+        document.querySelectorAll('.pagination-wrapper a').forEach((link) => link.addEventListener('click', showLoading));
+        window.addEventListener('pageshow', hideLoading);
+    }
+
+    initializeNotificationFilters();
+    initializeNotificationsLoading();
 });
