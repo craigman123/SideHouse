@@ -40,6 +40,7 @@ html.admin-layout-shell .btn-primary-sm {
     font-weight: var(--font-weight-button);
     text-decoration: none;
     cursor: pointer;
+    margin: var(--s4) 0;
 }
 
 html.admin-layout-shell .btn-primary:hover,
