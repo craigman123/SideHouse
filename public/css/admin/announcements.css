@@ -61,7 +61,31 @@ html.admin-layout-shell .announcements-page .announcement-confirm-copy {
 }
 
 html.admin-layout-shell .announcements-page .announcement-pagination {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--s2);
     margin-top: var(--s4);
+}
+
+html.admin-layout-shell .announcements-page .announcement-pagination a,
+html.admin-layout-shell .announcements-page .announcement-pagination span {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 44px;
+    min-height: 44px;
+    padding: var(--s2) var(--s3);
+    border: 1px solid var(--border);
+    border-radius: var(--r-md);
+    background: var(--surface-2);
+    color: var(--text);
+    text-decoration: none;
+}
+
+html.admin-layout-shell .announcements-page .announcement-pagination a:hover {
+    border-color: var(--brand);
+    color: var(--brand-hover);
 }
 
 html.admin-layout-shell .announcements-page .btn,
@@ -90,12 +114,13 @@ html.admin-layout-shell .announcements-page .btn:hover {
 html.admin-layout-shell .announcements-page .btn-filter {
     border-color: var(--brand);
     background: var(--brand);
-    color: var(--text);
+    color: var(--bg);
 }
 
 html.admin-layout-shell .announcements-page .btn-filter:hover {
     border-color: var(--brand-hover);
     background: var(--brand-hover);
+    color: var(--bg);
 }
 
 html.admin-layout-shell .announcements-page .btn-danger,
@@ -107,7 +132,7 @@ html.admin-layout-shell .announcements-page .row-delete-btn {
 html.admin-layout-shell .announcements-page .btn-danger:hover,
 html.admin-layout-shell .announcements-page .row-delete-btn:hover {
     background: var(--danger);
-    color: var(--text);
+    color: var(--bg);
 }
 
 html.admin-layout-shell .announcements-page .btn:disabled,
@@ -194,6 +219,7 @@ html.admin-layout-shell .announcements-page .announcement-confirm-actions {
 }
 
 html.admin-layout-shell .announcements-page #announcementsListWrap {
+    box-sizing: border-box;
     min-width: 0;
     margin-top: 0;
     padding: var(--s4);
@@ -206,8 +232,14 @@ html.admin-layout-shell .announcements-page #announcementsListWrap {
     scrollbar-width: thin;
 }
 
+html.admin-layout-shell .announcements-page #noAnnouncementsMsg {
+    padding: var(--s6) var(--s4);
+    text-align: center;
+}
+
 html.admin-layout-shell .announcements-page .data-table {
     width: 100%;
+    min-width: 560px;
     border-collapse: collapse;
     color: var(--text);
 }
@@ -218,10 +250,12 @@ html.admin-layout-shell .announcements-page .data-table td {
     border-bottom: 1px solid var(--border);
     color: var(--text);
     text-align: left;
-    vertical-align: top;
 }
 
 html.admin-layout-shell .announcements-page .data-table th {
+    position: sticky;
+    z-index: 1;
+    top: 0;
     background: var(--surface-2);
     color: var(--text-muted);
     font-size: var(--font-size-small);
@@ -243,6 +277,13 @@ html.admin-layout-shell .announcements-page .row-delete-btn {
     font: inherit;
     font-weight: var(--font-weight-button);
     cursor: pointer;
+}
+
+html.admin-layout-shell .announcements-page :is(.btn, .btn-filter, .row-delete-btn, .modal-close):focus-visible,
+html.admin-layout-shell .announcements-page .filter-group :is(input, textarea):focus-visible,
+html.admin-layout-shell .announcements-page .announcement-pagination a:focus-visible {
+    outline: 2px solid var(--brand-hover);
+    outline-offset: 2px;
 }
 
 html.admin-layout-shell .announcements-page .toast-out {
