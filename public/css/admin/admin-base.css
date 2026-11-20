@@ -7,7 +7,7 @@ html.admin-layout-shell :is(input:not([type="hidden"]), select, textarea) {
     box-sizing: border-box;
     min-height: 48px;
     padding: var(--s2) var(--s3);
-    border: 1px solid var(--text-muted);
+    border: 1px solid var(--border);
     border-radius: var(--r-md);
     background: var(--surface-2);
     color: var(--text);
@@ -130,10 +130,13 @@ html.admin-layout-shell .actions-cell {
 
 html.admin-layout-shell :is(.admin-courts-page .panel, .equip-add-panel, .customers-table-wrap) {
     min-width: 0;
-    border: 1px solid var(--text-muted);
+    border: 1px solid transparent;
     border-radius: var(--r-lg);
-    background: var(--surface);
+    background-image: linear-gradient(var(--surface), var(--surface)), var(--brand-grad);
+    background-origin: border-box;
+    background-clip: padding-box, border-box;
     color: var(--text);
+    box-shadow: var(--shadow-card);
 }
 
 html.admin-layout-shell .admin-courts-page .panel {
@@ -260,10 +263,13 @@ html.admin-layout-shell .equip-modal {
     max-height: calc(100dvh - 2 * var(--s4));
     overflow-y: auto;
     padding: var(--s5);
-    border: 1px solid var(--text-muted);
+    border: 1px solid transparent;
     border-radius: var(--r-lg);
-    background: var(--surface);
+    background-image: linear-gradient(var(--surface), var(--surface)), var(--brand-grad);
+    background-origin: border-box;
+    background-clip: padding-box, border-box;
     color: var(--text);
+    box-shadow: var(--shadow-card);
 }
 
 html.admin-layout-shell .modal-header {

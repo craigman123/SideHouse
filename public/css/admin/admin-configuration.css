@@ -37,10 +37,13 @@ html.admin-layout-shell .admin-configuration-page .schedule-closure-list {
     width: 100%;
     min-width: 0;
     padding: var(--s5);
-    border: 1px solid var(--text-muted);
+    border: 1px solid transparent;
     border-radius: var(--r-lg);
-    background: var(--surface);
+    background-image: linear-gradient(var(--surface), var(--surface)), var(--brand-grad);
+    background-origin: border-box;
+    background-clip: padding-box, border-box;
     color: var(--text);
+    box-shadow: var(--shadow-card);
 }
 
 html.admin-layout-shell .admin-configuration-page .schedule-panel-header {
@@ -93,7 +96,7 @@ html.admin-layout-shell .admin-configuration-page :is(input:not([type="checkbox"
     min-width: 0;
     min-height: 48px;
     padding: var(--s3);
-    border: 1px solid var(--text-muted);
+    border: 1px solid var(--border);
     border-radius: var(--r-md);
     background: var(--surface-2);
     color: var(--text);
@@ -299,7 +302,7 @@ html.admin-layout-shell .admin-configuration-page .sh-datepicker-trigger {
     width: 100%;
     min-height: 48px;
     padding: var(--s3);
-    border: 1px solid var(--text-muted);
+    border: 1px solid var(--border);
     border-radius: var(--r-md);
     background: var(--surface-2);
     color: var(--text);
@@ -328,11 +331,13 @@ html.admin-layout-shell .admin-configuration-page .sh-datepicker-panel {
     box-sizing: border-box;
     width: min(360px, calc(100vw - 2 * var(--s4)));
     padding: var(--s4);
-    border: 1px solid var(--text-muted);
+    border: 1px solid transparent;
     border-radius: var(--r-lg);
-    background: var(--surface);
+    background-image: linear-gradient(var(--surface), var(--surface)), var(--brand-grad);
+    background-origin: border-box;
+    background-clip: padding-box, border-box;
     color: var(--text);
-    box-shadow: 0 var(--s3) var(--s6) color-mix(in srgb, var(--bg) 45%, transparent);
+    box-shadow: var(--shadow-card);
 }
 
 html.admin-layout-shell .admin-configuration-page .tc-dp-header,
@@ -559,10 +564,13 @@ html.admin-layout-shell .mb-modal-box {
     max-height: calc(100dvh - max(2 * var(--s4), env(safe-area-inset-top) + env(safe-area-inset-bottom)));
     overflow-y: auto;
     padding: var(--s5);
-    border: 1px solid var(--text-muted);
+    border: 1px solid transparent;
     border-radius: var(--r-lg);
-    background: var(--surface);
+    background-image: linear-gradient(var(--surface), var(--surface)), var(--brand-grad);
+    background-origin: border-box;
+    background-clip: padding-box, border-box;
     color: var(--text);
+    box-shadow: var(--shadow-card);
 }
 
 html.admin-layout-shell .mb-modal-header {

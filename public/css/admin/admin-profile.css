@@ -14,14 +14,12 @@ html.admin-layout-shell .danger-zone {
     max-width: 840px;
     min-width: 0;
     padding: var(--s5);
-    border: 1px solid var(--text-muted);
+    border: 1px solid transparent;
     border-radius: var(--r-lg);
-    background: var(--surface);
+    background-image: linear-gradient(var(--surface), var(--surface)), var(--brand-grad);
+    background-origin: border-box;
+    background-clip: padding-box, border-box;
     color: var(--text);
-}
-
-html.admin-layout-shell .profile-card {
-    border-top: var(--s1) solid var(--brand);
 }
 
 html.admin-layout-shell .profile-header {
@@ -130,7 +128,7 @@ html.admin-layout-shell .profile-item input {
     width: 100%;
     min-height: 48px;
     padding: var(--s3);
-    border: 1px solid var(--text-muted);
+    border: 1px solid var(--border);
     border-radius: var(--r-md);
     background: var(--surface-2);
     color: var(--text);
@@ -193,7 +191,7 @@ html.admin-layout-shell .profile-page .delete-confirm-input {
     min-height: 48px;
     margin: var(--s1) 0;
     padding: var(--s3);
-    border: 1px solid var(--text-muted);
+    border: 1px solid var(--border);
     border-radius: var(--r-md);
     background: var(--surface-2);
     color: var(--text);

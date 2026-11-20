@@ -70,11 +70,7 @@ html.admin-layout-shell .equip-flash-error {
 
 html.admin-layout-shell .equip-add-panel {
     padding: calc(var(--s4) - 15px) var(--s5);
-    border: 1px solid transparent;
-    border-radius: var(--r-lg);
-    background-image: linear-gradient(var(--surface), var(--surface)), var(--brand-grad);
-    background-origin: border-box;
-    background-clip: padding-box, border-box;
+    box-shadow: var(--shadow-card);
 }
 
 html.admin-layout-shell .equip-add-panel summary {
@@ -132,6 +128,7 @@ html.admin-layout-shell .equip-table-wrap {
     background-image: linear-gradient(var(--surface), var(--surface)), var(--brand-grad);
     background-origin: border-box;
     background-clip: padding-box, border-box;
+    box-shadow: var(--shadow-card);
 }
 
 html.admin-layout-shell .equip-table {

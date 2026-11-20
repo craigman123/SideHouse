@@ -9,6 +9,7 @@
   --brand: #009D57;
   --brand-hover: #00B274;
   --brand-grad: linear-gradient(135deg, #00B274, #27A5FF);
+  --shadow-card: 0 12px 32px color-mix(in srgb, var(--bg) 50%, transparent);
   --info: #27A5FF;
   --danger: #F85149;
   --warning: #D29922;

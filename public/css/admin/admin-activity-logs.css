@@ -11,10 +11,13 @@ html.admin-layout-shell .admin-activity-logs-page .activity-filters-panel,
 html.admin-layout-shell .admin-activity-logs-page .activity-table-panel {
     min-width: 0;
     padding: var(--s5);
-    border: 1px solid var(--text-muted);
+    border: 1px solid transparent;
     border-radius: var(--r-lg);
-    background: var(--surface);
+    background-image: linear-gradient(var(--surface), var(--surface)), var(--brand-grad);
+    background-origin: border-box;
+    background-clip: padding-box, border-box;
     color: var(--text);
+    box-shadow: var(--shadow-card);
 }
 
 html.admin-layout-shell .admin-activity-logs-page .filters-form {
@@ -40,7 +43,7 @@ html.admin-layout-shell .admin-activity-logs-page .filter-group input {
     width: 100%;
     min-height: 48px;
     padding: var(--s3);
-    border: 1px solid var(--text-muted);
+    border: 1px solid var(--border);
     border-radius: var(--r-md);
     background: var(--surface-2);
     color: var(--text);

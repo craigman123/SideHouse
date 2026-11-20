@@ -48,7 +48,7 @@ html.admin-layout-shell .reports-period-select {
     min-width: 160px;
     min-height: 48px;
     padding: var(--s2) var(--s4);
-    border: 1px solid var(--text-muted);
+    border: 1px solid var(--border);
     border-radius: var(--r-md);
     background: var(--surface-2);
     color: var(--text);
@@ -70,10 +70,13 @@ html.admin-layout-shell .reports-summary-grid {
 html.admin-layout-shell .summary-card,
 html.admin-layout-shell .report-panel {
     min-width: 0;
-    border: 1px solid var(--text-muted);
+    border: 1px solid transparent;
     border-radius: var(--r-lg);
-    background: var(--surface);
+    background-image: linear-gradient(var(--surface), var(--surface)), var(--brand-grad);
+    background-origin: border-box;
+    background-clip: padding-box, border-box;
     color: var(--text);
+    box-shadow: var(--shadow-card);
 }
 
 html.admin-layout-shell .summary-card {
