@@ -17,20 +17,29 @@
             <p>Review reservations, payment status, and court schedules.</p>
         </header>
 
+    @php
+        $bookingListQueryKeys = ['search', 'date', 'status', 'page'];
+        $hasBookingListState = collect($bookingListQueryKeys)->contains(fn ($key) => request()->query->has($key));
+        $requestedBookingsView = request()->query('view');
+        $initialBookingsView = in_array($requestedBookingsView, ['list', 'board', 'month'], true)
+            ? $requestedBookingsView
+            : ($hasBookingListState ? 'list' : 'month');
+    @endphp
+
     <div class="bookings-workspace" id="bookingsWorkspace">
         <div class="bookings-view-tabs" role="tablist" aria-label="Bookings views">
-            <button type="button" class="bookings-view-tab is-active" role="tab" aria-selected="true" aria-controls="bookingListView" data-bookings-view="list">
+            <button type="button" class="bookings-view-tab {{ $initialBookingsView === 'list' ? 'is-active' : '' }}" role="tab" aria-selected="{{ $initialBookingsView === 'list' ? 'true' : 'false' }}" aria-controls="bookingListView" data-bookings-view="list">
                 Booking list
             </button>
-            <button type="button" class="bookings-view-tab" role="tab" aria-selected="false" aria-controls="courtBoardView" data-bookings-view="board">
+            <button type="button" class="bookings-view-tab {{ $initialBookingsView === 'board' ? 'is-active' : '' }}" role="tab" aria-selected="{{ $initialBookingsView === 'board' ? 'true' : 'false' }}" aria-controls="courtBoardView" data-bookings-view="board">
                 Daily court board
             </button>
-            <button type="button" class="bookings-view-tab" role="tab" aria-selected="false" aria-controls="courtMonthView" data-bookings-view="month">
+            <button type="button" class="bookings-view-tab {{ $initialBookingsView === 'month' ? 'is-active' : '' }}" role="tab" aria-selected="{{ $initialBookingsView === 'month' ? 'true' : 'false' }}" aria-controls="courtMonthView" data-bookings-view="month">
                 Month view
             </button>
         </div>
 
-        <section id="bookingListView" class="bookings-view-panel" role="tabpanel">
+        <section id="bookingListView" class="bookings-view-panel" role="tabpanel" @if ($initialBookingsView !== 'list') hidden @endif>
             {{-- Existing filters and table are intentionally kept in this view. --}}
             <div class="panel filters-panel">
                 <form method="GET" action="{{ route('bookings.index') }}" class="filters-form">
@@ -112,7 +121,7 @@
             </div>
         </section>
 
-        <section id="courtBoardView" class="bookings-view-panel" role="tabpanel" hidden>
+        <section id="courtBoardView" class="bookings-view-panel" role="tabpanel" @if ($initialBookingsView !== 'board') hidden @endif>
             <div class="panel court-board-panel">
                 <div class="court-board-toolbar">
                     <div>
@@ -133,13 +142,16 @@
                     <span><i class="legend-dot legend-pending"></i>Pending</span>
                     <span><i class="legend-dot legend-cancelled"></i>Cancelled</span>
                     <span><i class="legend-dot legend-closure"></i>Closure</span>
+                    <span><i class="legend-dot legend-walk-in"></i>Walk-in</span>
+                    <span><i class="legend-dot legend-maintenance"></i>Maintenance</span>
+                    <span><i class="legend-dot legend-open-play"></i>Open play</span>
                 </div>
 
                 <div id="courtBoardSummary" class="court-board-summary" aria-live="polite"></div>
                 <div id="courtBoard" class="court-board" aria-live="polite"></div>
             </div>
         </section>
-        <section id="courtMonthView" class="bookings-view-panel" role="tabpanel" hidden>
+        <section id="courtMonthView" class="bookings-view-panel" role="tabpanel" @if ($initialBookingsView !== 'month') hidden @endif>
             <div class="panel court-board-panel">
                 <div class="court-board-toolbar">
                     <div>
@@ -160,11 +172,89 @@
                     {{-- <span><i class="legend-dot legend-pending"></i>Pending</span>
                     <span><i class="legend-dot legend-cancelled"></i>Cancelled</span> --}}
                     <span><i class="legend-dot legend-closure"></i>Closure</span>
+                    <span><i class="legend-dot legend-walk-in"></i>Walk-in</span>
+                    <span><i class="legend-dot legend-maintenance"></i>Maintenance</span>
+                    <span><i class="legend-dot legend-open-play"></i>Open play</span>
                 </div>
 
                 <div id="courtMonthSummary" class="court-board-summary" aria-live="polite"></div>
                 <div class="court-month-scroll">
                     <div id="courtMonthGrid" class="court-month-grid" aria-live="polite"></div>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <div class="court-block-modal-overlay" id="courtBlockModal" hidden>
+        <section class="court-block-modal" role="dialog" aria-modal="true" aria-labelledby="courtBlockModalTitle">
+            <button type="button" class="court-block-modal-close" id="courtBlockModalClose" aria-label="Close dialog">&times;</button>
+
+            <div id="courtBlockFormPanel">
+                <h2 id="courtBlockModalTitle">Add calendar event</h2>
+                <p class="court-block-modal-intro">Choose what to apply to this time range.</p>
+                <form id="courtBlockForm">
+                    <div class="court-block-form-grid">
+                        <label>Type
+                            <select name="type" id="courtBlockType" required>
+                                <option value="closed">Closed</option>
+                                <option value="maintenance">Maintenance</option>
+                                <option value="open_play">Open play</option>
+                            <option value="walk_in">Walk-in</option>
+                            </select>
+                        </label>
+                        <label>Court
+                            <select name="court_id" id="courtBlockCourt" required></select>
+                        </label>
+                        <label>Title
+                            <input name="title" id="courtBlockTitle" type="text" maxlength="255" required>
+                        </label>
+                        <label class="walk-in-field" hidden>Customer name
+                            <input name="customer_name" id="courtWalkInCustomer" type="text" maxlength="255">
+                        </label>
+                        <label class="walk-in-field" hidden>Contact number
+                            <input name="contact_number" id="courtWalkInContact" type="tel" maxlength="30">
+                        </label>
+                        <label class="walk-in-field" hidden>Email (optional)
+                            <input name="email" id="courtWalkInEmail" type="email" maxlength="255">
+                        </label>
+                        <label>Date
+                            <input name="block_date" id="courtBlockDate" type="date" required>
+                        </label>
+                        <label>Start time
+                            <input name="start_time" id="courtBlockStart" type="time" required>
+                        </label>
+                        <label>End time
+                            <input name="end_time" id="courtBlockEnd" type="time" required>
+                        </label>
+                        <label class="walk-in-field" hidden>Amount
+                            <input name="amount" id="courtWalkInAmount" type="number" min="0" step="0.01">
+                        </label>
+                        <label class="walk-in-field" hidden>Payment method
+                            <select name="payment_method" id="courtWalkInPayment"><option value="cash">Cash</option><option value="gcash">GCash</option></select>
+                        </label>
+                        <label class="court-block-notes-field" data-block-field>Notes
+                            <textarea name="notes" id="courtBlockNotes" rows="3" maxlength="5000"></textarea>
+                        </label>
+                        <label class="walk-in-field" hidden>Notes
+                            <textarea name="walk_in_notes" id="courtWalkInNotes" rows="3" maxlength="5000"></textarea>
+                        </label>
+                    </div>
+                    <p class="court-block-modal-message" id="courtBlockFormMessage" role="status" aria-live="polite"></p>
+                    <div class="court-block-modal-actions">
+                        <button type="button" class="court-block-secondary" id="courtBlockCancel">Cancel</button>
+                        <button type="submit" class="court-block-primary" id="courtBlockSave">Save event</button>
+                    </div>
+                </form>
+            </div>
+
+            <div id="courtBlockDetailsPanel" hidden>
+                <h2 id="courtBlockDetailsTitle"></h2>
+                <p id="courtBlockDetailsMeta" class="court-block-modal-intro"></p>
+                <p id="courtBlockDetailsNotes"></p>
+                <p class="court-block-modal-message" id="courtBlockDeleteMessage" role="status" aria-live="polite"></p>
+                <div class="court-block-modal-actions">
+                    <button type="button" class="court-block-secondary" id="courtBlockDetailsClose">Close</button>
+                    <button type="button" class="court-block-danger" id="courtBlockDelete">Delete event</button>
                 </div>
             </div>
         </section>
@@ -178,11 +268,17 @@
         $courtBoardData = [
             'bookings'         => $courtBoardBookings,
             'closures'         => $courtBoardClosures,
+            'blocks'           => $courtBoardBlocks,
             'courts'           => $courts,
             'businessSettings' => [
                 'open_hour'       => $businessSettings->open_hour,
                 'close_hour'      => $businessSettings->close_hour,
                 'closed_weekdays' => $businessSettings->closed_weekdays,
+                'step_minutes'    => $businessSettings->step_minutes,
+                'peak_start_hour' => $businessSettings->peak_start_hour,
+                'peak_end_hour' => $businessSettings->peak_end_hour,
+                'peak_adjustment_type' => $businessSettings->peak_adjustment_type,
+                'peak_adjustment_value' => $businessSettings->peak_adjustment_value,
             ],
         ];
     @endphp

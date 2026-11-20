@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Booking;
 use App\Models\BusinessSetting;
 use App\Models\Court;
+use App\Models\CourtBlock;
 use App\Models\CourtClosure;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -43,6 +44,7 @@ class BookingController extends Controller
                 'start'    => substr((string) $booking->start_time, 0, 5),
                 'end'      => substr((string) $booking->end_time, 0, 5),
                 'status'   => $booking->status,
+                'source'   => $booking->source,
                 'amount'   => (float) $booking->amount,
                 'slots'    => $booking->slots->map(fn ($slot) => [
                     'date'  => $slot->date?->toDateString(),
@@ -65,12 +67,29 @@ class BookingController extends Controller
             ])
             ->values();
 
-        $courts = Court::orderBy('name')->get(['id', 'name']);
+        $courtBoardBlocks = CourtBlock::with('court')
+            ->whereBetween('block_date', [$boardStart, $boardEnd])
+            ->orderBy('block_date')
+            ->orderBy('start_time')
+            ->get()
+            ->map(fn (CourtBlock $block) => [
+                'id'         => $block->id,
+                'court_id'   => $block->court?->id,
+                'type'       => $block->type,
+                'title'      => $block->title,
+                'notes'      => $block->notes,
+                'block_date' => $block->block_date?->toDateString(),
+                'start_time' => substr((string) $block->start_time, 0, 5),
+                'end_time'   => substr((string) $block->end_time, 0, 5),
+            ])
+            ->values();
+
+        $courts = Court::orderBy('name')->get(['id', 'name', 'hourly_rate']);
 
         $businessSettings = BusinessSetting::current();
 
         return view('admin.bookings.index', compact(
-            'bookings', 'courts', 'courtBoardBookings', 'courtBoardClosures', 'businessSettings'
+            'bookings', 'courts', 'courtBoardBookings', 'courtBoardClosures', 'courtBoardBlocks', 'businessSettings'
         ));
     }
 }

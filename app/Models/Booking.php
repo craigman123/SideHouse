@@ -28,6 +28,8 @@ class Booking extends Model
         'confirmed_at',
         'reminder_sent_at',
         'status',
+        'source',
+        'notes',
     ];
 
     protected $casts = [

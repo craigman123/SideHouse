@@ -173,7 +173,8 @@ class CourtConflictService
             ->where(function ($query) use ($courtId) {
                 $query->whereNull('court_id')->orWhere('court_id', $courtId);
             })
-            ->whereBetween('block_date', [$firstDate->subDay()->toDateString(), $lastDate->toDateString()])
+            ->whereDate('block_date', '>=', $firstDate->subDay()->toDateString())
+            ->whereDate('block_date', '<=', $lastDate->toDateString())
             ->get();
 
         foreach ($blocks as $block) {

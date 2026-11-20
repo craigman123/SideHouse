@@ -8,6 +8,7 @@
     const data = JSON.parse(dataElement.textContent || '{}');
     const bookings  = data.bookings  || [];
     const closures  = data.closures  || [];
+    let blocks      = Array.isArray(data.blocks) ? data.blocks : [];
     const courts    = data.courts    || [];
     const bizSettings = data.businessSettings || {};
     // Open/close hours from BusinessSetting — fallback to sane defaults
@@ -29,6 +30,288 @@
     const monthInput = document.getElementById('courtMonthInput');
     const monthSummary = document.getElementById('courtMonthSummary');
     const monthGrid = document.getElementById('courtMonthGrid');
+    const stepMinutes = [15, 30, 60].includes(Number(bizSettings.step_minutes))
+        ? Number(bizSettings.step_minutes)
+        : 60;
+    const blockModal = document.getElementById('courtBlockModal');
+    const blockForm = document.getElementById('courtBlockForm');
+    const blockFormPanel = document.getElementById('courtBlockFormPanel');
+    const blockDetailsPanel = document.getElementById('courtBlockDetailsPanel');
+    const blockCourtSelect = document.getElementById('courtBlockCourt');
+    const blockFormMessage = document.getElementById('courtBlockFormMessage');
+    const blockDeleteMessage = document.getElementById('courtBlockDeleteMessage');
+    let selectedBlock = null;
+    let savingBlock = false;
+    const walkInFields = [...blockForm.querySelectorAll('.walk-in-field')];
+    const blockTitleLabel = document.getElementById('courtBlockTitle').closest('label');
+    const blockNotesLabel = blockForm.querySelector('[data-block-field]');
+    const walkInType = document.getElementById('courtBlockType');
+    const updateTypeFields = () => {
+        const walkIn = walkInType.value === 'walk_in';
+        walkInFields.forEach((field) => { field.hidden = !walkIn; });
+        blockTitleLabel.hidden = walkIn;
+        blockNotesLabel.hidden = walkIn;
+        document.getElementById('courtWalkInNotes').closest('label').hidden = !walkIn;
+        document.getElementById('courtBlockTitle').required = !walkIn;
+        document.getElementById('courtWalkInCustomer').required = walkIn;
+        document.getElementById('courtWalkInContact').required = walkIn;
+        blockCourtSelect.querySelector('option[value="all"]')?.toggleAttribute('hidden', walkIn);
+        if (walkIn && blockCourtSelect.value === 'all') blockCourtSelect.value = courts.length ? String(courts[0].id) : '';
+        if (walkIn) updateWalkInAmount();
+    };
+    const updateWalkInAmount = () => {
+        const court = courts.find((item) => String(item.id) === blockCourtSelect.value);
+        const amountInput = document.getElementById('courtWalkInAmount');
+        const startValue = document.getElementById('courtBlockStart').value;
+        const endValue = document.getElementById('courtBlockEnd').value;
+        if (!court || court.hourly_rate == null || !startValue || !endValue) {
+            amountInput.value = '';
+            amountInput.required = true;
+            return;
+        }
+        const toMinutes = (value) => Number(value.slice(0, 2)) * 60 + Number(value.slice(3, 5));
+        const start = toMinutes(startValue);
+        let end = toMinutes(endValue);
+        if (end <= start) end += 1440;
+        const step = stepMinutes;
+        if ((start % step) || (end % step) || end <= start) { amountInput.value = ''; amountInput.required = true; return; }
+        let total = 0;
+        for (let minute = start; minute < end; minute += step) {
+            const hour = Math.floor((minute % 1440) / 60);
+            const peakStart = Number(bizSettings.peak_start_hour);
+            const peakEnd = Number(bizSettings.peak_end_hour);
+            const configured = Number.isFinite(peakStart) && Number.isFinite(peakEnd)
+                && peakStart !== peakEnd && Number(bizSettings.peak_adjustment_value) > 0;
+            const peak = configured && (peakEnd > peakStart ? hour >= peakStart && hour < peakEnd : hour >= peakStart || hour < peakEnd);
+            let rate = Number(court.hourly_rate);
+            if (peak) rate = bizSettings.peak_adjustment_type === 'percent'
+                ? Math.round(rate * (1 + Number(bizSettings.peak_adjustment_value) / 100) * 100) / 100
+                : rate + Number(bizSettings.peak_adjustment_value);
+            total += rate * step / 60;
+        }
+        amountInput.value = total.toFixed(2);
+        amountInput.required = false;
+    };
+
+    const normalizeTime = (time) => String(time || '').slice(0, 5);
+    const normalizeBlock = (block) => ({
+        ...block,
+        block_date: String(block.block_date || '').slice(0, 10),
+        start_time: normalizeTime(block.start_time),
+        end_time: normalizeTime(block.end_time),
+    });
+    const notify = (message, type = 'success') => {
+        if (typeof window.showToast === 'function') window.showToast(message, type);
+    };
+    const csrfToken = () => document.querySelector('meta[name="csrf-token"]')?.content || '';
+    const formatTimeInput = (minutes) => {
+        const wrapped = ((minutes % 1440) + 1440) % 1440;
+        return `${String(Math.floor(wrapped / 60)).padStart(2, '0')}:${String(wrapped % 60).padStart(2, '0')}`;
+    };
+    const addDays = (dateValue, count) => {
+        const date = new Date(`${dateValue}T00:00:00`);
+        date.setDate(date.getDate() + count);
+        return toDateValue(date);
+    };
+    const overlaps = (aStart, aEnd, bStart, bEnd) => aStart < bEnd && aEnd > bStart;
+
+    const populateCourtSelect = () => {
+        blockCourtSelect.replaceChildren();
+        courts.forEach((court) => {
+            const option = document.createElement('option');
+            option.value = String(court.id);
+            option.textContent = court.name;
+            blockCourtSelect.append(option);
+        });
+        const allCourts = document.createElement('option');
+        allCourts.value = 'all';
+        allCourts.textContent = 'All courts';
+        blockCourtSelect.append(allCourts);
+        updateTypeFields();
+    };
+
+    const closeBlockModal = (force = false) => {
+        if (savingBlock && !force) return;
+        blockModal.hidden = true;
+        selectedBlock = null;
+        document.getElementById('courtWalkInCustomer').value = '';
+        document.getElementById('courtWalkInContact').value = '';
+        document.getElementById('courtWalkInEmail').value = '';
+        document.getElementById('courtWalkInNotes').value = '';
+    };
+
+    const openCreateModal = (selection) => {
+        populateCourtSelect();
+        blockModal.classList.remove('is-details');
+        blockModal.querySelector('[role="dialog"]').setAttribute('aria-labelledby', 'courtBlockModalTitle');
+        blockForm.reset();
+        updateTypeFields();
+        blockFormPanel.hidden = false;
+        blockDetailsPanel.hidden = true;
+        blockFormMessage.textContent = '';
+        blockFormMessage.classList.remove('is-error');
+        document.getElementById('courtBlockDate').value = selection.date;
+        document.getElementById('courtBlockStart').value = formatTimeInput(selection.startMinutes);
+        document.getElementById('courtBlockEnd').value = formatTimeInput(selection.endMinutes);
+        document.getElementById('courtBlockStart').step = stepMinutes * 60;
+        document.getElementById('courtBlockEnd').step = stepMinutes * 60;
+        blockCourtSelect.value = courts.length ? String(courts[0].id) : 'all';
+        blockModal.hidden = false;
+        document.getElementById('courtBlockType').focus();
+    };
+
+    const openBlockDetails = (block) => {
+        selectedBlock = block;
+        blockModal.classList.add('is-details');
+        blockModal.querySelector('[role="dialog"]').setAttribute('aria-labelledby', 'courtBlockDetailsTitle');
+        blockFormPanel.hidden = true;
+        blockDetailsPanel.hidden = false;
+        blockDeleteMessage.textContent = '';
+        blockDeleteMessage.classList.remove('is-error');
+        document.getElementById('courtBlockDetailsTitle').textContent = block.title || 'Calendar event';
+        const court = courts.find((item) => Number(item.id) === Number(block.court_id));
+        const courtLabel = block.court_id === null ? 'All courts' : (court?.name || 'Court');
+        document.getElementById('courtBlockDetailsMeta').textContent =
+            `${block.type.replace('_', ' ')} · ${courtLabel} · ${formatDate(block.block_date)} · ${block.start_time}–${block.end_time}`;
+        const notes = document.getElementById('courtBlockDetailsNotes');
+        notes.textContent = block.notes || '';
+        notes.hidden = !block.notes;
+        blockModal.hidden = false;
+        document.getElementById('courtBlockDetailsClose').focus();
+    };
+
+    document.getElementById('courtBlockModalClose').addEventListener('click', closeBlockModal);
+    walkInType.addEventListener('change', updateTypeFields);
+    [blockCourtSelect, document.getElementById('courtBlockStart'), document.getElementById('courtBlockEnd')]
+        .forEach((input) => input.addEventListener('change', updateWalkInAmount));
+    document.getElementById('courtBlockCancel').addEventListener('click', closeBlockModal);
+    document.getElementById('courtBlockDetailsClose').addEventListener('click', closeBlockModal);
+    blockModal.addEventListener('click', (event) => {
+        if (event.target === blockModal) closeBlockModal();
+    });
+    blockModal.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') closeBlockModal();
+    });
+
+    blockForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        if (savingBlock) return;
+
+        const formData = new FormData(blockForm);
+        const payload = Object.fromEntries(formData.entries());
+        const isWalkIn = payload.type === 'walk_in';
+        if (isWalkIn) {
+            payload.date = payload.block_date;
+            delete payload.block_date;
+            payload.court_id = Number(payload.court_id);
+            payload.notes = payload.walk_in_notes.trim() || null;
+            delete payload.walk_in_notes;
+            payload.amount = payload.amount === '' ? null : Number(payload.amount);
+        } else {
+            payload.court_id = payload.court_id === 'all' ? null : Number(payload.court_id);
+            payload.notes = payload.notes.trim() || null;
+        }
+        const token = csrfToken();
+        if (!token) {
+            blockFormMessage.textContent = 'Your security token is missing. Reload the page and try again.';
+            blockFormMessage.classList.add('is-error');
+            return;
+        }
+
+        savingBlock = true;
+        const saveButton = document.getElementById('courtBlockSave');
+        saveButton.disabled = true;
+        blockFormMessage.textContent = '';
+        try {
+            const response = await fetch(isWalkIn ? '/admin/bookings' : '/admin/blocks', {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: {
+                    Accept: 'application/json',
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': token,
+                },
+                body: JSON.stringify(payload),
+            });
+            const result = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                if (response.status === 419) {
+                    blockFormMessage.textContent = 'Your session or security token expired. Refresh the page and try again.';
+                    blockFormMessage.classList.add('is-error');
+                    return;
+                }
+                const fieldErrors = Object.values(result.errors || {}).flat();
+                const conflict = result.conflict;
+                const conflictDetail = conflict
+                    ? ` ${conflict.title || conflict.type}${conflict.start_time ? ` (${conflict.start_time}–${conflict.end_time})` : ''}.`
+                    : '';
+                blockFormMessage.textContent = `${result.message || 'Could not save this event.'}${conflictDetail}${fieldErrors.length ? ` ${fieldErrors.join(' ')}` : ''}`;
+                blockFormMessage.classList.add('is-error');
+                return;
+            }
+
+            if (result.block) blocks.push(normalizeBlock(result.block));
+            if (result.booking) bookings.push(result.booking);
+            closeBlockModal(true);
+            notify(result.message || (isWalkIn ? 'Walk-in booking created.' : 'Calendar event created.'), 'success');
+            renderMonth();
+        } catch (error) {
+            blockFormMessage.textContent = 'Something went wrong. Please try again.';
+            blockFormMessage.classList.add('is-error');
+        } finally {
+            savingBlock = false;
+            saveButton.disabled = false;
+        }
+    });
+
+    document.getElementById('courtBlockDelete').addEventListener('click', async () => {
+        if (!selectedBlock || savingBlock) return;
+        if (!window.confirm(`Delete “${selectedBlock.title || 'this event'}”?`)) return;
+
+        const token = csrfToken();
+        if (!token) {
+            blockDeleteMessage.textContent = 'Your security token is missing. Reload the page and try again.';
+            blockDeleteMessage.classList.add('is-error');
+            return;
+        }
+
+        savingBlock = true;
+        const deleteButton = document.getElementById('courtBlockDelete');
+        deleteButton.disabled = true;
+        try {
+            const response = await fetch(`/admin/blocks/${encodeURIComponent(selectedBlock.id)}`, {
+                method: 'DELETE',
+                credentials: 'same-origin',
+                headers: {
+                    Accept: 'application/json',
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': token,
+                },
+            });
+            const result = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                if (response.status === 419) {
+                    blockDeleteMessage.textContent = 'Your session or security token expired. Refresh the page and try again.';
+                    blockDeleteMessage.classList.add('is-error');
+                    return;
+                }
+                blockDeleteMessage.textContent = result.message || 'Could not delete this event.';
+                blockDeleteMessage.classList.add('is-error');
+                return;
+            }
+
+            blocks = blocks.filter((block) => String(block.id) !== String(selectedBlock.id));
+            closeBlockModal(true);
+            notify(result.message || 'Calendar event deleted.', 'success');
+            renderMonth();
+        } catch (error) {
+            blockDeleteMessage.textContent = 'Something went wrong. Please try again.';
+            blockDeleteMessage.classList.add('is-error');
+        } finally {
+            savingBlock = false;
+            deleteButton.disabled = false;
+        }
+    });
 
     const formatDate = (date) => new Date(`${date}T00:00:00`).toLocaleDateString('en-US', {
         weekday: 'long', month: 'long', day: 'numeric', year: 'numeric',
@@ -47,7 +330,16 @@
         return booking.date === date ? [{ start: booking.start, end: booking.end }] : [];
     };
 
-    const changeView = (view) => {
+    const queryParams = new URLSearchParams(window.location.search);
+    const listStateParams = ['search', 'date', 'status', 'page'];
+    const hasListState = listStateParams.some((key) => queryParams.has(key));
+    const requestedView = queryParams.get('view');
+    const initialView = ['list', 'board', 'month'].includes(requestedView)
+        ? requestedView
+        : (hasListState ? 'list' : 'month');
+
+    const changeView = (view, updateUrl = true) => {
+        if (!['list', 'board', 'month'].includes(view)) return;
         tabs.forEach((tab) => {
             const active = tab.dataset.bookingsView === view;
             tab.classList.toggle('is-active', active);
@@ -58,6 +350,11 @@
         });
         if (view === 'board') renderBoard();
         if (view === 'month') renderMonth();
+        if (updateUrl) {
+            const url = new URL(window.location.href);
+            url.searchParams.set('view', view);
+            window.history.replaceState(window.history.state, '', `${url.pathname}${url.search}${url.hash}`);
+        }
     };
 
     const makeEvent = (booking, window) => {
@@ -157,6 +454,72 @@
         return h * 60 + m;
     };
 
+    const blockWindowsForDate = (block, date) => {
+        const normalized = normalizeBlock(block);
+        const startMinutes = toMinutes(normalized.start_time);
+        const rawEndMinutes = toMinutes(normalized.end_time);
+        const overnight = rawEndMinutes <= startMinutes;
+        if (normalized.block_date === date) {
+            return [{
+                startMinutes,
+                endMinutes: overnight ? 1440 : rawEndMinutes,
+                block,
+            }];
+        }
+        if (overnight && rawEndMinutes > 0 && addDays(normalized.block_date, 1) === date) {
+            return [{ startMinutes: 0, endMinutes: rawEndMinutes, block }];
+        }
+        return [];
+    };
+
+    const rangeHasConflict = (date, startMinutes, endMinutes) => {
+        const weekday = new Date(`${date}T00:00:00`).getDay();
+        if (BIZ_CLOSED_WEEKDAYS.includes(weekday)
+            || closures.some((closure) => closure.date === date)) return true;
+
+        const bookingConflict = bookings.some((booking) => {
+            if (booking.status === 'cancelled') return false;
+            return eventWindows(booking, date).some((window) => {
+                const start = toMinutes(window.start);
+                let end = toMinutes(window.end);
+                if (end <= start) end += 1440;
+                return overlaps(startMinutes, endMinutes, start, end);
+            });
+        });
+        if (bookingConflict) return true;
+
+        return blocks.some((block) => blockWindowsForDate(block, date).some((window) =>
+            overlaps(startMinutes, endMinutes, window.startMinutes, window.endMinutes)
+        ));
+    };
+
+    const timeCellAtPoint = (event, column) => {
+        const hits = document.elementsFromPoint(event.clientX, event.clientY);
+        for (const hit of hits) {
+            const cell = hit.closest?.('.court-month-hour-cell');
+            if (cell && cell.closest('.court-month-date-col') === column) return cell;
+        }
+        // Booking bars and blocks sit above the cells; resolve against
+        // viewport rectangles so an overlay cannot interrupt a drag.
+        return Array.from(column.querySelectorAll('.court-month-hour-cell')).find((cell) => {
+            const rect = cell.getBoundingClientRect();
+            return event.clientX >= rect.left && event.clientX < rect.right
+                && event.clientY >= rect.top && event.clientY < rect.bottom;
+        }) || null;
+    };
+
+    const slotFromPoint = (event, column) => {
+        const cell = timeCellAtPoint(event, column);
+        if (!cell) return null;
+        const rect = cell.getBoundingClientRect();
+        const minuteWithinHour = Math.max(0, Math.min(59, (event.clientY - rect.top) / rect.height * 60));
+        const minute = Math.floor(minuteWithinHour / stepMinutes) * stepMinutes;
+        return {
+            date: cell.dataset.date,
+            minutes: Number(cell.dataset.hour) * 60 + minute,
+        };
+    };
+
     const formatHourLabel = (hour) => {
         const h = ((hour % 24) + 24) % 24;
         const period = h >= 12 ? 'PM' : 'AM';
@@ -226,6 +589,45 @@
         dateInput.value = date;
         changeView('board');
     };
+
+    let monthInitialScrollDone = false;
+    let activeMonthDrag = null;
+
+    const lockMonthScroll = () => {
+        if (!activeMonthDrag) return;
+        const { scrollArea, scrollLeft, scrollTop } = activeMonthDrag;
+        if (scrollArea.scrollLeft !== scrollLeft) scrollArea.scrollLeft = scrollLeft;
+        if (scrollArea.scrollTop !== scrollTop) scrollArea.scrollTop = scrollTop;
+    };
+    const preventMonthScroll = (event) => {
+        if (activeMonthDrag) event.preventDefault();
+    };
+
+    const beginMonthDrag = (pointerId) => {
+        const scrollArea = monthGrid.closest('.court-month-scroll');
+        if (!scrollArea) return;
+        activeMonthDrag = { pointerId, scrollArea, scrollLeft: scrollArea.scrollLeft, scrollTop: scrollArea.scrollTop };
+        monthGrid.classList.add('is-selecting-range');
+        scrollArea.classList.add('is-selecting-range');
+        scrollArea.addEventListener('scroll', lockMonthScroll, { passive: true });
+        scrollArea.addEventListener('wheel', preventMonthScroll, { passive: false });
+        scrollArea.addEventListener('touchmove', preventMonthScroll, { passive: false });
+    };
+
+    const endMonthDrag = (pointerId) => {
+        if (!activeMonthDrag || activeMonthDrag.pointerId !== pointerId) return;
+        const { scrollArea } = activeMonthDrag;
+        activeMonthDrag = null;
+        scrollArea.removeEventListener('scroll', lockMonthScroll);
+        scrollArea.removeEventListener('wheel', preventMonthScroll);
+        scrollArea.removeEventListener('touchmove', preventMonthScroll);
+        monthGrid.classList.remove('is-selecting-range');
+        scrollArea.classList.remove('is-selecting-range');
+    };
+
+    const preventGridNativeDrag = (event) => event.preventDefault();
+    monthGrid.addEventListener('dragstart', preventGridNativeDrag);
+    monthGrid.addEventListener('selectstart', preventGridNativeDrag);
 
     // ── Professional muted palette ──────────────────────────────────────────
     // Replaces the neon rainbow. Colours are readable on dark backgrounds
@@ -345,13 +747,14 @@
         monthGrid.append(header);
 
         // ── Body: one row per hour, one column per date ─────────────────────
-        // Pre-build merged booking windows per date.
+        // Pre-build booking and block windows per date.
         const windowsByDate = new Map();
         dates.forEach((dateStr) => {
             const raw = bookings
                 .filter((booking) => booking.status !== 'cancelled')
                 .flatMap((booking) => eventWindows(booking, dateStr).map((window) => ({ booking, window })))
                 .map(({ booking, window }) => ({
+                    kind: 'booking',
                     booking,
                     startMinutes: toMinutes(window.start),
                     endMinutes: toMinutes(window.end) === 0 ? 24 * 60 : toMinutes(window.end),
@@ -372,7 +775,12 @@
                     mergedByBooking.set(item.booking, runs);
                 });
 
-            windowsByDate.set(dateStr, [...mergedByBooking.values()].flat());
+            const blockEvents = blocks.flatMap((block) => blockWindowsForDate(block, dateStr)
+                .map((window) => ({ ...window, kind: 'block' })));
+            windowsByDate.set(dateStr, [
+                ...[...mergedByBooking.values()].flat(),
+                ...blockEvents,
+            ]);
         });
 
         // One wrapper div that holds all rows — positions bars absolutely.
@@ -414,6 +822,7 @@
 
             const col = document.createElement('div');
             col.className = 'court-month-date-col' + (isToday ? ' is-today' : '') + (isWeekdayClosed ? ' is-closed-weekday' : '') + (hasAnyClosure ? ' is-closed' : '');
+            col.dataset.date = dateStr;
             col.style.cssText = `flex:0 0 ${COL_W}px;width:${COL_W}px;position:relative;box-sizing:border-box;` +
                 (hasAnyClosure
                     ? `border-right:2px solid var(--danger);background:var(--surface-2);`
@@ -424,6 +833,12 @@
             rowPlan.forEach((row) => {
                 const cell = document.createElement('div');
                 if (row.type === 'hour') {
+                    cell.className = 'court-month-hour-cell';
+                    cell.dataset.date = dateStr;
+                    cell.dataset.hour = String(row.hour);
+                    cell.setAttribute('role', 'button');
+                    cell.tabIndex = 0;
+                    cell.setAttribute('aria-label', `${formatDate(dateStr)}, ${formatHourLabel(row.hour)}. Press Enter to add an event for one step.`);
                     cell.style.cssText = `height:${ROW_H}px;box-sizing:border-box;` +
                         (hasAnyClosure ? '' : `border-bottom:1px solid var(--text-muted);`);
                 } else {
@@ -455,7 +870,7 @@
             const laneCount = laned.length ? Math.max(...laned.map((w) => w.laneCount)) : 1;
             const barW = Math.floor((COL_W - 4) / Math.max(1, laneCount));
 
-            laned.forEach(({ booking, startMinutes, endMinutes, lane }, index) => {
+            laned.forEach(({ kind, booking, block, startMinutes, endMinutes, lane }, index) => {
                 const startHourOfWindow = Math.floor(startMinutes / 60);
                 const rowTop = hourTop.has(startHourOfWindow) ? hourTop.get(startHourOfWindow) : null;
 
@@ -467,6 +882,22 @@
 
                 const topPx = rowTop + ((startMinutes % 60) / 60) * ROW_H;
                 const heightPx = Math.max(18, ((endMinutes - startMinutes) / 60) * ROW_H);
+
+                if (kind === 'block') {
+                    const event = document.createElement('button');
+                    event.type = 'button';
+                    event.className = `court-month-block type-${block.type}`;
+                    event.style.cssText = `top:${topPx}px;left:${lane * barW + 2}px;width:${barW - 2}px;height:${heightPx}px;`;
+                    event.textContent = block.title || block.type.replace('_', ' ');
+                    event.title = `${block.title || block.type} · ${block.start_time}–${block.end_time}`;
+                    event.setAttribute('aria-label', `${block.title || block.type}, ${block.type.replace('_', ' ')}, ${formatDate(block.block_date)}. Open event details.`);
+                    event.addEventListener('click', (clickEvent) => {
+                        clickEvent.stopPropagation();
+                        openBlockDetails(block);
+                    });
+                    col.append(event);
+                    return;
+                }
 
                 const colors = STATUS_COLORS[booking.status] || STATUS_COLORS.paid;
                 const accentColor = LANE_ACCENTS[index % LANE_ACCENTS.length];
@@ -496,10 +927,136 @@
                     padding: 0;
                     letter-spacing: .03em;
                 `;
-                bar.textContent = initials;
-                bar.title = `${booking.customer || 'Walk-in'} · ${booking.court || ''} · ${booking.status}`;
+                bar.textContent = booking.source === 'walk_in' ? 'Walk-in' : initials;
+                if (booking.source === 'walk_in') bar.classList.add('source-walk-in');
+                bar.title = `${booking.source === 'walk_in' ? 'Walk-in · ' : ''}${booking.customer || 'Booking'} · ${booking.court || ''} · ${booking.status}`;
                 bar.addEventListener('click', () => jumpToDay(dateStr));
                 col.append(bar);
+            });
+
+            const yForMinute = (minutes) => {
+                const hour = Math.floor(minutes / 60);
+                const minute = minutes % 60;
+                if (hourTop.has(hour)) return hourTop.get(hour) + (minute / 60) * ROW_H;
+                for (let previousHour = hour - 1; previousHour >= 0; previousHour--) {
+                    if (hourTop.has(previousHour)) return hourTop.get(previousHour) + ROW_H;
+                }
+                return 0;
+            };
+            const showGhost = (selection) => {
+                if (!selection.ghost) {
+                    selection.ghost = document.createElement('div');
+                    selection.ghost.className = 'court-month-selection-ghost';
+                    selection.ghost.setAttribute('aria-hidden', 'true');
+                    col.append(selection.ghost);
+                }
+
+                const top = yForMinute(selection.startMinutes);
+                const bottom = yForMinute(selection.endMinutes);
+                selection.ghost.style.top = `${top}px`;
+                selection.ghost.style.height = `${Math.max(8, bottom - top)}px`;
+                const overnight = BIZ_CLOSE_HOUR <= BIZ_OPEN_HOUR;
+                const crossesClosedBand = overnight
+                    && selection.startMinutes < BIZ_CLOSE_HOUR * 60
+                    && selection.endMinutes > BIZ_OPEN_HOUR * 60;
+                const outsideHours = overnight
+                    ? crossesClosedBand
+                    : selection.startMinutes < BIZ_OPEN_HOUR * 60 || selection.endMinutes > BIZ_CLOSE_HOUR * 60;
+                const conflict = outsideHours || rangeHasConflict(
+                    selection.date,
+                    selection.startMinutes,
+                    selection.endMinutes,
+                );
+                selection.ghost.classList.toggle('is-conflict', conflict);
+            };
+            const finishPointerSelection = (selection, cancelled = false) => {
+                if (selection.ghost) selection.ghost.remove();
+                if (!cancelled) {
+                    openCreateModal({
+                        date: selection.date,
+                        startMinutes: selection.startMinutes,
+                        endMinutes: selection.endMinutes,
+                    });
+                }
+            };
+
+            col.addEventListener('pointerdown', (pointerEvent) => {
+                if ((pointerEvent.pointerType === 'mouse' && pointerEvent.button !== 0)
+                    || pointerEvent.target.closest('.court-month-bar, .court-month-block')) return;
+                const slot = slotFromPoint(pointerEvent, col);
+                if (!slot) return;
+
+                pointerEvent.preventDefault();
+                col.setPointerCapture(pointerEvent.pointerId);
+                beginMonthDrag(pointerEvent.pointerId);
+                const selection = {
+                    pointerId: pointerEvent.pointerId,
+                    date: dateStr,
+                    origin: slot.minutes,
+                    startMinutes: slot.minutes,
+                    endMinutes: slot.minutes + stepMinutes,
+                    ghost: null,
+                };
+                col._courtMonthSelection = selection;
+                showGhost(selection);
+            });
+
+            col.addEventListener('pointermove', (pointerEvent) => {
+                const selection = col._courtMonthSelection;
+                if (!selection || selection.pointerId !== pointerEvent.pointerId) return;
+                pointerEvent.preventDefault();
+                lockMonthScroll();
+                const slot = slotFromPoint(pointerEvent, col);
+                if (!slot || slot.date !== selection.date) return;
+                const endSlot = slot.minutes;
+                selection.startMinutes = Math.min(selection.origin, endSlot);
+                selection.endMinutes = Math.max(selection.origin, endSlot) + stepMinutes;
+                showGhost(selection);
+            });
+
+            col.addEventListener('pointerup', (pointerEvent) => {
+                const selection = col._courtMonthSelection;
+                if (!selection || selection.pointerId !== pointerEvent.pointerId) return;
+                pointerEvent.preventDefault();
+                const slot = slotFromPoint(pointerEvent, col);
+                if (slot && slot.date === selection.date) {
+                    selection.startMinutes = Math.min(selection.origin, slot.minutes);
+                    selection.endMinutes = Math.max(selection.origin, slot.minutes) + stepMinutes;
+                }
+                col._courtMonthSelection = null;
+                if (col.hasPointerCapture(pointerEvent.pointerId)) col.releasePointerCapture(pointerEvent.pointerId);
+                endMonthDrag(pointerEvent.pointerId);
+                finishPointerSelection(selection);
+            });
+
+            col.addEventListener('pointercancel', (pointerEvent) => {
+                const selection = col._courtMonthSelection;
+                if (!selection || selection.pointerId !== pointerEvent.pointerId) return;
+                col._courtMonthSelection = null;
+                if (col.hasPointerCapture(pointerEvent.pointerId)) col.releasePointerCapture(pointerEvent.pointerId);
+                endMonthDrag(pointerEvent.pointerId);
+                finishPointerSelection(selection, true);
+            });
+
+            col.addEventListener('lostpointercapture', (pointerEvent) => {
+                const selection = col._courtMonthSelection;
+                if (!selection || selection.pointerId !== pointerEvent.pointerId) return;
+                col._courtMonthSelection = null;
+                endMonthDrag(pointerEvent.pointerId);
+                finishPointerSelection(selection, true);
+            });
+
+            col.querySelectorAll('.court-month-hour-cell').forEach((cell) => {
+                cell.addEventListener('keydown', (keyEvent) => {
+                    if (keyEvent.key !== 'Enter' && keyEvent.key !== ' ') return;
+                    keyEvent.preventDefault();
+                    const startMinutes = Number(cell.dataset.hour) * 60;
+                    openCreateModal({
+                        date: dateStr,
+                        startMinutes,
+                        endMinutes: startMinutes + stepMinutes,
+                    });
+                });
             });
 
             body.append(col);
@@ -543,13 +1100,35 @@
         monthGrid.append(body);
 
         const monthLabel = new Date(year, month - 1, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-        const activeCount = [...windowsByDate.values()].flat().filter(({ booking }) => booking.status !== 'cancelled').length;
+        const activeCount = [...windowsByDate.values()].flat().filter((event) => event.kind === 'booking').length;
         monthSummary.textContent = `${monthLabel} · ${activeCount} active reservation${activeCount === 1 ? '' : 's'}`;
+
+        if (!monthInitialScrollDone) {
+            monthInitialScrollDone = true;
+            const scrollArea = monthGrid.closest('.court-month-scroll');
+            const todayColumn = Array.from(monthGrid.querySelectorAll('.court-month-date-col'))
+                .find((column) => column.dataset.date === todayValue);
+            if (scrollArea) {
+                requestAnimationFrame(() => {
+                    const openingTop = hourTop.get(BIZ_OPEN_HOUR) || 0;
+                    scrollArea.scrollTop = Math.max(0, openingTop - ROW_H);
+                    if (todayColumn) {
+                        const availableWidth = scrollArea.clientWidth - TIME_LABEL_W;
+                        scrollArea.scrollLeft = Math.max(
+                            0,
+                            todayColumn.offsetLeft - TIME_LABEL_W - Math.max(0, (availableWidth - COL_W) / 2),
+                        );
+                    }
+                });
+            }
+        }
     };
 
     tabs.forEach((tab) => tab.addEventListener('click', () => changeView(tab.dataset.bookingsView)));
     dateInput.addEventListener('change', renderBoard);
     monthInput.addEventListener('change', renderMonth);
+
+    changeView(initialView, false);
 
     workspace.querySelectorAll('[data-month-nav]').forEach((button) => {
         button.addEventListener('click', () => {

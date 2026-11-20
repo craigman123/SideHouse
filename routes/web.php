@@ -181,6 +181,9 @@ Route::middleware(['auth', 'admin', 'admin.mfa', 'throttle:120,1'])->group(funct
 
     // Bookings CRUD
     Route::get('/bookings', [BookingController::class, 'index'])->name('bookings.index');
+    Route::post('/admin/bookings', [App\Http\Controllers\Admin\WalkInBookingController::class, 'store'])
+        ->middleware('throttle:20,1')
+        ->name('admin.bookings.walk-in.store');
     Route::post('/admin/blocks', [CourtBlockController::class, 'store'])
         ->middleware('throttle:20,1')
         ->name('admin.blocks.store');
