@@ -1,500 +1,457 @@
-/* ---------- Admin Income Reports ---------- */
-:root {
-    --main-bg: #161b22;
-    --main-border: #30363d;
-    --card-bg: #fff;
-    --selected-bg: #0f1621;
-    --selected-text: #fcfcfc;
-    --reports-card-bg: #161b22;
-    --summary-text: hsl(225, 100%, 99%);
-    --reports-text: hsl(225, 100%, 99%);
-    --skeleton-base: #232b36;
-    --skeleton-highlight: #313d4c;
+html.admin-layout-shell .reports-page {
+    display: grid;
+    gap: var(--s5);
+    width: 100%;
+    max-width: 1200px;
+    min-width: 0;
+    margin-inline: auto;
+    padding: var(--s2);
+    color: var(--text);
 }
 
-.reports-page {
-    display: flex;
-    flex-direction: column;
-    gap: 24px;
-    padding: 24px;
-}
-
-.reports-header {
+html.admin-layout-shell .reports-header {
     display: flex;
     align-items: flex-start;
     justify-content: space-between;
     flex-wrap: wrap;
-    gap: 16px;
+    gap: var(--s4);
 }
 
-.reports-title {
+html.admin-layout-shell .reports-title {
     margin: 0;
-    font-size: 1.5rem;
-    font-weight: 700;
+    color: var(--text);
+    font-size: var(--font-size-h2);
+    font-weight: var(--font-weight-h2);
 }
 
-.reports-subtitle {
-    margin: 4px 0 0;
-    color: var(--reports-muted, #6b7280);
-    font-size: 0.9rem;
+html.admin-layout-shell .reports-subtitle {
+    margin: var(--s2) 0 0;
+    color: var(--text-muted);
+    font-size: var(--font-size-small);
+    line-height: var(--line-height-body);
 }
 
-/* ---------- Period dropdown ---------- */
-
-.reports-period-select-wrap {
+html.admin-layout-shell .reports-period-select-wrap {
     display: inline-flex;
     align-items: center;
-    gap: 10px;
+    gap: var(--s3);
 }
 
-.reports-period-label {
-    font-size: 0.8rem;
-    font-weight: 600;
-    color: var(--reports-muted, #6b7280);
+html.admin-layout-shell .reports-period-label {
+    color: var(--text-muted);
+    font-size: var(--font-size-small);
+    font-weight: var(--font-weight-button);
     text-transform: uppercase;
-    letter-spacing: 0.03em;
 }
 
-.reports-period-select {
-    appearance: none;
-    -webkit-appearance: none;
-    -moz-appearance: none;
-    background-color: var(--selected-bg);
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='%236b7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='5 8 10 13 15 8'/%3E%3C/svg%3E");
-    background-repeat: no-repeat;
-    background-position: right 12px center;
-    background-size: 14px;
-    color: var(--reports-text, var(--selected-text));
-    border: 1px solid var(--reports-border, var(--main-border));
-    border-radius: 10px;
-    padding: 8px 34px 8px 14px;
-    font-size: 0.85rem;
-    font-weight: 600;
-    font-family: inherit;
+html.admin-layout-shell .reports-period-select {
+    min-width: 160px;
+    min-height: 48px;
+    padding: var(--s2) var(--s4);
+    border: 1px solid var(--text-muted);
+    border-radius: var(--r-md);
+    background: var(--surface-2);
+    color: var(--text);
+    font-family: var(--font-family);
+    font-size: var(--font-size-body);
     cursor: pointer;
-    transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
-.reports-period-select:hover {
-    border-color: var(--reports-accent, #2563eb);
+html.admin-layout-shell .reports-period-select:hover {
+    border-color: var(--brand);
 }
 
-.reports-period-select:focus {
-    outline: none;
-    border-color: var(--reports-accent, #2563eb);
-    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.25);
-}
-
-.reports-period-select option {
-    background: var(--selected-bg);
-    color: var(--reports-text, var(--selected-text));
-}
-
-/* ---------- Summary cards ---------- */
-
-.reports-summary-grid {
+html.admin-layout-shell .reports-summary-grid {
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 16px;
+    gap: var(--s4);
 }
 
-.summary-card {
+html.admin-layout-shell .summary-card,
+html.admin-layout-shell .report-panel {
+    min-width: 0;
+    border: 1px solid var(--text-muted);
+    border-radius: var(--r-lg);
+    background: var(--surface);
+    color: var(--text);
+}
+
+html.admin-layout-shell .summary-card {
     display: flex;
     flex-direction: column;
-    gap: 6px;
-    background: var(--reports-card-bg, var(--card-bg));
-    border: 1px solid var(--reports-border, var(--main-border));
-    border-radius: 14px;
-    padding: 18px 20px;
+    gap: var(--s2);
+    padding: var(--s4);
 }
 
-.summary-card-label {
-    font-size: 0.8rem;
-    font-weight: 600;
-    color: var(--summary-text);
+html.admin-layout-shell .summary-card-label {
+    color: var(--text-muted);
+    font-size: var(--font-size-small);
+    font-weight: var(--font-weight-button);
     text-transform: uppercase;
-    letter-spacing: 0.03em;
 }
 
-/* Wraps the value so its skeleton placeholder can sit exactly on top of
-   it (same box, same height) instead of the card resizing/jumping when
-   loading finishes. */
-.summary-card-value-wrap {
+html.admin-layout-shell .summary-card-value-wrap {
     position: relative;
-    min-height: 1.9rem;
     display: flex;
     align-items: center;
+    min-width: 0;
+    min-height: 2.5rem;
 }
 
-.summary-card-value {
-    font-size: 1.6rem;
-    font-weight: 700;
-    color: var(--reports-text);
+html.admin-layout-shell .summary-card-value {
+    color: var(--text);
+    font-size: var(--font-size-h3);
+    font-weight: var(--font-weight-h2);
+    overflow-wrap: anywhere;
 }
 
-/* ---------- Panels ---------- */
-
-.report-panel {
-    background: var(--reports-card-bg, #161b22);
-    border: 1px solid var(--reports-border, #30363d);
-    border-radius: 14px;
-    padding: 20px;
+html.admin-layout-shell .report-panel {
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: var(--s3);
+    padding: var(--s5);
 }
 
-.report-panel-header h2 {
+html.admin-layout-shell .report-panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--s3);
+}
+
+html.admin-layout-shell .report-panel-header h2 {
     margin: 0;
-    font-size: 1.05rem;
-    font-weight: 700;
+    color: var(--text);
+    font-size: var(--font-size-h3);
+    font-weight: var(--font-weight-h3);
 }
 
-.report-panel-grid {
+html.admin-layout-shell .report-panel-grid {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 16px;
+    gap: var(--s4);
 }
 
-.report-chart-wrap {
-    position: relative;
-    height: 260px;
-}
-
-.report-chart-wrap-wide {
-    height: 320px;
-}
-
-.report-empty-note {
-    margin: 0;
-    text-align: center;
-    color: var(--reports-muted, #6b7280);
-    font-size: 0.85rem;
-}
-
-.reports-error {
-    color: #b91c1c;
-    background: #fef2f2;
-    border: 1px solid #fecaca;
-    border-radius: 10px;
-    padding: 12px 16px;
-    font-size: 0.9rem;
-}
-
-/* ---------- Loading skeleton ---------- */
-/* #reportsPage carries the .is-loading class from page load until the
-   first successful/failed fetch resolves, and again briefly on every
-   period-toggle refresh. Real content stays in the DOM (so layout
-   dimensions don't shift) and is just visually swapped for a skeleton
-   on top of it. */
-
-.skeleton {
-    display: none;
-    background: linear-gradient(90deg, var(--skeleton-base) 25%, var(--skeleton-highlight) 37%, var(--skeleton-base) 63%);
-    background-size: 400% 100%;
-    animation: skeleton-shimmer 1.4s ease infinite;
-    border-radius: 6px;
-}
-
-.reports-page.is-loading .skeleton {
-    display: block;
-}
-
-.reports-page.is-loading .summary-card-value {
-    visibility: hidden;
-}
-
-.summary-card-value-wrap .skeleton {
-    position: absolute;
-    inset: 0;
-    width: 70%;
-    height: 1.5rem;
-    margin: auto 0;
-}
-
-.reports-page.is-loading .report-chart-wrap canvas {
-    visibility: hidden;
-}
-
-.chart-skeleton {
-    display: none;
-    position: absolute;
-    inset: 0;
-    align-items: flex-end;
-    justify-content: center;
-}
-
-.reports-page.is-loading .chart-skeleton {
-    display: flex;
-}
-
-/* Bar-chart skeleton: a row of bars with staggered heights/timing so it
-   doesn't look like a single flat block pulsing. */
-.chart-skeleton-bars {
-    display: flex;
-    align-items: flex-end;
-    justify-content: center;
-    gap: 12px;
-    width: 100%;
-    height: 100%;
-    padding: 0 8px 8px;
-}
-
-.chart-skeleton-bars span {
-    flex: 1;
-    max-width: 32px;
-    border-radius: 4px 4px 0 0;
-    background: linear-gradient(90deg, var(--skeleton-base) 25%, var(--skeleton-highlight) 37%, var(--skeleton-base) 63%);
-    background-size: 400% 100%;
-    animation: skeleton-shimmer 1.4s ease infinite;
-}
-
-.chart-skeleton-bars span:nth-child(1) { height: 40%; animation-delay: 0s; }
-.chart-skeleton-bars span:nth-child(2) { height: 65%; animation-delay: 0.05s; }
-.chart-skeleton-bars span:nth-child(3) { height: 50%; animation-delay: 0.1s; }
-.chart-skeleton-bars span:nth-child(4) { height: 80%; animation-delay: 0.15s; }
-.chart-skeleton-bars span:nth-child(5) { height: 55%; animation-delay: 0.2s; }
-.chart-skeleton-bars span:nth-child(6) { height: 70%; animation-delay: 0.25s; }
-
-/* Pie-chart skeleton: a plain shimmering ring/disc standing in for the
-   donut until real data arrives. */
-.chart-skeleton-pie {
-    width: 65%;
-    max-width: 180px;
-    aspect-ratio: 1 / 1;
-    border-radius: 50%;
-    margin: auto;
-    align-self: center;
-}
-
-@keyframes skeleton-shimmer {
-    0% { background-position: 100% 50%; }
-    100% { background-position: 0 50%; }
-}
-
-@media (prefers-reduced-motion: reduce) {
-    .skeleton,
-    .chart-skeleton-bars span {
-        animation: none;
-        background: var(--skeleton-base);
-    }
-}
-
-/* ---------- System health ---------- */
-
-.reports-title-sm {
-    font-size: 1.15rem;
-}
-
-.report-panel-grid-health {
+html.admin-layout-shell .report-panel-grid-health {
     grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
-.health-status-row {
+html.admin-layout-shell .report-chart-wrap {
+    position: relative;
+    min-width: 0;
+    height: 260px;
+}
+
+html.admin-layout-shell .report-chart-wrap-wide {
+    height: 320px;
+}
+
+html.admin-layout-shell .report-empty-note {
+    margin: 0;
+    color: var(--text-muted);
+    font-size: var(--font-size-small);
+    text-align: center;
+}
+
+html.admin-layout-shell .reports-error {
+    margin: 0;
+    padding: var(--s4);
+    border: 1px solid var(--danger);
+    border-left: var(--s1) solid var(--danger);
+    border-radius: var(--r-md);
+    background: color-mix(in srgb, var(--danger) 12%, var(--surface));
+    color: var(--text);
+    font-size: var(--font-size-body);
+}
+
+html.admin-layout-shell .skeleton {
+    display: none;
+    border-radius: var(--r-sm);
+    background: linear-gradient(90deg, var(--surface-2), color-mix(in srgb, var(--text) 12%, var(--surface)), var(--surface-2));
+    background-size: 400% 100%;
+    animation: reportsShimmer 1.4s ease infinite;
+}
+
+html.admin-layout-shell .reports-page.is-loading .skeleton {
+    display: block;
+}
+
+html.admin-layout-shell .reports-page.is-loading .summary-card-value,
+html.admin-layout-shell .reports-page.is-loading .report-chart-wrap canvas {
+    visibility: hidden;
+}
+
+html.admin-layout-shell .summary-card-value-wrap .skeleton {
+    position: absolute;
+    inset: 0;
+    width: 70%;
+    height: var(--s5);
+    margin-block: auto;
+}
+
+html.admin-layout-shell .chart-skeleton {
+    position: absolute;
+    inset: 0;
+    display: none;
+    align-items: flex-end;
+    justify-content: center;
+}
+
+html.admin-layout-shell .reports-page.is-loading .chart-skeleton {
+    display: flex;
+}
+
+html.admin-layout-shell .chart-skeleton-bars {
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    gap: var(--s3);
+    width: 100%;
+    height: 100%;
+    padding: 0 var(--s2) var(--s2);
+}
+
+html.admin-layout-shell .chart-skeleton-bars span {
+    flex: 1;
+    max-width: var(--s6);
+    border-radius: var(--r-sm) var(--r-sm) 0 0;
+    background: linear-gradient(90deg, var(--surface-2), color-mix(in srgb, var(--text) 12%, var(--surface)), var(--surface-2));
+    background-size: 400% 100%;
+    animation: reportsShimmer 1.4s ease infinite;
+}
+
+html.admin-layout-shell .chart-skeleton-bars span:nth-child(1) { height: 40%; }
+html.admin-layout-shell .chart-skeleton-bars span:nth-child(2) { height: 65%; }
+html.admin-layout-shell .chart-skeleton-bars span:nth-child(3) { height: 50%; }
+html.admin-layout-shell .chart-skeleton-bars span:nth-child(4) { height: 80%; }
+html.admin-layout-shell .chart-skeleton-bars span:nth-child(5) { height: 55%; }
+html.admin-layout-shell .chart-skeleton-bars span:nth-child(6) { height: 70%; }
+
+html.admin-layout-shell .chart-skeleton-pie {
+    align-self: center;
+    width: 65%;
+    max-width: 180px;
+    aspect-ratio: 1;
+    margin: auto;
+    border-radius: 50%;
+}
+
+@keyframes reportsShimmer {
+    from { background-position: 100% 50%; }
+    to { background-position: 0 50%; }
+}
+
+html.admin-layout-shell .health-status-row,
+html.admin-layout-shell .health-stat-row {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 6px 0;
+    gap: var(--s3);
+    padding: var(--s2) 0;
 }
 
-.health-status-label {
-    font-size: 0.85rem;
-    color: var(--reports-muted, #6b7280);
+html.admin-layout-shell .health-stat-row {
+    border-top: 1px solid var(--border);
 }
 
-.health-status-pill {
+html.admin-layout-shell .health-status-label,
+html.admin-layout-shell .health-stat-label,
+html.admin-layout-shell .table-name {
+    color: var(--text-muted);
+    font-size: var(--font-size-small);
+}
+
+html.admin-layout-shell .health-status-pill {
     display: inline-flex;
     align-items: center;
-    gap: 6px;
-    padding: 3px 10px;
-    border-radius: 999px;
-    font-size: 0.78rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.03em;
+    gap: var(--s2);
+    min-height: 32px;
+    padding: var(--s1) var(--s3);
+    border: 1px solid currentColor;
+    border-radius: var(--r-pill);
+    font-size: var(--font-size-small);
+    font-weight: var(--font-weight-button);
 }
 
-.health-status-pill::before {
-    content: '';
-    width: 7px;
-    height: 7px;
+html.admin-layout-shell .health-status-pill::before {
+    width: var(--s2);
+    height: var(--s2);
     border-radius: 50%;
     background: currentColor;
+    content: '';
 }
 
-.health-status-pill.status-up {
-    color: #10b981;
-    background: rgba(16, 185, 129, 0.12);
+html.admin-layout-shell .health-status-pill.status-up {
+    background: color-mix(in srgb, var(--brand) 14%, var(--surface));
+    color: var(--brand-hover);
 }
 
-.health-status-pill.status-down {
-    color: #ef4444;
-    background: rgba(239, 68, 68, 0.12);
+html.admin-layout-shell .health-status-pill.status-down {
+    background: color-mix(in srgb, var(--danger) 14%, var(--surface));
+    color: var(--danger);
 }
 
-.health-stat-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 6px 0;
-    border-top: 1px solid var(--reports-border, var(--main-border));
-    font-size: 0.85rem;
+html.admin-layout-shell .health-stat-value,
+html.admin-layout-shell .table-rows {
+    color: var(--text);
+    font-weight: var(--font-weight-button);
+    text-align: right;
+    overflow-wrap: anywhere;
 }
 
-.health-stat-label {
-    color: var(--reports-muted, #6b7280);
-}
-
-.health-stat-value {
-    font-weight: 700;
-    color: var(--reports-text);
-}
-
-.health-progress {
+html.admin-layout-shell .health-progress {
     width: 100%;
-    height: 6px;
-    border-radius: 999px;
-    background: var(--skeleton-base);
+    height: var(--s2);
+    margin-bottom: var(--s1);
     overflow: hidden;
-    margin-bottom: 4px;
+    border-radius: var(--r-pill);
+    background: var(--surface-2);
 }
 
-.health-progress-bar {
-    height: 100%;
+html.admin-layout-shell .health-progress-bar {
     width: 0%;
-    background: #2563eb;
-    border-radius: 999px;
+    height: 100%;
+    border-radius: inherit;
+    background: var(--brand);
     transition: width 0.3s ease;
 }
 
-.health-progress-bar.is-warning {
-    background: #f59e0b;
+html.admin-layout-shell .health-progress-bar.is-warning {
+    background: var(--warning);
 }
 
-.health-progress-bar.is-critical {
-    background: #ef4444;
+html.admin-layout-shell .health-progress-bar.is-critical {
+    background: var(--danger);
 }
 
-.health-table-list {
-    list-style: none;
-    margin: 4px 0 0;
+html.admin-layout-shell .disk-segment-bar {
+    display: flex;
+    width: 100%;
+    height: var(--s3);
+    margin: var(--s2) 0 var(--s3);
+    overflow: hidden;
+    border: 1px solid var(--text-muted);
+    border-radius: var(--r-pill);
+    background: var(--surface-2);
+}
+
+html.admin-layout-shell .disk-segment {
+    height: 100%;
+    transition: width 0.3s ease;
+}
+
+html.admin-layout-shell .disk-segment-database { background: var(--brand); }
+html.admin-layout-shell .disk-segment-wal { background: var(--info); }
+html.admin-layout-shell .disk-segment-system { background: var(--danger); }
+
+html.admin-layout-shell .disk-segment-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--s3);
+    margin: 0 0 var(--s4);
     padding: 0;
+    color: var(--text-muted);
+    font-size: var(--font-size-small);
+    list-style: none;
 }
 
-.health-table-list li {
+html.admin-layout-shell .disk-segment-legend li {
+    display: flex;
+    align-items: center;
+    gap: var(--s2);
+}
+
+html.admin-layout-shell .legend-dot {
+    display: inline-block;
+    width: var(--s2);
+    height: var(--s2);
+    border-radius: 50%;
+}
+
+html.admin-layout-shell .legend-dot-database { background: var(--brand); }
+html.admin-layout-shell .legend-dot-wal { background: var(--info); }
+html.admin-layout-shell .legend-dot-system { background: var(--danger); }
+
+html.admin-layout-shell .legend-dot-available {
+    border: 1px solid var(--text-muted);
+}
+
+html.admin-layout-shell .legend-note {
+    color: var(--text-muted);
+}
+
+html.admin-layout-shell .health-table-list {
+    display: grid;
+    margin: var(--s1) 0 0;
+    padding: 0;
+    list-style: none;
+}
+
+html.admin-layout-shell .health-table-list li {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 5px 0;
-    border-top: 1px solid var(--reports-border, var(--main-border));
-    font-size: 0.82rem;
+    gap: var(--s3);
+    padding: var(--s2) 0;
+    border-top: 1px solid var(--border);
+    font-size: var(--font-size-small);
 }
-
-.health-table-list li .table-name {
-    color: var(--reports-muted, #6b7280);
-}
-
-.health-table-list li .table-rows {
-    font-weight: 700;
-    color: var(--reports-text);
-}
-
-/* ---------- Responsive ---------- */
 
 @media (max-width: 1024px) {
-    .report-panel-grid {
+    html.admin-layout-shell .report-panel-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 }
 
-@media (max-width: 768px) {
-    .reports-summary-grid {
+@media (max-width: 767px) {
+    html.admin-layout-shell .reports-summary-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
-    .report-panel-grid,
-    .report-panel-grid-health {
+    html.admin-layout-shell .report-panel-grid,
+    html.admin-layout-shell .report-panel-grid-health {
         grid-template-columns: minmax(0, 1fr);
     }
 
-    .reports-header {
+    html.admin-layout-shell .reports-header {
         flex-direction: column;
         align-items: stretch;
+    }
+
+    html.admin-layout-shell .reports-period-select-wrap {
+        justify-content: space-between;
+    }
+
+    html.admin-layout-shell .report-panel {
+        padding: var(--s4);
     }
 }
 
 @media (max-width: 480px) {
-    .reports-summary-grid {
+    html.admin-layout-shell .reports-page {
+        padding: 0;
+    }
+
+    html.admin-layout-shell .reports-summary-grid {
         grid-template-columns: minmax(0, 1fr);
     }
 
-    .reports-page {
-        padding: 16px;
+    html.admin-layout-shell .report-chart-wrap {
+        height: 220px;
+    }
+
+    html.admin-layout-shell .report-chart-wrap-wide {
+        height: 260px;
     }
 }
 
-.disk-segment-bar {
-    display: flex;
-    width: 100%;
-    height: 10px;
-    border-radius: 6px;
-    overflow: hidden;
-    background: var(--main-border, #30363d);
-    margin: 8px 0 10px;
-}
- 
-.disk-segment {
-    height: 100%;
-    transition: width 0.3s ease;
-}
- 
-.disk-segment-database { background: #2563eb; }
-.disk-segment-wal { background: #8b5cf6; }
-.disk-segment-system { background: #ef4444; }
- 
-.disk-segment-legend {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 12px;
-    list-style: none;
-    margin: 0 0 14px;
-    padding: 0;
-    font-size: 12px;
-    color: var(--summary-text, #9ca3af);
-}
- 
-.disk-segment-legend li {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-}
- 
-.legend-dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    display: inline-block;
-}
- 
-.legend-dot-database { background: #2563eb; }
-.legend-dot-wal { background: #8b5cf6; }
-.legend-dot-system { background: #ef4444; }
-.legend-dot-available {
-    background: transparent;
-    border: 1px solid var(--main-border, #30363d);
-}
- 
-.legend-note {
-    opacity: 0.6;
-    font-size: 11px;
-}
- 
-/* Traffic panel header — puts the range select next to the title,
-   same row, matching the existing Income Trend period-select layout. */
-.report-panel-header-with-select {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    flex-wrap: wrap;
-    gap: 10px;
+@media (prefers-reduced-motion: reduce) {
+    html.admin-layout-shell .skeleton,
+    html.admin-layout-shell .chart-skeleton-bars span,
+    html.admin-layout-shell .health-progress-bar,
+    html.admin-layout-shell .disk-segment {
+        animation: none;
+        transition: none;
+        background-position: 50% 50%;
+    }
 }

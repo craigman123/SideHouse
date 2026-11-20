@@ -11,6 +11,7 @@
 @section('page-title', 'Income Reports')
 
 @push('styles')
+    <link rel="stylesheet" href="{{ asset('css/admin/admin-base.css') }}">
     <link rel="stylesheet" href="{{ asset('css/admin/admin-reports.css') }}">
 @endpush
 
