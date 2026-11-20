@@ -1,17 +1,18 @@
 @extends('layouts.app')
 
-@section('title', 'Activity Logs | Logs')
+@section('title', 'Activity Logs | Side House')
 @section('page-title', 'Activity Logs')
 
 @push('styles')
-    <link rel="stylesheet" href="{{ asset('css/user/dashboard.css') }}">
-    <link rel="stylesheet" href="{{ asset('css/booking/bookings.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/admin/admin-base.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/admin/admin-activity-logs.css') }}">
 @endpush
 
 @section('content')
 
+<div class="admin-activity-logs-page">
     {{-- Filters --}}
-    <div class="panel filters-panel">
+    <div class="panel filters-panel activity-filters-panel">
         <form method="GET" action="{{ route('activity_logs.index') }}" class="filters-form">
 
             <div class="filter-group">
@@ -33,7 +34,7 @@
     </div>
 
     {{-- Log table --}}
-    <div class="panel">
+    <div class="panel activity-table-panel">
         <h2>Activity Logs <span class="count-badge">{{ $logs->total() }}</span></h2>
 
         <div class="table-responsive">
@@ -68,12 +69,14 @@
         </div>
 
         {{-- Pagination --}}
-        <p style="text-align: center">Showing {{ $logs->firstItem() }} to {{ $logs->lastItem() }} of {{ $logs->total() }} results</p>
+        <p class="activity-results-count">Showing {{ $logs->firstItem() }} to {{ $logs->lastItem() }} of {{ $logs->total() }} results</p>
         @if ($logs->hasPages())
             <div class="pagination-wrapper">
                 {{ $logs->links() }}
             </div>
         @endif
     </div>
+
+</div>
 
 @endsection
