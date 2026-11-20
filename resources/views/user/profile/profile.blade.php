@@ -2,6 +2,7 @@
 
 @section('title', 'Profile | Side House')
 @section('page-title', 'My Profile')
+@section('page-class', 'user-profile-page')
 
 @push('styles')
     <link rel="stylesheet" href="{{ asset('css/user/dashboard.css') }}">
@@ -26,7 +27,7 @@
                     {{ strtoupper(substr($user->name, 0, 1)) }}
                 </div>
 
-                <div>
+                <div class="profile-identity">
                     <h2>{{ $user->name }}</h2>
                     <p class="profile-email-row">
                         {{ $user->email }}
@@ -59,17 +60,23 @@
                 <div class="profile-grid">
                     <div class="profile-item">
                         <label for="name">Name</label>
-                        <input type="text" id="name" name="name" value="{{ old('name', $user->name) }}" readonly>
+                        <input type="text" id="name" name="name" value="{{ old('name', $user->name) }}" readonly aria-invalid="{{ $errors->has('name') ? 'true' : 'false' }}">
+                        <span class="field-state">Read only. Select Edit Profile to change.</span>
+                        @error('name')<span class="field-error">{{ $message }}</span>@enderror
                     </div>
 
                     <div class="profile-item">
                         <label for="username">Username</label>
-                        <input type="text" id="username" name="username" value="{{ old('username', $user->username) }}" readonly>
+                        <input type="text" id="username" name="username" value="{{ old('username', $user->username) }}" readonly aria-invalid="{{ $errors->has('username') ? 'true' : 'false' }}">
+                        <span class="field-state">Read only. Select Edit Profile to change.</span>
+                        @error('username')<span class="field-error">{{ $message }}</span>@enderror
                     </div>
 
                     <div class="profile-item">
                         <label for="email">Email</label>
-                        <input type="email" id="email" name="email" value="{{ old('email', $user->email) }}" readonly>
+                        <input type="email" id="email" name="email" value="{{ old('email', $user->email) }}" readonly aria-invalid="{{ $errors->has('email') ? 'true' : 'false' }}">
+                        <span class="field-state">Read only. Select Edit Profile to change.</span>
+                        @error('email')<span class="field-error">{{ $message }}</span>@enderror
                     </div>
 
                     <div class="profile-item">
@@ -82,7 +89,10 @@
                             placeholder="09XX XXX XXXX"
                             autocomplete="tel"
                             readonly
+                            aria-invalid="{{ $errors->has('phone_number') ? 'true' : 'false' }}"
                         >
+                        <span class="field-state">Read only. Select Edit Profile to change.</span>
+                        @error('phone_number')<span class="field-error">{{ $message }}</span>@enderror
                     </div>
                 </div>
 
@@ -99,12 +109,11 @@
                 <div class="preference-row">
                     <div>
                         <p class="preference-label">Dark Mode</p>
-                        <p class="preference-sub">Coming soon — the app is dark-themed by default for now.</p>
+                        <p class="preference-sub">Choose the dark or light theme for your account.</p>
                     </div>
-                    <label class="switch switch-disabled">
-                        <input type="checkbox" disabled>
+                    <button type="button" class="switch switch-disabled" role="switch" data-profile-theme-switch aria-checked="true" aria-label="Dark mode">
                         <span class="switch-slider"></span>
-                    </label>
+                    </button>
                 </div>
             </div>
 
@@ -122,34 +131,30 @@
         </div>
     </div>
 
-    <div class="modal-overlay" id="logoutModal">
-        <div class="modal-box modal-box-sm">
+    <div class="modal-overlay wt-confirm-overlay" id="logoutModal" role="dialog" aria-modal="true" aria-labelledby="logoutModalTitle" aria-describedby="logoutModalDescription">
+        <div class="modal-box modal-box-sm wt-confirm-card">
             <div class="modal-header">
-                <h3>Log out?</h3>
+                <h3 id="logoutModalTitle">Log out?</h3>
                 <button type="button" class="modal-close" id="logoutModalClose" aria-label="Close">&times;</button>
             </div>
 
-            <p class="modal-text">You'll need to sign in again to access your account.</p>
+            <p class="modal-text" id="logoutModalDescription">You'll need to sign in again to access your account.</p>
 
-            <div class="modal-actions">
-                <button type="button" class="btn btn-secondary" id="logoutModalCancel">Cancel</button>
-                <button type="button" class="btn btn-danger" id="logoutConfirmSubmit">Log Out</button>
+            <div class="modal-actions wt-confirm-actions">
+                <button type="button" class="btn btn-secondary wt-confirm-stay" id="logoutModalCancel">Stay signed in</button>
+                <button type="button" class="btn btn-danger wt-confirm-accept" id="logoutConfirmSubmit">Log out</button>
             </div>
         </div>
     </div>
 
-    <div class="modal-overlay" id="deleteAccountModal">
-        <div class="modal-box modal-box-sm">
+    <div class="modal-overlay wt-confirm-overlay" id="deleteAccountModal" role="alertdialog" aria-modal="true" aria-labelledby="deleteModalTitle" aria-describedby="deleteModalDescription">
+        <div class="modal-box modal-box-sm wt-confirm-card">
             <div class="modal-header">
-                <h3>Delete your account?</h3>
+                <h3 id="deleteModalTitle">Delete your account?</h3>
                 <button type="button" class="modal-close" id="deleteModalClose" aria-label="Close">&times;</button>
             </div>
 
-            <p class="modal-text">
-                This permanently deletes your account and can't be undone. Your past bookings will stay on
-                record but your current and future bookings will be canceled and your current bookings will be availed 
-                to other players. You will <strong>lose access to your account and all its data.</strong>
-            </p>
+            <p class="modal-text" id="deleteModalDescription">This permanently deletes your account and cannot be undone.</p>
             <p class="modal-text">
                 Type <strong>DELETE MY ACCOUNT</strong> below to confirm.
             </p>
@@ -167,9 +172,9 @@
                     autocapitalize="off"
                     spellcheck="false"
                 >
-                <div class="modal-actions">
-                    <button type="button" class="btn btn-secondary" id="deleteModalCancel">Cancel</button>
-                    <button type="submit" class="btn btn-danger" id="deleteConfirmSubmit" disabled>Delete Account</button>
+                <div class="modal-actions wt-confirm-actions">
+                    <button type="button" class="btn btn-secondary wt-confirm-stay" id="deleteModalCancel">Keep my account</button>
+                    <button type="submit" class="btn btn-danger wt-confirm-accept wt-confirm-accept-cancel" id="deleteConfirmSubmit" disabled>Yes, delete account</button>
                 </div>
             </form>
         </div>
@@ -181,37 +186,4 @@
 
 @push('scripts')
     <script src="{{ asset('js/user/profile.js') }}" defer></script>
-    <script>
-        // Logout confirmation modal — kept self-contained here rather than
-        // added to profile.js, since this only needs to open/close one
-        // modal and submit one form; no need to touch the rest of that
-        // file's (unseen-here) edit/delete-account wiring.
-        document.addEventListener('DOMContentLoaded', () => {
-            const logoutModal = document.getElementById('logoutModal');
-            const logoutBtn = document.getElementById('logoutBtn');
-            const logoutForm = document.getElementById('logoutForm');
-            const logoutModalClose = document.getElementById('logoutModalClose');
-            const logoutModalCancel = document.getElementById('logoutModalCancel');
-            const logoutConfirmSubmit = document.getElementById('logoutConfirmSubmit');
-
-            if (!logoutModal || !logoutBtn || !logoutForm) return;
-
-            const openLogoutModal = () => logoutModal.classList.add('open');
-            const closeLogoutModal = () => logoutModal.classList.remove('open');
-
-            logoutBtn.addEventListener('click', openLogoutModal);
-            if (logoutModalClose) logoutModalClose.addEventListener('click', closeLogoutModal);
-            if (logoutModalCancel) logoutModalCancel.addEventListener('click', closeLogoutModal);
-
-            logoutModal.addEventListener('click', (e) => {
-                if (e.target === logoutModal) closeLogoutModal();
-            });
-
-            if (logoutConfirmSubmit) {
-                logoutConfirmSubmit.addEventListener('click', () => {
-                    logoutForm.submit();
-                });
-            }
-        });
-    </script>
 @endpush

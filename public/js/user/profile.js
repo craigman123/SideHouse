@@ -52,33 +52,131 @@ document.addEventListener('DOMContentLoaded', () => {
     const deleteModalCancel = document.getElementById('deleteModalCancel');
     const deleteConfirmInput = document.getElementById('deleteConfirmInput');
     const deleteConfirmSubmit = document.getElementById('deleteConfirmSubmit');
+    const deleteForm = document.getElementById('deleteAccountForm');
+    const contentScroller = document.querySelector('.user-profile-page .content');
 
     const DELETE_PHRASE = 'DELETE MY ACCOUNT';
 
-    function openDeleteModal() {
-        if (!deleteModal) return;
-        deleteModal.classList.add('open');
-        deleteConfirmInput?.focus();
+    function configureConfirmationDialog(modal, trigger, closeButtons, initialFocus, afterClose) {
+        let returnFocus = null;
+        let previousOverflow = '';
+        const focusableSelector = 'button:not([disabled]), input:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])';
+
+        function open() {
+            if (!modal || modal.classList.contains('open')) return;
+            returnFocus = trigger;
+            previousOverflow = contentScroller ? contentScroller.style.overflowY : '';
+            if (contentScroller) contentScroller.style.overflowY = 'hidden';
+            modal.classList.add('open');
+            initialFocus?.focus();
+        }
+
+        function close() {
+            if (!modal || !modal.classList.contains('open')) return;
+            modal.classList.remove('open');
+            modal.removeAttribute('aria-busy');
+            if (contentScroller) contentScroller.style.overflowY = previousOverflow;
+            afterClose?.();
+            returnFocus?.focus();
+        }
+
+        closeButtons.forEach((button) => button?.addEventListener('click', close));
+        modal?.addEventListener('click', (event) => {
+            if (event.target === modal) close();
+        });
+        modal?.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape') {
+                event.preventDefault();
+                close();
+                return;
+            }
+            if (event.key !== 'Tab') return;
+
+            const items = Array.from(modal.querySelectorAll(focusableSelector));
+            if (!items.length) {
+                event.preventDefault();
+                return;
+            }
+            const first = items[0];
+            const last = items[items.length - 1];
+            if (event.shiftKey && (document.activeElement === first || !modal.contains(document.activeElement))) {
+                event.preventDefault();
+                last.focus();
+            } else if (!event.shiftKey && (document.activeElement === last || !modal.contains(document.activeElement))) {
+                event.preventDefault();
+                first.focus();
+            }
+        });
+
+        trigger?.addEventListener('click', open);
+        return { open, close };
     }
 
-    function closeDeleteModal() {
-        if (!deleteModal) return;
-        deleteModal.classList.remove('open');
-        if (deleteConfirmInput) deleteConfirmInput.value = '';
-        if (deleteConfirmSubmit) deleteConfirmSubmit.disabled = true;
-    }
-
-    deleteBtn?.addEventListener('click', openDeleteModal);
-    deleteModalClose?.addEventListener('click', closeDeleteModal);
-    deleteModalCancel?.addEventListener('click', closeDeleteModal);
-    deleteModal?.addEventListener('click', (e) => {
-        if (e.target === deleteModal) closeDeleteModal();
-    });
+    const deleteDialog = configureConfirmationDialog(
+        deleteModal,
+        deleteBtn,
+        [deleteModalClose, deleteModalCancel],
+        deleteModalCancel,
+        () => {
+            if (deleteConfirmInput) deleteConfirmInput.value = '';
+            if (deleteConfirmSubmit) deleteConfirmSubmit.disabled = true;
+        }
+    );
 
     deleteConfirmInput?.addEventListener('input', () => {
         if (!deleteConfirmSubmit) return;
         deleteConfirmSubmit.disabled = deleteConfirmInput.value !== DELETE_PHRASE;
     });
+
+    let deleteSubmitting = false;
+    deleteForm?.addEventListener('submit', (event) => {
+        if (deleteSubmitting) {
+            event.preventDefault();
+            return;
+        }
+        deleteSubmitting = true;
+        deleteModal?.setAttribute('aria-busy', 'true');
+        if (deleteConfirmSubmit) deleteConfirmSubmit.disabled = true;
+    });
+
+    const logoutModal = document.getElementById('logoutModal');
+    const logoutBtn = document.getElementById('logoutBtn');
+    const logoutForm = document.getElementById('logoutForm');
+    const logoutModalClose = document.getElementById('logoutModalClose');
+    const logoutModalCancel = document.getElementById('logoutModalCancel');
+    const logoutConfirmSubmit = document.getElementById('logoutConfirmSubmit');
+    configureConfirmationDialog(
+        logoutModal,
+        logoutBtn,
+        [logoutModalClose, logoutModalCancel],
+        logoutModalCancel
+    );
+
+    let logoutSubmitting = false;
+    logoutConfirmSubmit?.addEventListener('click', () => {
+        if (logoutSubmitting || !logoutForm) return;
+        logoutSubmitting = true;
+        logoutModal?.setAttribute('aria-busy', 'true');
+        logoutConfirmSubmit.disabled = true;
+        logoutForm.submit();
+    });
+
+    const profileThemeSwitch = document.querySelector('[data-profile-theme-switch]');
+    const sharedThemeToggle = document.querySelector('[data-theme-toggle]');
+
+    function syncProfileThemeSwitch() {
+        if (!profileThemeSwitch) return;
+        profileThemeSwitch.setAttribute('aria-checked', String(document.documentElement.dataset.theme !== 'light'));
+    }
+
+    profileThemeSwitch?.addEventListener('click', () => {
+        sharedThemeToggle?.click();
+        syncProfileThemeSwitch();
+    });
+    document.addEventListener('click', (event) => {
+        if (event.target.closest?.('[data-theme-toggle]')) syncProfileThemeSwitch();
+    });
+    syncProfileThemeSwitch();
 
     /* ---------- Flash message toast (mirrors courts.js) ---------- */
 
@@ -124,7 +222,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (deleteError) {
             showToast(deleteError, 'error');
-            openDeleteModal();
+            deleteDialog.open();
         }
     }
 });
