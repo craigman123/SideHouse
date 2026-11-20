@@ -136,6 +136,49 @@ document.addEventListener('DOMContentLoaded', () => {
     const summaryPayment = document.getElementById('summaryPayment');
     const summaryTotal = document.getElementById('summaryTotal');
     const confirmBtn = document.getElementById('confirmBooking');
+    const confirmLabel = confirmBtn.textContent;
+    const paymentExitButtons = [
+        document.getElementById('backToEquipment'),
+        document.getElementById('backToEquipment2'),
+        document.getElementById('courtPaymentModalClose'),
+    ];
+
+    let paymentSubmissionLocked = false;
+    let paymentRedirecting = false;
+
+    function setPaymentSubmissionLocked(locked) {
+        paymentSubmissionLocked = locked;
+        if (locked) paymentModal.setAttribute('aria-busy', 'true');
+        else paymentModal.removeAttribute('aria-busy');
+
+        paymentExitButtons.forEach((button) => {
+            if (!button) return;
+            button.disabled = locked;
+            if (locked) button.setAttribute('aria-disabled', 'true');
+            else button.removeAttribute('aria-disabled');
+        });
+
+        confirmBtn.disabled = locked;
+        if (locked) {
+            confirmBtn.setAttribute('aria-disabled', 'true');
+            confirmBtn.textContent = 'Processing...';
+        } else {
+            confirmBtn.removeAttribute('aria-disabled');
+            confirmBtn.textContent = confirmLabel;
+        }
+    }
+
+    window.addEventListener('pageshow', (event) => {
+        if (!event.persisted) return;
+        paymentRedirecting = false;
+        setPaymentSubmissionLocked(false);
+    });
+
+    window.addEventListener('keydown', (event) => {
+        if (!paymentSubmissionLocked || event.key !== 'Escape') return;
+        event.preventDefault();
+        event.stopImmediatePropagation();
+    }, true);
 
 
     let selectedCourt = null;
@@ -297,9 +340,11 @@ document.addEventListener('DOMContentLoaded', () => {
         if (e.target === equipmentModal) closeEquipmentModal();
     });
 
-    document.getElementById('courtPaymentModalClose').addEventListener('click', closePaymentModal);
+    document.getElementById('courtPaymentModalClose').addEventListener('click', () => {
+        if (!paymentSubmissionLocked) closePaymentModal();
+    });
     paymentModal.addEventListener('click', (e) => {
-        if (e.target === paymentModal) closePaymentModal();
+        if (!paymentSubmissionLocked && e.target === paymentModal) closePaymentModal();
     });
 
     document.getElementById('goToBooking').addEventListener('click', () => {
@@ -350,10 +395,12 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     document.getElementById('backToEquipment').addEventListener('click', () => {
+        if (paymentSubmissionLocked) return;
         closePaymentModal();
         openEquipmentModal();
     });
     document.getElementById('backToEquipment2').addEventListener('click', () => {
+        if (paymentSubmissionLocked) return;
         closePaymentModal();
         openEquipmentModal();
     });
@@ -1029,6 +1076,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // ---------- Confirm ----------
 
     confirmBtn.addEventListener('click', async () => {
+        if (paymentSubmissionLocked) return;
         const missing = getMissingPaymentRequirements();
         if (missing.length > 0) {
             showToast(`Please provide ${formatList(missing)} to continue.`, 'error');
@@ -1038,10 +1086,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!selectedCourt || !selectedDate || selectedSlots.length < MIN_DURATION) return;
 
         updateBookingProgress(4);
-
-        confirmBtn.disabled = true;
-        const originalLabel = confirmBtn.textContent;
-        confirmBtn.textContent = 'Booking…';
+        setPaymentSubmissionLocked(true);
 
         const equipmentPayload = Object.entries(equipmentSelection).map(([id, quantity]) => ({
             id: Number(id),
@@ -1081,8 +1126,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
                     contactNumberInput.classList.toggle('field-invalid', !!data.errors.contact_number);
 
-                    confirmBtn.disabled = false;
-                    confirmBtn.textContent = originalLabel;
                     return;
                 }
 
@@ -1098,8 +1141,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 updateTimePickerFee();
                 openTimePickerModal();
 
-                confirmBtn.disabled = false;
-                confirmBtn.textContent = originalLabel;
                 return;
             }
 
@@ -1111,16 +1152,17 @@ document.addEventListener('DOMContentLoaded', () => {
             } else {
                 // Full-page redirect instead of opening a modal — see
                 // User_UserController::waitingForPayment()'s docblock.
-                window.location.href = safeRedirectPath(
+                const redirectPath = safeRedirectPath(
                     waitingUrlTemplate.replace('__ID__', data.booking_id)
                 );
+                paymentRedirecting = true;
+                window.location.href = redirectPath;
             }
         } catch (err) {
             console.error(err);
             showToast('Something went wrong. Please try again.', 'error');
         } finally {
-            confirmBtn.disabled = false;
-            confirmBtn.textContent = originalLabel;
+            if (!paymentRedirecting) setPaymentSubmissionLocked(false);
         }
     });
 

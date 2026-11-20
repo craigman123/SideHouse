@@ -87,22 +87,51 @@
 
 .user-book-court-page #equipmentGrid[aria-busy="true"] {
     display: grid;
+    grid-template-columns: minmax(0, 1fr);
     gap: var(--s3);
 }
 
 .user-book-court-page .user-equipment-skeleton {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
+    grid-template-columns: minmax(0, 1fr);
     gap: var(--s3);
 }
 
 .user-book-court-page .user-equipment-skeleton span {
-    min-height: 112px;
+    position: relative;
+    width: 100%;
+    min-height: calc(var(--s8) + var(--s5));
     border: 1px solid var(--border);
     border-radius: var(--r-md);
     background: linear-gradient(100deg, var(--surface-2) 20%, var(--surface) 45%, var(--surface-2) 70%);
     background-size: 200% 100%;
     animation: userEquipmentShimmer 1.35s ease-in-out infinite;
+}
+
+.user-book-court-page .user-equipment-skeleton span::before,
+.user-book-court-page .user-equipment-skeleton span::after {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    content: "";
+}
+
+.user-book-court-page .user-equipment-skeleton span::before {
+    left: var(--s4);
+    width: min(45%, calc(var(--s8) + var(--s7)));
+    height: var(--s2);
+    border-radius: var(--r-sm);
+    background: var(--text-muted);
+    box-shadow: 0 calc(var(--s3) + var(--s1)) 0 var(--text-muted);
+}
+
+.user-book-court-page .user-equipment-skeleton span::after {
+    right: var(--s4);
+    width: calc(var(--s8) + var(--s7) + var(--s2));
+    height: 44px;
+    border: 1px solid var(--border);
+    border-radius: var(--r-pill);
+    background: var(--surface);
 }
 
 .user-book-court-page .visually-hidden {
@@ -121,58 +150,49 @@
     to { background-position: -200% 0; }
 }
 
-.user-book-court-page #courtBookingModal .modal-back,
-.user-book-court-page #timePickerModal .modal-back,
-.user-book-court-page #equipmentModal .modal-back,
-.user-book-court-page #courtPaymentModal .modal-back,
-.user-book-court-page #courtBookingModal .modal-actions .btn-secondary,
-.user-book-court-page #timePickerModal .modal-actions .btn-secondary,
-.user-book-court-page #equipmentModal .modal-actions .btn-secondary,
-.user-book-court-page #courtPaymentModal .modal-actions .btn-secondary {
+.user-book-court-page .modal-back,
+.user-book-court-page .modal-actions .btn-secondary,
+.user-book-court-page .modal-close {
     min-height: 44px;
-    border-color: var(--text-muted);
+    border: 1px solid var(--text-muted);
     background: transparent;
-    color: var(--text-muted);
+    color: var(--text);
     transition: border-color 160ms ease, color 160ms ease, background-color 160ms ease;
 }
 
-.user-book-court-page #courtBookingModal .modal-back:hover,
-.user-book-court-page #timePickerModal .modal-back:hover,
-.user-book-court-page #equipmentModal .modal-back:hover,
-.user-book-court-page #courtPaymentModal .modal-back:hover,
-.user-book-court-page #courtBookingModal .modal-actions .btn-secondary:hover,
-.user-book-court-page #timePickerModal .modal-actions .btn-secondary:hover,
-.user-book-court-page #equipmentModal .modal-actions .btn-secondary:hover,
-.user-book-court-page #courtPaymentModal .modal-actions .btn-secondary:hover,
-.user-book-court-page #courtBookingModal .modal-back:focus-visible,
-.user-book-court-page #timePickerModal .modal-back:focus-visible,
-.user-book-court-page #equipmentModal .modal-back:focus-visible,
-.user-book-court-page #courtPaymentModal .modal-back:focus-visible,
-.user-book-court-page #courtBookingModal .modal-actions .btn-secondary:focus-visible,
-.user-book-court-page #timePickerModal .modal-actions .btn-secondary:focus-visible,
-.user-book-court-page #equipmentModal .modal-actions .btn-secondary:focus-visible,
-.user-book-court-page #courtPaymentModal .modal-actions .btn-secondary:focus-visible {
+.user-book-court-page .modal-back:hover:not(:disabled),
+.user-book-court-page .modal-actions .btn-secondary:hover:not(:disabled),
+.user-book-court-page .modal-close:hover:not(:disabled),
+.user-book-court-page .modal-back:focus-visible,
+.user-book-court-page .modal-actions .btn-secondary:focus-visible,
+.user-book-court-page .modal-close:focus-visible {
     border-color: var(--danger);
+    background: transparent;
     color: var(--danger);
 }
 
-.user-book-court-page #courtBookingModal .modal-back:focus-visible,
-.user-book-court-page #timePickerModal .modal-back:focus-visible,
-.user-book-court-page #equipmentModal .modal-back:focus-visible,
-.user-book-court-page #courtPaymentModal .modal-back:focus-visible,
-.user-book-court-page .modal-actions .btn:focus-visible {
-    outline: 2px solid var(--brand);
+.user-book-court-page .modal-back:focus-visible,
+.user-book-court-page .modal-actions .btn-secondary:focus-visible,
+.user-book-court-page .modal-close:focus-visible {
+    outline: 2px solid var(--danger);
     outline-offset: 2px;
+}
+
+.user-book-court-page .modal-close:disabled {
+    border-color: var(--text-muted);
+    color: var(--text-muted);
+    cursor: not-allowed;
 }
 
 .user-booking-waiting-page {
     min-width: 0;
-    padding-top: calc(env(safe-area-inset-top, 0px) + var(--s8) + var(--s4));
+    padding-top: calc(env(safe-area-inset-top, 0px) + var(--s5));
 }
 
 body.user-booking-waiting-page #waitingPage.wt-shell {
     width: min(100% - var(--s4) * 2, 720px);
-    margin: 0 auto;
+    margin: 0 auto auto;
+    padding-top: 0;
     padding-bottom: calc(var(--s6) + env(safe-area-inset-bottom, 0px));
 }
 
@@ -240,7 +260,7 @@ body.user-booking-waiting-page #waitingPage .wt-qr-status-line[hidden] { display
     border: 1px solid var(--text-muted);
     border-radius: var(--r-pill);
     background: transparent;
-    color: var(--text-muted);
+    color: var(--text);
     text-decoration: none;
 }
 
@@ -254,7 +274,7 @@ body.user-booking-waiting-page #waitingPage .wt-qr-status-line[hidden] { display
 
 .user-booking-waiting-page .wt-back:focus-visible,
 .user-booking-waiting-page .wt-btn-cancel:focus-visible {
-    outline: 2px solid var(--brand);
+    outline: 2px solid var(--danger);
     outline-offset: 2px;
 }
 
