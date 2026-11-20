@@ -15,6 +15,7 @@
     <link rel="stylesheet" href="{{ asset('css/booking/landing-book.css') }}">
     <link rel="stylesheet" href="{{ asset('css/guest/theme-toggle.css') }}">
     <link rel="stylesheet" href="{{ asset('css/user/book-court.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/user/user-booking-flow.css') }}">
 @endpush
 
 @section('content')
@@ -124,6 +125,13 @@
                 <button type="button" class="modal-close" id="courtBookingModalClose" aria-label="Close">&times;</button>
             </div>
 
+            <div class="booking-flow-progress user-booking-progress" aria-label="Booking progress">
+                <span class="booking-flow-step active" data-booking-step="1"><b>1</b>Date &amp; time</span>
+                <span class="booking-flow-step" data-booking-step="2"><b>2</b>Equipment</span>
+                <span class="booking-flow-step" data-booking-step="3"><b>3</b>Details</span>
+                <span class="booking-flow-step" data-booking-step="4"><b>4</b>Payment</span>
+            </div>
+
             <button type="button" class="modal-back" id="backToInfo">&larr; Back to details</button>
 
             <div class="booking-section">
@@ -155,6 +163,13 @@
                 <button type="button" class="modal-close" id="timePickerModalClose" aria-label="Close">&times;</button>
             </div>
 
+            <div class="booking-flow-progress booking-flow-progress-compact user-booking-progress" aria-label="Booking progress">
+                <span class="booking-flow-step active" data-booking-step="1"><b>1</b>Date &amp; time</span>
+                <span class="booking-flow-step" data-booking-step="2"><b>2</b>Equipment</span>
+                <span class="booking-flow-step" data-booking-step="3"><b>3</b>Details</span>
+                <span class="booking-flow-step" data-booking-step="4"><b>4</b>Payment</span>
+            </div>
+
             <div class="time-picker-day-switch">
                 <button type="button" class="time-picker-day-nav" id="timePickerPrevDay" aria-label="Previous day">&lsaquo;</button>
                 <h3 id="timePickerDateLabel">Pick Your Hours</h3>
@@ -178,13 +193,13 @@
 
                 <div class="time-slot-list" id="timeSlotGrid"></div>
 
-                <div class="time-picker-fee-panel">
-                    <p class="time-picker-fee-ranges" id="timePickerFeeRanges">Select at least one hour</p>
-                    <div class="time-picker-fee-total-row">
-                        <span>Total</span>
-                        <span id="timePickerFeeTotal">₱0</span>
-                    </div>
-                </div>
+                <aside class="booking-selection-summary user-booking-selection" aria-live="polite">
+                    <p class="booking-selection-summary-title">Your selection</p>
+                    <p><span>Court</span><strong class="selection-court">Choose a court</strong></p>
+                    <p><span>Date &amp; time</span><strong class="selection-date-time">Choose a date and time</strong></p>
+                    <p><span>Equipment</span><strong class="selection-equipment">None selected</strong></p>
+                    <p class="booking-selection-total"><span>Estimated total</span><strong class="selection-total">₱0.00</strong></p>
+                </aside>
             </div>
 
             <div class="modal-actions">
@@ -202,15 +217,29 @@
                 <button type="button" class="modal-close" id="equipmentModalClose" aria-label="Close">&times;</button>
             </div>
 
+            <div class="booking-flow-progress booking-flow-progress-compact user-booking-progress" aria-label="Booking progress">
+                <span class="booking-flow-step" data-booking-step="1"><b>1</b>Date &amp; time</span>
+                <span class="booking-flow-step active" data-booking-step="2"><b>2</b>Equipment</span>
+                <span class="booking-flow-step" data-booking-step="3"><b>3</b>Details</span>
+                <span class="booking-flow-step" data-booking-step="4"><b>4</b>Payment</span>
+            </div>
+
             <button type="button" class="modal-back" id="backToBookingFromEquipment">&larr; Back to date &amp; time</button>
 
             <div class="modal-scroll-body">
                 <div class="booking-section">
                     <p class="booking-section-label">Need a racket or paddle? (optional)</p>
-                    <div class="equipment-grid" id="equipmentGrid">
+                    <div class="equipment-grid user-equipment-grid" id="equipmentGrid" aria-busy="true">
                         <p class="loading-text">Loading equipment…</p>
                     </div>
                 </div>
+                <aside class="booking-selection-summary user-booking-selection" aria-live="polite">
+                    <p class="booking-selection-summary-title">Your selection</p>
+                    <p><span>Court</span><strong class="selection-court">Choose a court</strong></p>
+                    <p><span>Date &amp; time</span><strong class="selection-date-time">Choose a date and time</strong></p>
+                    <p><span>Equipment</span><strong class="selection-equipment">None selected</strong></p>
+                    <p class="booking-selection-total"><span>Estimated total</span><strong class="selection-total">₱0.00</strong></p>
+                </aside>
             </div>
 
             <div class="modal-actions">
@@ -226,6 +255,13 @@
             <div class="modal-header">
                 <h3>Almost Done</h3>
                 <button type="button" class="modal-close" id="courtPaymentModalClose" aria-label="Close">&times;</button>
+            </div>
+
+            <div class="booking-flow-progress booking-flow-progress-compact user-booking-progress" aria-label="Booking progress">
+                <span class="booking-flow-step" data-booking-step="1"><b>1</b>Date &amp; time</span>
+                <span class="booking-flow-step" data-booking-step="2"><b>2</b>Equipment</span>
+                <span class="booking-flow-step active" data-booking-step="3"><b>3</b>Details</span>
+                <span class="booking-flow-step" data-booking-step="4"><b>4</b>Payment</span>
             </div>
 
             <button type="button" class="modal-back" id="backToEquipment">&larr; Back to equipment</button>
@@ -259,6 +295,13 @@
                     <p>Payment: <strong id="summaryPayment">QR Ph</strong></p>
                     <p class="booking-summary-total">Total: <strong id="summaryTotal"></strong></p>
                 </div>
+                <aside class="booking-selection-summary user-booking-selection" aria-live="polite">
+                    <p class="booking-selection-summary-title">Your selection</p>
+                    <p><span>Court</span><strong class="selection-court">Choose a court</strong></p>
+                    <p><span>Date &amp; time</span><strong class="selection-date-time">Choose a date and time</strong></p>
+                    <p><span>Equipment</span><strong class="selection-equipment">None selected</strong></p>
+                    <p class="booking-selection-total"><span>Estimated total</span><strong class="selection-total">₱0.00</strong></p>
+                </aside>
             </div>
 
             <div class="modal-actions">

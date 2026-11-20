@@ -196,6 +196,8 @@ document.addEventListener('DOMContentLoaded', () => {
             modalCourtNameBooking.textContent = selectedCourt.name;
         }
         resetBookingState();
+        updateBookingProgress(1);
+        updateSelectionCards();
         bookingModal.classList.add('open');
         renderCalendar();
     }
@@ -209,6 +211,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function openTimePickerModal() {
+        updateBookingProgress(1);
+        updateSelectionCards();
         timePickerModal.classList.add('open');
         renderTimePickerDateLabel();
         updateDayNavState();
@@ -219,6 +223,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function openEquipmentModal() {
+        updateBookingProgress(2);
         equipmentModal.classList.add('open');
         loadEquipment();
     }
@@ -237,6 +242,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         updateSummary();
+        updateBookingProgress(3);
         paymentModal.classList.add('open');
     }
 
@@ -768,12 +774,14 @@ document.addEventListener('DOMContentLoaded', () => {
             timePickerFeeRanges.textContent = formatSelectedSlotsSummary();
             timePickerFeeTotal.textContent = `₱${selectedSlotsTotal().toLocaleString()}`;
         }
+        updateSelectionCards();
     }
 
     // ---------- Equipment rental ----------
 
     async function loadEquipment() {
-        equipmentGrid.innerHTML = '<p class="loading-text">Loading equipment…</p>';
+        equipmentGrid.setAttribute('aria-busy', 'true');
+        equipmentGrid.innerHTML = '<span class="visually-hidden">Loading equipment</span><div class="user-equipment-skeleton" aria-hidden="true"><span></span><span></span><span></span></div>';
 
         try {
             const params = new URLSearchParams();
@@ -790,6 +798,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (!res.ok) {
                 console.error('equipment load failed', res.status, await res.text().catch(() => ''));
+                equipmentGrid.setAttribute('aria-busy', 'false');
                 equipmentGrid.innerHTML = '<p class="loading-text">Couldn\'t load equipment right now.</p>';
                 return;
             }
@@ -799,16 +808,20 @@ document.addEventListener('DOMContentLoaded', () => {
             renderEquipment();
         } catch (err) {
             console.error(err);
+            equipmentGrid.setAttribute('aria-busy', 'false');
             equipmentGrid.innerHTML = '<p class="loading-text">Couldn\'t load equipment right now.</p>';
         }
     }
 
     function renderEquipment() {
         if (equipmentCatalog.length === 0) {
+            equipmentGrid.setAttribute('aria-busy', 'false');
             equipmentGrid.innerHTML = '<p class="loading-text">No equipment available to rent right now.</p>';
+            updateSelectionCards();
             return;
         }
 
+        equipmentGrid.setAttribute('aria-busy', 'false');
         equipmentGrid.innerHTML = '';
         let lastCategory = null;
 
@@ -823,6 +836,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             equipmentGrid.appendChild(buildEquipmentCard(item));
         });
+        updateSelectionCards();
     }
 
     function buildEquipmentCard(item) {
@@ -947,6 +961,31 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    function updateBookingProgress(activeStep) {
+        document.querySelectorAll('.user-book-court-page [data-booking-step]').forEach((step) => {
+            const number = Number(step.dataset.bookingStep);
+            step.classList.toggle('active', number === activeStep);
+            step.classList.toggle('complete', number < activeStep);
+            if (number === activeStep) step.setAttribute('aria-current', 'step');
+            else step.removeAttribute('aria-current');
+        });
+    }
+
+    function updateSelectionCards() {
+        const dateTime = selectedDate
+            ? `${formatDate(activeSessionDate || selectedDate)}${selectedSlots.length ? ` · ${formatSelectedSlotsSummary()}` : ''}`
+            : 'Choose a date and time';
+        const equipment = equipmentSummaryText() || 'None selected';
+        const total = `₱${(selectedSlotsTotal() + equipmentTotal()).toLocaleString()}`;
+
+        document.querySelectorAll('.user-book-court-page .user-booking-selection').forEach((card) => {
+            card.querySelectorAll('.selection-court').forEach((el) => { el.textContent = selectedCourt?.name || 'Choose a court'; });
+            card.querySelectorAll('.selection-date-time').forEach((el) => { el.textContent = dateTime; });
+            card.querySelectorAll('.selection-equipment').forEach((el) => { el.textContent = equipment; });
+            card.querySelectorAll('.selection-total').forEach((el) => { el.textContent = total; });
+        });
+    }
+
     function updateSummary() {
         // updateSummary
         summaryDate.textContent = formatDate(activeSessionDate || selectedDate);
@@ -963,6 +1002,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const total = selectedSlotsTotal() + equipmentTotal();
         summaryTotal.textContent = `₱${total.toLocaleString()}`;
+        updateSelectionCards();
     }
 
     function getMissingBookingRequirements() {
@@ -996,6 +1036,8 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
         if (!selectedCourt || !selectedDate || selectedSlots.length < MIN_DURATION) return;
+
+        updateBookingProgress(4);
 
         confirmBtn.disabled = true;
         const originalLabel = confirmBtn.textContent;
@@ -1105,5 +1147,24 @@ document.addEventListener('DOMContentLoaded', () => {
 
         toast.querySelector('.toast-close').addEventListener('click', remove);
         setTimeout(remove, 4000);
+    }
+
+    const returnParams = new URLSearchParams(window.location.search);
+    if (returnParams.get('openBooking') === '1') {
+        const requestedCourtId = returnParams.get('court_id');
+        const courtCard = Array.from(grid.querySelectorAll('.court-card-clickable'))
+            .find((card) => card.dataset.id === requestedCourtId);
+        if (courtCard) {
+            selectedCourt = {
+                id: courtCard.dataset.id,
+                name: courtCard.dataset.name,
+                type: courtCard.dataset.type,
+                length: courtCard.dataset.length,
+                width: courtCard.dataset.width,
+                price: courtCard.dataset.price,
+            };
+            openBookingModal();
+            window.history.replaceState({}, '', window.location.pathname);
+        }
     }
 });

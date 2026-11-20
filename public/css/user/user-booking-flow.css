@@ -1,0 +1,278 @@
+.user-book-court-page .user-booking-progress {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: var(--s2);
+    margin: var(--s3) 0 var(--s4);
+}
+
+.user-book-court-page .booking-flow-step {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--s2);
+    min-width: 0;
+    min-height: 40px;
+    padding: var(--s2);
+    border: 1px solid var(--text-muted);
+    border-radius: var(--r-pill);
+    color: var(--text-muted);
+    font-family: var(--font-family);
+    font-size: var(--font-size-small);
+    line-height: 1.3;
+    text-align: center;
+}
+
+.user-book-court-page .booking-flow-step b {
+    display: inline-grid;
+    flex: 0 0 24px;
+    width: 24px;
+    height: 24px;
+    place-items: center;
+    border-radius: var(--r-pill);
+    background: var(--surface-2);
+    color: var(--text-muted);
+}
+
+.user-book-court-page .booking-flow-step.active,
+.user-book-court-page .booking-flow-step.complete {
+    border-color: var(--brand);
+    color: var(--text);
+}
+
+.user-book-court-page .booking-flow-step.active b,
+.user-book-court-page .booking-flow-step.complete b {
+    border: 1px solid var(--brand);
+    background: var(--surface-2);
+    color: var(--text);
+}
+
+.user-book-court-page .user-booking-selection {
+    position: static;
+    margin: var(--s4) 0 0;
+    padding: var(--s4);
+    border: 1px solid var(--border);
+    border-radius: var(--r-md);
+    background: var(--surface-2);
+    color: var(--text);
+}
+
+.user-book-court-page .user-booking-selection-title,
+.user-book-court-page .user-booking-selection .booking-selection-summary-title {
+    margin: 0 0 var(--s2);
+    color: var(--text);
+    font-size: var(--font-size-small);
+    font-weight: var(--font-weight-small);
+}
+
+.user-book-court-page .user-booking-selection p:not(.booking-selection-summary-title) {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--s3);
+    margin: 0;
+    padding: var(--s2) 0;
+    border-top: 1px solid var(--border);
+    color: var(--text-muted);
+}
+
+.user-book-court-page .user-booking-selection strong {
+    max-width: 65%;
+    color: var(--text);
+    text-align: right;
+    overflow-wrap: anywhere;
+}
+
+.user-book-court-page .user-booking-selection .booking-selection-total strong {
+    color: var(--text);
+}
+
+.user-book-court-page #equipmentGrid[aria-busy="true"] {
+    display: grid;
+    gap: var(--s3);
+}
+
+.user-book-court-page .user-equipment-skeleton {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
+    gap: var(--s3);
+}
+
+.user-book-court-page .user-equipment-skeleton span {
+    min-height: 112px;
+    border: 1px solid var(--border);
+    border-radius: var(--r-md);
+    background: linear-gradient(100deg, var(--surface-2) 20%, var(--surface) 45%, var(--surface-2) 70%);
+    background-size: 200% 100%;
+    animation: userEquipmentShimmer 1.35s ease-in-out infinite;
+}
+
+.user-book-court-page .visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+@keyframes userEquipmentShimmer {
+    to { background-position: -200% 0; }
+}
+
+.user-book-court-page #courtBookingModal .modal-back,
+.user-book-court-page #timePickerModal .modal-back,
+.user-book-court-page #equipmentModal .modal-back,
+.user-book-court-page #courtPaymentModal .modal-back,
+.user-book-court-page #courtBookingModal .modal-actions .btn-secondary,
+.user-book-court-page #timePickerModal .modal-actions .btn-secondary,
+.user-book-court-page #equipmentModal .modal-actions .btn-secondary,
+.user-book-court-page #courtPaymentModal .modal-actions .btn-secondary {
+    min-height: 44px;
+    border-color: var(--text-muted);
+    background: transparent;
+    color: var(--text-muted);
+    transition: border-color 160ms ease, color 160ms ease, background-color 160ms ease;
+}
+
+.user-book-court-page #courtBookingModal .modal-back:hover,
+.user-book-court-page #timePickerModal .modal-back:hover,
+.user-book-court-page #equipmentModal .modal-back:hover,
+.user-book-court-page #courtPaymentModal .modal-back:hover,
+.user-book-court-page #courtBookingModal .modal-actions .btn-secondary:hover,
+.user-book-court-page #timePickerModal .modal-actions .btn-secondary:hover,
+.user-book-court-page #equipmentModal .modal-actions .btn-secondary:hover,
+.user-book-court-page #courtPaymentModal .modal-actions .btn-secondary:hover,
+.user-book-court-page #courtBookingModal .modal-back:focus-visible,
+.user-book-court-page #timePickerModal .modal-back:focus-visible,
+.user-book-court-page #equipmentModal .modal-back:focus-visible,
+.user-book-court-page #courtPaymentModal .modal-back:focus-visible,
+.user-book-court-page #courtBookingModal .modal-actions .btn-secondary:focus-visible,
+.user-book-court-page #timePickerModal .modal-actions .btn-secondary:focus-visible,
+.user-book-court-page #equipmentModal .modal-actions .btn-secondary:focus-visible,
+.user-book-court-page #courtPaymentModal .modal-actions .btn-secondary:focus-visible {
+    border-color: var(--danger);
+    color: var(--danger);
+}
+
+.user-book-court-page #courtBookingModal .modal-back:focus-visible,
+.user-book-court-page #timePickerModal .modal-back:focus-visible,
+.user-book-court-page #equipmentModal .modal-back:focus-visible,
+.user-book-court-page #courtPaymentModal .modal-back:focus-visible,
+.user-book-court-page .modal-actions .btn:focus-visible {
+    outline: 2px solid var(--brand);
+    outline-offset: 2px;
+}
+
+.user-booking-waiting-page {
+    min-width: 0;
+    padding-top: calc(env(safe-area-inset-top, 0px) + var(--s8) + var(--s4));
+}
+
+body.user-booking-waiting-page #waitingPage.wt-shell {
+    width: min(100% - var(--s4) * 2, 720px);
+    margin: 0 auto;
+    padding-bottom: calc(var(--s6) + env(safe-area-inset-bottom, 0px));
+}
+
+.user-booking-waiting-page .wt-float-timer {
+    position: static;
+    margin: 0 0 var(--s4);
+}
+
+.user-booking-waiting-page .wt-cancel-actions {
+    margin-top: var(--s4);
+}
+
+body.user-booking-waiting-page #waitingPage .wt-qr-box {
+    position: relative;
+    width: min(100%, 320px);
+    aspect-ratio: 1;
+    height: auto;
+    flex: none;
+    margin: var(--s3) auto;
+    overflow: hidden;
+    border: 0;
+    border-radius: var(--r-lg);
+    background: transparent;
+}
+
+.user-booking-waiting-page .wt-qr-skeleton,
+.user-booking-waiting-page .wt-qr-image-wrap,
+.user-booking-waiting-page .wt-qr-error {
+    position: absolute;
+    inset: 0;
+}
+
+.user-booking-waiting-page .wt-qr-skeleton {
+    background: linear-gradient(100deg, var(--surface-2) 20%, var(--surface) 45%, var(--surface-2) 70%);
+    background-size: 200% 100%;
+    animation: userQrShimmer 1.35s ease-in-out infinite;
+}
+
+body.user-booking-waiting-page #qrBox[data-state="ready"] {
+    border: 1px solid var(--border);
+    background: var(--qr-surface, var(--text));
+}
+
+body.user-booking-waiting-page #waitingPage .wt-qr-image-wrap[hidden],
+body.user-booking-waiting-page #waitingPage .wt-qr-skeleton[hidden],
+body.user-booking-waiting-page #waitingPage .wt-qr-loading[hidden],
+body.user-booking-waiting-page #waitingPage .wt-qr-error[hidden],
+body.user-booking-waiting-page #waitingPage .wt-qr-status-line[hidden] { display: none; }
+
+.user-booking-waiting-page .wt-qr-image-wrap { display: grid; place-items: center; }
+.user-booking-waiting-page .wt-qr-image-wrap img { display: block; width: 100%; height: 100%; object-fit: contain; background: transparent; border: 0; padding: 0; }
+.user-booking-waiting-page .wt-qr-loading { margin: 0 auto var(--s4); text-align: center; color: var(--text-muted); }
+.user-booking-waiting-page .wt-qr-error { display: grid; place-content: center; gap: var(--s3); padding: var(--s4); text-align: center; color: var(--text); }
+.user-booking-waiting-page .wt-qr-error[hidden] { display: none; }
+.user-booking-waiting-page .wt-qr-retry { min-height: 44px; }
+
+.user-booking-waiting-page .wt-back,
+.user-booking-waiting-page .wt-btn-cancel {
+    box-sizing: border-box;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    padding: var(--s2) var(--s4);
+    border: 1px solid var(--text-muted);
+    border-radius: var(--r-pill);
+    background: transparent;
+    color: var(--text-muted);
+    text-decoration: none;
+}
+
+.user-booking-waiting-page .wt-back:hover,
+.user-booking-waiting-page .wt-btn-cancel:hover,
+.user-booking-waiting-page .wt-back:focus-visible,
+.user-booking-waiting-page .wt-btn-cancel:focus-visible {
+    border-color: var(--danger);
+    color: var(--danger);
+}
+
+.user-booking-waiting-page .wt-back:focus-visible,
+.user-booking-waiting-page .wt-btn-cancel:focus-visible {
+    outline: 2px solid var(--brand);
+    outline-offset: 2px;
+}
+
+@keyframes userQrShimmer {
+    to { background-position: -200% 0; }
+}
+
+@media (max-width: 560px) {
+    .user-book-court-page .content { padding: var(--s3); }
+    .user-book-court-page .user-booking-progress { gap: var(--s1); }
+    .user-book-court-page .booking-flow-step { min-height: 36px; gap: var(--s1); padding: var(--s1); font-size: var(--font-size-small); }
+    .user-book-court-page .booking-flow-step b { flex-basis: 20px; width: 20px; height: 20px; }
+    .user-book-court-page .user-booking-selection { padding: var(--s3); }
+    body.user-booking-waiting-page #waitingPage.wt-shell { width: min(100% - var(--s3) * 2, 720px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .user-book-court-page .user-equipment-skeleton span,
+    .user-booking-waiting-page .wt-qr-skeleton,
+    body.user-booking-waiting-page #waitingPage .wt-qr-skeleton { animation: none; }
+}
