@@ -1117,7 +1117,6 @@
     display: flex;
     flex-shrink: 0;
     justify-content: flex-end;
-    flex-wrap: wrap;
     gap: var(--s3);
     margin-top: var(--s4);
     padding-top: var(--s4);
