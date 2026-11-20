@@ -76,11 +76,13 @@ html.admin-layout-shell .admin-activity-logs-page .btn-clear {
 html.admin-layout-shell .admin-activity-logs-page .btn-filter {
     border-color: var(--brand);
     background: var(--brand);
+    color: var(--bg);
 }
 
 html.admin-layout-shell .admin-activity-logs-page .btn-filter:hover {
     border-color: var(--brand-hover);
     background: var(--brand-hover);
+    color: var(--bg);
 }
 
 html.admin-layout-shell .admin-activity-logs-page .btn-clear:hover {
