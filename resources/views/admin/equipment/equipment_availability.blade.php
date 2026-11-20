@@ -4,6 +4,7 @@
 @section('title', 'Equipment Availability | Side House')
 
 @push('styles')
+    <link rel="stylesheet" href="{{ asset('css/admin/admin-base.css') }}">
     <link rel="stylesheet" href="{{ asset('css/admin/admin-equipment-availability.css') }}">
 @endpush
 
@@ -170,7 +171,7 @@
                 <p class="equip-field-error" id="equipDeleteError" hidden></p>
                 <form id="equipDeleteForm">
                     <div class="equip-form-actions">
-                        <button type="submit" class="btn btn-primary" id="equipDeleteSubmit" style="background:#ef4444;">Delete</button>
+                        <button type="submit" class="btn btn-primary btn-danger" id="equipDeleteSubmit">Delete</button>
                     </div>
                 </form>
             </div>
