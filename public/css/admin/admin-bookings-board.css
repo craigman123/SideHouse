@@ -684,6 +684,13 @@ html[data-theme="light"] .admin-bookings-page .btn-filter {
 }
 
 .admin-bookings-page .court-month-date-col.is-today { background: var(--surface-2); }
+.admin-bookings-page .court-month-date-col.is-past { background: color-mix(in srgb, var(--surface-2) 72%, var(--bg)); }
+.admin-bookings-page .court-month-date-col.is-past { opacity: .7; }
+.admin-bookings-page .court-month-date-col.is-past,
+.admin-bookings-page .court-month-hour-cell.is-past { cursor: not-allowed; }
+.admin-bookings-page .court-month-date-col.is-past .court-month-hour-cell { color: var(--text-muted); }
+.admin-bookings-page .court-month-date-col.is-past .court-month-bar,
+.admin-bookings-page .court-month-date-col.is-past .court-month-block { cursor: not-allowed; }
 .admin-bookings-page .court-month-date-col.is-closed { border-right: 2px solid var(--danger); background: var(--surface-2); }
 .admin-bookings-page .court-month-date-col,
 .admin-bookings-page .court-month-hour-cell { touch-action: none; user-select: none; -webkit-user-select: none; -webkit-user-drag: none; }
@@ -726,6 +733,11 @@ html[data-theme="light"] .admin-bookings-page .btn-filter {
 .court-block-notes-field { grid-column: 1 / -1; }
 .court-block-form-grid :is(input, select, textarea):focus-visible,
 .court-block-modal :is(button, input, select, textarea):focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+.calendar-field-error { color: var(--danger); font-size: var(--font-size-small); font-weight: var(--font-weight-small); }
+.court-block-form-grid input[disabled],
+.court-block-form-grid select[disabled],
+.court-block-form-grid textarea[disabled] { opacity: .58; cursor: not-allowed; }
+.court-past-edit-note { margin: 0 0 var(--s3); color: var(--text-muted); font-size: var(--font-size-small); }
 .court-block-modal-message { min-height: 1.4em; margin: var(--s3) 0; color: var(--text-muted); font-size: var(--font-size-small); }
 .court-block-modal-message.is-error { color: var(--danger); }
 .court-block-modal-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--s2); }

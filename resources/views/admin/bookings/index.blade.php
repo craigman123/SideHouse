@@ -134,7 +134,7 @@
                     </div>
                     <div class="court-board-controls" aria-label="Choose board date">
                         <button type="button" class="court-board-nav" data-board-date="previous" aria-label="Previous day">‹</button>
-                        <input type="date" id="courtBoardDate" value="{{ request('date', now()->toDateString()) }}" min="{{ now()->subDay()->toDateString() }}" max="{{ now()->addMonths(6)->toDateString() }}">
+                        <input type="date" id="courtBoardDate" value="{{ request('date', $businessSettings->today) }}" min="{{ \Carbon\CarbonImmutable::parse($businessSettings->today, 'Asia/Manila')->subDay()->toDateString() }}" max="{{ \Carbon\CarbonImmutable::parse($businessSettings->today, 'Asia/Manila')->addMonths(6)->toDateString() }}">
                         <button type="button" class="court-board-nav" data-board-date="next" aria-label="Next day">›</button>
                         <button type="button" class="btn-clear court-board-today" data-board-date="today">Today</button>
                     </div>
@@ -164,7 +164,7 @@
                     </div>
                     <div class="court-board-controls" aria-label="Choose calendar month">
                         <button type="button" class="court-board-nav" data-month-nav="previous" aria-label="Previous month">‹</button>
-                        <input type="month" id="courtMonthInput" value="{{ now()->format('Y-m') }}">
+                        <input type="month" id="courtMonthInput" value="{{ \Carbon\CarbonImmutable::parse($businessSettings->today, 'Asia/Manila')->format('Y-m') }}">
                         <button type="button" class="court-board-nav" data-month-nav="next" aria-label="Next month">›</button>
                         <button type="button" class="btn-clear court-board-today" data-month-nav="today">This month</button>
                     </div>
@@ -196,7 +196,7 @@
                     </div>
                     <div class="court-board-controls" aria-label="Choose calendar week">
                         <button type="button" class="court-board-nav" data-week-nav="previous" aria-label="Previous week">‹</button>
-                        <input type="date" id="courtWeekInput" value="{{ request('date', now()->toDateString()) }}" aria-label="Choose a date in the week">
+                        <input type="date" id="courtWeekInput" value="{{ request('date', $businessSettings->today) }}" aria-label="Choose a date in the week">
                         <button type="button" class="court-board-nav" data-week-nav="next" aria-label="Next week">›</button>
                         <button type="button" class="btn-clear court-board-today" data-week-nav="today">This week</button>
                         <button type="button" class="court-board-nav" data-week-scroll="left" aria-label="Scroll calendar left">Scroll left</button>
@@ -285,6 +285,7 @@
                 <p id="courtBlockDetailsMeta" class="court-block-modal-intro"></p>
                 <p id="courtBlockDetailsNotes"></p>
                 <p class="court-block-modal-message" id="courtBlockDeleteMessage" role="status" aria-live="polite"></p>
+                <p class="court-past-edit-note" id="courtBlockPastNote" hidden>Past calendar events are read-only except for notes.</p>
                 <div class="court-block-modal-actions">
                     <button type="button" class="court-block-secondary" id="courtBlockDetailsClose">Close</button>
                     <button type="button" class="court-block-secondary" id="courtBlockEditOpen">Edit event</button>
@@ -295,6 +296,7 @@
             <div id="courtBlockEditPanel" hidden>
                 <h2 id="courtBlockEditTitle">Edit calendar event</h2>
                 <form id="courtBlockEditForm">
+                    <p class="court-past-edit-note" data-past-edit-note hidden>Past calendar events are read-only except for notes.</p>
                     <div class="court-block-form-grid">
                         <label>Type<select name="type" required><option value="closed">Closed</option><option value="maintenance">Maintenance</option><option value="open_play">Open play</option></select></label>
                         <label>Court<select name="court_id" required></select></label>
@@ -317,6 +319,7 @@
                 <p id="courtBookingDetailsMeta" class="court-block-modal-intro"></p>
                 <p id="courtBookingDetailsNotes"></p>
                 <p class="court-block-modal-message" id="courtBookingDetailsMessage" role="status" aria-live="polite"></p>
+                <p class="court-past-edit-note" id="courtBookingPastNote" hidden>Past bookings can't be edited.</p>
                 <div class="court-block-modal-actions">
                     <button type="button" class="court-block-secondary" id="courtBookingDetailsClose">Close</button>
                     <button type="button" class="court-block-primary" id="courtBookingEditOpen">Edit booking</button>
@@ -326,6 +329,7 @@
             <div id="courtBookingEditPanel" hidden>
                 <h2 id="courtBookingEditTitle">Edit booking</h2>
                 <form id="courtBookingEditForm">
+                    <p class="court-past-edit-note" data-past-edit-note hidden>Past bookings can't be edited.</p>
                     <div class="court-block-form-grid">
                         <label>Customer name<input name="customer_name" type="text" maxlength="255" required></label>
                         <label>Contact number<input name="contact_number" type="tel" maxlength="30" required></label>
@@ -368,6 +372,8 @@
                 'peak_end_hour' => $businessSettings->peak_end_hour,
                 'peak_adjustment_type' => $businessSettings->peak_adjustment_type,
                 'peak_adjustment_value' => $businessSettings->peak_adjustment_value,
+                'today' => $businessSettings->today,
+                'server_time' => $businessSettings->server_time,
             ],
         ];
     @endphp

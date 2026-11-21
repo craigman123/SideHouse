@@ -19,6 +19,50 @@
     // Weekday numbers (0=Sun … 6=Sat) that are always closed.
     const BIZ_CLOSED_WEEKDAYS = Array.isArray(bizSettings.closed_weekdays) ? bizSettings.closed_weekdays : [];
     const dateInput = document.getElementById('courtBoardDate');
+    let venueToday = String(bizSettings.today || dateInput.value || '');
+    let venueTimeBase = Date.parse(bizSettings.server_time || '');
+    let venuePerfBase = performance.now();
+    const updateVenueClock = (today, isoTime) => {
+        const previousDate = venueToday;
+        if (today) {
+            venueToday = String(today);
+            bizSettings.today = venueToday;
+        }
+        if (isoTime && Number.isFinite(Date.parse(isoTime))) {
+            venueTimeBase = Date.parse(isoTime);
+            venuePerfBase = performance.now();
+            bizSettings.server_time = isoTime;
+        }
+        if (venueToday !== previousDate) {
+            const minimumBoardDate = new Date(venueToday + 'T00:00:00');
+            minimumBoardDate.setDate(minimumBoardDate.getDate() - 1);
+            dateInput.min = formatDateInputValue(minimumBoardDate);
+            const maximumBoardDate = new Date(venueToday + 'T00:00:00');
+            maximumBoardDate.setMonth(maximumBoardDate.getMonth() + 6);
+            dateInput.max = formatDateInputValue(maximumBoardDate);
+            workspace.querySelectorAll('.court-block-modal input[type="date"]').forEach((input) => { input.min = venueToday; });
+            if (typeof validateCalendarForm === 'function') calendarDateTimeForms?.forEach((form) => validateCalendarForm(form));
+        }
+    };
+    const venueClockMinutes = () => {
+        const instant = venueTimeBase + (performance.now() - venuePerfBase);
+        const parts = new Intl.DateTimeFormat('en-GB', {
+            timeZone: 'Asia/Manila', hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
+        }).formatToParts(instant);
+        return Number(parts.find((part) => part.type === 'hour')?.value || 0) * 60
+            + Number(parts.find((part) => part.type === 'minute')?.value || 0);
+    };
+    const venueNowMinutes = () => Number.isFinite(venueTimeBase) ? venueClockMinutes() : 0;
+    const isPastDate = (date) => String(date || '') < venueToday;
+    const itemIsPast = (kind, item) => {
+        const date = kind === 'block' ? item.block_date : item.date;
+        if (isPastDate(date)) return true;
+        if (date !== venueToday) return false;
+        const start = toMinutes(normalizeTime(kind === 'block' ? item.start_time : item.start));
+        let end = toMinutes(normalizeTime(kind === 'block' ? item.end_time : item.end));
+        if (end <= start) end += 1440;
+        return end <= venueNowMinutes();
+    };
     const summary = document.getElementById('courtBoardSummary');
     const weekInput = document.getElementById('courtWeekInput');
     const weekSummary = document.getElementById('courtWeekSummary');
@@ -51,11 +95,9 @@
     };
     const requestedDate = new URLSearchParams(window.location.search).get('date');
     const initialWeekDate = isoDateIsValid(requestedDate) ? requestedDate
-        : (isoDateIsValid(dateInput.value) ? dateInput.value : formatDateInputValue(new Date()));
+        : (isoDateIsValid(dateInput.value) ? dateInput.value : venueToday);
     let weekStart = startOfWeek(initialWeekDate);
     weekInput.value = initialWeekDate;
-    weekInput.min = dateInput.min;
-    weekInput.max = dateInput.max;
     const stepMinutes = [15, 30, 60].includes(Number(bizSettings.step_minutes))
         ? Number(bizSettings.step_minutes)
         : 60;
@@ -243,6 +285,7 @@
                 credentials: 'same-origin', headers,
             });
             if (response.status === 304) {
+                updateVenueClock(response.headers.get('X-Venue-Date'), response.headers.get('X-Venue-Time'));
                 pollDelay = 45000;
                 setSyncState('');
                 return true;
@@ -259,6 +302,8 @@
                 throw new Error(`Calendar sync failed (${response.status})`);
             }
             const incoming = await response.json();
+            updateVenueClock(incoming.businessSettings?.today || response.headers.get('X-Venue-Date'),
+                incoming.businessSettings?.server_time || response.headers.get('X-Venue-Time') || incoming.server_time);
             const changedDates = mergeCalendarRange(incoming, from, to);
             affectedCalendarDates = changedDates.length ? changedDates : null;
             const etag = response.headers.get('ETag');
@@ -459,6 +504,7 @@
     };
 
     const openCreateModal = (selection) => {
+        if (isPastDate(selection.date)) return;
         selectedBlock = null;
         selectedBooking = null;
         populateCourtSelect();
@@ -479,6 +525,7 @@
         document.getElementById('courtBlockStart').step = stepMinutes * 60;
         document.getElementById('courtBlockEnd').step = stepMinutes * 60;
         blockCourtSelect.value = courts.length ? String(courts[0].id) : 'all';
+        validateCalendarForm(blockForm);
         blockModal.hidden = false;
         document.getElementById('courtBlockType').focus();
     };
@@ -492,6 +539,9 @@
         blockDeleteMessage.textContent = '';
         blockDeleteMessage.classList.remove('is-error');
         document.getElementById('courtBlockDetailsTitle').textContent = block.title || 'Calendar event';
+        const blockPast = itemIsPast('block', block);
+        document.getElementById('courtBlockPastNote').hidden = !blockPast;
+        document.getElementById('courtBlockEditOpen').disabled = false;
         const court = courts.find((item) => Number(item.id) === Number(block.court_id));
         const courtLabel = block.court_id === null ? 'All courts' : (court?.name || 'Court');
         document.getElementById('courtBlockDetailsMeta').textContent =
@@ -514,6 +564,17 @@
         form.elements.block_date.value = selectedBlock.block_date;
         form.elements.start_time.value = selectedBlock.start_time;
         form.elements.end_time.value = selectedBlock.end_time;
+        const past = itemIsPast('block', selectedBlock);
+        form.elements.block_date.disabled = past;
+        form.elements.start_time.disabled = past;
+        form.elements.end_time.disabled = past;
+        form.elements.court_id.disabled = past;
+        form.elements.type.disabled = past;
+        form.elements.title.disabled = past;
+        form.elements.notes.disabled = false;
+        form.querySelector('[type="submit"]').disabled = past;
+        form.querySelector('[data-past-edit-note]').hidden = !past;
+        validateCalendarForm(form);
         document.getElementById('courtBlockEditMessage').textContent = '';
         showModalPanel(blockEditPanel, 'courtBlockEditTitle');
         form.elements.type.focus();
@@ -526,6 +587,8 @@
         selectedBlock = null;
         const panel = bookingDetailsPanel;
         document.getElementById('courtBookingDetailsTitle').textContent = booking.customer || 'Booking details';
+        const bookingPast = itemIsPast('booking', booking);
+        document.getElementById('courtBookingPastNote').hidden = !bookingPast;
         const courtLabel = courts.find((court) => Number(court.id) === Number(booking.court_id))?.name || booking.court || 'Court';
         document.getElementById('courtBookingDetailsMeta').textContent =
             `${booking.source === 'walk_in' ? 'Walk-in · ' : ''}${courtLabel} · ${formatDate(booking.date)} · ${booking.start}–${booking.end} · ${booking.status}`;
@@ -552,6 +615,11 @@
         form.elements.end_time.value = booking.end;
         form.elements.amount.value = Number(booking.amount || 0).toFixed(2);
         form.elements.notes.value = booking.notes || '';
+        const past = itemIsPast('booking', booking);
+        ['court_id', 'date', 'start_time', 'end_time', 'amount'].forEach((name) => { form.elements[name].disabled = past; });
+        form.querySelector('[data-past-edit-note]').hidden = !past;
+        form.querySelector('[type="submit"]').disabled = false;
+        validateCalendarForm(form);
         form.elements.acknowledge_price_change.checked = false;
         form.querySelector('.court-booking-price-ack-field').hidden = !['paid', 'confirmed'].includes(booking.status);
         document.getElementById('courtBookingEditMessage').textContent = '';
@@ -579,6 +647,7 @@
 
     blockForm.addEventListener('submit', async (event) => {
         event.preventDefault();
+        if (!validateCalendarForm(blockForm)) return;
         if (savingBlock) return;
 
         const formData = new FormData(blockForm);
@@ -656,6 +725,93 @@
 
     const bookingEditForm = document.getElementById('courtBookingEditForm');
     const bookingEditMessage = document.getElementById('courtBookingEditMessage');
+    const calendarDateTimeForms = [blockForm, bookingEditForm, document.getElementById('courtBlockEditForm')];
+    const calendarFormDateErrors = new WeakMap();
+    const calendarFormTimeErrors = new WeakMap();
+    const setInlineFieldError = (input, errors, message) => {
+        let error = errors.get(input);
+        if (!error) {
+            error = document.createElement('small');
+            error.className = 'calendar-field-error';
+            error.setAttribute('role', 'alert');
+            input.insertAdjacentElement('afterend', error);
+            errors.set(input, error);
+        }
+        error.textContent = message;
+        error.hidden = !message;
+    };
+    const validateCalendarForm = (form) => {
+        if (!form) return true;
+        const dateField = form.elements.date || form.elements.block_date;
+        const startField = form.elements.start_time;
+        let valid = true;
+        if (dateField) {
+            dateField.min = venueToday;
+            if (!dateField.dataset.lastValid) dateField.dataset.lastValid = dateField.value || venueToday;
+            if (!dateField.disabled && dateField.value && dateField.value < venueToday) {
+                setInlineFieldError(dateField, calendarFormDateErrors, 'Pick today or a later date');
+                dateField.value = dateField.dataset.lastValid >= venueToday ? dateField.dataset.lastValid : venueToday;
+                valid = false;
+            } else {
+                if (dateField.value && dateField.value >= venueToday) dateField.dataset.lastValid = dateField.value;
+                setInlineFieldError(dateField, calendarFormDateErrors, '');
+            }
+        }
+        if (startField && dateField && !startField.disabled) {
+            const walkIn = form === blockForm && walkInType.value === 'walk_in';
+            const startMinutes = startField.value ? toMinutes(startField.value) : null;
+            let scheduleChanged = true;
+            if (form === bookingEditForm && selectedBooking) {
+                scheduleChanged = dateField.value !== selectedBooking.date
+                    || startField.value !== selectedBooking.start
+                    || form.elements.end_time.value !== selectedBooking.end
+                    || Number(form.elements.court_id.value) !== Number(selectedBooking.court_id);
+            } else if (form === document.getElementById('courtBlockEditForm') && selectedBlock) {
+                scheduleChanged = dateField.value !== selectedBlock.block_date
+                    || startField.value !== selectedBlock.start_time
+                    || form.elements.end_time.value !== selectedBlock.end_time
+                    || String(form.elements.court_id.value) !== String(selectedBlock.court_id ?? 'all');
+            }
+            if (!walkIn && scheduleChanged && dateField.value === venueToday
+                && startMinutes !== null && startMinutes < venueNowMinutes()) {
+                setInlineFieldError(startField, calendarFormTimeErrors, 'Choose a start time that has not passed in Asia/Manila.');
+                valid = false;
+            } else setInlineFieldError(startField, calendarFormTimeErrors, '');
+        } else if (startField) setInlineFieldError(startField, calendarFormTimeErrors, '');
+        const pastBlock = form === document.getElementById('courtBlockEditForm') && selectedBlock && itemIsPast('block', selectedBlock);
+        const pastBooking = form === bookingEditForm && selectedBooking && itemIsPast('booking', selectedBooking);
+        const pastBookingHasAllowedChange = pastBooking && (
+            form.elements.customer_name.value !== (selectedBooking.customer || '')
+            || form.elements.contact_number.value !== (selectedBooking.contact_number || '')
+            || form.elements.email.value !== (selectedBooking.email || '')
+            || form.elements.notes.value !== (selectedBooking.notes || '')
+        );
+        const save = form.querySelector('[type="submit"]');
+        if (save) save.disabled = !valid
+            || Boolean(pastBlock && form.elements.notes.value === (selectedBlock.notes || ''))
+            || Boolean(pastBooking && !pastBookingHasAllowedChange);
+        return valid;
+    };
+    calendarDateTimeForms.forEach((form) => {
+        const dateField = form.elements.date || form.elements.block_date;
+        const startField = form.elements.start_time;
+        if (dateField) {
+            dateField.min = venueToday;
+            dateField.dataset.lastValid = dateField.value || venueToday;
+            dateField.addEventListener('change', () => validateCalendarForm(form));
+            dateField.addEventListener('input', () => validateCalendarForm(form));
+        }
+        if (startField) {
+            startField.addEventListener('change', () => validateCalendarForm(form));
+            startField.addEventListener('input', () => validateCalendarForm(form));
+        }
+        const notes = form.elements.notes;
+        if (notes) notes.addEventListener('input', () => validateCalendarForm(form));
+        if (form === bookingEditForm) ['customer_name', 'contact_number', 'email'].forEach((name) =>
+            form.elements[name].addEventListener('input', () => validateCalendarForm(form))
+        );
+    });
+    walkInType.addEventListener('change', () => validateCalendarForm(blockForm));
     const updatePriceAcknowledgementVisibility = () => {
         const amountChanged = Number(bookingEditForm.elements.amount.value) !== Number(selectedBooking?.amount || 0);
         const acknowledgement = bookingEditForm.elements.acknowledge_price_change;
@@ -667,6 +823,7 @@
     bookingEditForm.elements.amount.addEventListener('input', updatePriceAcknowledgementVisibility);
     bookingEditForm.addEventListener('submit', async (event) => {
         event.preventDefault();
+        if (!validateCalendarForm(bookingEditForm)) return;
         if (!selectedBooking || savingBlock) return;
         const token = csrfToken();
         if (!token) {
@@ -726,6 +883,7 @@
     const blockEditMessage = document.getElementById('courtBlockEditMessage');
     blockEditForm.addEventListener('submit', async (event) => {
         event.preventDefault();
+        if (!validateCalendarForm(blockEditForm)) return;
         if (!selectedBlock || savingBlock) return;
         const token = csrfToken();
         if (!token) {
@@ -864,9 +1022,10 @@
         const previousView = Object.keys(panels).find((key) => !panels[key].hidden);
         if (view === 'week' && previousView === 'month') {
             const [year, month] = monthInput.value.split('-').map(Number);
-            const today = new Date();
-            const choice = today.getFullYear() === year && today.getMonth() + 1 === month
-                ? toDateValue(today)
+            const todayYear = Number(venueToday.slice(0, 4));
+            const todayMonth = Number(venueToday.slice(5, 7));
+            const choice = todayYear === year && todayMonth === month
+                ? venueToday
                 : `${year}-${String(month).padStart(2, '0')}-01`;
             weekInput.value = choice;
             weekStart = startOfWeek(choice);
@@ -1095,7 +1254,7 @@
         const item = kind === 'booking'
             ? bookings.find((entry) => String(entry.id) === id)
             : blocks.find((entry) => String(entry.id) === id);
-        if (!item) return;
+        if (!item || itemIsPast(kind, item)) return;
         const rect = source.getBoundingClientRect();
         let start = kind === 'booking' ? toMinutes(item.start) : toMinutes(item.start_time);
         let end = kind === 'booking' ? toMinutes(item.end) : toMinutes(item.end_time);
@@ -1158,11 +1317,12 @@
         const yForTarget = targetColumn._monthYForMinute || (() => 0);
         drag.ghost.style.top = `${yForTarget(startMinutes)}px`;
         drag.ghost.style.height = `${Math.max(8, yForTarget(endMinutes) - yForTarget(startMinutes))}px`;
-        const conflict = drag.kind === 'block'
+        const past = isPastDate(slot.date) || (slot.date === venueToday && startMinutes < venueNowMinutes());
+        const conflict = past || (drag.kind === 'block'
             ? rangeHasConflict(slot.date, startMinutes, endMinutes, null, drag.item.court_id, drag.item.id)
-            : rangeHasConflict(slot.date, startMinutes, endMinutes, drag.item.id, drag.item.court_id);
+            : rangeHasConflict(slot.date, startMinutes, endMinutes, drag.item.id, drag.item.court_id));
         drag.ghost.classList.toggle('is-conflict', conflict);
-        drag.target = { date: slot.date, startMinutes, endMinutes, conflict, targetColumn };
+        drag.target = { date: slot.date, startMinutes, endMinutes, conflict, past, targetColumn };
     };
     const stopCalendarDrag = async (event, cancelled = false) => {
         const drag = calendarDrag;
@@ -1178,6 +1338,16 @@
         drag.ghost = null;
         if (cancelled || !target) { releaseDragVisuals(drag); return; }
         endMonthDrag(event.pointerId);
+        if (isPastDate(target.date)) {
+            releaseDragVisuals(drag);
+            notify("You can't move this to a past date", 'error');
+            return;
+        }
+        if (target.date === venueToday && target.startMinutes < venueNowMinutes()) {
+            releaseDragVisuals(drag);
+            notify("You can't move this to a past time", 'error');
+            return;
+        }
         if (target.conflict) {
             releaseDragVisuals(drag);
             notify('That time overlaps a booking, closure, or another calendar event.', 'error');
@@ -1444,7 +1614,7 @@
         if (!startDate || !dayCount || !targetGrid) return;
         const baseDate = new Date(`${startDate}T00:00:00`);
         const { rowPlan, hourTop, dividerTop, gridH } = buildDayRowPlan();
-        const todayValue = toDateValue(new Date());
+        const todayValue = venueToday;
 
         const dates = Array.from({ length: dayCount }, (_, i) => addDays(startDate, i));
 
@@ -1572,7 +1742,8 @@
             const hasAnyClosure = colClosures.length || isWeekdayClosed;
 
             const col = document.createElement('div');
-            col.className = 'court-month-date-col' + (isToday ? ' is-today' : '') + (isWeekdayClosed ? ' is-closed-weekday' : '') + (hasAnyClosure ? ' is-closed' : '');
+            const pastColumn = isPastDate(dateStr);
+            col.className = 'court-month-date-col' + (isToday ? ' is-today' : '') + (pastColumn ? ' is-past' : '') + (isWeekdayClosed ? ' is-closed-weekday' : '') + (hasAnyClosure ? ' is-closed' : '');
             col.dataset.date = dateStr;
             col.style.cssText = `flex:0 0 ${COL_W}px;width:${COL_W}px;position:relative;box-sizing:border-box;` +
                 (hasAnyClosure
@@ -1585,10 +1756,12 @@
                 const cell = document.createElement('div');
                 if (row.type === 'hour') {
                     cell.className = 'court-month-hour-cell';
+                    if (pastColumn) cell.classList.add('is-past');
                     cell.dataset.date = dateStr;
                     cell.dataset.hour = String(row.hour);
                     cell.setAttribute('role', 'button');
-                    cell.tabIndex = 0;
+                    cell.tabIndex = pastColumn ? -1 : 0;
+                    if (pastColumn) cell.setAttribute('aria-disabled', 'true');
                     cell.setAttribute('aria-label', `${formatDate(dateStr)}, ${formatHourLabel(row.hour)}. Press Enter to add an event for one step.`);
                     cell.style.cssText = `height:${ROW_H}px;box-sizing:border-box;` +
                         (hasAnyClosure ? '' : `border-bottom:1px solid var(--text-muted);`);
@@ -1686,7 +1859,7 @@
                     justify-content: ${mode === 'week' ? 'flex-start' : 'center'};
                     text-align: ${mode === 'week' ? 'left' : 'center'};
                     overflow: hidden;
-                    cursor: pointer;
+                    cursor: ${itemIsPast('booking', booking) ? 'not-allowed' : 'pointer'};
                     padding: ${mode === 'week' ? 'var(--s1) var(--s2)' : '0'};
                     overflow-wrap: ${mode === 'week' ? 'anywhere' : 'normal'};
                     letter-spacing: .03em;
@@ -1737,7 +1910,8 @@
                     selection.startMinutes,
                     selection.endMinutes,
                 );
-                selection.ghost.classList.toggle('is-conflict', conflict);
+                const pastTime = selection.date === venueToday && selection.startMinutes < venueNowMinutes();
+                selection.ghost.classList.toggle('is-conflict', conflict || pastColumn || pastTime);
             };
             const finishPointerSelection = (selection, cancelled = false) => {
                 if (selection.ghost) selection.ghost.remove();
@@ -1751,6 +1925,7 @@
             };
 
             col.addEventListener('pointerdown', (pointerEvent) => {
+                if (pastColumn) return;
                 if ((pointerEvent.pointerType === 'mouse' && pointerEvent.button !== 0)
                     || pointerEvent.target.closest('.court-month-bar, .court-month-block')) return;
                 const slot = slotFromPoint(pointerEvent, col);
@@ -1820,6 +1995,7 @@
                 cell.addEventListener('keydown', (keyEvent) => {
                     if (keyEvent.key !== 'Enter' && keyEvent.key !== ' ') return;
                     keyEvent.preventDefault();
+                    if (pastColumn) return;
                     const startMinutes = Number(cell.dataset.hour) * 60;
                     openCreateModal({
                         date: dateStr,
@@ -1931,7 +2107,7 @@
         renderCalendarGrid(start, new Date(year, month, 0).getDate(), 'month', monthGrid, changedDates);
     };
     const renderWeek = (changedDates = null) => {
-        const chosen = isoDateIsValid(weekInput.value) ? weekInput.value : toDateValue(new Date());
+        const chosen = isoDateIsValid(weekInput.value) ? weekInput.value : venueToday;
         weekInput.value = chosen;
         weekStart = startOfWeek(chosen);
         activeCalendarGrid = weekGrid;
@@ -2033,7 +2209,11 @@
         button.addEventListener('click', () => {
             const [year, month] = monthInput.value.split('-').map(Number);
             const cursor = new Date(year, month - 1, 1);
-            if (button.dataset.monthNav === 'today') cursor.setTime(new Date().setDate(1));
+            if (button.dataset.monthNav === 'today') {
+                const today = new Date(venueToday + 'T00:00:00');
+                today.setDate(1);
+                cursor.setTime(today.getTime());
+            }
             if (button.dataset.monthNav === 'previous') cursor.setMonth(cursor.getMonth() - 1);
             if (button.dataset.monthNav === 'next') cursor.setMonth(cursor.getMonth() + 1);
             monthInput.value = toMonthValue(cursor);
@@ -2046,7 +2226,7 @@
     workspace.querySelectorAll('[data-week-nav]').forEach((button) => button.addEventListener('click', () => {
         if (button.disabled) return;
         if (button.dataset.weekNav === 'today') {
-            selectWeekDate(toDateValue(new Date()));
+            selectWeekDate(venueToday);
             return;
         }
         const nextStart = new Date(`${weekStart}T00:00:00`);
@@ -2063,9 +2243,8 @@
 
     workspace.querySelectorAll('[data-board-date]').forEach((button) => {
         button.addEventListener('click', () => {
-            const today = new Date();
             const value = new Date(`${dateInput.value}T00:00:00`);
-            if (button.dataset.boardDate === 'today') value.setTime(today.setHours(0, 0, 0, 0));
+            if (button.dataset.boardDate === 'today') value.setTime(new Date(venueToday + 'T00:00:00').getTime());
             if (button.dataset.boardDate === 'previous') value.setDate(value.getDate() - 1);
             if (button.dataset.boardDate === 'next') value.setDate(value.getDate() + 1);
             dateInput.value = toDateValue(value);
@@ -2075,7 +2254,7 @@
     document.addEventListener('visibilitychange', schedulePoll);
     blockModal.addEventListener('transitionend', schedulePoll);
 
-    const initialToday = toDateValue(new Date());
+    const initialToday = venueToday;
     const initialEnd = new Date(`${initialToday}T00:00:00`);
     initialEnd.setMonth(initialEnd.getMonth() + 6);
     rangeCache.push({ from: addDays(initialToday, -1), to: toDateValue(initialEnd) });

@@ -56,6 +56,8 @@ class AdminBookingsCalendarDataTest extends TestCase
 
         $this->assertArrayHasKey('blocks', $data);
         $this->assertSame(15, $data['businessSettings']['step_minutes']);
+        $this->assertSame(now('Asia/Manila')->toDateString(), $data['businessSettings']['today']);
+        $this->assertStringContainsString('+08:00', $data['businessSettings']['server_time']);
         $this->assertSame($block->id, $data['blocks'][0]['id']);
         $this->assertSame('maintenance', $data['blocks'][0]['type']);
         $this->assertSame('09:00', $data['blocks'][0]['start_time']);

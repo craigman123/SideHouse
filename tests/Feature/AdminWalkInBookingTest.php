@@ -7,6 +7,8 @@ use App\Models\BusinessSetting;
 use App\Models\Court;
 use App\Models\CourtBlock;
 use App\Models\User;
+use Carbon\Carbon;
+use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -79,6 +81,46 @@ class AdminWalkInBookingTest extends TestCase
     {
         $this->postJson('/admin/bookings', [])->assertUnprocessable()
             ->assertJsonValidationErrors(['customer_name', 'contact_number', 'court_id', 'date', 'start_time', 'end_time']);
+    }
+
+    public function test_past_walk_in_date_is_rejected_but_a_walk_in_already_in_progress_today_is_allowed(): void
+    {
+        $this->freezeVenueTime('2030-05-15 10:00:00');
+        $this->postJson('/admin/bookings', $this->payload(['date' => '2030-05-14']))
+            ->assertUnprocessable()->assertJsonValidationErrors('date');
+
+        $this->postJson('/admin/bookings', $this->payload([
+            'date' => '2030-05-15', 'start_time' => '09:00', 'end_time' => '11:00',
+        ]))->assertCreated();
+    }
+
+    public function test_walk_in_date_uses_manila_day_after_utc_has_crossed_midnight(): void
+    {
+        $this->freezeVenueTime('2026-11-22 15:30:00', 'UTC'); // Nov 22, 23:30 in Manila
+        $this->postJson('/admin/bookings', $this->payload([
+            'date' => '2026-11-22', 'start_time' => '23:30', 'end_time' => '01:30',
+        ]))->assertCreated();
+
+        $this->postJson('/admin/bookings', $this->payload(['date' => '2026-11-21']))
+            ->assertUnprocessable()->assertJsonValidationErrors('date');
+    }
+
+    protected function tearDown(): void
+    {
+        Carbon::setTestNow();
+        CarbonImmutable::setTestNow();
+        parent::tearDown();
+    }
+
+    private function freezeVenueTime(string $value, string $timezone = 'Asia/Manila'): void
+    {
+        $instant = CarbonImmutable::parse($value, $timezone);
+        Carbon::setTestNow($instant);
+        CarbonImmutable::setTestNow($instant);
+        $this->actingAs($this->admin)->withSession([
+            'mfa_passed_at' => now()->timestamp,
+            'mfa_passed_user_id' => $this->admin->id,
+        ]);
     }
 
     private function payload(array $overrides = []): array

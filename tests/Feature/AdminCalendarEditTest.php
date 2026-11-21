@@ -8,6 +8,8 @@ use App\Models\BusinessSetting;
 use App\Models\Court;
 use App\Models\CourtBlock;
 use App\Models\User;
+use Carbon\Carbon;
+use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -128,6 +130,100 @@ class AdminCalendarEditTest extends TestCase
         $this->assertSame('14:00', substr((string) $block->fresh()->start_time, 0, 5));
     }
 
+    public function test_booking_on_past_date_allows_contact_notes_but_rejects_schedule_edits(): void
+    {
+        $this->freezeVenueTime('2030-05-16 12:00:00');
+        $past = $this->booking(['date' => '2030-05-15']);
+        $this->patchJson("/admin/bookings/{$past->id}", [
+            'contact_number' => '09179998888', 'notes' => 'Updated note',
+        ])->assertOk()->assertJsonPath('booking.contact_number', '09179998888');
+
+        $this->patchJson("/admin/bookings/{$past->id}", ['date' => '2030-05-17'])
+            ->assertUnprocessable()->assertJsonPath('message', 'Past bookings cannot have their date, time, court, or amount changed.');
+        $this->patchJson("/admin/bookings/{$past->id}", ['start_time' => '10:00'])
+            ->assertUnprocessable()->assertJsonPath('message', 'Past bookings cannot have their date, time, court, or amount changed.');
+    }
+
+    public function test_booking_cannot_be_moved_to_yesterday(): void
+    {
+        $this->freezeVenueTime('2030-05-15 12:00:00');
+        $booking = $this->booking();
+        $this->patchJson("/admin/bookings/{$booking->id}", ['date' => '2030-05-14'])
+            ->assertUnprocessable()->assertJsonValidationErrors('date');
+    }
+
+    public function test_block_create_and_open_play_use_manila_today_and_reject_past_dates(): void
+    {
+        $this->freezeVenueTime('2030-05-15 23:30:00');
+        $payload = [
+            'court_id' => $this->court->id, 'type' => 'open_play', 'title' => 'Night Open Play',
+            'block_date' => '2030-05-15', 'start_time' => '23:30', 'end_time' => '01:30',
+        ];
+        $this->postJson('/admin/blocks', $payload)->assertCreated();
+        $this->postJson('/admin/blocks', [...$payload, 'block_date' => '2030-05-14'])
+            ->assertUnprocessable()->assertJsonValidationErrors('block_date');
+    }
+
+    public function test_block_date_boundary_uses_manila_when_utc_is_already_next_day(): void
+    {
+        $this->freezeVenueTime('2026-11-22 15:30:00', 'UTC');
+        $payload = [
+            'court_id' => $this->court->id, 'type' => 'closed', 'title' => 'Late closure',
+            'block_date' => '2026-11-22', 'start_time' => '23:30', 'end_time' => '01:30',
+        ];
+        $this->postJson('/admin/blocks', $payload)->assertCreated();
+        $this->postJson('/admin/blocks', [...$payload, 'block_date' => '2026-11-21'])
+            ->assertUnprocessable()->assertJsonValidationErrors('block_date');
+    }
+
+    public function test_new_calendar_events_cannot_start_before_the_manila_clock_today(): void
+    {
+        $this->freezeVenueTime('2030-05-15 12:00:00');
+        $this->postJson('/admin/blocks', [
+            'court_id' => $this->court->id, 'type' => 'maintenance', 'title' => 'Past start',
+            'block_date' => '2030-05-15', 'start_time' => '11:30', 'end_time' => '13:30',
+        ])->assertUnprocessable()->assertJsonValidationErrors('start_time');
+
+        $booking = $this->booking(['start_time' => '13:00', 'end_time' => '15:00']);
+        $this->patchJson("/admin/bookings/{$booking->id}", [
+            'date' => '2030-05-15', 'start_time' => '11:30', 'end_time' => '13:30',
+        ])->assertUnprocessable();
+    }
+
+    public function test_past_block_allows_notes_but_rejects_court_or_time_changes(): void
+    {
+        $this->freezeVenueTime('2030-05-16 12:00:00');
+        $block = CourtBlock::create([
+            'court_id' => $this->court->id, 'type' => 'maintenance', 'title' => 'Old repair',
+            'block_date' => '2030-05-15', 'start_time' => '09:00', 'end_time' => '10:00',
+            'created_by' => $this->admin->user_id,
+        ]);
+        $this->patchJson("/admin/blocks/{$block->id}", ['notes' => 'Keep this note'])
+            ->assertOk();
+        $this->patchJson("/admin/blocks/{$block->id}", ['start_time' => '09:30'])
+            ->assertUnprocessable();
+        $this->patchJson("/admin/blocks/{$block->id}", ['court_id' => null])
+            ->assertUnprocessable();
+    }
+
+    protected function tearDown(): void
+    {
+        Carbon::setTestNow();
+        CarbonImmutable::setTestNow();
+        parent::tearDown();
+    }
+
+    private function freezeVenueTime(string $value, string $timezone = 'Asia/Manila'): void
+    {
+        $instant = CarbonImmutable::parse($value, $timezone);
+        Carbon::setTestNow($instant);
+        CarbonImmutable::setTestNow($instant);
+        $this->actingAs($this->admin)->withSession([
+            'mfa_passed_at' => now()->timestamp,
+            'mfa_passed_user_id' => $this->admin->id,
+        ]);
+    }
+
     private function booking(array $overrides = []): Booking
     {
         $booking = Booking::create(array_merge([
@@ -136,8 +232,9 @@ class AdminCalendarEditTest extends TestCase
             'start_time' => '09:00', 'end_time' => '11:00', 'amount' => 1000,
             'status' => 'paid', 'source' => 'guest',
         ], $overrides));
-        $cursor = \Carbon\CarbonImmutable::parse('2030-05-15 '.($overrides['start_time'] ?? '09:00'));
-        $end = \Carbon\CarbonImmutable::parse('2030-05-15 '.($overrides['end_time'] ?? '11:00'));
+        $bookingDate = $overrides['date'] ?? '2030-05-15';
+        $cursor = \Carbon\CarbonImmutable::parse($bookingDate.' '.($overrides['start_time'] ?? '09:00'));
+        $end = \Carbon\CarbonImmutable::parse($bookingDate.' '.($overrides['end_time'] ?? '11:00'));
         if ($end->lessThanOrEqualTo($cursor)) $end = $end->addDay();
         while ($cursor->lessThan($end)) {
             $booking->slots()->create([

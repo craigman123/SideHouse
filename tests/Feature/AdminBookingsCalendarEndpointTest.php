@@ -48,11 +48,12 @@ class AdminBookingsCalendarEndpointTest extends TestCase
 
         $response = $this->getJson('/admin/bookings/calendar?from=2020-05-10&to=2020-05-10')->assertOk();
         $response->assertJsonStructure([
-            'bookings' => [['id', 'customer', 'contact_number', 'email', 'notes', 'court_id', 'court', 'date', 'start', 'end', 'status', 'source', 'amount', 'slots', 'equipment']],
-            'blocks' => [['id', 'court_id', 'type', 'title', 'notes', 'block_date', 'start_time', 'end_time']],
+            'bookings' => [['id', 'updated_at', 'customer', 'contact_number', 'email', 'notes', 'court_id', 'court', 'date', 'start', 'end', 'status', 'source', 'amount', 'slots', 'equipment']],
+            'blocks' => [['id', 'updated_at', 'court_id', 'type', 'title', 'notes', 'block_date', 'start_time', 'end_time']],
             'closures', 'closingCutoffs', 'courts', 'businessSettings', 'server_time',
         ])->assertJsonPath('bookings.0.id', $booking->id)->assertJsonPath('blocks.0.id', $block->id);
         $this->assertStringContainsString('+08:00', $response->json('server_time'));
+        $this->assertSame(now('Asia/Manila')->toDateString(), $response->json('businessSettings.today'));
     }
 
     public function test_endpoint_rejects_a_101_day_range_and_invalid_dates(): void
@@ -76,6 +77,8 @@ class AdminBookingsCalendarEndpointTest extends TestCase
         $url = '/admin/bookings/calendar?from=2020-01-01&to=2020-01-31';
         $etag = $this->getJson($url)->assertOk()->headers->get('ETag');
         $this->assertNotEmpty($etag);
-        $this->withHeaders(['If-None-Match' => $etag])->get($url)->assertStatus(304);
+        $this->withHeaders(['If-None-Match' => $etag])->get($url)->assertStatus(304)
+            ->assertHeader('X-Venue-Date', now('Asia/Manila')->toDateString())
+            ->assertHeader('X-Venue-Time');
     }
 }
