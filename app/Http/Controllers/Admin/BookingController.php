@@ -150,11 +150,11 @@ class BookingController extends Controller
                 || $endTime !== substr((string) $locked->end_time, 0, 5);
             $venueNow = CarbonImmutable::now('Asia/Manila');
             $oldStart = substr((string) $locked->start_time, 0, 5);
-            $oldEnd = substr((string) $locked->end_time, 0, 5);
-            $oldIsOvernight = $oldEnd <= $oldStart;
+            $oldEndTime = substr((string) $locked->end_time, 0, 5);
+            $oldIsOvernight = $oldEndTime <= $oldStart;
             $oldIsPast = $locked->date->toDateString() < $venueNow->toDateString()
                 || ($locked->date->toDateString() === $venueNow->toDateString()
-                    && ! $oldIsOvernight && $oldEnd <= $venueNow->format('H:i'));
+                    && ! $oldIsOvernight && $oldEndTime <= $venueNow->format('H:i'));
             if ($oldIsPast && ($scheduleChanged || (array_key_exists('amount', $validated)
                 && $validated['amount'] !== null && abs((float) $validated['amount'] - (float) $locked->amount) >= 0.005))) {
                 return ['rejected' => 'Past bookings cannot have their date, time, court, or amount changed.'];
@@ -179,16 +179,39 @@ class BookingController extends Controller
             $overlapIds = [];
             if (isset($extending) && $extending) {
                 $extensionStart = $oldEnd;
-                $overlapIds = DB::table('booking_slots')
+                $overlapSlots = DB::table('booking_slots')
                     ->join('bookings', 'bookings.id', '=', 'booking_slots.booking_id')
                     ->where('booking_slots.court_id', $courtId)->where('booking_slots.is_active', true)
                     ->where('booking_slots.booking_id', '!=', $locked->id)
                     ->whereNotIn('bookings.status', ['cancelled', 'expired'])
                     ->whereDate('booking_slots.date', '>=', $extensionStart->toDateString())
                     ->whereDate('booking_slots.date', '<=', $end->toDateString())
-                    ->where('booking_slots.start_time', '<', $end->format('H:i:s'))
-                    ->where('booking_slots.end_time', '>', $extensionStart->format('H:i:s'))
-                    ->distinct()->pluck('bookings.id')->map(fn ($id) => (int) $id)->all();
+                    ->get(['bookings.id as booking_id', 'booking_slots.date', 'booking_slots.start_time', 'booking_slots.end_time']);
+                foreach ($overlapSlots as $slot) {
+                    $slotDate = substr((string) $slot->date, 0, 10);
+                    $slotStart = CarbonImmutable::parse($slotDate.' '.$slot->start_time, config('app.timezone'));
+                    $slotEnd = CarbonImmutable::parse($slotDate.' '.$slot->end_time, config('app.timezone'));
+                    if ($slotEnd->lessThanOrEqualTo($slotStart)) $slotEnd = $slotEnd->addDay();
+                    if ($slotStart->lessThan($end) && $slotEnd->greaterThan($extensionStart)) {
+                        $overlapIds[] = (int) $slot->booking_id;
+                    }
+                }
+                $legacyBookings = Booking::query()
+                    ->where('court_id', $courtId)->whereNotIn('status', ['cancelled', 'expired'])
+                    ->whereDoesntHave('slots')
+                    ->whereDate('date', '>=', $extensionStart->subDay()->toDateString())
+                    ->whereDate('date', '<=', $end->toDateString())
+                    ->where('id', '!=', $locked->id)->get();
+                foreach ($legacyBookings as $legacy) {
+                    $legacyDate = substr((string) $legacy->date, 0, 10);
+                    $legacyStart = CarbonImmutable::parse($legacyDate.' '.$legacy->start_time, config('app.timezone'));
+                    $legacyEnd = CarbonImmutable::parse($legacyDate.' '.$legacy->end_time, config('app.timezone'));
+                    if ($legacyEnd->lessThanOrEqualTo($legacyStart)) $legacyEnd = $legacyEnd->addDay();
+                    if ($legacyStart->lessThan($end) && $legacyEnd->greaterThan($extensionStart)) {
+                        $overlapIds[] = (int) $legacy->id;
+                    }
+                }
+                $overlapIds = array_values(array_unique($overlapIds));
             }
 
             $oldAmount = (float) $locked->amount;
@@ -228,7 +251,11 @@ class BookingController extends Controller
             if ($validated['dry_run'] ?? false) {
                 return ['quote' => [
                     'old_amount' => $oldAmount, 'new_amount' => $newAmount,
-                    'amount_changed' => $amountChanged, 'date' => $date,
+                    'amount_changed' => $amountChanged,
+                    'old_date' => $locked->date->toDateString(),
+                    'old_start' => substr((string) $locked->start_time, 0, 5),
+                    'old_end' => substr((string) $locked->end_time, 0, 5),
+                    'date' => $date,
                     'start' => $start->format('H:i'), 'end' => $end->format('H:i'),
                     'court_id' => $courtId,
                 ]];
@@ -244,6 +271,12 @@ class BookingController extends Controller
 
             foreach (['customer_name', 'contact_number', 'email', 'notes'] as $field) {
                 if (array_key_exists($field, $validated)) $locked->{$field} = $validated[$field];
+            }
+            if ($scheduleChanged) {
+                $locked->court_id = $courtId;
+                $locked->date = $date;
+                $locked->start_time = $start->format('H:i:s');
+                $locked->end_time = $end->format('H:i:s');
             }
             if ($scheduleChanged && $adjustOnly) {
                 if ($adjustMinutes > 0) {
@@ -263,16 +296,11 @@ class BookingController extends Controller
                             });
                     })->update(['is_active' => false]);
                 }
-            } elseif ($scheduleChanged) {
-                $locked->court_id = $courtId;
-                $locked->date = $date;
-                $locked->start_time = $start->format('H:i:s');
-                $locked->end_time = $end->format('H:i:s');
             }
             if ($amountChanged) $locked->amount = $newAmount;
             $locked->save();
 
-            if ($scheduleChanged) {
+            if ($scheduleChanged && ! $adjustOnly) {
                 $locked->slots()->delete();
                 foreach ($slotPrices as $index => $price) {
                     $slotStart = $start->addMinutes($index * $step);

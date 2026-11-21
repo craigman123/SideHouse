@@ -346,7 +346,9 @@
         wrap.className = 'court-price-confirm-backdrop';
         wrap.innerHTML = `<section class="court-price-confirm" role="dialog" aria-modal="true" aria-labelledby="courtPriceConfirmTitle">
             <h2 id="courtPriceConfirmTitle">Confirm booking price</h2>
-            <p>${escapeHtml(booking.customer || 'Booking')} · ${escapeHtml(quote.date)} · ${escapeHtml(quote.start)}–${escapeHtml(quote.end)}</p>
+            <p>${escapeHtml(booking.customer || 'Booking')}</p>
+            <p>Previous time: <strong>${escapeHtml(quote.old_date)} · ${escapeHtml(quote.old_start)}–${escapeHtml(quote.old_end)}</strong></p>
+            <p>New time: <strong>${escapeHtml(quote.date)} · ${escapeHtml(quote.start)}–${escapeHtml(quote.end)}</strong></p>
             <p>Current amount: <strong>${escapeHtml(formatCurrency(quote.old_amount))}</strong></p>
             <p>New amount: <strong>${escapeHtml(formatCurrency(quote.new_amount))}</strong></p>
             <label class="court-price-confirm-choice"><input type="radio" name="drag-price-choice" value="original" checked> Keep original amount</label>
@@ -436,13 +438,30 @@
         try {
             const url = `/admin/${queue.kind === 'block' ? 'blocks' : 'bookings'}/${encodeURIComponent(queue.id)}`;
             const headers = { Accept: 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': token };
-            if (queue.kind === 'booking' && ['paid', 'confirmed'].includes(moveList(queue.kind).find((item) => String(item.id) === String(queue.id))?.status)) {
+            if (queue.kind === 'booking') {
                 const quoteResponse = await fetch(url, { method: 'PATCH', credentials: 'same-origin', headers,
                     body: JSON.stringify({ ...sent.payload, expected_updated_at: queue.version, dry_run: true }) });
                 const quoteResult = await quoteResponse.json().catch(() => ({}));
+                if (quoteResponse.status === 409 && quoteResult.booking) {
+                    queue.confirmed = quoteResult.booking;
+                    queue.version = quoteResult.booking.updated_at || queue.version;
+                    queue.inFlight = null;
+                    if (queue.wanted.sequence !== sent.sequence) { void pumpMoveQueue(queue); return; }
+                    if (queue.staleRetrySequence !== sent.sequence) {
+                        queue.staleRetrySequence = sent.sequence;
+                        void pumpMoveQueue(queue);
+                        return;
+                    }
+                    const staleIndex = moveList(queue.kind).findIndex((item) => String(item.id) === String(queue.id));
+                    if (staleIndex >= 0) moveList(queue.kind)[staleIndex] = { ...queue.confirmed };
+                    finishMoveQueue(queue);
+                    notify(quoteResult.message || 'This booking changed on the server. The latest position was restored.', 'error');
+                    return;
+                }
                 if (!quoteResponse.ok) throw new Error(quoteResult.message || 'Could not check the new booking price.');
                 const quote = quoteResult.quote;
                 if (quote?.amount_changed) {
+                    if (queue.wanted.sequence !== sent.sequence) { queue.inFlight = null; void pumpMoveQueue(queue); return; }
                     const current = moveList(queue.kind).find((item) => String(item.id) === String(queue.id));
                     const choice = await confirmDragPrice(quote, current || {});
                     if (!choice) {
@@ -716,6 +735,7 @@
         validateCalendarForm(form);
         form.elements.acknowledge_price_change.checked = false;
         form.querySelector('.court-booking-price-ack-field').hidden = !['paid', 'confirmed'].includes(booking.status);
+        updatePriceAcknowledgementVisibility();
         document.getElementById('courtBookingEditMessage').textContent = '';
         showModalPanel(bookingEditPanel, 'courtBookingEditTitle');
         form.elements.customer_name.focus();
@@ -835,6 +855,7 @@
         let oldDuration = toMinutes(selectedBooking.end) - toMinutes(selectedBooking.start);
         if (oldDuration <= 0) oldDuration += 1440;
         const duration = Math.max(stepMinutes, oldDuration + minutes);
+        const oldEndAbsolute = toMinutes(selectedBooking.start) + oldDuration;
         bookingStartInput.value = selectedBooking.start;
         bookingEndInput.value = formatTimeInput(toMinutes(selectedBooking.start) + duration);
         durationValue.textContent = `${duration / 60} hr`;
@@ -850,7 +871,7 @@
                     const offset = dateOffset(slot.date || other.date);
                     const slotStart = offset + toMinutes(slot.start);
                     const slotEnd = offset + (toMinutes(slot.end) || 1440);
-                    return slotStart < proposedEnd && slotEnd > toMinutes(selectedBooking.end);
+                    return slotStart < proposedEnd && slotEnd > oldEndAbsolute;
                 }));
             if (hasOverlap) {
                 durationWarning.textContent = 'This extension overlaps another booking. The overlap will be logged for review.';
@@ -993,10 +1014,13 @@
         const acknowledgement = bookingEditForm.elements.acknowledge_price_change;
         const eligible = ['paid', 'confirmed'].includes(selectedBooking?.status);
         bookingEditForm.querySelector('.court-booking-price-ack-field').hidden = !eligible || !amountChanged;
-        acknowledgement.required = false;
+        acknowledgement.required = eligible && amountChanged;
         if (!amountChanged) acknowledgement.checked = false;
+        const save = bookingEditForm.querySelector('[type="submit"]');
+        if (save) save.disabled = !validateCalendarForm(bookingEditForm) || (eligible && amountChanged && !acknowledgement.checked);
     };
     bookingEditForm.elements.amount.addEventListener('input', updatePriceAcknowledgementVisibility);
+    bookingEditForm.elements.acknowledge_price_change.addEventListener('change', updatePriceAcknowledgementVisibility);
     bookingEditForm.addEventListener('submit', async (event) => {
         event.preventDefault();
         if (!validateCalendarForm(bookingEditForm)) return;

@@ -68,6 +68,82 @@ class AdminCalendarEditTest extends TestCase
         $this->assertFalse(BookingSlot::query()->where('booking_id', $booking->id)->where('start_time', '09:00:00')->exists());
     }
 
+    public function test_drag_price_quote_is_read_only_and_returns_new_amount(): void
+    {
+        $booking = $this->booking();
+        $this->patchJson("/admin/bookings/{$booking->id}", [
+            'date' => '2030-05-15', 'start_time' => '09:00', 'end_time' => '12:00',
+            'dry_run' => true, 'expected_updated_at' => $booking->updated_at->format('Y-m-d\\TH:i:s.uP'),
+        ])->assertOk()->assertJsonPath('quote.amount_changed', true)->assertJsonPath('quote.new_amount', 1500);
+
+        $this->assertSame('11:00', substr((string) $booking->fresh()->end_time, 0, 5));
+        $this->assertSame('1000.00', $booking->fresh()->amount);
+        $this->assertSame(2, $booking->slots()->where('is_active', true)->count());
+    }
+
+    public function test_adjust_minutes_extends_or_shortens_and_preserves_inactive_slot_prices(): void
+    {
+        $booking = $this->booking(['status' => 'confirmed']);
+        $this->patchJson("/admin/bookings/{$booking->id}", ['adjust_minutes' => 30, 'acknowledge_price_change' => true])
+            ->assertOk()->assertJsonPath('booking.end', '11:30')->assertJsonPath('booking.amount', 1250);
+        $this->assertSame(3, $booking->fresh()->slots()->where('is_active', true)->count());
+
+        $this->patchJson("/admin/bookings/{$booking->id}", ['adjust_minutes' => -30, 'acknowledge_price_change' => true])
+            ->assertOk()->assertJsonPath('booking.end', '11:00')->assertJsonPath('booking.amount', 1000);
+        $this->assertSame(1, $booking->fresh()->slots()->where('is_active', false)->count());
+        $this->assertSame(3, $booking->fresh()->slots()->count());
+    }
+
+    public function test_duration_cannot_be_shortened_below_configured_minimum(): void
+    {
+        $booking = $this->booking();
+        $this->patchJson("/admin/bookings/{$booking->id}", ['adjust_minutes' => -90])
+            ->assertUnprocessable();
+        $this->assertSame('11:00', substr((string) $booking->fresh()->end_time, 0, 5));
+    }
+
+    public function test_overnight_duration_adjustment_keeps_booking_envelope_and_slot_dates_aligned(): void
+    {
+        $booking = $this->booking(['date' => '2030-05-15', 'start_time' => '23:00', 'end_time' => '01:00', 'amount' => 1000]);
+        $this->patchJson("/admin/bookings/{$booking->id}", ['adjust_minutes' => -60, 'acknowledge_price_change' => true])
+            ->assertOk()->assertJsonPath('booking.start', '23:00')->assertJsonPath('booking.end', '00:00');
+        $updated = $booking->fresh();
+        $this->assertSame('2030-05-15', $updated->date->toDateString());
+        $this->assertSame(1, $updated->slots()->where('is_active', true)->count());
+        $this->assertSame('2030-05-15', $updated->slots()->where('is_active', true)->first()->date->toDateString());
+    }
+
+    public function test_paid_duration_price_change_requires_ack_and_shortening_logs_refund_review(): void
+    {
+        $booking = $this->booking(['status' => 'paid']);
+        $this->patchJson("/admin/bookings/{$booking->id}", ['adjust_minutes' => -60])
+            ->assertUnprocessable()->assertJsonPath('old_amount', 1000)->assertJsonPath('new_amount', 500);
+        $this->assertSame('11:00', substr((string) $booking->fresh()->end_time, 0, 5));
+
+        $this->patchJson("/admin/bookings/{$booking->id}", ['adjust_minutes' => -60, 'acknowledge_price_change' => true])
+            ->assertOk()->assertJsonPath('booking.end', '10:00')->assertJsonPath('booking.amount', 500);
+        $this->assertDatabaseHas('activity_logs', ['action' => 'booking.admin_refund_review', 'subject_id' => $booking->id]);
+        $this->assertSame(2, $booking->fresh()->slots()->count());
+        $this->assertSame(1, $booking->fresh()->slots()->where('is_active', false)->count());
+    }
+
+    public function test_extension_may_overlap_booking_and_records_the_overlap_for_review(): void
+    {
+        $booking = $this->booking(['status' => 'confirmed']);
+        $other = Booking::create([
+            'customer_name' => 'Adjacent Player', 'contact_number' => '09170000000',
+            'court_id' => $this->court->id, 'date' => '2030-05-15', 'start_time' => '10:30',
+            'end_time' => '11:30', 'amount' => 500, 'status' => 'confirmed', 'source' => 'guest',
+        ]);
+        $other->slots()->create([
+            'court_id' => $this->court->id, 'date' => '2030-05-15', 'start_time' => '10:30',
+            'end_time' => '11:30', 'price' => 500,
+        ]);
+        $this->patchJson("/admin/bookings/{$booking->id}", ['adjust_minutes' => 30, 'acknowledge_price_change' => true])
+            ->assertOk()->assertJsonPath('booking.end', '11:30');
+        $this->assertDatabaseHas('activity_logs', ['action' => 'booking.admin_extension_overlap', 'subject_id' => $booking->id]);
+    }
+
     public function test_edit_that_conflicts_is_rejected(): void
     {
         $booking = $this->booking();
