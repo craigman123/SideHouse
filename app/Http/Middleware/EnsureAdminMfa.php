@@ -14,7 +14,7 @@ class EnsureAdminMfa
     {
         $user = $request->user();
 
-        if (!$user || !$user->isAdmin()) {
+        if (!$user || !$user->requiresMfa()) {
             return $next($request);
         }
 
@@ -23,7 +23,7 @@ class EnsureAdminMfa
 
         if (
             $passedAt
-            && $passedUserId === $user->id
+            && (int) $passedUserId === (int) $user->user_id
             && (now()->timestamp - $passedAt) < $this->mfaTtl
         ) {
             return $next($request);

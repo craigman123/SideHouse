@@ -4,8 +4,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const customersUrl = page.dataset.customersUrl;
     const tableBody = document.getElementById('customersTableBody');
+    const customersTable = page.querySelector('.customers-table');
     const searchInput = document.getElementById('customerSearch');
+    const typeFilter = document.getElementById('customerTypeFilter');
+    const typeOptions = Array.from(typeFilter?.querySelectorAll('[data-customer-type]') || []);
+    const typeCounts = Array.from(page.querySelectorAll('[data-customer-type-count]'));
     const emptyEl = document.getElementById('customersEmpty');
+    const emptyMessage = document.getElementById('customersEmptyMessage');
+    const clearFiltersButton = document.getElementById('customerFiltersClear');
     const errorEl = document.getElementById('customersError');
 
     const modal = document.getElementById('customerBookingsModal');
@@ -14,6 +20,43 @@ document.addEventListener('DOMContentLoaded', () => {
     const modalList = document.getElementById('customerBookingsList');
 
     let allCustomers = [];
+    const allowedTypes = new Set(['registered', 'guest']);
+    const urlType = new URLSearchParams(window.location.search).get('type');
+    let activeType = allowedTypes.has(urlType) ? urlType : 'all';
+
+    function updateTypeUrl(type) {
+        const url = new URL(window.location.href);
+        if (type === 'all') url.searchParams.delete('type');
+        else url.searchParams.set('type', type);
+        history.replaceState(history.state, '', `${url.pathname}${url.search}${url.hash}`);
+    }
+
+    function updateTypeOptions() {
+        typeOptions.forEach((option) => {
+            const selected = option.dataset.customerType === activeType;
+            option.setAttribute('aria-checked', String(selected));
+            option.tabIndex = selected ? 0 : -1;
+            option.classList.toggle('is-active', selected);
+        });
+    }
+
+    function setActiveType(type, { updateUrl = true } = {}) {
+        activeType = allowedTypes.has(type) ? type : 'all';
+        updateTypeOptions();
+        if (updateUrl) updateTypeUrl(activeType);
+        applyFilter();
+    }
+
+    function updateTypeCounts() {
+        const counts = {
+            all: allCustomers.length,
+            registered: allCustomers.filter((customer) => customer.type === 'registered').length,
+            guest: allCustomers.filter((customer) => customer.type === 'guest').length,
+        };
+        typeCounts.forEach((count) => {
+            count.textContent = `(${counts[count.dataset.customerTypeCount] || 0})`;
+        });
+    }
 
     function formatCurrency(n) {
         const value = Number(n) || 0;
@@ -111,27 +154,33 @@ document.addEventListener('DOMContentLoaded', () => {
         tableBody.innerHTML = '';
 
         if (!customers.length) {
+            customersTable.hidden = true;
             emptyEl.hidden = false;
             return;
         }
+        customersTable.hidden = false;
         emptyEl.hidden = true;
 
-        customers.forEach((c) => {
-            tableBody.appendChild(buildCustomerRow(c));
+        customers.forEach((c, index) => {
+            tableBody.appendChild(buildCustomerRow({ ...c, rank: index + 1 }));
         });
     }
 
     function applyFilter() {
         const q = (searchInput.value || '').trim().toLowerCase();
-        if (!q) {
-            renderTable(allCustomers);
-            return;
-        }
         const filtered = allCustomers.filter((c) => {
-            return (c.name || '').toLowerCase().includes(q)
+            const matchesType = activeType === 'all' || c.type === activeType;
+            const matchesSearch = !q || (c.name || '').toLowerCase().includes(q)
                 || (c.email || '').toLowerCase().includes(q)
                 || (c.phone || '').toLowerCase().includes(q);
+            return matchesType && matchesSearch;
         });
+        if (!filtered.length) {
+            const typeName = activeType === 'guest' ? 'guest' : activeType === 'registered' ? 'registered' : 'customer';
+            emptyMessage.textContent = q
+                ? `No ${typeName} customers match your search.`
+                : `No ${typeName} customers found.`;
+        }
         renderTable(filtered);
     }
 
@@ -193,6 +242,30 @@ document.addEventListener('DOMContentLoaded', () => {
         searchInput.addEventListener('input', applyFilter);
     }
 
+    typeOptions.forEach((option) => {
+        option.addEventListener('click', () => setActiveType(option.dataset.customerType));
+        option.addEventListener('keydown', (event) => {
+            const currentIndex = typeOptions.indexOf(option);
+            let nextIndex = null;
+            if (event.key === 'ArrowRight' || event.key === 'ArrowDown') nextIndex = (currentIndex + 1) % typeOptions.length;
+            if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') nextIndex = (currentIndex - 1 + typeOptions.length) % typeOptions.length;
+            if (event.key === 'Home') nextIndex = 0;
+            if (event.key === 'End') nextIndex = typeOptions.length - 1;
+            if (nextIndex === null) return;
+            event.preventDefault();
+            setActiveType(typeOptions[nextIndex].dataset.customerType);
+            typeOptions[nextIndex].focus();
+        });
+    });
+    clearFiltersButton?.addEventListener('click', () => {
+        searchInput.value = '';
+        setActiveType('all');
+        typeOptions.find((option) => option.dataset.customerType === 'all')?.focus();
+    });
+
+    updateTypeOptions();
+    if (urlType && !allowedTypes.has(urlType)) updateTypeUrl('all');
+
     // ---------- Load ----------
 
     async function loadCustomers() {
@@ -203,6 +276,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!res.ok) throw new Error(`Failed to load customers (${res.status})`);
             const data = await res.json();
             allCustomers = data.customers || [];
+            updateTypeCounts();
             applyFilter();
         } catch (err) {
             console.error(err);

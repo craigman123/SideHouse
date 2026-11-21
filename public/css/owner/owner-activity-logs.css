@@ -1,0 +1,246 @@
+html.owner-layout-shell .admin-activity-logs-page {
+    display: grid;
+    gap: var(--s5);
+    width: 100%;
+    max-width: 1200px;
+    min-width: 0;
+    margin-inline: auto;
+}
+
+html.owner-layout-shell .admin-activity-logs-page .activity-filters-panel,
+html.owner-layout-shell .admin-activity-logs-page .activity-table-panel {
+    min-width: 0;
+    padding: var(--s5);
+    border: 1px solid var(--text-muted);
+    border-radius: var(--r-lg);
+    background: var(--surface);
+    color: var(--text);
+}
+
+html.owner-layout-shell .admin-activity-logs-page .filters-form {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) auto;
+    align-items: end;
+    gap: var(--s4);
+}
+
+html.owner-layout-shell .admin-activity-logs-page .filter-group {
+    display: grid;
+    min-width: 0;
+    gap: var(--s2);
+}
+
+html.owner-layout-shell .admin-activity-logs-page .filter-group label {
+    color: var(--text);
+    font-size: var(--font-size-small);
+    font-weight: var(--font-weight-button);
+}
+
+html.owner-layout-shell .admin-activity-logs-page .filter-group input {
+    width: 100%;
+    min-height: 48px;
+    padding: var(--s3);
+    border: 1px solid var(--text-muted);
+    border-radius: var(--r-md);
+    background: var(--surface-2);
+    color: var(--text);
+    font-family: var(--font-family);
+    font-size: var(--font-size-body);
+}
+
+html.owner-layout-shell .admin-activity-logs-page .filter-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--s2);
+}
+
+html.owner-layout-shell .admin-activity-logs-page .btn-filter,
+html.owner-layout-shell .admin-activity-logs-page .btn-clear {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    padding: var(--s2) var(--s4);
+    border: 1px solid var(--text-muted);
+    border-radius: var(--r-pill);
+    background: transparent;
+    color: var(--text);
+    font-family: var(--font-family);
+    font-size: var(--font-size-button);
+    font-weight: var(--font-weight-button);
+    text-decoration: none;
+    cursor: pointer;
+}
+
+html.owner-layout-shell .admin-activity-logs-page .btn-filter {
+    border-color: var(--brand);
+    background: var(--brand);
+    color: var(--bg);
+}
+
+html.owner-layout-shell .admin-activity-logs-page .btn-filter:hover {
+    border-color: var(--brand-hover);
+    background: var(--brand-hover);
+    color: var(--bg);
+}
+
+html.owner-layout-shell .admin-activity-logs-page .btn-clear:hover {
+    border-color: var(--brand);
+    color: var(--brand-hover);
+}
+
+html.owner-layout-shell .admin-activity-logs-page .activity-table-panel h2 {
+    display: flex;
+    align-items: center;
+    gap: var(--s3);
+    margin: 0 0 var(--s4);
+    color: var(--text);
+    font-size: var(--font-size-h3);
+}
+
+html.owner-layout-shell .admin-activity-logs-page .count-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 44px;
+    min-height: 28px;
+    padding: var(--s1) var(--s3);
+    border: 1px solid var(--brand-hover);
+    border-radius: var(--r-pill);
+    background: color-mix(in srgb, var(--brand) 14%, var(--surface));
+    color: var(--brand-hover);
+    font-size: var(--font-size-small);
+}
+
+html.owner-layout-shell .admin-activity-logs-page .table-responsive {
+    max-width: 100%;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    border: 1px solid var(--border);
+    border-radius: var(--r-md);
+    scrollbar-color: var(--text-muted) var(--surface);
+    scrollbar-width: thin;
+}
+
+html.owner-layout-shell .admin-activity-logs-page table {
+    width: 100%;
+    min-width: 880px;
+    border-collapse: collapse;
+    color: var(--text);
+}
+
+html.owner-layout-shell .admin-activity-logs-page th,
+html.owner-layout-shell .admin-activity-logs-page td {
+    padding: var(--s3) var(--s4);
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+    text-align: left;
+    vertical-align: top;
+}
+
+html.owner-layout-shell .admin-activity-logs-page th {
+    position: sticky;
+    z-index: 1;
+    top: 0;
+    background: var(--surface-2);
+    color: var(--text-muted);
+    font-size: var(--font-size-small);
+    font-weight: var(--font-weight-button);
+    text-transform: uppercase;
+}
+
+html.owner-layout-shell .admin-activity-logs-page tbody tr:hover {
+    background: var(--surface-2);
+}
+
+html.owner-layout-shell .admin-activity-logs-page .cell-muted {
+    color: var(--text-muted);
+}
+
+html.owner-layout-shell .admin-activity-logs-page .cell-name {
+    min-width: 140px;
+    font-weight: var(--font-weight-button);
+    overflow-wrap: anywhere;
+}
+
+html.owner-layout-shell .admin-activity-logs-page td code {
+    display: inline-block;
+    max-width: 220px;
+    padding: var(--s1) var(--s2);
+    border: 1px solid var(--border);
+    border-radius: var(--r-sm);
+    background: var(--surface-2);
+    color: var(--brand-hover);
+    overflow-wrap: anywhere;
+}
+
+html.owner-layout-shell .admin-activity-logs-page .empty-row {
+    padding: var(--s6);
+    color: var(--text-muted);
+    text-align: center;
+}
+
+html.owner-layout-shell .admin-activity-logs-page .activity-results-count {
+    margin: var(--s4) 0;
+    color: var(--text-muted);
+    font-size: var(--font-size-small);
+    text-align: center;
+}
+
+html.owner-layout-shell .admin-activity-logs-page .pagination-wrapper {
+    display: flex;
+    justify-content: center;
+    max-width: 100%;
+    overflow-x: auto;
+}
+
+html.owner-layout-shell .admin-activity-logs-page .pagination-wrapper nav > div {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: var(--s2);
+}
+
+html.owner-layout-shell .admin-activity-logs-page .pagination-wrapper a,
+html.owner-layout-shell .admin-activity-logs-page .pagination-wrapper span[aria-current="page"] {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 44px;
+    min-height: 44px;
+    padding: var(--s2) var(--s3);
+    border: 1px solid var(--text-muted);
+    border-radius: var(--r-md);
+    background: var(--surface-2);
+    color: var(--text);
+    text-decoration: none;
+}
+
+html.owner-layout-shell .admin-activity-logs-page .pagination-wrapper a:hover,
+html.owner-layout-shell .admin-activity-logs-page .pagination-wrapper span[aria-current="page"] {
+    border-color: var(--brand);
+    color: var(--brand-hover);
+}
+
+@media (max-width: 767px) {
+    html.owner-layout-shell .admin-activity-logs-page .filters-form {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    html.owner-layout-shell .admin-activity-logs-page .filter-actions {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    html.owner-layout-shell .admin-activity-logs-page .filter-actions > * {
+        width: 100%;
+    }
+}
+
+@media (max-width: 480px) {
+    html.owner-layout-shell .admin-activity-logs-page .activity-filters-panel,
+    html.owner-layout-shell .admin-activity-logs-page .activity-table-panel {
+        padding: var(--s4);
+    }
+}

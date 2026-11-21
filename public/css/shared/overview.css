@@ -1,0 +1,327 @@
+html.admin-layout-shell .admin-overview-page {
+    max-width: 1440px;
+    margin-inline: auto;
+}
+
+html.admin-layout-shell .admin-overview-page .overview-intro {
+    margin: 0 0 var(--s5);
+    color: var(--text-muted);
+    font-size: var(--font-size-body);
+}
+
+html.admin-layout-shell .admin-overview-page .overview-intro strong {
+    color: var(--brand);
+}
+
+html.admin-layout-shell .admin-overview-page .card-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: var(--s4);
+    margin: 0 0 var(--s5);
+}
+
+html.admin-layout-shell .admin-overview-page .card,
+html.admin-layout-shell .admin-overview-page .panel {
+    min-width: 0;
+    padding: var(--s4);
+    border: 1px solid transparent;
+    border-radius: var(--r-lg);
+    background-image: linear-gradient(var(--surface), var(--surface)), var(--brand-grad);
+    background-origin: border-box;
+    background-clip: padding-box, border-box;
+    color: var(--text);
+    box-shadow: var(--shadow-card);
+}
+
+html.admin-layout-shell .admin-overview-page .card {
+    display: flex;
+    min-height: 132px;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+html.admin-layout-shell .admin-overview-page .card .label {
+    margin: 0;
+    color: var(--text-muted);
+    font-size: var(--font-size-small);
+}
+
+html.admin-layout-shell .admin-overview-page .card .value {
+    margin: var(--s3) 0 0;
+    color: var(--brand);
+    font-size: var(--font-size-h2);
+    font-weight: 700;
+    line-height: 1.2;
+    overflow-wrap: anywhere;
+}
+
+html.admin-layout-shell .admin-overview-page .panel h2 {
+    margin: 0 0 var(--s4);
+    color: var(--text);
+    font-size: var(--font-size-h3);
+}
+
+html.admin-layout-shell .admin-overview-page .table-responsive {
+    width: 100%;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+}
+
+html.admin-layout-shell .admin-overview-page table {
+    width: 100%;
+    min-width: 680px;
+    border-collapse: collapse;
+    color: var(--text);
+    text-align: left;
+}
+
+html.admin-layout-shell .admin-overview-page th,
+html.admin-layout-shell .admin-overview-page td {
+    padding: var(--s3) var(--s2);
+    border-bottom: 1px solid var(--border);
+    vertical-align: middle;
+}
+
+html.admin-layout-shell .admin-overview-page th {
+    color: var(--text-muted);
+    font-size: var(--font-size-small);
+    font-weight: 600;
+}
+
+html.admin-layout-shell .admin-overview-page td:nth-child(4) {
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+html.admin-layout-shell .admin-overview-page .status {
+    display: inline-flex;
+    min-height: 32px;
+    align-items: center;
+    padding: var(--s1) var(--s3);
+    border: 1px solid var(--text-muted);
+    border-radius: var(--r-pill);
+    color: var(--text-muted);
+    font-size: var(--font-size-small);
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+html.admin-layout-shell .admin-overview-page .status-paid,
+html.admin-layout-shell .admin-overview-page .status-confirmed {
+    border-color: var(--text-muted);
+    color: var(--brand);
+}
+
+html.admin-layout-shell .admin-overview-page .status-pending {
+    border-color: var(--text-muted);
+    color: var(--warning);
+}
+
+html.admin-layout-shell .admin-overview-page .status-cancelled {
+    border-color: var(--text-muted);
+    color: var(--danger);
+}
+
+html.admin-layout-shell .admin-overview-page .status-expired {
+    border-color: var(--text-muted);
+    color: var(--text-muted);
+}
+
+html.admin-layout-shell .admin-overview-page .empty-row {
+    padding: var(--s5);
+    color: var(--text-muted);
+    text-align: center;
+}
+
+@media (max-width: 1024px) {
+    html.admin-layout-shell .admin-overview-page .card-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 767px) {
+    html.admin-layout-shell .admin-overview-page .card-grid {
+        gap: var(--s3);
+    }
+
+    html.admin-layout-shell .admin-overview-page .card {
+        min-height: 112px;
+    }
+
+    html.admin-layout-shell .admin-overview-page .card .value {
+        font-size: var(--font-size-h3);
+    }
+
+    html.admin-layout-shell .admin-overview-page table,
+    html.admin-layout-shell .admin-overview-page tbody,
+    html.admin-layout-shell .admin-overview-page tr,
+    html.admin-layout-shell .admin-overview-page td {
+        display: block;
+        width: 100%;
+        min-width: 0;
+        box-sizing: border-box;
+    }
+
+    html.admin-layout-shell .admin-overview-page table {
+        min-width: 0;
+    }
+
+    html.admin-layout-shell .admin-overview-page thead {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip-path: inset(50%);
+        white-space: nowrap;
+    }
+
+    html.admin-layout-shell .admin-overview-page tbody tr {
+        margin-bottom: var(--s3);
+        padding: var(--s2);
+        border: 1px solid var(--text-muted);
+        border-radius: var(--r-md);
+        background: var(--surface-2);
+    }
+
+    html.admin-layout-shell .admin-overview-page td {
+        display: grid;
+        grid-template-columns: minmax(90px, 0.7fr) minmax(0, 1.3fr);
+        gap: var(--s3);
+        padding: var(--s2);
+        border-bottom: 1px solid var(--text-muted);
+        text-align: left;
+        overflow-wrap: anywhere;
+    }
+
+    html.admin-layout-shell .admin-overview-page td:last-child {
+        border-bottom: 0;
+    }
+
+    html.admin-layout-shell .admin-overview-page td::before {
+        content: attr(data-label);
+        color: var(--text-muted);
+        font-size: var(--font-size-small);
+        font-weight: 600;
+    }
+
+    html.admin-layout-shell .admin-overview-page td:nth-child(4) {
+        text-align: left;
+    }
+}
+
+/* Staff uses the shared dashboard components, with its widget grid kept local. */
+html.staff-layout-shell .admin-overview-page {
+    max-width: 1200px;
+}
+
+html.staff-layout-shell .admin-overview-page .overview-intro {
+    margin: 0;
+}
+
+html.staff-layout-shell .staff-overview .overview-intro strong {
+    color: var(--brand);
+}
+
+html.staff-layout-shell .staff-sync-status {
+    flex: 0 0 auto;
+    margin: 0;
+    color: var(--text-muted);
+    font-size: var(--font-size-small);
+}
+
+html.staff-layout-shell .staff-overview-error {
+    margin: 0;
+    color: var(--danger);
+}
+
+html.staff-layout-shell .staff-stat-grid .card,
+html.staff-layout-shell .staff-overview-card {
+    min-width: 0;
+    padding: var(--s5);
+    border: 1px solid transparent;
+    border-radius: var(--r-lg);
+    background-image: linear-gradient(var(--surface), var(--surface)), var(--brand-grad);
+    background-origin: border-box;
+    background-clip: padding-box, border-box;
+}
+
+html.staff-layout-shell .staff-stat-grid .card {
+    min-height: 132px;
+}
+
+html.staff-layout-shell .staff-stat-grid .value {
+    margin-top: var(--s3);
+}
+
+html.staff-layout-shell .staff-overview-card > .dashboard-panel-header {
+    margin-bottom: var(--s4);
+}
+
+html.staff-layout-shell .staff-overview-card > .dashboard-panel-header h2 {
+    margin: 0;
+    color: var(--text);
+    font-size: var(--font-size-h3);
+    font-weight: var(--font-weight-h3);
+}
+
+html.staff-layout-shell .staff-overview-row strong {
+    color: var(--text);
+    font-size: var(--font-size-small);
+    font-weight: var(--font-weight-button);
+}
+
+html.staff-layout-shell .staff-overview-row {
+    padding-block: var(--s3);
+    border-top: 1px solid var(--border);
+}
+
+html.staff-layout-shell .staff-overview-row:first-child {
+    padding-top: 0;
+    border-top: 0;
+}
+
+html.staff-layout-shell .staff-overview-row span,
+html.staff-layout-shell .staff-overview-empty {
+    color: var(--text-muted);
+    font-size: var(--font-size-small);
+}
+
+html.staff-layout-shell .staff-overview-empty {
+    display: grid;
+    min-height: 96px;
+    place-items: center;
+    padding: var(--s5);
+    text-align: center;
+}
+
+html.staff-layout-shell .dashboard-skeleton {
+    display: block;
+    width: min(100%, 220px);
+    height: var(--s3);
+    border-radius: var(--r-sm);
+    background: linear-gradient(90deg, var(--surface-2) 25%, var(--text-muted) 37%, var(--surface-2) 63%);
+    background-size: 400% 100%;
+    animation: dashboard-skeleton-shimmer 1.4s ease infinite;
+}
+
+@keyframes dashboard-skeleton-shimmer {
+    0% { background-position: 100% 50%; }
+    100% { background-position: 0 50%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    html.staff-layout-shell .dashboard-skeleton {
+        animation: none;
+    }
+}
+
+@media (max-width: 420px) {
+    html.admin-layout-shell .admin-overview-page .card-grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    html.admin-layout-shell .admin-overview-page td {
+        grid-template-columns: minmax(0, 1fr);
+        gap: var(--s1);
+    }
+}

@@ -1,0 +1,99 @@
+html.staff-layout-shell .staff-overview {
+    display: grid;
+    min-width: 0;
+    gap: var(--s9);
+}
+
+html.staff-layout-shell .staff-overview .overview-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--s4);
+}
+
+html.staff-layout-shell .staff-overview-heading-copy,
+html.staff-layout-shell .staff-overview-actions {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    gap: var(--s3);
+}
+
+html.staff-layout-shell .staff-overview .staff-stat-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--s4);
+    margin: 0;
+}
+
+html.staff-layout-shell .staff-overview-actions {
+    flex: 0 0 auto;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+}
+
+html.staff-layout-shell .staff-overview-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-auto-rows: minmax(180px, 1fr);
+    gap: var(--s4);
+}
+
+html.staff-layout-shell .staff-overview-card,
+html.staff-layout-shell .staff-overview-list {
+    min-width: 0;
+}
+
+html.staff-layout-shell .staff-overview-list {
+    display: grid;
+    align-content: start;
+    gap: var(--s2);
+}
+
+html.staff-layout-shell .staff-court-status-list {
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+}
+
+html.staff-layout-shell .staff-overview-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: var(--s1) var(--s3);
+    min-width: 0;
+}
+
+html.staff-layout-shell .staff-overview-row strong,
+html.staff-layout-shell .staff-overview-row span {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+html.staff-layout-shell .staff-overview-row .staff-overview-row-meta {
+    grid-column: 1 / -1;
+}
+
+@media (max-width: 767px) {
+    html.staff-layout-shell .staff-overview {
+        gap: var(--s7);
+    }
+
+    html.staff-layout-shell .staff-overview .overview-header {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    html.staff-layout-shell .staff-overview-heading-copy {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    html.staff-layout-shell .staff-overview-actions {
+        width: 100%;
+        justify-content: flex-start;
+    }
+
+    html.staff-layout-shell .staff-overview-grid,
+    html.staff-layout-shell .staff-overview .staff-stat-grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}

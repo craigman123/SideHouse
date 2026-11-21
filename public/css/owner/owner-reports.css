@@ -1,0 +1,457 @@
+html.owner-layout-shell .reports-page {
+    display: grid;
+    gap: var(--s5);
+    width: 100%;
+    max-width: 1200px;
+    min-width: 0;
+    margin-inline: auto;
+    padding: var(--s2);
+    color: var(--text);
+}
+
+html.owner-layout-shell .reports-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: var(--s4);
+}
+
+html.owner-layout-shell .reports-title {
+    margin: 0;
+    color: var(--text);
+    font-size: var(--font-size-h2);
+    font-weight: var(--font-weight-h2);
+}
+
+html.owner-layout-shell .reports-subtitle {
+    margin: var(--s2) 0 0;
+    color: var(--text-muted);
+    font-size: var(--font-size-small);
+    line-height: var(--line-height-body);
+}
+
+html.owner-layout-shell .reports-period-select-wrap {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--s3);
+}
+
+html.owner-layout-shell .reports-period-label {
+    color: var(--text-muted);
+    font-size: var(--font-size-small);
+    font-weight: var(--font-weight-button);
+    text-transform: uppercase;
+}
+
+html.owner-layout-shell .reports-period-select {
+    min-width: 160px;
+    min-height: 48px;
+    padding: var(--s2) var(--s4);
+    border: 1px solid var(--text-muted);
+    border-radius: var(--r-md);
+    background: var(--surface-2);
+    color: var(--text);
+    font-family: var(--font-family);
+    font-size: var(--font-size-body);
+    cursor: pointer;
+}
+
+html.owner-layout-shell .reports-period-select:hover {
+    border-color: var(--brand);
+}
+
+html.owner-layout-shell .reports-summary-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: var(--s4);
+}
+
+html.owner-layout-shell .summary-card,
+html.owner-layout-shell .report-panel {
+    min-width: 0;
+    border: 1px solid var(--text-muted);
+    border-radius: var(--r-lg);
+    background: var(--surface);
+    color: var(--text);
+}
+
+html.owner-layout-shell .summary-card {
+    display: flex;
+    flex-direction: column;
+    gap: var(--s2);
+    padding: var(--s4);
+}
+
+html.owner-layout-shell .summary-card-label {
+    color: var(--text-muted);
+    font-size: var(--font-size-small);
+    font-weight: var(--font-weight-button);
+    text-transform: uppercase;
+}
+
+html.owner-layout-shell .summary-card-value-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+    min-width: 0;
+    min-height: 2.5rem;
+}
+
+html.owner-layout-shell .summary-card-value {
+    color: var(--text);
+    font-size: var(--font-size-h3);
+    font-weight: var(--font-weight-h2);
+    overflow-wrap: anywhere;
+}
+
+html.owner-layout-shell .report-panel {
+    display: flex;
+    flex-direction: column;
+    gap: var(--s3);
+    padding: var(--s5);
+}
+
+html.owner-layout-shell .report-panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--s3);
+}
+
+html.owner-layout-shell .report-panel-header h2 {
+    margin: 0;
+    color: var(--text);
+    font-size: var(--font-size-h3);
+    font-weight: var(--font-weight-h3);
+}
+
+html.owner-layout-shell .report-panel-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--s4);
+}
+
+html.owner-layout-shell .report-panel-grid-health {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+html.owner-layout-shell .report-chart-wrap {
+    position: relative;
+    min-width: 0;
+    height: 260px;
+}
+
+html.owner-layout-shell .report-chart-wrap-wide {
+    height: 320px;
+}
+
+html.owner-layout-shell .report-empty-note {
+    margin: 0;
+    color: var(--text-muted);
+    font-size: var(--font-size-small);
+    text-align: center;
+}
+
+html.owner-layout-shell .reports-error {
+    margin: 0;
+    padding: var(--s4);
+    border: 1px solid var(--danger);
+    border-left: var(--s1) solid var(--danger);
+    border-radius: var(--r-md);
+    background: color-mix(in srgb, var(--danger) 12%, var(--surface));
+    color: var(--text);
+    font-size: var(--font-size-body);
+}
+
+html.owner-layout-shell .skeleton {
+    display: none;
+    border-radius: var(--r-sm);
+    background: linear-gradient(90deg, var(--surface-2), color-mix(in srgb, var(--text) 12%, var(--surface)), var(--surface-2));
+    background-size: 400% 100%;
+    animation: reportsShimmer 1.4s ease infinite;
+}
+
+html.owner-layout-shell .reports-page.is-loading .skeleton {
+    display: block;
+}
+
+html.owner-layout-shell .reports-page.is-loading .summary-card-value,
+html.owner-layout-shell .reports-page.is-loading .report-chart-wrap canvas {
+    visibility: hidden;
+}
+
+html.owner-layout-shell .summary-card-value-wrap .skeleton {
+    position: absolute;
+    inset: 0;
+    width: 70%;
+    height: var(--s5);
+    margin-block: auto;
+}
+
+html.owner-layout-shell .chart-skeleton {
+    position: absolute;
+    inset: 0;
+    display: none;
+    align-items: flex-end;
+    justify-content: center;
+}
+
+html.owner-layout-shell .reports-page.is-loading .chart-skeleton {
+    display: flex;
+}
+
+html.owner-layout-shell .chart-skeleton-bars {
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    gap: var(--s3);
+    width: 100%;
+    height: 100%;
+    padding: 0 var(--s2) var(--s2);
+}
+
+html.owner-layout-shell .chart-skeleton-bars span {
+    flex: 1;
+    max-width: var(--s6);
+    border-radius: var(--r-sm) var(--r-sm) 0 0;
+    background: linear-gradient(90deg, var(--surface-2), color-mix(in srgb, var(--text) 12%, var(--surface)), var(--surface-2));
+    background-size: 400% 100%;
+    animation: reportsShimmer 1.4s ease infinite;
+}
+
+html.owner-layout-shell .chart-skeleton-bars span:nth-child(1) { height: 40%; }
+html.owner-layout-shell .chart-skeleton-bars span:nth-child(2) { height: 65%; }
+html.owner-layout-shell .chart-skeleton-bars span:nth-child(3) { height: 50%; }
+html.owner-layout-shell .chart-skeleton-bars span:nth-child(4) { height: 80%; }
+html.owner-layout-shell .chart-skeleton-bars span:nth-child(5) { height: 55%; }
+html.owner-layout-shell .chart-skeleton-bars span:nth-child(6) { height: 70%; }
+
+html.owner-layout-shell .chart-skeleton-pie {
+    align-self: center;
+    width: 65%;
+    max-width: 180px;
+    aspect-ratio: 1;
+    margin: auto;
+    border-radius: 50%;
+}
+
+@keyframes reportsShimmer {
+    from { background-position: 100% 50%; }
+    to { background-position: 0 50%; }
+}
+
+html.owner-layout-shell .health-status-row,
+html.owner-layout-shell .health-stat-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--s3);
+    padding: var(--s2) 0;
+}
+
+html.owner-layout-shell .health-stat-row {
+    border-top: 1px solid var(--border);
+}
+
+html.owner-layout-shell .health-status-label,
+html.owner-layout-shell .health-stat-label,
+html.owner-layout-shell .table-name {
+    color: var(--text-muted);
+    font-size: var(--font-size-small);
+}
+
+html.owner-layout-shell .health-status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--s2);
+    min-height: 32px;
+    padding: var(--s1) var(--s3);
+    border: 1px solid currentColor;
+    border-radius: var(--r-pill);
+    font-size: var(--font-size-small);
+    font-weight: var(--font-weight-button);
+}
+
+html.owner-layout-shell .health-status-pill::before {
+    width: var(--s2);
+    height: var(--s2);
+    border-radius: 50%;
+    background: currentColor;
+    content: '';
+}
+
+html.owner-layout-shell .health-status-pill.status-up {
+    background: color-mix(in srgb, var(--brand) 14%, var(--surface));
+    color: var(--brand-hover);
+}
+
+html.owner-layout-shell .health-status-pill.status-down {
+    background: color-mix(in srgb, var(--danger) 14%, var(--surface));
+    color: var(--danger);
+}
+
+html.owner-layout-shell .health-stat-value,
+html.owner-layout-shell .table-rows {
+    color: var(--text);
+    font-weight: var(--font-weight-button);
+    text-align: right;
+    overflow-wrap: anywhere;
+}
+
+html.owner-layout-shell .health-progress {
+    width: 100%;
+    height: var(--s2);
+    margin-bottom: var(--s1);
+    overflow: hidden;
+    border-radius: var(--r-pill);
+    background: var(--surface-2);
+}
+
+html.owner-layout-shell .health-progress-bar {
+    width: 0%;
+    height: 100%;
+    border-radius: inherit;
+    background: var(--brand);
+    transition: width 0.3s ease;
+}
+
+html.owner-layout-shell .health-progress-bar.is-warning {
+    background: var(--warning);
+}
+
+html.owner-layout-shell .health-progress-bar.is-critical {
+    background: var(--danger);
+}
+
+html.owner-layout-shell .disk-segment-bar {
+    display: flex;
+    width: 100%;
+    height: var(--s3);
+    margin: var(--s2) 0 var(--s3);
+    overflow: hidden;
+    border: 1px solid var(--text-muted);
+    border-radius: var(--r-pill);
+    background: var(--surface-2);
+}
+
+html.owner-layout-shell .disk-segment {
+    height: 100%;
+    transition: width 0.3s ease;
+}
+
+html.owner-layout-shell .disk-segment-database { background: var(--brand); }
+html.owner-layout-shell .disk-segment-wal { background: var(--info); }
+html.owner-layout-shell .disk-segment-system { background: var(--danger); }
+
+html.owner-layout-shell .disk-segment-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--s3);
+    margin: 0 0 var(--s4);
+    padding: 0;
+    color: var(--text-muted);
+    font-size: var(--font-size-small);
+    list-style: none;
+}
+
+html.owner-layout-shell .disk-segment-legend li {
+    display: flex;
+    align-items: center;
+    gap: var(--s2);
+}
+
+html.owner-layout-shell .legend-dot {
+    display: inline-block;
+    width: var(--s2);
+    height: var(--s2);
+    border-radius: 50%;
+}
+
+html.owner-layout-shell .legend-dot-database { background: var(--brand); }
+html.owner-layout-shell .legend-dot-wal { background: var(--info); }
+html.owner-layout-shell .legend-dot-system { background: var(--danger); }
+
+html.owner-layout-shell .legend-dot-available {
+    border: 1px solid var(--text-muted);
+}
+
+html.owner-layout-shell .legend-note {
+    color: var(--text-muted);
+}
+
+html.owner-layout-shell .health-table-list {
+    display: grid;
+    margin: var(--s1) 0 0;
+    padding: 0;
+    list-style: none;
+}
+
+html.owner-layout-shell .health-table-list li {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--s3);
+    padding: var(--s2) 0;
+    border-top: 1px solid var(--border);
+    font-size: var(--font-size-small);
+}
+
+@media (max-width: 1024px) {
+    html.owner-layout-shell .report-panel-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 767px) {
+    html.owner-layout-shell .reports-summary-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    html.owner-layout-shell .report-panel-grid,
+    html.owner-layout-shell .report-panel-grid-health {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    html.owner-layout-shell .reports-header {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    html.owner-layout-shell .reports-period-select-wrap {
+        justify-content: space-between;
+    }
+
+    html.owner-layout-shell .report-panel {
+        padding: var(--s4);
+    }
+}
+
+@media (max-width: 480px) {
+    html.owner-layout-shell .reports-page {
+        padding: 0;
+    }
+
+    html.owner-layout-shell .reports-summary-grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    html.owner-layout-shell .report-chart-wrap {
+        height: 220px;
+    }
+
+    html.owner-layout-shell .report-chart-wrap-wide {
+        height: 260px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    html.owner-layout-shell .skeleton,
+    html.owner-layout-shell .chart-skeleton-bars span,
+    html.owner-layout-shell .health-progress-bar,
+    html.owner-layout-shell .disk-segment {
+        animation: none;
+        transition: none;
+        background-position: 50% 50%;
+    }
+}

@@ -1,0 +1,319 @@
+html.owner-layout-shell .announcements-page {
+    display: grid;
+    gap: var(--s5);
+    width: 100%;
+    max-width: 1200px;
+    min-width: 0;
+    margin-inline: auto;
+}
+
+html.owner-layout-shell .announcements-page .panel {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--s4);
+    min-width: 0;
+    padding: var(--s5);
+    border: 1px solid var(--text-muted);
+    border-radius: var(--r-lg);
+    background: var(--surface);
+    color: var(--text);
+}
+
+html.owner-layout-shell .announcements-page .panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--s4);
+    width: 100%;
+    min-width: 0;
+}
+
+html.owner-layout-shell .announcements-page .modal-text {
+    margin: 0;
+    color: var(--text-muted);
+    font-size: var(--font-size-body);
+    line-height: var(--line-height-body);
+}
+
+html.owner-layout-shell .announcements-page .announcement-intro {
+    margin-bottom: var(--s4);
+}
+
+html.owner-layout-shell .announcements-page .announcement-field {
+    margin-bottom: var(--s4);
+}
+
+html.owner-layout-shell .announcements-page .announcement-field-error {
+    display: none;
+}
+
+html.owner-layout-shell .announcements-page .modal-box-sm {
+    max-width: 420px;
+}
+
+html.owner-layout-shell .announcements-page .announcement-field:last-of-type {
+    margin-bottom: var(--s5);
+}
+
+html.owner-layout-shell .announcements-page .announcement-confirm-copy {
+    margin-bottom: var(--s5);
+}
+
+html.owner-layout-shell .announcements-page .announcement-pagination {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--s2);
+    margin-top: var(--s4);
+}
+
+html.owner-layout-shell .announcements-page .announcement-pagination a,
+html.owner-layout-shell .announcements-page .announcement-pagination span {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 44px;
+    min-height: 44px;
+    padding: var(--s2) var(--s3);
+    border: 1px solid var(--border);
+    border-radius: var(--r-md);
+    background: var(--surface-2);
+    color: var(--text);
+    text-decoration: none;
+}
+
+html.owner-layout-shell .announcements-page .announcement-pagination a:hover {
+    border-color: var(--brand);
+    color: var(--brand-hover);
+}
+
+html.owner-layout-shell .announcements-page .btn,
+html.owner-layout-shell .announcements-page .btn-filter {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    padding: var(--s2) var(--s4);
+    border: 1px solid var(--text-muted);
+    border-radius: var(--r-pill);
+    background: transparent;
+    color: var(--text);
+    font-family: var(--font-family);
+    font-size: var(--font-size-button);
+    font-weight: var(--font-weight-button);
+    text-decoration: none;
+    cursor: pointer;
+}
+
+html.owner-layout-shell .announcements-page .btn:hover {
+    border-color: var(--brand);
+    color: var(--brand-hover);
+}
+
+html.owner-layout-shell .announcements-page .btn-filter {
+    border-color: var(--brand);
+    background: var(--brand);
+    color: var(--bg);
+}
+
+html.owner-layout-shell .announcements-page .btn-filter:hover {
+    border-color: var(--brand-hover);
+    background: var(--brand-hover);
+    color: var(--bg);
+}
+
+html.owner-layout-shell .announcements-page .btn-danger,
+html.owner-layout-shell .announcements-page .row-delete-btn {
+    border-color: var(--danger);
+    color: var(--danger);
+}
+
+html.owner-layout-shell .announcements-page .btn-danger:hover,
+html.owner-layout-shell .announcements-page .row-delete-btn:hover {
+    background: var(--danger);
+    color: var(--bg);
+}
+
+html.owner-layout-shell .announcements-page .btn:disabled,
+html.owner-layout-shell .announcements-page .btn-filter:disabled,
+html.owner-layout-shell .announcements-page .btn-danger:disabled,
+html.owner-layout-shell .announcements-page .row-delete-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+html.owner-layout-shell .announcements-page .filter-group {
+    display: grid;
+    gap: var(--s2);
+    min-width: 0;
+}
+
+html.owner-layout-shell .announcements-page .filter-group label {
+    color: var(--text);
+    font-size: var(--font-size-small);
+    font-weight: var(--font-weight-button);
+}
+
+html.owner-layout-shell .announcements-page .filter-group input[type="text"],
+html.owner-layout-shell .announcements-page .filter-group textarea {
+    width: 100%;
+    min-height: 48px;
+    padding: var(--s3);
+    border: 1px solid var(--text-muted);
+    border-radius: var(--r-md);
+    background: var(--surface-2);
+    color: var(--text);
+    font-family: var(--font-family);
+    font-size: var(--font-size-body);
+}
+
+html.owner-layout-shell .announcements-page .filter-group textarea {
+    resize: vertical;
+}
+
+html.owner-layout-shell .announcements-page .filter-group input:focus,
+html.owner-layout-shell .announcements-page .filter-group textarea:focus {
+    border-color: var(--brand);
+}
+
+html.owner-layout-shell .announcements-page .field-invalid {
+    border-color: var(--danger);
+}
+
+html.owner-layout-shell .announcements-page #titleError,
+html.owner-layout-shell .announcements-page #bodyError {
+    margin: 0;
+    color: var(--danger);
+    font-size: var(--font-size-small);
+}
+
+html.owner-layout-shell .announcements-page .modal-header h2 {
+    margin: 0;
+    color: var(--text);
+    font-size: var(--font-size-h3);
+}
+
+html.owner-layout-shell .announcements-page .modal-close {
+    min-width: 44px;
+    min-height: 44px;
+    border: 1px solid var(--text-muted);
+    border-radius: var(--r-md);
+    background: transparent;
+    color: var(--text-muted);
+    font-size: var(--font-size-h3);
+    cursor: pointer;
+}
+
+html.owner-layout-shell .announcements-page .modal-close:hover {
+    border-color: var(--danger);
+    color: var(--danger);
+}
+
+html.owner-layout-shell .announcements-page .announcement-form-actions,
+html.owner-layout-shell .announcements-page .announcement-confirm-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: var(--s3);
+}
+
+html.owner-layout-shell .announcements-page #announcementsListWrap {
+    box-sizing: border-box;
+    min-width: 0;
+    margin-top: 0;
+    padding: var(--s4);
+    overflow-x: auto;
+    border: 1px solid var(--text-muted);
+    border-radius: var(--r-lg);
+    background: var(--surface);
+    color: var(--text);
+    scrollbar-color: var(--text-muted) var(--surface);
+    scrollbar-width: thin;
+}
+
+html.owner-layout-shell .announcements-page #noAnnouncementsMsg {
+    padding: var(--s6) var(--s4);
+    text-align: center;
+}
+
+html.owner-layout-shell .announcements-page .data-table {
+    width: 100%;
+    min-width: 560px;
+    border-collapse: collapse;
+    color: var(--text);
+}
+
+html.owner-layout-shell .announcements-page .data-table th,
+html.owner-layout-shell .announcements-page .data-table td {
+    padding: var(--s3) var(--s4);
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+    text-align: left;
+}
+
+html.owner-layout-shell .announcements-page .data-table th {
+    position: sticky;
+    z-index: 1;
+    top: 0;
+    background: var(--surface-2);
+    color: var(--text-muted);
+    font-size: var(--font-size-small);
+    font-weight: var(--font-weight-button);
+    text-transform: uppercase;
+}
+
+html.owner-layout-shell .announcements-page .data-table tbody tr:hover {
+    background: var(--surface-2);
+}
+
+html.owner-layout-shell .announcements-page .row-delete-btn {
+    min-width: 44px;
+    min-height: 44px;
+    padding: var(--s2) var(--s3);
+    border: 1px solid var(--danger);
+    border-radius: var(--r-pill);
+    background: transparent;
+    font: inherit;
+    font-weight: var(--font-weight-button);
+    cursor: pointer;
+}
+
+html.owner-layout-shell .announcements-page :is(.btn, .btn-filter, .row-delete-btn, .modal-close):focus-visible,
+html.owner-layout-shell .announcements-page .filter-group :is(input, textarea):focus-visible,
+html.owner-layout-shell .announcements-page .announcement-pagination a:focus-visible {
+    outline: 2px solid var(--brand-hover);
+    outline-offset: 2px;
+}
+
+html.owner-layout-shell .announcements-page .toast-out {
+    animation: announcementToastOut 0.3s ease forwards;
+}
+
+@keyframes announcementToastOut {
+    to { opacity: 0; transform: translateY(var(--s2)); }
+}
+
+@media (max-width: 767px) {
+    html.owner-layout-shell .announcements-page .panel-header {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    html.owner-layout-shell .announcements-page .announcement-form-actions,
+    html.owner-layout-shell .announcements-page .announcement-confirm-actions {
+        flex-direction: column-reverse;
+        align-items: stretch;
+    }
+
+    html.owner-layout-shell .announcements-page .announcement-form-actions > button,
+    html.owner-layout-shell .announcements-page .announcement-confirm-actions > button {
+        width: 100%;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    html.owner-layout-shell .announcements-page .toast-out {
+        animation: none;
+    }
+}

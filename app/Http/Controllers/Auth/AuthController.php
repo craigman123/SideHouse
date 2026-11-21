@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Http\Middleware\EnsureAccessVersion;
 use App\Models\User;
 use App\Support\ActivityLogger;
 use App\Support\GoogleIdentity;
@@ -40,10 +41,11 @@ class AuthController extends Controller
 
         $request->session()->regenerate();
         $user = auth()->user();
+        $this->recordSuccessfulLogin($request, $user);
 
-        if ($user->isAdmin()) {
+        if ($user->requiresMfa()) {
             ActivityLogger::log(
-                'admin.logged_in',
+                $user->isAdmin() ? 'admin.logged_in' : 'staff.logged_in',
                 $user->name . ' logged in.',
                 subject: $user,
             );
@@ -72,12 +74,12 @@ class AuthController extends Controller
 
         if ($request->expectsJson()) {
             return response()->json([
-                'redirect' => route('user.dashboard', absolute: false),
+                'redirect' => $this->homePath($user),
                 'message'  => 'Logged in successfully!',
             ]);
         }
 
-        return redirect()->route('user.dashboard')->with('success', 'Logged in successfully!');
+        return redirect($this->homePath($user))->with('success', 'Logged in successfully!');
     }
 
     public function showRegister()
@@ -103,6 +105,7 @@ class AuthController extends Controller
         ]);
 
         Auth::login($user);
+        $this->recordSuccessfulLogin($request, $user);
 
         ActivityLogger::log(
             'user.registered',
@@ -160,6 +163,7 @@ class AuthController extends Controller
 
         Auth::login($user);
         $request->session()->regenerate();
+        $this->recordSuccessfulLogin($request, $user);
 
         ActivityLogger::log(
             $isNewAccount ? 'user.registered' : 'user.logged_in',
@@ -171,7 +175,7 @@ class AuthController extends Controller
 
         return response()->json([
             'message'  => $isNewAccount ? 'Account created! Welcome to Side House.' : 'Logged in successfully!',
-            'redirect' => $user->isAdmin() ? route('admin.dashboard', absolute: false) : route('user.dashboard', absolute: false),
+            'redirect' => $this->homePath($user),
         ]);
     }
 
@@ -204,6 +208,23 @@ class AuthController extends Controller
         }
 
         return $username;
+    }
+
+    private function recordSuccessfulLogin(Request $request, User $user): void
+    {
+        $user->forceFill(['last_login_at' => now()])->save();
+        $user->refresh();
+        EnsureAccessVersion::stamp($request, $user);
+    }
+
+    private function homePath(User $user): string
+    {
+        return match ($user->role) {
+            'owner' => route('owner.dashboard', absolute: false),
+            'admin' => route('admin.dashboard', absolute: false),
+            'staff' => route('staff.dashboard', absolute: false),
+            default => route('user.dashboard', absolute: false),
+        };
     }
 
     public function logout(Request $request)

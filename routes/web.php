@@ -7,7 +7,9 @@ use App\Http\Controllers\Admin\AnnouncementController;
 use App\Http\Controllers\Admin\BookingController;
 use App\Http\Controllers\Admin\ConfigurationController;
 use App\Http\Controllers\Admin\CourtController;
+use App\Http\Controllers\Admin\CourtBlockController;
 use App\Http\Controllers\Admin\CustomerController;
+use App\Http\Controllers\Admin\UserAccessController;
 use App\Http\Controllers\Admin\EquipmentAvailabilityController;
 use App\Http\Controllers\Admin\ReportController;
 use App\Http\Controllers\Auth\AuthController;
@@ -172,27 +174,53 @@ Route::middleware('auth')->group(function () {
         ->name('mfa.verify');
 });
 
+// Shared admin implementations are also available to staff with the matching
+// capability. Owner/admin access remains unchanged through UserAccessService.
+Route::middleware(['auth', 'admin.mfa', 'throttle:120,1'])->group(function () {
+    Route::get('/admin/bookings/calendar', [BookingController::class, 'calendar'])
+        ->middleware(['can.access:bookings.view', 'staff.redact'])
+        ->name('admin.bookings.calendar');
+    Route::patch('/admin/bookings/{booking}', [BookingController::class, 'update'])
+        ->middleware(['can.access:bookings.edit', 'staff.redact', 'throttle:20,1'])
+        ->name('admin.bookings.update');
+    Route::post('/admin/bookings', [App\Http\Controllers\Admin\WalkInBookingController::class, 'store'])
+        ->middleware(['can.access:bookings.create', 'staff.redact', 'throttle:20,1'])
+        ->name('admin.bookings.walk-in.store');
+    Route::post('/admin/blocks', [CourtBlockController::class, 'store'])
+        ->middleware(['can.access:calendar_events.manage', 'throttle:20,1'])
+        ->name('admin.blocks.store');
+    Route::patch('/admin/blocks/{block}', [CourtBlockController::class, 'update'])
+        ->middleware(['can.access:calendar_events.manage', 'throttle:20,1'])
+        ->name('admin.blocks.update');
+    Route::delete('/admin/blocks/{block}', [CourtBlockController::class, 'destroy'])
+        ->middleware(['can.access:calendar_events.manage', 'throttle:20,1'])
+        ->name('admin.blocks.destroy');
+    Route::get('/customers/data', [CustomerController::class, 'data'])
+        ->middleware(['can.access:customers.view', 'staff.redact'])
+        ->name('admin.customers.data');
+});
+
 // =================================== ADMIN ROUTES =====================================
 // Baseline limit for every admin route below; individual routes that
 // send email (announcements, account deletion) get a tighter override.
 Route::middleware(['auth', 'admin', 'admin.mfa', 'throttle:120,1'])->group(function () {
-    Route::get('/dashboard', [Admin_DashboardController::class, 'index'])->name('admin.dashboard');
+    Route::get('/dashboard', [Admin_DashboardController::class, 'index'])->middleware('owner.page.redirect')->name('admin.dashboard');
 
     // Bookings CRUD
-    Route::get('/bookings', [BookingController::class, 'index'])->name('bookings.index');
+    Route::get('/bookings', [BookingController::class, 'index'])->middleware('owner.page.redirect')->name('bookings.index');
 
     // Courts CRUD
-    Route::get('/courts', [CourtController::class, 'index'])->name('courts.index');
+    Route::get('/courts', [CourtController::class, 'index'])->middleware('owner.page.redirect')->name('courts.index');
     Route::post('/courts', [CourtController::class, 'store'])->name('courts.store');
     Route::put('/courts/{court}', [CourtController::class, 'update'])->name('courts.update');
     Route::delete('/courts/{court}', [CourtController::class, 'destroy'])->name('courts.destroy');
 
     // Activity Logs
-    Route::get('/activity_logs', [ActivityLogController::class, 'index'])->name('activity_logs.index');
+    Route::get('/activity_logs', [ActivityLogController::class, 'index'])->middleware('owner.page.redirect')->name('activity_logs.index');
 
     //Announcements
-    Route::get('/announcements', [AnnouncementController::class, 'index'])->name('admin.announcements.index');
-    Route::get('/announcements/create', [AnnouncementController::class, 'create'])->name('admin.announcements.create');
+    Route::get('/announcements', [AnnouncementController::class, 'index'])->middleware('owner.page.redirect')->name('admin.announcements.index');
+    Route::get('/announcements/create', [AnnouncementController::class, 'create'])->middleware('owner.page.redirect')->name('admin.announcements.create');
     // If store() mass-emails users/customers, this is your biggest single
     // SMTP-spike risk in the admin area — kept tight on purpose.
     Route::post('/announcements', [AnnouncementController::class, 'store'])
@@ -201,8 +229,23 @@ Route::middleware(['auth', 'admin', 'admin.mfa', 'throttle:120,1'])->group(funct
     Route::delete('/announcements/{announcement}', [AnnouncementController::class, 'destroy'])->name('admin.announcements.destroy');
 
     // Customers
-    Route::get('/customers', [CustomerController::class, 'index'])->name('admin.customers.index');
-    Route::get('/customers/data', [CustomerController::class, 'data'])->name('admin.customers.data');
+    Route::get('/customers', [CustomerController::class, 'index'])->middleware('owner.page.redirect')->name('admin.customers.index');
+    // User access management. These are intentionally separate from the
+    // customer page and always return only accounts with elevated roles.
+    Route::middleware(['can.access:user_access.manage', 'throttle:20,1'])->group(function () {
+        Route::get('/admin/user-access', [UserAccessController::class, 'page'])->middleware('owner.page.redirect')->name('admin.user-access.page');
+        Route::get('/admin/users', [UserAccessController::class, 'index'])->name('admin.users.index');
+        Route::get('/admin/users/candidates', [UserAccessController::class, 'candidates'])->name('admin.users.candidates');
+        Route::post('/admin/users', [UserAccessController::class, 'store'])->name('admin.users.store');
+        Route::patch('/admin/users/{user}', [UserAccessController::class, 'update'])->name('admin.users.update');
+        Route::post('/admin/users/{user}/remove-access', [UserAccessController::class, 'removeAccess'])->name('admin.users.remove-access');
+        Route::middleware(['can.access:user_details.edit'])->group(function () {
+            Route::get('/admin/users/{user}/details', [UserAccessController::class, 'details'])
+                ->name('admin.users.details');
+            Route::patch('/admin/users/{user}/details', [UserAccessController::class, 'updateDetails'])
+                ->name('admin.users.details.update');
+        });
+    });
 
     // Profile
     // NOTE: PUT/DELETE /profile used to be duplicated here as well as in
@@ -215,17 +258,17 @@ Route::middleware(['auth', 'admin', 'admin.mfa', 'throttle:120,1'])->group(funct
     // their own profile. The single source of truth for these two routes
     // now lives in the USER ROUTES group further down, with 'admin.mfa'
     // added there so admins still get the MFA check (see Finding #2).
-    Route::get('/admin/profile', [AdminProfileController::class, 'profile'])->name('admin.profile');
-    Route::put('/admin/profile', [AdminProfileController::class, 'updateProfile'])->name('admin.profile.update');
-    Route::delete('/admin/profile', [AdminProfileController::class, 'destroy'])->name('admin.profile.destroy');
+    Route::get('/admin/profile', [AdminProfileController::class, 'profile'])->middleware('owner.page.redirect')->name('admin.profile');
+    Route::put('/admin/profile', [AdminProfileController::class, 'update'])->name('admin.profile.update');
+    Route::delete('/admin/profile', [AdminProfileController::class, 'destroyAccount'])->name('admin.profile.destroy');
 
     // Reports
-    Route::get('/reports', [ReportController::class, 'index'])->name('admin.reports.index');
+    Route::get('/reports', [ReportController::class, 'index'])->middleware('owner.page.redirect')->name('admin.reports.index');
     Route::get('/reports/data', [ReportController::class, 'data'])->name('admin.reports.data');
-    Route::get('/reports/system', [ReportController::class, 'system'])->name('admin.reports.system');
+    Route::get('/reports/system', [ReportController::class, 'system'])->middleware('can.access:reports.system')->name('admin.reports.system');
 
     // Configuration / Schedule
-    Route::get('/admin/configuration', [ConfigurationController::class, 'index'])->name('admin.configuration.index');
+    Route::get('/admin/configuration', [ConfigurationController::class, 'index'])->middleware('owner.page.redirect')->name('admin.configuration.index');
     Route::put('/admin/configuration/hours', [ConfigurationController::class, 'updateHours'])->name('admin.configuration.hours.update');
     Route::put('/admin/configuration/pricing', [ConfigurationController::class, 'updatePricing'])->name('admin.configuration.pricing.update');
     Route::post('/admin/configuration/closures', [ConfigurationController::class, 'storeClosure'])->name('admin.configuration.closures.store');
@@ -238,7 +281,7 @@ Route::middleware(['auth', 'admin', 'admin.mfa', 'throttle:120,1'])->group(funct
     Route::put('configuration/specific-date-closure/{closure}', [ConfigurationController::class, 'updateSpecificDateClosure'])->name('admin.configuration.specific-date-closure.update');
 
     //Equipment
-    Route::get('/admin/equipment/availability', [EquipmentAvailabilityController::class, 'index'])->name('admin.equipment.availability');
+    Route::get('/admin/equipment/availability', [EquipmentAvailabilityController::class, 'index'])->middleware('owner.page.redirect')->name('admin.equipment.availability');
     Route::get('/admin/equipment/availability/data', [EquipmentAvailabilityController::class, 'data'])->name('admin.equipment.availability.data');
     Route::post('/equipment', [EquipmentAvailabilityController::class, 'store'])->name('admin.equipment.store');
     Route::put('/equipment/{equipment}', [EquipmentAvailabilityController::class, 'update'])->name('admin.equipment.update');
@@ -246,11 +289,10 @@ Route::middleware(['auth', 'admin', 'admin.mfa', 'throttle:120,1'])->group(funct
 
 });
 
-
 // =====================================   USER ROUTES    =====================================
 // Same pattern as the admin group: a generous baseline for everything,
 // tighter overrides on anything that writes data or sends email.
-Route::middleware(['auth', 'throttle:120,1'])->group(function () {
+Route::middleware(['auth', 'admin.mfa', 'throttle:120,1'])->group(function () {
     Route::get('/my-dashboard', [UserDashboardController::class, 'index'])->name('user.dashboard');
 
     // Book a court
@@ -305,3 +347,6 @@ Route::middleware(['auth', 'throttle:120,1'])->group(function () {
     Route::delete('/feedback/{feedback}', [FeedbackController::class, 'destroy'])->name('user.feedback.destroy');
     
 });
+
+require __DIR__.'/staff.php';
+require __DIR__.'/owner.php';

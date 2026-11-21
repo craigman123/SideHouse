@@ -3,20 +3,15 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\ActivityLog;
+use App\Services\ActivityLogQuery;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
 class ActivityLogController extends Controller
 {
-    public function index(Request $request): View
+    public function index(Request $request, ActivityLogQuery $activityLogs): View
     {
-        $logs = ActivityLog::query()
-            ->when($request->filled('user'), fn ($q) => $q->where('user_name', 'like', '%' . $request->user . '%'))
-            ->when($request->filled('action'), fn ($q) => $q->where('action', 'like', '%' . $request->action . '%'))
-            ->orderByDesc('created_at')
-            ->paginate(25)
-            ->withQueryString();
+        $logs = $activityLogs->forAdmin($request);
 
         return view('admin.audits.activity_logs', compact('logs'));
     }

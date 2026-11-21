@@ -1,0 +1,379 @@
+html.admin-layout-shell .profile-page {
+    display: grid;
+    justify-items: center;
+    gap: var(--s5);
+    width: 100%;
+    min-width: 0;
+    padding: var(--s2);
+}
+
+html.admin-layout-shell .profile-card,
+html.admin-layout-shell .danger-zone {
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 840px;
+    min-width: 0;
+    padding: var(--s5);
+    border: 1px solid transparent;
+    border-radius: var(--r-lg);
+    background-image: linear-gradient(var(--surface), var(--surface)), var(--brand-grad);
+    background-origin: border-box;
+    background-clip: padding-box, border-box;
+    color: var(--text);
+}
+
+html.admin-layout-shell .profile-header {
+    display: flex;
+    align-items: center;
+    gap: var(--s4);
+    min-width: 0;
+    margin-bottom: var(--s5);
+    padding-bottom: var(--s4);
+    border-bottom: 1px solid var(--border);
+}
+
+html.admin-layout-shell .profile-avatar-lg {
+    display: flex;
+    flex: 0 0 72px;
+    align-items: center;
+    justify-content: center;
+    width: 72px;
+    height: 72px;
+    border: 1px solid var(--brand-hover);
+    border-radius: 50%;
+    background: var(--surface-2);
+    color: var(--brand-hover);
+    font-size: var(--font-size-h2);
+    font-weight: var(--font-weight-h2);
+}
+
+html.admin-layout-shell .profile-header > div:nth-child(2) {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+html.admin-layout-shell .profile-header h2 {
+    margin: 0 0 var(--s1);
+    color: var(--text);
+    font-size: var(--font-size-h2);
+    font-weight: var(--font-weight-h2);
+    overflow-wrap: anywhere;
+}
+
+html.admin-layout-shell .profile-email-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--s2);
+    color: var(--text-muted);
+    font-size: var(--font-size-small);
+    overflow-wrap: anywhere;
+}
+
+html.admin-layout-shell .verify-badge,
+html.admin-layout-shell .admin-role-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 28px;
+    padding: var(--s1) var(--s3);
+    border: 1px solid currentColor;
+    border-radius: var(--r-pill);
+    font-size: var(--font-size-small);
+    font-weight: var(--font-weight-button);
+}
+
+html.admin-layout-shell .verify-badge-yes,
+html.admin-layout-shell .admin-role-badge {
+    background: color-mix(in srgb, var(--brand) 14%, var(--surface));
+    color: var(--brand-hover);
+}
+
+html.admin-layout-shell .verify-badge-no {
+    background: color-mix(in srgb, var(--warning) 14%, var(--surface));
+    color: var(--warning);
+}
+
+html.admin-layout-shell .admin-role-badge {
+    margin-top: var(--s2);
+}
+
+html.admin-layout-shell .logout-form {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    margin-left: auto;
+}
+
+html.admin-layout-shell .profile-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--s4);
+}
+
+html.admin-layout-shell .profile-item {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    gap: var(--s2);
+}
+
+html.admin-layout-shell .profile-item label {
+    color: var(--text-muted);
+    font-size: var(--font-size-small);
+    font-weight: var(--font-weight-button);
+}
+
+html.admin-layout-shell .profile-item input {
+    width: 100%;
+    min-height: 48px;
+    padding: var(--s3);
+    border: 1px solid var(--border);
+    border-radius: var(--r-md);
+    background: var(--surface-2);
+    color: var(--text);
+    font-family: var(--font-family);
+    font-size: var(--font-size-body);
+    font-weight: var(--font-weight-small);
+}
+
+html.admin-layout-shell .profile-item input:read-only:not(:disabled) {
+    color: var(--text);
+}
+
+html.admin-layout-shell .profile-item input:disabled {
+    color: var(--text-muted);
+    cursor: not-allowed;
+}
+
+html.admin-layout-shell .profile-item input.editable {
+    border-color: var(--brand);
+    background: var(--surface-2);
+}
+
+html.admin-layout-shell .profile-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--s3);
+    margin-top: var(--s5);
+}
+
+html.admin-layout-shell .profile-actions .btn,
+html.admin-layout-shell .logout-form .btn,
+html.admin-layout-shell .danger-zone .btn {
+    min-height: 44px;
+    margin: 0;
+}
+
+html.admin-layout-shell .profile-page .btn-primary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    padding: var(--s2) var(--s4);
+    border: 1px solid var(--brand);
+    border-radius: var(--r-pill);
+    background: var(--brand);
+    color: var(--bg);
+    font-family: var(--font-family);
+    font-size: var(--font-size-button);
+    font-weight: var(--font-weight-button);
+    cursor: pointer;
+}
+
+html.admin-layout-shell .profile-page .btn-primary:hover {
+    border-color: var(--brand-hover);
+    background: var(--brand-hover);
+    color: var(--bg);
+}
+
+html.admin-layout-shell .profile-page .delete-confirm-input {
+    width: 100%;
+    min-height: 48px;
+    margin: var(--s1) 0;
+    padding: var(--s3);
+    border: 1px solid var(--border);
+    border-radius: var(--r-md);
+    background: var(--surface-2);
+    color: var(--text);
+    font-family: var(--font-family);
+    font-size: var(--font-size-body);
+}
+
+html.admin-layout-shell .profile-page .delete-confirm-input:focus {
+    border-color: var(--danger);
+}
+
+html.admin-layout-shell .profile-page .danger-zone {
+    border-top: var(--s1) solid var(--danger);
+}
+
+html.admin-layout-shell .danger-zone-title {
+    margin: 0 0 var(--s4);
+    color: var(--danger);
+    font-size: var(--font-size-h3);
+}
+
+html.admin-layout-shell .danger-zone-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--s4);
+}
+
+html.admin-layout-shell .danger-zone-label {
+    margin: 0 0 var(--s1);
+    color: var(--text);
+    font-size: var(--font-size-body);
+    font-weight: var(--font-weight-button);
+}
+
+html.admin-layout-shell .danger-zone-sub {
+    margin: 0;
+    color: var(--text-muted);
+    font-size: var(--font-size-small);
+    line-height: var(--line-height-body);
+}
+
+@media (max-width: 700px) {
+    html.admin-layout-shell .profile-grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
+@media (max-width: 560px) {
+    html.admin-layout-shell .profile-page {
+        padding: 0;
+    }
+
+    html.admin-layout-shell .profile-card,
+    html.admin-layout-shell .danger-zone {
+        padding: var(--s4);
+    }
+
+    html.admin-layout-shell .profile-header {
+        flex-wrap: wrap;
+    }
+
+    html.admin-layout-shell .profile-avatar-lg {
+        flex-basis: 56px;
+        width: 56px;
+        height: 56px;
+        font-size: var(--font-size-h3);
+    }
+
+    html.admin-layout-shell .logout-form {
+        width: 100%;
+        margin-left: 0;
+    }
+
+    html.admin-layout-shell .logout-form .btn {
+        width: 100%;
+    }
+
+    html.admin-layout-shell .profile-actions,
+    html.admin-layout-shell .danger-zone-row {
+        flex-direction: column-reverse;
+        align-items: stretch;
+    }
+
+    html.admin-layout-shell .profile-actions .btn,
+    html.admin-layout-shell .danger-zone-row .btn {
+        width: 100%;
+    }
+}
+
+html.staff-layout-shell .profile-page {
+    max-width: 1200px;
+    gap: var(--s9);
+}
+
+html.staff-layout-shell .profile-card {
+    padding: var(--s5);
+    border: 1px solid transparent;
+    border-top-width: 1px;
+    border-radius: var(--r-lg);
+    background-image: linear-gradient(var(--surface), var(--surface)), var(--brand-grad);
+    background-origin: border-box;
+    background-clip: padding-box, border-box;
+}
+
+html.staff-layout-shell .staff-mfa-card > div:first-child {
+    display: grid;
+    gap: var(--s3);
+    margin-bottom: var(--s4);
+}
+
+html.staff-layout-shell .staff-signout-card > div:first-child {
+    display: grid;
+    gap: var(--s3);
+    margin-bottom: var(--s4);
+}
+
+html.staff-layout-shell .staff-signout-card h2 {
+    margin: 0;
+    font-size: var(--font-size-h3);
+    font-weight: var(--font-weight-h3);
+}
+
+html.staff-layout-shell .staff-signout-card p {
+    color: var(--text-muted);
+    font-size: var(--font-size-body);
+    line-height: var(--line-height-body);
+}
+
+html.staff-layout-shell .staff-signout-card .profile-actions {
+    margin-top: 0;
+}
+
+html.staff-layout-shell .profile-card > h2,
+html.staff-layout-shell .staff-mfa-card h2 {
+    margin-bottom: var(--s4);
+    font-size: var(--font-size-h3);
+    font-weight: var(--font-weight-h3);
+}
+
+html.staff-layout-shell .profile-item label {
+    font-weight: var(--font-weight-small);
+}
+
+html.staff-layout-shell .profile-item input {
+    border-color: var(--border);
+}
+
+html.staff-layout-shell .profile-page .btn-primary,
+html.staff-layout-shell .profile-page .btn-primary:hover {
+    color: var(--on-brand, var(--text));
+}
+
+html.staff-layout-shell .profile-flash-success,
+html.staff-layout-shell .profile-flash-error {
+    width: 100%;
+    max-width: 840px;
+    padding: var(--s3) var(--s4);
+    border: 1px solid var(--border);
+    border-radius: var(--r-md);
+    font-size: var(--font-size-small);
+}
+
+html.staff-layout-shell .profile-flash-success {
+    color: var(--brand-hover);
+}
+
+html.staff-layout-shell .profile-flash-error {
+    color: var(--danger);
+}
+
+html.staff-layout-shell .recovery-codes {
+    margin-top: var(--s4);
+    padding: var(--s4);
+    border: 1px solid var(--border);
+    border-radius: var(--r-md);
+    background: var(--surface-2);
+}
+
+@media (max-width: 767px) {
+    html.staff-layout-shell .profile-page {
+        gap: var(--s7);
+    }
+}

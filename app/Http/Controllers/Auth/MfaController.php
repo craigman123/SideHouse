@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Models\User;
 use Illuminate\Http\Request;
 use PragmaRX\Google2FA\Google2FA;
 use Illuminate\Support\Str;
@@ -15,7 +16,7 @@ class MfaController extends Controller
         $user = $request->user();
 
         if ($user->hasMfaEnabled()) {
-            return redirect()->route('admin.dashboard', absolute: false);
+            return redirect($this->homePath($user));
         }
 
         $google2fa = new Google2FA();
@@ -26,7 +27,7 @@ class MfaController extends Controller
             $secret = $google2fa->generateSecretKey();
             session([
                 'mfa_temp_secret' => $secret,
-                'mfa_temp_secret_user_id' => $user->id,
+                'mfa_temp_secret_user_id' => $user->user_id,
             ]);
         }
 
@@ -60,7 +61,7 @@ class MfaController extends Controller
             $secret = $google2fa->generateSecretKey();
             session([
                 'mfa_temp_secret' => $secret,
-                'mfa_temp_secret_user_id' => $user->id,
+                'mfa_temp_secret_user_id' => $user->user_id,
             ]);
         }
 
@@ -86,7 +87,7 @@ class MfaController extends Controller
             if ($request->expectsJson()) {
                 return response()->json(['message' => 'MFA already enabled'], 400);
             }
-            return redirect()->route('admin.dashboard', absolute: false);
+            return redirect($this->homePath($user));
         }
 
         $secret = $this->tempSecretFor($user);
@@ -116,7 +117,7 @@ class MfaController extends Controller
         session()->forget(['mfa_temp_secret', 'mfa_temp_secret_user_id']);
         session([
             'mfa_passed_at' => now()->timestamp,
-            'mfa_passed_user_id' => $user->id,
+            'mfa_passed_user_id' => $user->user_id,
         ]);
         session()->regenerate();
 
@@ -124,13 +125,13 @@ class MfaController extends Controller
             return response()->json([
                 'message'        => 'MFA enabled successfully',
                 'recovery_codes' => $recoveryCodes,
-                'redirect'       => route('admin.dashboard', absolute: false),
+                'redirect'       => $this->homePath($user),
                 'csrf_token'     => csrf_token(),
             ]);
         }
 
         return redirect()
-            ->route('admin.dashboard', absolute: false)
+            ->to($this->homePath($user))
             ->with('recovery_codes', $recoveryCodes);
     }
 
@@ -186,19 +187,29 @@ class MfaController extends Controller
 
         session([
             'mfa_passed_at' => now()->timestamp,
-            'mfa_passed_user_id' => $user->id,
+            'mfa_passed_user_id' => $user->user_id,
         ]);
         session()->regenerate();
 
         if ($request->expectsJson()) {
             return response()->json([
                 'message'    => 'Verified',
-                'redirect'   => route('admin.dashboard', absolute: false),
+                'redirect'   => $this->homePath($user),
                 'csrf_token' => csrf_token(),
             ]);
         }
 
-        return redirect()->intended(route('admin.dashboard', absolute: false));
+        return redirect()->intended($this->homePath($user));
+    }
+
+    private function homePath(User $user): string
+    {
+        return match ($user->role) {
+            'owner' => route('owner.dashboard', absolute: false),
+            'admin' => route('admin.dashboard', absolute: false),
+            'staff' => route('staff.dashboard', absolute: false),
+            default => route('user.dashboard', absolute: false),
+        };
     }
 
     /**
@@ -206,7 +217,7 @@ class MfaController extends Controller
      */
     private function tempSecretFor($user): ?string
     {
-        if (session('mfa_temp_secret_user_id') !== $user->id) {
+        if ((int) session('mfa_temp_secret_user_id') !== (int) $user->user_id) {
             session()->forget(['mfa_temp_secret', 'mfa_temp_secret_user_id']);
             return null;
         }
