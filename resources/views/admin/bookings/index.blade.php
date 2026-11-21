@@ -154,36 +154,6 @@
                 <div id="courtBoard" class="court-board" aria-live="polite"></div>
             </div>
         </section>
-        <section id="courtWeekView" class="bookings-view-panel" role="tabpanel" @if ($initialBookingsView !== 'week') hidden @endif>
-            <div class="panel court-board-panel">
-                <div class="court-board-toolbar">
-                    <div>
-                        <p class="court-board-eyebrow">Operations view</p>
-                        <h2>Week calendar</h2>
-                        <p class="court-board-subtitle">Bookings and court events for the selected week.</p>
-                    </div>
-                    <div class="court-board-controls" aria-label="Choose calendar week">
-                        <button type="button" class="court-board-nav" data-week-nav="previous" aria-label="Previous week">â€¹</button>
-                        <input type="date" id="courtWeekInput" value="{{ request('date', now()->toDateString()) }}" aria-label="Choose a date in the week">
-                        <button type="button" class="court-board-nav" data-week-nav="next" aria-label="Next week">â€º</button>
-                        <button type="button" class="btn-clear court-board-today" data-week-nav="today">This week</button>
-                        <button type="button" class="court-board-nav" data-week-scroll="left" aria-label="Scroll calendar left">Scroll left</button>
-                        <button type="button" class="court-board-nav" data-week-scroll="right" aria-label="Scroll calendar right">Scroll right</button>
-                    </div>
-                </div>
-                <div class="court-board-legend" aria-label="Booking status legend">
-                    <span><i class="legend-dot legend-paid"></i>Paid</span>
-                    <span><i class="legend-dot legend-closure"></i>Closure</span>
-                    <span><i class="legend-dot legend-walk-in"></i>Walk-in</span>
-                    <span><i class="legend-dot legend-maintenance"></i>Maintenance</span>
-                    <span><i class="legend-dot legend-open-play"></i>Open play</span>
-                </div>
-                <div id="courtWeekSummary" class="court-board-summary" aria-live="polite"></div>
-                <div class="court-week-scroll court-month-scroll">
-                    <div id="courtWeekGrid" class="court-month-grid court-week-grid" aria-live="polite"></div>
-                </div>
-            </div>
-        </section>
         <section id="courtMonthView" class="bookings-view-panel" role="tabpanel" @if ($initialBookingsView !== 'month') hidden @endif>
             <div class="panel court-board-panel">
                 <div class="court-board-toolbar">
@@ -213,6 +183,36 @@
                 <div id="courtMonthSummary" class="court-board-summary" aria-live="polite"></div>
                 <div class="court-month-scroll">
                     <div id="courtMonthGrid" class="court-month-grid" aria-live="polite"></div>
+                </div>
+            </div>
+        </section>
+        <section id="courtWeekView" class="bookings-view-panel" role="tabpanel" @if ($initialBookingsView !== 'week') hidden @endif>
+            <div class="panel court-board-panel">
+                <div class="court-board-toolbar">
+                    <div>
+                        <p class="court-board-eyebrow">Operations view</p>
+                        <h2 id="courtWeekRangeHeading">Week calendar</h2>
+                        <p class="court-board-subtitle">Bookings and court events for the selected week.</p>
+                    </div>
+                    <div class="court-board-controls" aria-label="Choose calendar week">
+                        <button type="button" class="court-board-nav" data-week-nav="previous" aria-label="Previous week">‹</button>
+                        <input type="date" id="courtWeekInput" value="{{ request('date', now()->toDateString()) }}" aria-label="Choose a date in the week">
+                        <button type="button" class="court-board-nav" data-week-nav="next" aria-label="Next week">›</button>
+                        <button type="button" class="btn-clear court-board-today" data-week-nav="today">This week</button>
+                        <button type="button" class="court-board-nav" data-week-scroll="left" aria-label="Scroll calendar left">Scroll left</button>
+                        <button type="button" class="court-board-nav" data-week-scroll="right" aria-label="Scroll calendar right">Scroll right</button>
+                    </div>
+                </div>
+                <div class="court-board-legend" aria-label="Booking status legend">
+                    <span><i class="legend-dot legend-paid"></i>Paid</span>
+                    <span><i class="legend-dot legend-closure"></i>Closure</span>
+                    <span><i class="legend-dot legend-walk-in"></i>Walk-in</span>
+                    <span><i class="legend-dot legend-maintenance"></i>Maintenance</span>
+                    <span><i class="legend-dot legend-open-play"></i>Open play</span>
+                </div>
+                <div id="courtWeekSummary" class="court-board-summary" aria-live="polite"></div>
+                <div class="court-week-scroll court-month-scroll">
+                    <div id="courtWeekGrid" class="court-month-grid court-week-grid" aria-live="polite"></div>
                 </div>
             </div>
         </section>

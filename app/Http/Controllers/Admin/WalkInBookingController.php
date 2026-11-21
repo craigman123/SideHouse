@@ -24,7 +24,7 @@ class WalkInBookingController extends Controller
             'contact_number' => ['required', 'string', 'max:30', 'regex:/^[0-9+\-\s()]{7,30}$/'],
             'email' => ['nullable', 'email', 'max:255'],
             'court_id' => ['required', 'integer', 'exists:courts,id'],
-            'date' => ['required', 'date_format:Y-m-d', 'after_or_equal:today'],
+            'date' => ['required', 'date_format:Y-m-d', 'after_or_equal:'.CarbonImmutable::now('Asia/Manila')->toDateString()],
             'start_time' => ['required', 'date_format:H:i'],
             'end_time' => ['required', 'date_format:H:i', 'different:start_time'],
             'notes' => ['nullable', 'string', 'max:5000'],

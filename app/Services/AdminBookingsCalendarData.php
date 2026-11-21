@@ -9,6 +9,7 @@ use App\Models\CourtClosure;
 use App\Models\SpecificDateTimeClosure;
 use App\Models\BusinessSetting;
 use Carbon\CarbonInterface;
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 
 class AdminBookingsCalendarData
@@ -24,6 +25,7 @@ class AdminBookingsCalendarData
             ->orderBy('date')->orderBy('start_time')->get()
             ->map(fn (Booking $booking) => [
                 'id' => $booking->id,
+                'updated_at' => $booking->updated_at?->format('Y-m-d\\TH:i:s.uP'),
                 'customer' => $booking->customer_name,
                 'contact_number' => $booking->contact_number,
                 'email' => $booking->email,
@@ -56,6 +58,7 @@ class AdminBookingsCalendarData
         $blocks = CourtBlock::with('court')->whereDate('block_date', '>=', $queryFrom)->whereDate('block_date', '<=', $to)
             ->orderBy('block_date')->orderBy('start_time')->get()->map(fn (CourtBlock $block) => [
                 'id' => $block->id,
+                'updated_at' => $block->updated_at?->format('Y-m-d\\TH:i:s.uP'),
                 'court_id' => $block->court?->id,
                 'type' => $block->type,
                 'title' => $block->title,
@@ -84,6 +87,8 @@ class AdminBookingsCalendarData
     {
         $settings = BusinessSetting::current();
         return [
+            'today' => CarbonImmutable::now('Asia/Manila')->toDateString(),
+            'server_time' => CarbonImmutable::now('Asia/Manila')->toIso8601String(),
             'open_hour' => $settings->open_hour,
             'close_hour' => $settings->close_hour,
             'closed_weekdays' => $settings->closed_weekdays,

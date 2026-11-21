@@ -35,8 +35,8 @@ class BookingController extends Controller
         // The table above remains paginated and filterable. The court board
         // needs a small, date-windowed dataset instead so its day switcher
         // can update instantly without replacing the page.
-        $boardStart = Carbon::today()->subDay(); // includes overnight tails
-        $boardEnd = Carbon::today()->addMonths(6);
+        $boardStart = Carbon::today('Asia/Manila')->subDay(); // includes overnight tails
+        $boardEnd = Carbon::today('Asia/Manila')->addMonths(6);
 
         $boardData = $calendarData->forRange($boardStart, $boardEnd);
         $courtBoardBookings = $boardData['bookings'];
@@ -67,13 +67,18 @@ class BookingController extends Controller
         $version = $calendarData->versionForRange($from, $to);
         $etag = '"'.$version.'"';
         if ($request->headers->get('If-None-Match') === $etag) {
-            return response()->json(null, 304)->header('ETag', $etag);
+            return response()->json(null, 304)
+                ->header('ETag', $etag)
+                ->header('X-Venue-Date', CarbonImmutable::now('Asia/Manila')->toDateString())
+                ->header('X-Venue-Time', CarbonImmutable::now('Asia/Manila')->toIso8601String());
         }
 
         return response()->json([
             ...$calendarData->forRange($from, $to),
             'server_time' => now('Asia/Manila')->toIso8601String(),
-        ])->header('ETag', $etag);
+        ])->header('ETag', $etag)
+            ->header('X-Venue-Date', CarbonImmutable::now('Asia/Manila')->toDateString())
+            ->header('X-Venue-Time', CarbonImmutable::now('Asia/Manila')->toIso8601String());
     }
 
     public function update(Request $request, Booking $booking, CourtConflictService $conflicts): JsonResponse
@@ -84,15 +89,20 @@ class BookingController extends Controller
             'email' => ['sometimes', 'nullable', 'email', 'max:255'],
             'notes' => ['sometimes', 'nullable', 'string', 'max:5000'],
             'court_id' => ['sometimes', 'required', 'integer', 'exists:courts,id'],
-            'date' => ['sometimes', 'required', 'date_format:Y-m-d'],
+            'date' => ['sometimes', 'required', 'date_format:Y-m-d', 'after_or_equal:'.CarbonImmutable::now('Asia/Manila')->toDateString()],
             'start_time' => ['sometimes', 'required', 'date_format:H:i'],
             'end_time' => ['sometimes', 'required', 'date_format:H:i'],
             'amount' => ['sometimes', 'nullable', 'numeric', 'min:0', 'max:99999999.99'],
             'acknowledge_price_change' => ['sometimes', 'boolean'],
+            'expected_updated_at' => ['sometimes', 'required', 'date'],
         ]);
 
         $result = DB::transaction(function () use ($booking, $validated, $conflicts) {
             $locked = Booking::query()->whereKey($booking->id)->lockForUpdate()->firstOrFail();
+            if (isset($validated['expected_updated_at'])
+                && \Carbon\Carbon::parse($validated['expected_updated_at'])->format('U.u') !== $locked->updated_at->format('U.u')) {
+                return ['stale' => $locked->load(['court', 'slots', 'equipment.equipment'])];
+            }
             if (in_array($locked->status, ['cancelled', 'expired'], true)) {
                 return ['rejected' => 'Cancelled or expired bookings cannot be edited.'];
             }
@@ -121,6 +131,20 @@ class BookingController extends Controller
                 || $date !== $locked->date->toDateString()
                 || $startTime !== substr((string) $locked->start_time, 0, 5)
                 || $endTime !== substr((string) $locked->end_time, 0, 5);
+            $venueNow = CarbonImmutable::now('Asia/Manila');
+            $oldStart = substr((string) $locked->start_time, 0, 5);
+            $oldEnd = substr((string) $locked->end_time, 0, 5);
+            $oldIsOvernight = $oldEnd <= $oldStart;
+            $oldIsPast = $locked->date->toDateString() < $venueNow->toDateString()
+                || ($locked->date->toDateString() === $venueNow->toDateString()
+                    && ! $oldIsOvernight && $oldEnd <= $venueNow->format('H:i'));
+            if ($oldIsPast && ($scheduleChanged || (array_key_exists('amount', $validated)
+                && $validated['amount'] !== null && abs((float) $validated['amount'] - (float) $locked->amount) >= 0.005))) {
+                return ['rejected' => 'Past bookings cannot have their date, time, court, or amount changed.'];
+            }
+            if ($scheduleChanged && $date === $venueNow->toDateString() && $startTime < $venueNow->format('H:i')) {
+                return ['rejected' => 'Choose a start time that has not passed in Asia/Manila.'];
+            }
 
             $courtIds = array_values(array_unique(array_filter([$oldCourtId, $courtId], fn ($id) => $id > 0)));
             sort($courtIds);
@@ -198,6 +222,28 @@ class BookingController extends Controller
             ];
         });
 
+        if (isset($result['stale'])) {
+            $stale = $result['stale'];
+            return response()->json([
+                'message' => 'This booking changed while you were moving it. The latest version has been loaded.',
+                'booking' => [
+                    'id' => $stale->id, 'updated_at' => $stale->updated_at?->format('Y-m-d\\TH:i:s.uP'),
+                    'customer' => $stale->customer_name, 'contact_number' => $stale->contact_number,
+                    'email' => $stale->email, 'notes' => $stale->notes, 'court_id' => $stale->court_id,
+                    'court' => $stale->court?->name, 'date' => $stale->date->toDateString(),
+                    'start' => substr((string) $stale->start_time, 0, 5), 'end' => substr((string) $stale->end_time, 0, 5),
+                    'status' => $stale->status, 'source' => $stale->source, 'amount' => (float) $stale->amount,
+                    'slots' => $stale->slots->map(fn ($slot) => [
+                        'date' => $slot->date->toDateString(), 'start' => substr((string) $slot->start_time, 0, 5),
+                        'end' => substr((string) $slot->end_time, 0, 5),
+                    ])->values(),
+                    'equipment' => $stale->equipment->map(fn ($line) => [
+                        'name' => $line->equipment?->name ?? 'Equipment', 'quantity' => $line->quantity,
+                    ])->values(),
+                ],
+            ], 409);
+        }
+
         if (isset($result['conflict'])) {
             return response()->json([
                 'message' => 'The selected time conflicts with an existing booking, block, or closure.',
@@ -230,6 +276,7 @@ class BookingController extends Controller
             'message' => 'Booking updated.',
             'booking' => [
                 'id' => $updated->id,
+                'updated_at' => $updated->updated_at?->format('Y-m-d\\TH:i:s.uP'),
                 'customer' => $updated->customer_name,
                 'contact_number' => $updated->contact_number,
                 'email' => $updated->email,
