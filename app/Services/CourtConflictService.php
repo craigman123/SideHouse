@@ -22,7 +22,8 @@ class CourtConflictService
         string $startTime,
         string $endTime,
         ?int $ignoreBookingId = null,
-        ?int $ignoreBlockId = null
+        ?int $ignoreBlockId = null,
+        bool $includeBookingConflicts = true
     ): ?array {
         $timezone = config('app.timezone');
         $start = CarbonImmutable::parse("{$date} {$startTime}", $timezone);
@@ -108,7 +109,7 @@ class CourtConflictService
                 ];
             }
 
-            $slot = BookingSlot::query()
+            $slot = $includeBookingConflicts ? BookingSlot::query()
                 ->where('court_id', $courtId)
                 ->whereDate('date', $segment['date'])
                 ->where('is_active', true)
@@ -121,7 +122,7 @@ class CourtConflictService
                     }
                 })
                 ->with('booking')
-                ->first();
+                ->first() : null;
 
             if ($slot) {
                 return [
@@ -140,14 +141,14 @@ class CourtConflictService
                 $segmentEnd = $segmentEnd->addDay();
             }
 
-            $legacyBookings = Booking::query()
+            $legacyBookings = $includeBookingConflicts ? Booking::query()
                 ->where('court_id', $courtId)
                 ->whereDate('date', '>=', CarbonImmutable::parse($segment['date'], $timezone)->subDay()->toDateString())
                 ->whereDate('date', '<=', $segment['date'])
                 ->whereNotIn('status', ['cancelled', 'expired'])
                 ->whereDoesntHave('slots')
                 ->when($ignoreBookingId !== null, fn ($query) => $query->where('id', '!=', $ignoreBookingId))
-                ->get();
+                ->get() : collect();
 
             foreach ($legacyBookings as $legacyBooking) {
                 $legacyDate = $legacyBooking->date?->toDateString() ?? (string) $legacyBooking->getRawOriginal('date');

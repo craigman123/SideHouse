@@ -48,7 +48,6 @@ document.addEventListener('DOMContentLoaded', () => {
         editError.hidden = true;
         editSubmitBtn.disabled = true;
         const originalLabel = editSubmitBtn.textContent;
-        editSubmitBtn.textContent = 'Saving…';
 
         try {
             const id = editIdInput.value;

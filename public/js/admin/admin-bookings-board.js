@@ -83,6 +83,8 @@
     const calendarGrids = [monthGrid, weekGrid].filter(Boolean);
     let activeCalendarGrid = monthGrid;
     const formatDateInputValue = (date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+    const escapeHtml = (value) => { const el = document.createElement('span'); el.textContent = String(value ?? ''); return el.innerHTML; };
+    const formatCurrency = (value) => `₱${Number(value || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     const startOfWeek = (dateValue) => {
         const date = new Date(`${dateValue}T00:00:00`);
         date.setDate(date.getDate() - date.getDay());
@@ -206,6 +208,7 @@
             syncIndicator.hidden = !message;
         }
     };
+    const debugCalendarDuplicates = false;
     const renderCalendar = () => {
         data.bookings = bookings;
         data.blocks = blocks;
@@ -217,6 +220,17 @@
         if (panels.week && !panels.week.hidden) renderWeek(affectedDates);
         if (panels.board && !panels.board.hidden) renderBoard();
         calendarDataDirty = false;
+        if (debugCalendarDuplicates) {
+            const visibleGrid = activeCalendarGrid;
+            visibleGrid?.querySelectorAll('.court-month-date-col').forEach((column) => {
+                const seen = new Set();
+                column.querySelectorAll('[data-calendar-kind][data-calendar-id]').forEach((bar) => {
+                    const key = `${bar.dataset.calendarKind}:${String(bar.dataset.calendarId)}`;
+                    if (seen.has(key)) console.warn('[board] duplicate bar', key);
+                    seen.add(key);
+                });
+            });
+        }
     };
     const mergeCalendarRange = (incoming, from, to) => {
         const before = [
@@ -227,7 +241,8 @@
         ].map(([kind, items, keyOf, dateOf]) => [kind, new Map(items.map((item) => [String(keyOf(item)), { json: JSON.stringify(item), date: dateOf(item) }]))]);
         const isProtected = (id) => protectedItems.has(String(id))
             || protectedItems.has(`booking:${id}`) || protectedItems.has(`block:${id}`)
-            || activeDragKey === String(id);
+            || activeDragKey === String(id)
+            || moveQueues.has(`booking:${id}`) || moveQueues.has(`block:${id}`);
         const mergeItems = (kind, current, fresh, keyOf, dateOf, rangeFrom = from) => {
             const freshById = new Map(fresh.map((item) => [String(keyOf(item)), item]));
             current.forEach((item) => {
@@ -326,6 +341,34 @@
     const notify = (message, type = 'success') => {
         if (typeof window.showToast === 'function') window.showToast(message, type);
     };
+    const confirmDragPrice = (quote, booking) => new Promise((resolve) => {
+        const wrap = document.createElement('div');
+        wrap.className = 'court-price-confirm-backdrop';
+        wrap.innerHTML = `<section class="court-price-confirm" role="dialog" aria-modal="true" aria-labelledby="courtPriceConfirmTitle">
+            <h2 id="courtPriceConfirmTitle">Confirm booking price</h2>
+            <p>${escapeHtml(booking.customer || 'Booking')} · ${escapeHtml(quote.date)} · ${escapeHtml(quote.start)}–${escapeHtml(quote.end)}</p>
+            <p>Current amount: <strong>${escapeHtml(formatCurrency(quote.old_amount))}</strong></p>
+            <p>New amount: <strong>${escapeHtml(formatCurrency(quote.new_amount))}</strong></p>
+            <label class="court-price-confirm-choice"><input type="radio" name="drag-price-choice" value="original" checked> Keep original amount</label>
+            <label class="court-price-confirm-choice"><input type="radio" name="drag-price-choice" value="new"> Use new amount</label>
+            <label class="court-price-confirm-ack"><input type="checkbox"> I acknowledge this price change</label>
+            <div class="court-price-confirm-actions"><button type="button" data-price-cancel>Cancel</button><button type="button" data-price-confirm disabled>Confirm move</button></div>
+        </section>`;
+        document.body.append(wrap);
+        const ack = wrap.querySelector('.court-price-confirm-ack input');
+        const confirm = wrap.querySelector('[data-price-confirm]');
+        const finish = (value) => { wrap.remove(); document.removeEventListener('keydown', onKey); resolve(value); };
+        const onKey = (event) => { if (event.key === 'Escape') { event.preventDefault(); finish(null); } };
+        confirm.addEventListener('click', () => finish({
+            amount: wrap.querySelector('input[name="drag-price-choice"]:checked').value === 'original'
+                ? Number(quote.old_amount) : Number(quote.new_amount),
+        }));
+        ack.addEventListener('change', () => { confirm.disabled = !ack.checked; });
+        wrap.querySelector('[data-price-cancel]').addEventListener('click', () => finish(null));
+        wrap.addEventListener('click', (event) => { if (event.target === wrap) finish(null); });
+        document.addEventListener('keydown', onKey);
+        confirm.focus();
+    });
     const csrfToken = () => document.querySelector('meta[name="csrf-token"]')?.content || '';
     const itemPosition = (kind, item) => ({
         date: kind === 'block' ? item.block_date : item.date,
@@ -336,27 +379,46 @@
     const samePosition = (a, b) => a && b && a.date === b.date && a.start === b.start && a.end === b.end
         && String(a.court_id ?? '') === String(b.court_id ?? '');
     const moveList = (kind) => kind === 'block' ? blocks : bookings;
+    const movedBookingSlots = (date, start, end) => {
+        const startMinutes = toMinutes(start);
+        let endMinutes = toMinutes(end);
+        if (endMinutes <= startMinutes) endMinutes += 1440;
+        const count = Math.max(1, Math.ceil((endMinutes - startMinutes) / stepMinutes));
+        return Array.from({ length: count }, (_, index) => {
+            const slotStart = startMinutes + index * stepMinutes;
+            const slotEnd = Math.min(endMinutes, slotStart + stepMinutes);
+            return {
+                date: addDays(date, Math.floor(slotStart / 1440)),
+                start: formatTimeInput(slotStart),
+                end: slotEnd >= 1440 ? '00:00' : formatTimeInput(slotEnd),
+            };
+        });
+    };
     const moveItemExists = (queue) => moveList(queue.kind).some((item) =>
         String(item.id) === String(queue.id) && !(queue.kind === 'booking' && ['cancelled', 'expired'].includes(item.status))
     );
-    const finishMoveQueue = (queue, applyDeferred = true) => {
+    const finishMoveQueue = (queue, applyDeferred = true, skipRender = false) => {
         if (moveQueues.get(queue.key) !== queue) return;
         moveQueues.delete(queue.key);
         protectedItems.delete(queue.key);
         const list = moveList(queue.kind);
         const index = list.findIndex((item) => String(item.id) === String(queue.id));
+        let deferredChanged = false;
         if (applyDeferred && index >= 0 && queue.deferredServerItem !== undefined) {
             // A poll may have started before the save and finish afterward. Only
             // accept a deferred position when its version is newer than our response.
             if (queue.deferredServerItem?.updated_at
                 && Date.parse(queue.deferredServerItem.updated_at) > Date.parse(queue.confirmed?.updated_at || '')) {
                 list[index] = queue.kind === 'block' ? normalizeBlock(queue.deferredServerItem) : queue.deferredServerItem;
+                deferredChanged = true;
             }
         }
         const remainingIndex = list.findIndex((item) => String(item.id) === String(queue.id));
         if (remainingIndex >= 0) delete list[remainingIndex]._saving;
-        affectedCalendarDates = queue.changedDates || null;
-        renderCalendar();
+        if (!skipRender || deferredChanged || calendarDataDirty) {
+            affectedCalendarDates = queue.changedDates || null;
+            renderCalendar();
+        }
     };
     const pumpMoveQueue = async (queue) => {
         if (moveQueues.get(queue.key) !== queue || queue.inFlight || !queue.wanted) return;
@@ -372,9 +434,34 @@
         const sent = { ...queue.wanted, position: { ...queue.wanted.position }, payload: { ...queue.wanted.payload } };
         queue.inFlight = sent;
         try {
-            const response = await fetch(`/admin/${queue.kind === 'block' ? 'blocks' : 'bookings'}/${encodeURIComponent(queue.id)}`, {
+            const url = `/admin/${queue.kind === 'block' ? 'blocks' : 'bookings'}/${encodeURIComponent(queue.id)}`;
+            const headers = { Accept: 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': token };
+            if (queue.kind === 'booking' && ['paid', 'confirmed'].includes(moveList(queue.kind).find((item) => String(item.id) === String(queue.id))?.status)) {
+                const quoteResponse = await fetch(url, { method: 'PATCH', credentials: 'same-origin', headers,
+                    body: JSON.stringify({ ...sent.payload, expected_updated_at: queue.version, dry_run: true }) });
+                const quoteResult = await quoteResponse.json().catch(() => ({}));
+                if (!quoteResponse.ok) throw new Error(quoteResult.message || 'Could not check the new booking price.');
+                const quote = quoteResult.quote;
+                if (quote?.amount_changed) {
+                    const current = moveList(queue.kind).find((item) => String(item.id) === String(queue.id));
+                    const choice = await confirmDragPrice(quote, current || {});
+                    if (!choice) {
+                        queue.inFlight = null;
+                        if (queue.wanted.sequence !== sent.sequence) { void pumpMoveQueue(queue); return; }
+                        const index = moveList(queue.kind).findIndex((item) => String(item.id) === String(queue.id));
+                        if (index >= 0) moveList(queue.kind)[index] = { ...queue.confirmed };
+                        finishMoveQueue(queue);
+                        return;
+                    }
+                    if (moveQueues.get(queue.key) !== queue || !moveItemExists(queue)) { finishMoveQueue(queue, false); return; }
+                    if (queue.wanted.sequence !== sent.sequence) { queue.inFlight = null; void pumpMoveQueue(queue); return; }
+                    sent.payload.amount = choice.amount;
+                    sent.payload.acknowledge_price_change = true;
+                } else if (quote) sent.payload.amount = Number(quote.new_amount);
+            }
+            const response = await fetch(url, {
                 method: 'PATCH', credentials: 'same-origin',
-                headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': token },
+                headers,
                 body: JSON.stringify({
                     ...sent.payload, expected_updated_at: queue.version,
                     client_token: { itemKey: queue.key, sequence: sent.sequence, targetPosition: sent.position },
@@ -391,8 +478,17 @@
                 queue.inFlight = null;
                 if (latest) {
                     const list = moveList(queue.kind), index = list.findIndex((item) => String(item.id) === String(queue.id));
-                    if (index >= 0) list[index] = serverItem;
-                    finishMoveQueue(queue);
+                    if (index >= 0) {
+                        const shown = list[index];
+                        list[index] = serverItem;
+                        delete list[index]._saving;
+                        if (samePosition(itemPosition(queue.kind, shown), itemPosition(queue.kind, serverItem))) {
+                            const bar = activeCalendarGrid?.querySelector(`[data-calendar-kind="${queue.kind}"][data-calendar-id="${CSS.escape(String(queue.id))}"]`);
+                            bar?.classList.remove('is-saving');
+                            queue.changedDates = [];
+                            finishMoveQueue(queue, true, true);
+                        } else finishMoveQueue(queue);
+                    } else finishMoveQueue(queue, false);
                     notify(result.message || 'Calendar item moved.', 'success');
                 } else void pumpMoveQueue(queue);
                 return;
@@ -415,20 +511,7 @@
             const list = moveList(queue.kind), index = list.findIndex((item) => String(item.id) === String(queue.id));
             if (index >= 0) list[index] = { ...queue.confirmed };
             finishMoveQueue(queue);
-            if (queue.kind === 'booking' && result.new_amount !== undefined && index >= 0) {
-                const restored = moveList(queue.kind).find((item) => String(item.id) === String(queue.id));
-                if (restored) {
-                    openBookingDetails(restored); openBookingEdit();
-                    const form = document.getElementById('courtBookingEditForm');
-                    form.elements.date.value = failedWanted.payload.date;
-                    form.elements.start_time.value = failedWanted.payload.start_time;
-                    form.elements.end_time.value = failedWanted.payload.end_time;
-                    form.elements.amount.value = Number(result.new_amount).toFixed(2);
-                    updatePriceAcknowledgementVisibility();
-                    bookingEditMessage.textContent = result.message || 'Review and acknowledge the price change to finish rescheduling.';
-                    bookingEditMessage.classList.add('is-error');
-                }
-            } else notify(result.message || 'Could not move this calendar item.', 'error');
+            notify(result.message || 'Could not move this calendar item.', 'error');
         } catch (error) {
             if (moveQueues.get(queue.key) !== queue || !moveItemExists(queue)) { finishMoveQueue(queue, false); return; }
             const latest = queue.wanted.sequence === queue.inFlight?.sequence && samePosition(queue.wanted.position, queue.inFlight?.position);
@@ -477,7 +560,7 @@
         document.getElementById('courtWalkInContact').value = '';
         document.getElementById('courtWalkInEmail').value = '';
         document.getElementById('courtWalkInNotes').value = '';
-        if (calendarDataDirty) renderCalendar();
+        if (calendarDataDirty && !calendarDrag && moveQueues.size === 0) renderCalendar();
     };
 
     const showModalPanel = (panel, titleId) => {
@@ -531,6 +614,7 @@
     };
 
     const openBlockDetails = (block) => {
+        block = blocks.find((item) => String(item.id) === String(block.id)) || block;
         if (selectedBooking) protectedItems.delete(`booking:${selectedBooking.id}`);
         protectedItems.add(`block:${block.id}`);
         selectedBlock = block;
@@ -555,6 +639,7 @@
 
     const openBlockEdit = () => {
         if (!selectedBlock) return;
+        selectedBlock = blocks.find((item) => String(item.id) === String(selectedBlock.id)) || selectedBlock;
         const form = document.getElementById('courtBlockEditForm');
         fillCourtOptions(form.elements.court_id, true);
         form.elements.type.value = selectedBlock.type;
@@ -581,6 +666,7 @@
     };
 
     const openBookingDetails = (booking) => {
+        booking = bookings.find((item) => String(item.id) === String(booking.id)) || booking;
         if (selectedBlock) protectedItems.delete(`block:${selectedBlock.id}`);
         protectedItems.add(`booking:${booking.id}`);
         selectedBooking = booking;
@@ -603,7 +689,8 @@
 
     const openBookingEdit = () => {
         if (!selectedBooking) return;
-        const booking = selectedBooking;
+        const booking = bookings.find((item) => String(item.id) === String(selectedBooking.id)) || selectedBooking;
+        selectedBooking = booking;
         const form = document.getElementById('courtBookingEditForm');
         fillCourtOptions(form.elements.court_id);
         form.elements.customer_name.value = booking.customer || '';
@@ -613,10 +700,17 @@
         form.elements.date.value = booking.date;
         form.elements.start_time.value = booking.start;
         form.elements.end_time.value = booking.end;
+        durationControl.dataset.adjustMinutes = '0';
+        bookingEditForm.elements.amount.dataset.manuallyChanged = '';
+        durationControl.hidden = false;
+        updateDurationFields(0);
         form.elements.amount.value = Number(booking.amount || 0).toFixed(2);
         form.elements.notes.value = booking.notes || '';
         const past = itemIsPast('booking', booking);
-        ['court_id', 'date', 'start_time', 'end_time', 'amount'].forEach((name) => { form.elements[name].disabled = past; });
+        ['court_id', 'date', 'amount'].forEach((name) => { form.elements[name].disabled = past; });
+        bookingStartInput.disabled = past;
+        bookingEndInput.disabled = past;
+        durationControl.hidden = past;
         form.querySelector('[data-past-edit-note]').hidden = !past;
         form.querySelector('[type="submit"]').disabled = false;
         validateCalendarForm(form);
@@ -724,6 +818,88 @@
     });
 
     const bookingEditForm = document.getElementById('courtBookingEditForm');
+    const bookingStartInput = bookingEditForm.elements.start_time;
+    const bookingEndInput = bookingEditForm.elements.end_time;
+    bookingStartInput.type = 'text';
+    bookingEndInput.type = 'text';
+    [bookingStartInput, bookingEndInput].forEach((input) => { input.readOnly = true; input.setAttribute('aria-readonly', 'true'); });
+    const durationControl = document.createElement('div');
+    durationControl.className = 'court-booking-duration-control';
+    durationControl.innerHTML = '<span>Adjust duration</span><div><button type="button" data-duration-adjust="-1" aria-label="Shorten by one booking step">−</button><strong data-duration-value></strong><button type="button" data-duration-adjust="1" aria-label="Extend by one booking step">+</button></div><small data-duration-preview></small><small data-duration-warning hidden></small>';
+    bookingEndInput.closest('label').after(durationControl);
+    const durationValue = durationControl.querySelector('[data-duration-value]');
+    const durationPreview = durationControl.querySelector('[data-duration-preview]');
+    const durationWarning = durationControl.querySelector('[data-duration-warning]');
+    const updateDurationFields = (minutes) => {
+        if (!selectedBooking) return;
+        let oldDuration = toMinutes(selectedBooking.end) - toMinutes(selectedBooking.start);
+        if (oldDuration <= 0) oldDuration += 1440;
+        const duration = Math.max(stepMinutes, oldDuration + minutes);
+        bookingStartInput.value = selectedBooking.start;
+        bookingEndInput.value = formatTimeInput(toMinutes(selectedBooking.start) + duration);
+        durationValue.textContent = `${duration / 60} hr`;
+        durationControl.dataset.adjustMinutes = String(minutes);
+        durationPreview.textContent = `New end ${bookingEndInput.value} · ${formatCurrency(bookingEditForm.elements.amount.value)}`;
+        durationWarning.hidden = true;
+        if (minutes > 0) {
+            const proposedEnd = toMinutes(selectedBooking.start) + duration;
+            const dateOffset = (slotDate) => Math.round((new Date(`${slotDate}T00:00:00`) - new Date(`${bookingEditForm.elements.date.value}T00:00:00`)) / 86400000) * 1440;
+            const hasOverlap = bookings.some((other) => String(other.id) !== String(selectedBooking.id)
+                && Number(other.court_id) === Number(bookingEditForm.elements.court_id.value)
+                && (other.slots || []).some((slot) => {
+                    const offset = dateOffset(slot.date || other.date);
+                    const slotStart = offset + toMinutes(slot.start);
+                    const slotEnd = offset + (toMinutes(slot.end) || 1440);
+                    return slotStart < proposedEnd && slotEnd > toMinutes(selectedBooking.end);
+                }));
+            if (hasOverlap) {
+                durationWarning.textContent = 'This extension overlaps another booking. The overlap will be logged for review.';
+                durationWarning.hidden = false;
+            }
+        }
+    };
+    durationControl.addEventListener('click', (event) => {
+        const button = event.target.closest('[data-duration-adjust]');
+        if (!button || !selectedBooking || itemIsPast('booking', selectedBooking)) return;
+        updateDurationFields(Number(durationControl.dataset.adjustMinutes || 0) + Number(button.dataset.durationAdjust) * stepMinutes);
+        refreshEditQuote();
+    });
+    let editQuoteTimer;
+    const refreshEditQuote = () => {
+        clearTimeout(editQuoteTimer);
+        if (!selectedBooking || itemIsPast('booking', selectedBooking)) return;
+        const token = csrfToken();
+        if (!token) return;
+        editQuoteTimer = setTimeout(async () => {
+            const selectedId = String(selectedBooking.id);
+            try {
+                const response = await fetch(`/admin/bookings/${encodeURIComponent(selectedId)}`, {
+                    method: 'PATCH', credentials: 'same-origin',
+                    headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': token },
+                    body: JSON.stringify({ date: bookingEditForm.elements.date.value, court_id: Number(bookingEditForm.elements.court_id.value),
+                        adjust_minutes: Number(durationControl.dataset.adjustMinutes || 0),
+                        dry_run: true, expected_updated_at: selectedBooking.updated_at }),
+                });
+                const result = await response.json().catch(() => ({}));
+                if (String(selectedBooking?.id) !== selectedId) return;
+                if (response.ok && result.quote) {
+                    durationPreview.textContent = `New end ${result.quote.end} · ${formatCurrency(result.quote.new_amount)}`;
+                    if (!bookingEditForm.elements.amount.dataset.manuallyChanged && result.quote.amount_changed) {
+                        bookingEditForm.elements.amount.value = Number(result.quote.new_amount).toFixed(2);
+                        updatePriceAcknowledgementVisibility();
+                    }
+                } else if (!response.ok) {
+                    durationWarning.textContent = result.message || 'This duration is outside the available hours.';
+                    durationWarning.hidden = false;
+                }
+            } catch (_) { /* the save still receives server validation */ }
+        }, 250);
+    };
+    bookingEditForm.elements.amount.addEventListener('input', () => {
+        bookingEditForm.elements.amount.dataset.manuallyChanged = '1';
+        durationPreview.textContent = `New end ${bookingEndInput.value} · ${formatCurrency(bookingEditForm.elements.amount.value)}`;
+    });
+    [bookingEditForm.elements.date, bookingEditForm.elements.court_id].forEach((field) => field.addEventListener('change', refreshEditQuote));
     const bookingEditMessage = document.getElementById('courtBookingEditMessage');
     const calendarDateTimeForms = [blockForm, bookingEditForm, document.getElementById('courtBlockEditForm')];
     const calendarFormDateErrors = new WeakMap();
@@ -832,13 +1008,46 @@
             return;
         }
         const payload = Object.fromEntries(new FormData(bookingEditForm).entries());
+        const targetStart = bookingStartInput.value;
+        const targetEnd = bookingEndInput.value;
         const previousDate = selectedBooking.date;
-        payload.court_id = Number(payload.court_id);
-        payload.amount = Number(payload.amount);
-        if (Math.abs(payload.amount - Number(selectedBooking.amount || 0)) < 0.005) delete payload.amount;
+        const originalBooking = { ...selectedBooking };
+        const originalIndex = bookings.findIndex((booking) => String(booking.id) === String(selectedBooking.id));
+        if (payload.court_id !== undefined) payload.court_id = Number(payload.court_id);
+        payload.adjust_minutes = Number(durationControl.dataset.adjustMinutes || 0);
+        if (payload.amount !== undefined) payload.amount = Number(payload.amount);
+        const priceNeedsAcknowledgement = ['paid', 'confirmed'].includes(selectedBooking.status)
+            && payload.amount !== undefined
+            && Math.abs(payload.amount - Number(selectedBooking.amount || 0)) >= 0.005
+            && !payload.acknowledge_price_change;
+        if (payload.amount !== undefined && Math.abs(payload.amount - Number(selectedBooking.amount || 0)) < 0.005) delete payload.amount;
         payload.email = payload.email.trim() || null;
         payload.notes = payload.notes.trim() || null;
         payload.acknowledge_price_change = bookingEditForm.elements.acknowledge_price_change.checked;
+        if (!priceNeedsAcknowledgement && originalIndex >= 0) {
+            const optimistic = {
+                ...originalBooking,
+                customer: payload.customer_name,
+                contact_number: payload.contact_number,
+                email: payload.email,
+                notes: payload.notes,
+                court_id: payload.court_id ?? originalBooking.court_id,
+                date: payload.date ?? originalBooking.date,
+                start: targetStart,
+                end: targetEnd,
+                ...(payload.amount === undefined ? {} : { amount: payload.amount }),
+                _saving: true,
+            };
+            if (optimistic.date !== originalBooking.date || optimistic.start !== originalBooking.start || optimistic.end !== originalBooking.end) {
+                optimistic.slots = movedBookingSlots(optimistic.date, optimistic.start, optimistic.end);
+            }
+            bookings[originalIndex] = optimistic;
+            selectedBooking = optimistic;
+            affectedCalendarDates = [previousDate, optimistic.date];
+            renderCalendar();
+        }
+        delete payload.start_time;
+        delete payload.end_time;
         savingBlock = true;
         bookingEditForm.querySelector('[type="submit"]').disabled = true;
         bookingEditMessage.textContent = '';
@@ -852,6 +1061,12 @@
             });
             const result = await response.json().catch(() => ({}));
             if (!response.ok) {
+                if (!priceNeedsAcknowledgement && originalIndex >= 0) {
+                    bookings[originalIndex] = originalBooking;
+                    selectedBooking = originalBooking;
+                    affectedCalendarDates = [previousDate, payload.date];
+                    renderCalendar();
+                }
                 const fieldErrors = Object.values(result.errors || {}).flat();
                 const conflict = result.conflict;
                 if (result.new_amount !== undefined && result.old_amount !== undefined) {
@@ -864,13 +1079,29 @@
                 return;
             }
             const index = bookings.findIndex((booking) => String(booking.id) === String(result.booking.id));
-            if (index >= 0) bookings[index] = result.booking;
+            let serverPositionMatchesShown = false;
+            if (index >= 0) {
+                const shown = bookings[index];
+                serverPositionMatchesShown = samePosition(itemPosition('booking', shown), itemPosition('booking', result.booking));
+                bookings[index] = result.booking;
+                delete bookings[index]._saving;
+                if (serverPositionMatchesShown) {
+                    activeCalendarGrid?.querySelector(`[data-calendar-kind="booking"][data-calendar-id="${CSS.escape(String(result.booking.id))}"]`)?.classList.remove('is-saving');
+                    affectedCalendarDates = [];
+                }
+            }
             affectedCalendarDates = [previousDate, result.booking.date];
             selectedBooking = result.booking;
             closeBlockModal(true);
-            renderCalendar();
+            if (!serverPositionMatchesShown) renderCalendar();
             notify(result.message || 'Booking updated.', 'success');
         } catch (error) {
+            if (!priceNeedsAcknowledgement && originalIndex >= 0) {
+                bookings[originalIndex] = originalBooking;
+                selectedBooking = originalBooking;
+                affectedCalendarDates = [previousDate, payload.date];
+                renderCalendar();
+            }
             bookingEditMessage.textContent = 'Something went wrong. Please try again.';
             bookingEditMessage.classList.add('is-error');
         } finally {
@@ -893,8 +1124,23 @@
         }
         const payload = Object.fromEntries(new FormData(blockEditForm).entries());
         const previousDate = selectedBlock.block_date;
+        const originalBlock = { ...selectedBlock };
+        const originalIndex = blocks.findIndex((item) => String(item.id) === String(selectedBlock.id));
         payload.court_id = payload.court_id === 'all' ? null : Number(payload.court_id);
         payload.notes = payload.notes.trim() || null;
+        if (originalIndex >= 0) {
+            const optimistic = {
+                ...originalBlock, ...payload,
+                block_date: payload.block_date,
+                start_time: payload.start_time,
+                end_time: payload.end_time,
+                _saving: true,
+            };
+            blocks[originalIndex] = optimistic;
+            selectedBlock = optimistic;
+            affectedCalendarDates = [previousDate, optimistic.block_date];
+            renderCalendar();
+        }
         savingBlock = true;
         blockEditForm.querySelector('[type="submit"]').disabled = true;
         blockEditMessage.textContent = '';
@@ -908,6 +1154,12 @@
             });
             const result = await response.json().catch(() => ({}));
             if (!response.ok) {
+                if (originalIndex >= 0) {
+                    blocks[originalIndex] = originalBlock;
+                    selectedBlock = originalBlock;
+                    affectedCalendarDates = [previousDate, payload.block_date];
+                    renderCalendar();
+                }
                 const fieldErrors = Object.values(result.errors || {}).flat();
                 const conflict = result.conflict;
                 const conflictMessage = conflict ? ` ${conflict.title || conflict.type}${conflict.start_time ? ` (${conflict.start_time}–${conflict.end_time})` : ''}.` : '';
@@ -922,6 +1174,12 @@
             renderCalendar();
             notify(result.message || 'Calendar event updated.', 'success');
         } catch (error) {
+            if (originalIndex >= 0) {
+                blocks[originalIndex] = originalBlock;
+                selectedBlock = originalBlock;
+                affectedCalendarDates = [previousDate, payload.block_date];
+                renderCalendar();
+            }
             blockEditMessage.textContent = 'Something went wrong. Please try again.';
             blockEditMessage.classList.add('is-error');
         } finally {
@@ -1221,85 +1479,63 @@
     };
 
     let calendarDrag = null;
-    let suppressCalendarClick = false;
-    let dragFrame = 0;
+    let activeTouchCreatePending = null;
+    let dragEndedAt = 0;
+    let suppressNextCalendarClick = false;
+    let calendarPointerExceededThreshold = false;
+    const touchMoveFallbacks = new WeakMap();
     const releaseDragVisuals = (drag) => {
+        if (drag?.touchHoldTimer) window.clearTimeout(drag.touchHoldTimer);
         if (drag?.ghost) drag.ghost.remove();
         if (drag?.clone) drag.clone.remove();
         if (drag?.source?.isConnected) drag.source.classList.remove('is-drag-placeholder');
+        drag?.touchMoveFallbackCleanup?.();
         if (drag?.key) {
             if (activeDragKey === drag.key) activeDragKey = null;
             if (!moveQueues.has(drag.key)) protectedItems.delete(drag.key);
         }
-        cancelAnimationFrame(dragFrame);
-        dragFrame = 0;
+        if (drag?.animationFrame) cancelAnimationFrame(drag.animationFrame);
+        if (drag) drag.animationFrame = 0;
         drag?.grid?.classList.remove('is-booking-drag');
         endMonthDrag(drag?.pointerId);
-        if (calendarDataDirty && blockModal.hidden) renderCalendar();
+        if (calendarDataDirty && blockModal.hidden && moveQueues.size === 0) renderCalendar();
     };
     const updateDragClone = (drag, clientX, clientY) => {
         if (!drag.clone) return;
-        cancelAnimationFrame(dragFrame);
-        dragFrame = requestAnimationFrame(() => {
-            drag.clone.style.transform = `translate3d(${clientX - drag.grabX}px, ${clientY - drag.grabY}px, 0) scale(1.04)`;
-        });
-    };
-    const beginCalendarDrag = (event) => {
-        const grid = event.currentTarget;
-        const source = event.target.closest?.('[data-calendar-kind][data-calendar-id]');
-        if (!source || !grid.contains(source) || calendarDrag
-            || (event.pointerType === 'mouse' && event.button !== 0)) return;
-        const kind = source.dataset.calendarKind;
-        const id = source.dataset.calendarId;
-        const item = kind === 'booking'
-            ? bookings.find((entry) => String(entry.id) === id)
-            : blocks.find((entry) => String(entry.id) === id);
-        if (!item || itemIsPast(kind, item)) return;
-        const rect = source.getBoundingClientRect();
-        let start = kind === 'booking' ? toMinutes(item.start) : toMinutes(item.start_time);
-        let end = kind === 'booking' ? toMinutes(item.end) : toMinutes(item.end_time);
-        if (end <= start) end += 1440;
-        const key = `${kind}:${id}`;
-        activeCalendarGrid = grid;
-        activeDragKey = key;
-        protectedItems.add(key);
-        calendarDrag = {
-            pointerId: event.pointerId, kind, id, key, item, original: { ...item }, source, grid,
-            startX: event.clientX, startY: event.clientY, moved: false,
-            duration: Math.max(kind === 'booking' ? stepMinutes : 1, end - start),
-            grabX: event.clientX - rect.left, grabY: event.clientY - rect.top,
-            ghost: null, clone: null, target: null,
+        drag.pointerX = clientX;
+        drag.pointerY = clientY;
+        drag.lastPointerAt = performance.now();
+        if (drag.animationFrame) return;
+        const animateClone = () => {
+            if (!drag.clone || calendarDrag !== drag) { drag.animationFrame = 0; return; }
+            const now = performance.now();
+            const deltaX = drag.pointerX - drag.lastFrameX;
+            drag.lastFrameX = drag.pointerX;
+            const currentDx = now - drag.lastPointerAt < 80 ? deltaX : 0;
+            drag.smoothedDx = (drag.smoothedDx * 0.7) + (currentDx * 0.3);
+            const targetAngle = drag.reducedMotion ? 0 : Math.max(-10, Math.min(10, drag.smoothedDx * 1.15));
+            drag.angle += (targetAngle - drag.angle) * 0.18;
+            const rotation = drag.reducedMotion ? '' : ` rotate(${drag.angle.toFixed(2)}deg)`;
+            const scale = drag.reducedMotion ? 1 : 1.02;
+            drag.clone.style.transform = `translate3d(${drag.pointerX - drag.grabX}px, ${drag.pointerY - drag.grabY - drag.liftOffset}px, 0)${rotation} scale(${scale})`;
+            if (autoScrollDrag(drag)) {
+                const point = dragHitPoint(drag);
+                updateCalendarDragTarget(drag, point.x, point.y);
+            }
+            drag.animationFrame = requestAnimationFrame(animateClone);
         };
+        drag.animationFrame = requestAnimationFrame(animateClone);
     };
-    const moveCalendarDrag = (event) => {
-        const drag = calendarDrag;
-        if (!drag || drag.pointerId !== event.pointerId) return;
-        if (!drag.moved && Math.hypot(event.clientX - drag.startX, event.clientY - drag.startY) > 5) {
-            drag.moved = true;
-            drag.grid.setPointerCapture?.(event.pointerId);
-            beginMonthDrag(event.pointerId, drag.grid);
-            drag.grid.classList.add('is-booking-drag');
-            const rect = drag.source.getBoundingClientRect();
-            drag.clone = drag.source.cloneNode(true);
-            drag.clone.classList.add('court-month-drag-clone');
-            drag.clone.setAttribute('aria-hidden', 'true');
-            Object.assign(drag.clone.style, {
-                left: '0', top: '0', width: `${rect.width}px`, height: `${rect.height}px`,
-                opacity: '.96', pointerEvents: 'none',
-                transformOrigin: `${drag.grabX}px ${drag.grabY}px`,
-                transform: `translate3d(${event.clientX - drag.grabX}px, ${event.clientY - drag.grabY}px, 0) scale(1.04)`,
-            });
-            document.body.append(drag.clone);
-            drag.source.classList.add('is-drag-placeholder');
-        }
-        if (!drag.moved) return;
-        event.preventDefault();
-        lockMonthScroll();
-        updateDragClone(drag, event.clientX, event.clientY);
-        const targetColumn = document.elementsFromPoint(event.clientX, event.clientY)
+    const dragHitPoint = (drag) => ({
+        x: drag.pointerX - drag.grabX + (drag.clone?.offsetWidth || 0) / 2,
+        y: drag.pointerY - drag.grabY - drag.liftOffset,
+    });
+    const updateCalendarDragTarget = (drag, clientX, clientY) => {
+        const targetColumn = document.elementsFromPoint(clientX, clientY)
             .map((element) => element.closest?.('.court-month-date-col'))
             .find((column) => column && drag.grid.contains(column));
-        const slot = targetColumn ? slotFromPoint(event, targetColumn) : null;
+        const hit = { clientX, clientY };
+        const slot = targetColumn ? slotFromPoint(hit, targetColumn) : null;
         if (!targetColumn || !slot) {
             drag.target = null;
             drag.ghost?.remove();
@@ -1324,15 +1560,133 @@
         drag.ghost.classList.toggle('is-conflict', conflict);
         drag.target = { date: slot.date, startMinutes, endMinutes, conflict, past, targetColumn };
     };
+    const autoScrollDrag = (drag) => {
+        const scrollArea = drag.grid.closest('.court-month-scroll');
+        if (!scrollArea) return false;
+        const rect = scrollArea.getBoundingClientRect();
+        const point = dragHitPoint(drag);
+        const edge = 52;
+        const maxStep = 12;
+        const edgeStep = (coordinate, start, end) => {
+            if (coordinate < start + edge) return -Math.ceil(maxStep * Math.min(1, (start + edge - coordinate) / edge));
+            if (coordinate > end - edge) return Math.ceil(maxStep * Math.min(1, (coordinate - (end - edge)) / edge));
+            return 0;
+        };
+        const vertical = edgeStep(point.y, rect.top, rect.bottom);
+        const horizontal = drag.grid.classList.contains('court-week-grid') ? 0 : edgeStep(point.x, rect.left, rect.right);
+        const priorTop = scrollArea.scrollTop;
+        const priorLeft = scrollArea.scrollLeft;
+        if (vertical) scrollArea.scrollTop += vertical;
+        if (horizontal) scrollArea.scrollLeft += horizontal;
+        const changed = priorTop !== scrollArea.scrollTop || priorLeft !== scrollArea.scrollLeft;
+        if (changed && activeMonthDrag?.scrollArea === scrollArea) {
+            activeMonthDrag.scrollTop = scrollArea.scrollTop;
+            activeMonthDrag.scrollLeft = scrollArea.scrollLeft;
+        }
+        return changed;
+    };
+    const beginCalendarDrag = (event) => {
+        const grid = event.currentTarget;
+        const source = event.target.closest?.('[data-calendar-kind][data-calendar-id]');
+        if (!source || !grid.contains(source) || calendarDrag
+            || (event.pointerType === 'mouse' && event.button !== 0)) return;
+        const kind = source.dataset.calendarKind;
+        const id = source.dataset.calendarId;
+        const item = kind === 'booking'
+            ? bookings.find((entry) => String(entry.id) === id)
+            : blocks.find((entry) => String(entry.id) === id);
+        if (!item || itemIsPast(kind, item)) return;
+        const rect = source.getBoundingClientRect();
+        let start = kind === 'booking' ? toMinutes(item.start) : toMinutes(item.start_time);
+        let end = kind === 'booking' ? toMinutes(item.end) : toMinutes(item.end_time);
+        if (end <= start) end += 1440;
+        const key = `${kind}:${id}`;
+        activeCalendarGrid = grid;
+        activeDragKey = key;
+        protectedItems.add(key);
+        const dragState = {
+            pointerId: event.pointerId, kind, id, key, item, original: { ...item }, source, grid,
+            pointerType: event.pointerType, startedAt: performance.now(),
+            startX: event.clientX, startY: event.clientY, moved: false,
+            duration: Math.max(kind === 'booking' ? stepMinutes : 1, end - start),
+            grabX: event.clientX - rect.left, grabY: event.clientY - rect.top,
+            pointerX: event.clientX, pointerY: event.clientY, lastFrameX: event.clientX,
+            lastPointerAt: performance.now(), smoothedDx: 0, angle: 0,
+            reducedMotion: window.matchMedia('(prefers-reduced-motion: reduce)').matches,
+            liftOffset: event.pointerType === 'touch' ? 24 : 0,
+            ghost: null, clone: null, target: null,
+        };
+        calendarDrag = dragState;
+        if (event.pointerType === 'touch') {
+            dragState.pointerCaptureTarget = source;
+            dragState.touchMoveFallbackCleanup = touchMoveFallbacks.get(source) || null;
+            try { source.setPointerCapture(event.pointerId); } catch (error) { /* Pointer capture may be unavailable on older Safari. */ }
+        }
+    };
+    const moveCalendarDrag = (event) => {
+        const drag = calendarDrag;
+        if (!drag || drag.pointerId !== event.pointerId) return;
+        const dragThreshold = drag.pointerType === 'touch' ? 8 : 5;
+        if (!drag.moved && Math.hypot(event.clientX - drag.startX, event.clientY - drag.startY) > dragThreshold) {
+            drag.moved = true;
+            calendarPointerExceededThreshold = true;
+            if (!drag.pointerCaptureTarget) {
+                drag.pointerCaptureTarget = drag.grid;
+                drag.grid.setPointerCapture?.(event.pointerId);
+            }
+            beginMonthDrag(event.pointerId, drag.grid, drag.pointerType === 'touch');
+            drag.grid.classList.add('is-booking-drag');
+            const rect = drag.source.getBoundingClientRect();
+            drag.clone = drag.source.cloneNode(true);
+            drag.clone.classList.add('court-month-drag-clone');
+            drag.clone.setAttribute('aria-hidden', 'true');
+            Object.assign(drag.clone.style, {
+                left: '0', top: '0', width: `${rect.width}px`, height: `${rect.height}px`,
+                opacity: '.96', pointerEvents: 'none',
+                transformOrigin: `${drag.grabX}px ${drag.grabY}px`,
+                transform: `translate3d(${event.clientX - drag.grabX}px, ${event.clientY - drag.grabY - drag.liftOffset}px, 0)${drag.reducedMotion ? '' : ' rotate(0deg)'} scale(${drag.reducedMotion ? 1 : 1.02})`,
+            });
+            document.body.append(drag.clone);
+            drag.source.classList.add('is-drag-placeholder');
+        }
+        if (!drag.moved) return;
+        event.preventDefault();
+        lockMonthScroll();
+        updateDragClone(drag, event.clientX, event.clientY);
+        const targetPoint = dragHitPoint(drag);
+        updateCalendarDragTarget(drag, targetPoint.x, targetPoint.y);
+    };
     const stopCalendarDrag = async (event, cancelled = false) => {
         const drag = calendarDrag;
         if (!drag || drag.pointerId !== event.pointerId) return;
+        if (drag.moved) {
+            drag.pointerX = event.clientX;
+            drag.pointerY = event.clientY;
+            const point = dragHitPoint(drag);
+            updateCalendarDragTarget(drag, point.x, point.y);
+        }
         calendarDrag = null;
-        if (drag.grid.hasPointerCapture?.(event.pointerId)) drag.grid.releasePointerCapture(event.pointerId);
-        if (!drag.moved) { releaseDragVisuals(drag); return; }
+        const captureTarget = drag.pointerCaptureTarget || drag.grid;
+        if (captureTarget.hasPointerCapture?.(event.pointerId)) captureTarget.releasePointerCapture(event.pointerId);
+        if (!drag.moved) {
+            const touchPointerUp = !cancelled && drag.pointerType === 'touch';
+            const touchTap = touchPointerUp && performance.now() - drag.startedAt < 300;
+            if (touchPointerUp) {
+                dragEndedAt = performance.now();
+                suppressNextCalendarClick = true;
+            }
+            releaseDragVisuals(drag);
+            if (touchTap) {
+                const currentItem = drag.kind === 'booking'
+                    ? bookings.find((item) => String(item.id) === drag.id)
+                    : blocks.find((item) => String(item.id) === drag.id);
+                if (currentItem) (drag.kind === 'booking' ? openBookingDetails(currentItem) : openBlockDetails(currentItem));
+            }
+            return;
+        }
         event.preventDefault();
-        suppressCalendarClick = true;
-        window.setTimeout(() => { suppressCalendarClick = false; }, 0);
+        dragEndedAt = performance.now();
+        suppressNextCalendarClick = true;
         const target = drag.target;
         drag.ghost?.remove();
         drag.ghost = null;
@@ -1377,49 +1731,113 @@
         protectedItems.add(drag.key);
         const optimistic = drag.kind === 'block'
             ? { ...currentDisplayed, ...payload, _saving: true }
-            : { ...currentDisplayed, date: payload.date, start: payload.start_time, end: payload.end_time, _saving: true };
+            : { ...currentDisplayed, date: payload.date, start: payload.start_time, end: payload.end_time,
+                slots: movedBookingSlots(payload.date, payload.start_time, payload.end_time), _saving: true };
         list[index] = optimistic;
         affectedCalendarDates = queue.changedDates;
         renderCalendar();
         const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
         const settle = drag.grid.querySelector(`[data-calendar-kind="${drag.kind}"][data-calendar-id="${CSS.escape(drag.id)}"]`);
-        if (drag.clone && settle && !reducedMotion) {
-            const rect = settle.getBoundingClientRect();
-            drag.clone.classList.add('is-settling');
-            drag.clone.style.transform = `translate3d(${rect.left}px, ${rect.top}px, 0) scale(1)`;
-            await new Promise((resolve) => window.setTimeout(resolve, 150));
-        }
+        if (drag.animationFrame) cancelAnimationFrame(drag.animationFrame);
+        drag.animationFrame = 0;
+        const settlePromise = drag.clone && settle && !reducedMotion
+            ? (() => {
+                const rect = settle.getBoundingClientRect();
+                drag.clone.classList.add('is-settling');
+                drag.clone.style.transform = `translate3d(${rect.left}px, ${rect.top}px, 0) rotate(0deg) scale(1)`;
+                return new Promise((resolve) => window.setTimeout(resolve, 150));
+            })()
+            : Promise.resolve();
+        void pumpMoveQueue(queue);
+        await settlePromise;
         drag.clone?.remove();
         drag.source?.classList.remove('is-drag-placeholder');
-        void pumpMoveQueue(queue);
         releaseDragVisuals(drag);
     };
     const preventGridNativeDrag = (event) => event.preventDefault();
     const attachCalendarGridEvents = (grid) => {
+        grid.addEventListener('pointermove', (event) => {
+            const pending = activeTouchCreatePending;
+            if (pending && !pending.longPressed && pending.pointerId === event.pointerId
+                && Math.hypot(event.clientX - pending.startX, event.clientY - pending.startY) > 8) {
+                window.clearTimeout(pending.holdTimer);
+                activeTouchCreatePending = null;
+            }
+        }, true);
+        grid.addEventListener('pointerup', (event) => {
+            const pending = activeTouchCreatePending;
+            if (pending && pending.pointerId === event.pointerId && !pending.longPressed) {
+                window.clearTimeout(pending.holdTimer);
+                activeTouchCreatePending = null;
+            }
+        }, true);
+        grid.addEventListener('pointercancel', (event) => {
+            const pending = activeTouchCreatePending;
+            if (pending?.pointerId === event.pointerId) {
+                window.clearTimeout(pending.holdTimer);
+                activeTouchCreatePending = null;
+            }
+        }, true);
+        grid.addEventListener('touchstart', (event) => {
+            const bar = event.target.closest?.('.court-month-bar, .court-month-block');
+            if (!bar || !grid.contains(bar)) return;
+            touchMoveFallbacks.get(bar)?.();
+            const preventTouchScrollDuringDrag = (touchEvent) => {
+                if (calendarDrag?.source === bar && calendarDrag.moved && touchEvent.cancelable) touchEvent.preventDefault();
+            };
+            const cleanup = () => {
+                bar.removeEventListener('touchmove', preventTouchScrollDuringDrag);
+                bar.removeEventListener('touchend', cleanup);
+                bar.removeEventListener('touchcancel', cleanup);
+                touchMoveFallbacks.delete(bar);
+            };
+            bar.addEventListener('touchmove', preventTouchScrollDuringDrag, { passive: false });
+            bar.addEventListener('touchend', cleanup, { once: true });
+            bar.addEventListener('touchcancel', cleanup, { once: true });
+            touchMoveFallbacks.set(bar, cleanup);
+        }, { capture: true, passive: true });
+        grid.addEventListener('pointerdown', () => {
+            dragEndedAt = 0;
+            suppressNextCalendarClick = false;
+            calendarPointerExceededThreshold = false;
+        }, true);
         grid.addEventListener('pointerdown', beginCalendarDrag);
         grid.addEventListener('pointermove', moveCalendarDrag);
         grid.addEventListener('pointerup', (event) => { void stopCalendarDrag(event); });
         grid.addEventListener('pointercancel', (event) => { void stopCalendarDrag(event, true); });
         grid.addEventListener('lostpointercapture', (event) => { void stopCalendarDrag(event, true); });
         grid.addEventListener('click', (event) => {
+            const elapsedSinceDrag = performance.now() - dragEndedAt;
+            if (suppressNextCalendarClick || calendarPointerExceededThreshold || (dragEndedAt > 0 && elapsedSinceDrag < 350)) {
+                event.preventDefault();
+                event.stopPropagation();
+                suppressNextCalendarClick = false;
+                calendarPointerExceededThreshold = false;
+                dragEndedAt = 0;
+                return;
+            }
             const target = event.target.closest?.('[data-calendar-kind][data-calendar-id]');
-            if (!target || suppressCalendarClick) { if (suppressCalendarClick) event.preventDefault(); return; }
+            if (!target) return;
             event.stopPropagation();
             const item = target.dataset.calendarKind === 'booking'
                 ? bookings.find((entry) => String(entry.id) === target.dataset.calendarId)
                 : blocks.find((entry) => String(entry.id) === target.dataset.calendarId);
             if (item) (target.dataset.calendarKind === 'booking' ? openBookingDetails(item) : openBlockDetails(item));
-        });
+        }, true);
         grid.addEventListener('keydown', (event) => {
             if (event.key === 'Escape' && calendarDrag?.grid === grid) {
                 const drag = calendarDrag;
                 calendarDrag = null;
-                if (grid.hasPointerCapture?.(drag.pointerId)) grid.releasePointerCapture(drag.pointerId);
+                const captureTarget = drag.pointerCaptureTarget || grid;
+                if (captureTarget.hasPointerCapture?.(drag.pointerId)) captureTarget.releasePointerCapture(drag.pointerId);
                 releaseDragVisuals(drag);
             }
         });
         grid.addEventListener('dragstart', preventGridNativeDrag);
         grid.addEventListener('selectstart', preventGridNativeDrag);
+        grid.addEventListener('contextmenu', (event) => {
+            if (event.target.closest?.('.court-month-bar, .court-month-block') || calendarDrag?.grid === grid) event.preventDefault();
+        });
     };
     calendarGrids.forEach(attachCalendarGridEvents);
 
@@ -1439,7 +1857,7 @@
     };
 
     // Fixed px-per-hour so the timeline never squeezes to fit the screen.
-    const PX_PER_HOUR = 55;
+    const PX_PER_HOUR = 64;
 
     // Label column width (time axis, left side).
     const LABEL_W = 64;
@@ -1507,10 +1925,20 @@
         if (activeMonthDrag) event.preventDefault();
     };
 
-    const beginMonthDrag = (pointerId, grid = activeCalendarGrid) => {
+    const beginMonthDrag = (pointerId, grid = activeCalendarGrid, lockPage = false) => {
         const scrollArea = grid.closest('.court-month-scroll');
         if (!scrollArea) return;
-        activeMonthDrag = { pointerId, scrollArea, grid, scrollLeft: scrollArea.scrollLeft, scrollTop: scrollArea.scrollTop };
+        const pageStyles = lockPage ? {
+            rootOverflow: document.documentElement.style.overflow,
+            bodyOverflow: document.body.style.overflow,
+            scrollTouchAction: scrollArea.style.touchAction,
+        } : null;
+        if (lockPage) {
+            document.documentElement.style.overflow = 'hidden';
+            document.body.style.overflow = 'hidden';
+            scrollArea.style.touchAction = 'none';
+        }
+        activeMonthDrag = { pointerId, scrollArea, grid, scrollLeft: scrollArea.scrollLeft, scrollTop: scrollArea.scrollTop, pageStyles };
         grid.classList.add('is-selecting-range');
         scrollArea.classList.add('is-selecting-range');
         scrollArea.addEventListener('scroll', lockMonthScroll, { passive: true });
@@ -1520,13 +1948,18 @@
 
     const endMonthDrag = (pointerId) => {
         if (!activeMonthDrag || activeMonthDrag.pointerId !== pointerId) return;
-        const { scrollArea, grid } = activeMonthDrag;
+        const { scrollArea, grid, pageStyles } = activeMonthDrag;
         activeMonthDrag = null;
         scrollArea.removeEventListener('scroll', lockMonthScroll);
         scrollArea.removeEventListener('wheel', preventMonthScroll);
         scrollArea.removeEventListener('touchmove', preventMonthScroll);
         grid.classList.remove('is-selecting-range');
         scrollArea.classList.remove('is-selecting-range');
+        if (pageStyles) {
+            document.documentElement.style.overflow = pageStyles.rootOverflow;
+            document.body.style.overflow = pageStyles.bodyOverflow;
+            scrollArea.style.touchAction = pageStyles.scrollTouchAction;
+        }
     };
 
 
@@ -1619,22 +2052,23 @@
         const dates = Array.from({ length: dayCount }, (_, i) => addDays(startDate, i));
 
         // Column width per date.
-        const COL_W = mode === 'week' ? 190 : 90;
+        const COL_W = mode === 'week' ? 1 : 90;
         // Row height per hour.
         const ROW_H = PX_PER_HOUR;
         // Time label column width (left side).
-        const TIME_LABEL_W = LABEL_W;
+        const TIME_LABEL_W = mode === 'week' ? 42 : LABEL_W;
 
         const gridW = TIME_LABEL_W + dates.length * COL_W;
 
         const nextGrid = document.createElement('div');
         nextGrid.className = `court-month-grid${mode === 'week' ? ' court-week-grid' : ''}`;
-        nextGrid.style.width = `${gridW}px`;
+        nextGrid.style.width = mode === 'week' ? '100%' : `${gridW}px`;
 
         // ── Header row: blank corner + one date column per day ──────────────
         const header = document.createElement('div');
         header.className = 'court-month-header';
-        header.style.display = 'flex';
+        header.style.display = mode === 'week' ? 'grid' : 'flex';
+        if (mode === 'week') header.style.gridTemplateColumns = `${TIME_LABEL_W}px repeat(7, minmax(0, 1fr))`;
         header.style.position = 'sticky';
         header.style.top = '0';
         header.style.zIndex = '3';
@@ -1643,7 +2077,7 @@
         // Corner cell
         const corner = document.createElement('div');
         corner.className = 'court-month-corner';
-        corner.style.cssText = `flex:0 0 ${TIME_LABEL_W}px;width:${TIME_LABEL_W}px;border-right:1px solid var(--text-muted);border-bottom:1px solid var(--text-muted);`;
+        corner.style.cssText = `flex:0 0 ${TIME_LABEL_W}px;width:${TIME_LABEL_W}px;border-right:1px solid var(--text-muted);`;
         header.append(corner);
 
         dates.forEach((dateStr, colIndex) => {
@@ -1656,7 +2090,7 @@
             cell.type = 'button';
             cell.className = 'court-month-date-header' + (isToday ? ' is-today' : '');
             cell.dataset.date = dateStr;
-            cell.style.cssText = `flex:0 0 ${COL_W}px;width:${COL_W}px;`;
+            cell.style.cssText = mode === 'week' ? 'min-width:0;' : `flex:0 0 ${COL_W}px;width:${COL_W}px;`;
             const monthTag = colIndex === 0 || dayNum === 1
                 ? ` <small>${d.toLocaleDateString('en-US', { month: 'short' })}</small>`
                 : '';
@@ -1706,8 +2140,10 @@
 
         // One wrapper div that holds all rows — positions bars absolutely.
         const body = document.createElement('div');
-        body.className = 'court-month-body';
-        body.style.cssText = `position:relative;display:flex;`;
+        body.className = `court-month-body${mode === 'week' ? ' court-week-body' : ''}`;
+        body.style.cssText = mode === 'week'
+            ? `position:relative;display:grid;width:100%;grid-template-columns:${TIME_LABEL_W}px repeat(7,minmax(0,1fr));`
+            : 'position:relative;display:flex;';
 
         // Time label column (sticky left).
         const timeCol = document.createElement('div');
@@ -1718,11 +2154,11 @@
             const cell = document.createElement('div');
             if (row.type === 'hour') {
                 cell.className = 'court-month-time-cell';
-                cell.style.cssText = `height:${ROW_H}px;display:flex;align-items:flex-start;justify-content:center;padding-top:var(--s2);border-bottom:1px solid var(--text-muted);color:var(--text-muted);font-size:var(--font-size-small);font-weight:700;`;
+                cell.style.cssText = `height:${ROW_H}px;display:flex;align-items:flex-start;justify-content:flex-end;padding:var(--s1) 6px 0 0;border-bottom:1px solid var(--text-muted);color:var(--text-muted);font-size:${mode === 'week' ? '.6875rem' : '.75rem'};font-variant-numeric:tabular-nums;font-weight:600;white-space:nowrap;`;
                 cell.textContent = formatHourLabel(row.hour);
             } else {
                 cell.className = 'court-month-time-divider';
-                cell.style.cssText = `height:${DIVIDER_H}px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:var(--s1);border-top:1px solid var(--text-muted);border-bottom:1px solid var(--text-muted);background:var(--surface-2);font-size:var(--font-size-small);font-weight:800;line-height:1.35;text-align:center;padding:var(--s1);`;
+                cell.style.cssText = `height:${DIVIDER_H}px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:var(--s1);border-bottom:1px solid var(--text-muted);background:var(--surface-2);font-size:var(--font-size-small);font-weight:800;line-height:1.35;text-align:center;padding:var(--s1);`;
                 cell.innerHTML = `<span style="color:var(--danger);font-style:italic;">Closes<br><span style="color:var(--text-muted);font-style:normal;font-weight:600;">${formatHourLabel(BIZ_CLOSE_HOUR)}</span></span><span style="color:var(--brand);font-style:italic;">Opens<br><span style="color:var(--text-muted);font-style:normal;font-weight:600;">${formatHourLabel(BIZ_OPEN_HOUR)}</span></span>`;
             }
             timeCol.append(cell);
@@ -1745,10 +2181,10 @@
             const pastColumn = isPastDate(dateStr);
             col.className = 'court-month-date-col' + (isToday ? ' is-today' : '') + (pastColumn ? ' is-past' : '') + (isWeekdayClosed ? ' is-closed-weekday' : '') + (hasAnyClosure ? ' is-closed' : '');
             col.dataset.date = dateStr;
-            col.style.cssText = `flex:0 0 ${COL_W}px;width:${COL_W}px;position:relative;box-sizing:border-box;` +
-                (hasAnyClosure
-                    ? `border-right:2px solid var(--danger);background:var(--surface-2);`
-                    : `border-right:1px solid var(--text-muted);`);
+            col.style.cssText = (mode === 'week' ? 'min-width:0;width:auto;' : `flex:0 0 ${COL_W}px;width:${COL_W}px;`) +
+                'position:relative;box-sizing:border-box;' +
+                `border-right:1px solid var(--text-muted);` + (hasAnyClosure ? `background:var(--surface-2);` : '');
+            let touchCreatePending = null;
 
             // Hour grid lines — skipped for closed columns so the red fill
             // reads as one solid block instead of a striped grid.
@@ -1763,11 +2199,9 @@
                     cell.tabIndex = pastColumn ? -1 : 0;
                     if (pastColumn) cell.setAttribute('aria-disabled', 'true');
                     cell.setAttribute('aria-label', `${formatDate(dateStr)}, ${formatHourLabel(row.hour)}. Press Enter to add an event for one step.`);
-                    cell.style.cssText = `height:${ROW_H}px;box-sizing:border-box;` +
-                        (hasAnyClosure ? '' : `border-bottom:1px solid var(--text-muted);`);
+                    cell.style.cssText = `height:${ROW_H}px;box-sizing:border-box;border-bottom:1px solid var(--text-muted);`;
                 } else {
-                    cell.style.cssText = `height:${DIVIDER_H}px;box-sizing:border-box;background:var(--surface-2);` +
-                        (hasAnyClosure ? '' : `border-top:1px solid var(--text-muted);border-bottom:1px solid var(--text-muted);`);
+                    cell.style.cssText = `height:${DIVIDER_H}px;box-sizing:border-box;background:var(--surface-2);border-bottom:1px solid var(--text-muted);`;
                 }
                 col.append(cell);
             });
@@ -1783,7 +2217,7 @@
                 const label = document.createElement('span');
                 label.className = 'court-month-closed-label';
                 label.textContent = 'CLOSED';
-                label.style.cssText = `writing-mode:vertical-rl;transform:rotate(180deg);color:var(--danger);font-size:var(--font-size-h1);font-weight:800;letter-spacing:var(--s5);text-shadow:0 1px 2px var(--surface);`;
+                label.style.cssText = `writing-mode:vertical-rl;transform:rotate(180deg);color:var(--danger);font-size:var(--font-size-h1);font-weight:800;letter-spacing:var(--s5);`;
                 strip.append(label);
 
                 col.append(strip);
@@ -1793,6 +2227,8 @@
             const laned = assignLanes(colWindows);
             const laneCount = laned.length ? Math.max(...laned.map((w) => w.laneCount)) : 1;
             const barW = Math.floor((COL_W - 4) / Math.max(1, laneCount));
+            const laneLeft = (lane) => mode === 'week' ? `${lane * 100 / laneCount}%` : `${lane * barW + 2}px`;
+            const laneWidth = mode === 'week' ? `${100 / laneCount}%` : `${barW - 2}px`;
 
             laned.forEach(({ kind, booking, block, startMinutes, endMinutes, lane }, index) => {
                 const startHourOfWindow = Math.floor(startMinutes / 60);
@@ -1813,7 +2249,7 @@
                     event.className = `court-month-block type-${block.type}${block._saving ? ' is-saving' : ''}`;
                     event.dataset.calendarKind = 'block';
                     event.dataset.calendarId = String(block.id);
-                    event.style.cssText = `top:${topPx}px;left:${lane * barW + 2}px;width:${barW - 2}px;height:${heightPx}px;`;
+                    event.style.cssText = `top:${topPx}px;left:${mode === 'week' ? `calc(${laneLeft(lane)} + 2px)` : laneLeft(lane)};width:${mode === 'week' ? `calc(${laneWidth} - 4px)` : laneWidth};height:${heightPx}px;`;
                     const sessionCount = block.participant_count ?? block.attendee_count ?? block.players_count;
                     const sessionCapacity = block.capacity ?? block.max_participants ?? block.max_capacity;
                     let blockLabel = block.title || block.type.replace('_', ' ');
@@ -1844,19 +2280,19 @@
                 bar.style.cssText = `
                     position: absolute;
                     top: ${topPx}px;
-                    left: ${lane * barW + 2}px;
-                    width: ${barW - 2}px;
+                    left: ${mode === 'week' ? `calc(${laneLeft(lane)} + 2px)` : laneLeft(lane)};
+                    width: ${mode === 'week' ? `calc(${laneWidth} - 4px)` : laneWidth};
                     height: ${heightPx}px;
                     background: ${colors.bg};
                     border: 1px solid ${colors.border};
                     border-left: 3px solid ${accentColor};
-                    border-radius: var(--r-sm);
+                    border-radius: 4px;
                     color: ${colors.text};
                     font-size: var(--font-size-small);
                     font-weight: 800;
                     display: flex;
-                    align-items: ${mode === 'week' ? 'flex-start' : 'center'};
-                    justify-content: ${mode === 'week' ? 'flex-start' : 'center'};
+                    align-items: ${mode === 'week' ? 'stretch' : 'center'};
+                    justify-content: center;
                     text-align: ${mode === 'week' ? 'left' : 'center'};
                     overflow: hidden;
                     cursor: ${itemIsPast('booking', booking) ? 'not-allowed' : 'pointer'};
@@ -1867,7 +2303,13 @@
                 if (mode === 'week') {
                     const timeText = `${formatTimeInput(startMinutes)}–${endMinutes === 1440 ? '24:00' : formatTimeInput(endMinutes)}`;
                     const courtText = booking.court || `Court ${booking.court_id}`;
-                    bar.textContent = `${booking.customer || 'Booking'} · ${timeText} · ${courtText} · ${booking.status}`;
+                    const customerName = document.createElement('span');
+                    customerName.className = 'court-week-bar-customer';
+                    customerName.textContent = booking.customer || 'Booking';
+                    const details = document.createElement('span');
+                    details.className = 'court-week-bar-details';
+                    details.textContent = `${timeText} · ${courtText} · ${booking.status}`;
+                    bar.append(customerName, details);
                 } else {
                     bar.textContent = booking.source === 'walk_in' ? 'Walk-in' : initials;
                 }
@@ -1931,6 +2373,28 @@
                 const slot = slotFromPoint(pointerEvent, col);
                 if (!slot) return;
 
+                if (pointerEvent.pointerType === 'touch') {
+                    const pending = {
+                        pointerId: pointerEvent.pointerId, date: dateStr, origin: slot.minutes,
+                        startMinutes: slot.minutes, endMinutes: slot.minutes + stepMinutes,
+                        startX: pointerEvent.clientX, startY: pointerEvent.clientY, ghost: null,
+                        longPressed: false,
+                    };
+                    touchCreatePending = pending;
+                    activeTouchCreatePending = pending;
+                    pending.holdTimer = window.setTimeout(() => {
+                        if (activeTouchCreatePending !== pending || touchCreatePending !== pending) return;
+                        pending.longPressed = true;
+                        try { col.setPointerCapture(pointerEvent.pointerId); } catch (error) { /* Capture is optional when the pointer was cancelled by a scroll gesture. */ }
+                        col._courtMonthSelection = pending;
+                        beginMonthDrag(pointerEvent.pointerId, targetGrid, true);
+                        showGhost(pending);
+                        pending.ghost?.classList.add('is-hold-armed');
+                        if (typeof navigator.vibrate === 'function') navigator.vibrate(12);
+                    }, 400);
+                    return;
+                }
+
                 pointerEvent.preventDefault();
                 col.setPointerCapture(pointerEvent.pointerId);
                 beginMonthDrag(pointerEvent.pointerId);
@@ -1947,6 +2411,14 @@
             });
 
             col.addEventListener('pointermove', (pointerEvent) => {
+                if (touchCreatePending && touchCreatePending.pointerId === pointerEvent.pointerId
+                    && !touchCreatePending.longPressed) {
+                    if (Math.hypot(pointerEvent.clientX - touchCreatePending.startX, pointerEvent.clientY - touchCreatePending.startY) > 8) {
+                        window.clearTimeout(touchCreatePending.holdTimer);
+                        touchCreatePending = null;
+                    }
+                    return;
+                }
                 const selection = col._courtMonthSelection;
                 if (!selection || selection.pointerId !== pointerEvent.pointerId) return;
                 pointerEvent.preventDefault();
@@ -1960,6 +2432,13 @@
             });
 
             col.addEventListener('pointerup', (pointerEvent) => {
+                if (touchCreatePending?.pointerId === pointerEvent.pointerId) {
+                    const pending = touchCreatePending;
+                    window.clearTimeout(pending.holdTimer);
+                    touchCreatePending = null;
+                    if (activeTouchCreatePending === pending) activeTouchCreatePending = null;
+                    if (!pending.longPressed) return;
+                }
                 const selection = col._courtMonthSelection;
                 if (!selection || selection.pointerId !== pointerEvent.pointerId) return;
                 pointerEvent.preventDefault();
@@ -1975,6 +2454,11 @@
             });
 
             col.addEventListener('pointercancel', (pointerEvent) => {
+                if (touchCreatePending?.pointerId === pointerEvent.pointerId) {
+                    window.clearTimeout(touchCreatePending.holdTimer);
+                    if (activeTouchCreatePending === touchCreatePending) activeTouchCreatePending = null;
+                    touchCreatePending = null;
+                }
                 const selection = col._courtMonthSelection;
                 if (!selection || selection.pointerId !== pointerEvent.pointerId) return;
                 col._courtMonthSelection = null;
@@ -1984,6 +2468,11 @@
             });
 
             col.addEventListener('lostpointercapture', (pointerEvent) => {
+                if (touchCreatePending?.pointerId === pointerEvent.pointerId) {
+                    window.clearTimeout(touchCreatePending.holdTimer);
+                    if (activeTouchCreatePending === touchCreatePending) activeTouchCreatePending = null;
+                    touchCreatePending = null;
+                }
                 const selection = col._courtMonthSelection;
                 if (!selection || selection.pointerId !== pointerEvent.pointerId) return;
                 col._courtMonthSelection = null;
@@ -2019,7 +2508,7 @@
                 position: absolute;
                 top: ${dividerTop}px;
                 left: ${TIME_LABEL_W}px;
-                width: ${dates.length * COL_W}px;
+                width: ${mode === 'week' ? `calc(100% - ${TIME_LABEL_W}px)` : `${dates.length * COL_W}px`};
                 height: ${DIVIDER_H}px;
                 display: flex;
                 align-items: center;
@@ -2062,7 +2551,7 @@
             }
         }
         if (!updatedOnly) targetGrid.replaceChildren(...nextGrid.childNodes);
-        targetGrid.style.width = `${gridW}px`;
+        targetGrid.style.width = mode === 'week' ? '100%' : `${gridW}px`;
 
         const activeCount = new Set([...windowsByDate.values()].flat()
             .filter((event) => event.kind === 'booking').map((event) => String(event.booking.id))).size;
@@ -2087,7 +2576,7 @@
                 requestAnimationFrame(() => {
                     const openingTop = hourTop.get(BIZ_OPEN_HOUR) || 0;
                     scrollArea.scrollTop = Math.max(0, openingTop - ROW_H);
-                    if (todayColumn) {
+                    if (todayColumn && mode === 'month') {
                         const availableWidth = scrollArea.clientWidth - TIME_LABEL_W;
                         scrollArea.scrollLeft = Math.max(
                             0,
@@ -2177,7 +2666,7 @@
             const range = currentVisibleRange();
             const loaded = await loadCalendarRange(range.from, range.to, { force: true });
             if (loaded) {
-                if (!calendarDrag && blockModal.hidden) renderCalendar();
+                if (!calendarDrag && blockModal.hidden && moveQueues.size === 0) renderCalendar();
                 else calendarDataDirty = true;
             }
             schedulePoll();
@@ -2233,14 +2722,6 @@
         nextStart.setDate(nextStart.getDate() + (button.dataset.weekNav === 'next' ? 7 : -7));
         selectWeekDate(weekDateForStart(toDateValue(nextStart)));
     }));
-    workspace.querySelectorAll('[data-week-scroll]').forEach((button) => button.addEventListener('click', () => {
-        const scrollArea = weekGrid.closest('.court-week-scroll');
-        if (!scrollArea) return;
-        const direction = button.dataset.weekScroll === 'right' ? 1 : -1;
-        const motion = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth';
-        scrollArea.scrollBy({ left: direction * 570, behavior: motion });
-    }));
-
     workspace.querySelectorAll('[data-board-date]').forEach((button) => {
         button.addEventListener('click', () => {
             const value = new Date(`${dateInput.value}T00:00:00`);

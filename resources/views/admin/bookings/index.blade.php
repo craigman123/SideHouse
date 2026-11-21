@@ -199,8 +199,6 @@
                         <input type="date" id="courtWeekInput" value="{{ request('date', $businessSettings->today) }}" aria-label="Choose a date in the week">
                         <button type="button" class="court-board-nav" data-week-nav="next" aria-label="Next week">›</button>
                         <button type="button" class="btn-clear court-board-today" data-week-nav="today">This week</button>
-                        <button type="button" class="court-board-nav" data-week-scroll="left" aria-label="Scroll calendar left">Scroll left</button>
-                        <button type="button" class="court-board-nav" data-week-scroll="right" aria-label="Scroll calendar right">Scroll right</button>
                     </div>
                 </div>
                 <div class="court-board-legend" aria-label="Booking status legend">
