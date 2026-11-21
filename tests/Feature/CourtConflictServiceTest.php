@@ -55,7 +55,9 @@ class CourtConflictServiceTest extends TestCase
 
         $response = $this->actingAs($admin)->withSession([
             'mfa_passed_at' => now()->timestamp,
-            'mfa_passed_user_id' => $admin->id,
+            'mfa_passed_user_id' => $admin->user_id,
+            'access_version_user_id' => $admin->user_id,
+            'access_version' => 1,
         ])->postJson('/admin/blocks', [
             'court_id' => $this->court->id,
             'type' => 'maintenance',

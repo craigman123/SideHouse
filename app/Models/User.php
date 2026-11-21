@@ -30,6 +30,11 @@ class User extends Authenticatable
         'mfa_enabled',
         'mfa_secret',
         'mfa_recovery_codes',
+        'permissions',
+        'access_version',
+        'promoted_by',
+        'promoted_at',
+        'last_login_at',
     ];
 
     /**
@@ -61,6 +66,10 @@ class User extends Authenticatable
             'mfa_enabled'        => 'boolean',
             'mfa_secret'         => 'encrypted',
             'mfa_recovery_codes' => 'array',
+            'permissions'        => 'array',
+            'access_version'     => 'integer',
+            'promoted_at'        => 'datetime',
+            'last_login_at'      => 'datetime',
         ];
     }
 
@@ -71,6 +80,21 @@ class User extends Authenticatable
 
     public function isAdmin(): bool
     {
-        return $this->role === 'admin';
+        return in_array($this->role, ['owner', 'admin'], true);
+    }
+
+    public function isStaff(): bool
+    {
+        return $this->role === 'staff';
+    }
+
+    public function requiresMfa(): bool
+    {
+        return in_array($this->role, ['owner', 'admin', 'staff'], true);
+    }
+
+    public function promotedBy()
+    {
+        return $this->belongsTo(self::class, 'promoted_by', 'user_id');
     }
 }

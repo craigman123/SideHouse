@@ -47,7 +47,9 @@ class AdminBookingsCalendarDataTest extends TestCase
 
         $response = $this->actingAs($admin)->withSession([
             'mfa_passed_at' => now()->timestamp,
-            'mfa_passed_user_id' => $admin->id,
+            'mfa_passed_user_id' => $admin->user_id,
+            'access_version_user_id' => $admin->user_id,
+            'access_version' => 1,
         ])->get('/bookings')->assertOk();
 
         preg_match('/<script id="courtBoardData" type="application\/json">(.*?)<\/script>/s', $response->getContent(), $matches);

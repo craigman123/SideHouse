@@ -37,7 +37,9 @@ class AdminCalendarEditTest extends TestCase
         ]);
         $this->actingAs($this->admin)->withSession([
             'mfa_passed_at' => now()->timestamp,
-            'mfa_passed_user_id' => $this->admin->id,
+            'mfa_passed_user_id' => $this->admin->user_id,
+            'access_version_user_id' => $this->admin->user_id,
+            'access_version' => 1,
         ]);
     }
 
@@ -296,7 +298,9 @@ class AdminCalendarEditTest extends TestCase
         CarbonImmutable::setTestNow($instant);
         $this->actingAs($this->admin)->withSession([
             'mfa_passed_at' => now()->timestamp,
-            'mfa_passed_user_id' => $this->admin->id,
+            'mfa_passed_user_id' => $this->admin->user_id,
+            'access_version_user_id' => $this->admin->user_id,
+            'access_version' => 1,
         ]);
     }
 

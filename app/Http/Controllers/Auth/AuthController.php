@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Http\Middleware\EnsureAccessVersion;
 use App\Models\User;
 use App\Support\ActivityLogger;
 use App\Support\GoogleIdentity;
@@ -40,10 +41,11 @@ class AuthController extends Controller
 
         $request->session()->regenerate();
         $user = auth()->user();
+        $this->recordSuccessfulLogin($request, $user);
 
-        if ($user->isAdmin()) {
+        if ($user->requiresMfa()) {
             ActivityLogger::log(
-                'admin.logged_in',
+                $user->isAdmin() ? 'admin.logged_in' : 'staff.logged_in',
                 $user->name . ' logged in.',
                 subject: $user,
             );
@@ -103,6 +105,7 @@ class AuthController extends Controller
         ]);
 
         Auth::login($user);
+        $this->recordSuccessfulLogin($request, $user);
 
         ActivityLogger::log(
             'user.registered',
@@ -160,6 +163,7 @@ class AuthController extends Controller
 
         Auth::login($user);
         $request->session()->regenerate();
+        $this->recordSuccessfulLogin($request, $user);
 
         ActivityLogger::log(
             $isNewAccount ? 'user.registered' : 'user.logged_in',
@@ -171,6 +175,8 @@ class AuthController extends Controller
 
         return response()->json([
             'message'  => $isNewAccount ? 'Account created! Welcome to Side House.' : 'Logged in successfully!',
+            // Until the staff pages are added in Stage C, staff remain able
+            // to use the customer area, with MFA enforced by its route group.
             'redirect' => $user->isAdmin() ? route('admin.dashboard', absolute: false) : route('user.dashboard', absolute: false),
         ]);
     }
@@ -204,6 +210,13 @@ class AuthController extends Controller
         }
 
         return $username;
+    }
+
+    private function recordSuccessfulLogin(Request $request, User $user): void
+    {
+        $user->forceFill(['last_login_at' => now()])->save();
+        $user->refresh();
+        EnsureAccessVersion::stamp($request, $user);
     }
 
     public function logout(Request $request)

@@ -23,10 +23,15 @@ class AdminBookingsCalendarEndpointTest extends TestCase
         if ($mfa) {
             $this->actingAs($admin)->withSession([
                 'mfa_passed_at' => now()->timestamp,
-                'mfa_passed_user_id' => $admin->id,
+                'mfa_passed_user_id' => $admin->user_id,
+                'access_version_user_id' => $admin->user_id,
+                'access_version' => 1,
             ]);
         } else {
-            $this->actingAs($admin);
+            $this->actingAs($admin)->withSession([
+                'access_version_user_id' => $admin->user_id,
+                'access_version' => 1,
+            ]);
         }
         return $admin;
     }

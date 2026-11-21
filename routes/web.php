@@ -9,6 +9,7 @@ use App\Http\Controllers\Admin\ConfigurationController;
 use App\Http\Controllers\Admin\CourtController;
 use App\Http\Controllers\Admin\CourtBlockController;
 use App\Http\Controllers\Admin\CustomerController;
+use App\Http\Controllers\Admin\UserAccessController;
 use App\Http\Controllers\Admin\EquipmentAvailabilityController;
 use App\Http\Controllers\Admin\ReportController;
 use App\Http\Controllers\Auth\AuthController;
@@ -221,6 +222,16 @@ Route::middleware(['auth', 'admin', 'admin.mfa', 'throttle:120,1'])->group(funct
     Route::get('/customers', [CustomerController::class, 'index'])->name('admin.customers.index');
     Route::get('/customers/data', [CustomerController::class, 'data'])->name('admin.customers.data');
 
+    // User access management. These are intentionally separate from the
+    // customer page and always return only accounts with elevated roles.
+    Route::middleware(['can.access:user_access.manage', 'throttle:20,1'])->group(function () {
+        Route::get('/admin/users', [UserAccessController::class, 'index'])->name('admin.users.index');
+        Route::get('/admin/users/candidates', [UserAccessController::class, 'candidates'])->name('admin.users.candidates');
+        Route::post('/admin/users', [UserAccessController::class, 'store'])->name('admin.users.store');
+        Route::patch('/admin/users/{user}', [UserAccessController::class, 'update'])->name('admin.users.update');
+        Route::post('/admin/users/{user}/remove-access', [UserAccessController::class, 'removeAccess'])->name('admin.users.remove-access');
+    });
+
     // Profile
     // NOTE: PUT/DELETE /profile used to be duplicated here as well as in
     // the USER ROUTES group below, using the same route names
@@ -234,7 +245,7 @@ Route::middleware(['auth', 'admin', 'admin.mfa', 'throttle:120,1'])->group(funct
     // added there so admins still get the MFA check (see Finding #2).
     Route::get('/admin/profile', [AdminProfileController::class, 'profile'])->name('admin.profile');
     Route::put('/admin/profile', [AdminProfileController::class, 'update'])->name('admin.profile.update');
-    Route::delete('/admin/profile', [AdminProfileController::class, 'destroy'])->name('admin.profile.destroy');
+    Route::delete('/admin/profile', [AdminProfileController::class, 'destroyAccount'])->name('admin.profile.destroy');
 
     // Reports
     Route::get('/reports', [ReportController::class, 'index'])->name('admin.reports.index');
@@ -267,7 +278,7 @@ Route::middleware(['auth', 'admin', 'admin.mfa', 'throttle:120,1'])->group(funct
 // =====================================   USER ROUTES    =====================================
 // Same pattern as the admin group: a generous baseline for everything,
 // tighter overrides on anything that writes data or sends email.
-Route::middleware(['auth', 'throttle:120,1'])->group(function () {
+Route::middleware(['auth', 'admin.mfa', 'throttle:120,1'])->group(function () {
     Route::get('/my-dashboard', [UserDashboardController::class, 'index'])->name('user.dashboard');
 
     // Book a court

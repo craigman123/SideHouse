@@ -24,6 +24,7 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
         $middleware->web(append: [
             \App\Http\Middleware\PreventBackHistory::class,
+            \App\Http\Middleware\EnsureAccessVersion::class,
         ]);
         $middleware->append(\App\Http\Middleware\LogRequestTraffic::class);
         $middleware->append(\App\Http\Middleware\SecurityHeaders::class);
@@ -31,6 +32,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'cron.auth'   => \App\Http\Middleware\VerifyCronToken::class,
             'admin'       => \App\Http\Middleware\EnsureUserIsAdmin::class,
             'admin.mfa'   => \App\Http\Middleware\EnsureAdminMfa::class,
+            'can.access'  => \App\Http\Middleware\EnsurePermission::class,
         ]);
 
         $middleware->trustProxies(

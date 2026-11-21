@@ -15,14 +15,27 @@
             <div>
                 <p class="customers-subtitle">Ranked by number of bookings, most to least.</p>
             </div>
-            <div class="customers-search-wrap">
-                <input
-                    type="search"
-                    id="customerSearch"
-                    class="customers-search-input"
-                    placeholder="Search by name, email, or phone..."
-                    autocomplete="off"
-                />
+            <div class="customers-toolbar">
+                <div class="customers-type-filter" id="customerTypeFilter" role="radiogroup" aria-label="Filter customers by type">
+                    <button type="button" class="customers-type-option" role="radio" aria-checked="true" tabindex="0" data-customer-type="all">
+                        <span>All</span><span class="customers-type-count" data-customer-type-count="all">(0)</span>
+                    </button>
+                    <button type="button" class="customers-type-option" role="radio" aria-checked="false" tabindex="-1" data-customer-type="registered">
+                        <span>Registered</span><span class="customers-type-count" data-customer-type-count="registered">(0)</span>
+                    </button>
+                    <button type="button" class="customers-type-option" role="radio" aria-checked="false" tabindex="-1" data-customer-type="guest">
+                        <span>Guest</span><span class="customers-type-count" data-customer-type-count="guest">(0)</span>
+                    </button>
+                </div>
+                <div class="customers-search-wrap">
+                    <input
+                        type="search"
+                        id="customerSearch"
+                        class="customers-search-input"
+                        placeholder="Search by name, email, or phone..."
+                        autocomplete="off"
+                    />
+                </div>
             </div>
         </div>
 
@@ -47,7 +60,10 @@
                 </tbody>
             </table>
 
-            <p class="customers-empty" id="customersEmpty" hidden>No customers match your search.</p>
+            <div class="customers-empty" id="customersEmpty" role="status" aria-live="polite" aria-atomic="true" hidden>
+                <p id="customersEmptyMessage">No customers match your search.</p>
+                <button type="button" class="customers-clear-filters" id="customerFiltersClear">Clear filters</button>
+            </div>
             <p class="customers-error" id="customersError" hidden>Couldn't load customers. Please refresh the page.</p>
         </div>
     </div>

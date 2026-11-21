@@ -657,6 +657,8 @@ class User_UserController extends Controller
      */
     public function destroyAccount(Request $request)
     {
+        abort_unless(auth()->user()?->role === 'user', 403, 'Privileged accounts cannot delete themselves.');
+
         $request->validate([
             'confirmation' => ['required', 'string'],
         ]);
