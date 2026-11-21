@@ -4,8 +4,8 @@
 @section('page-title', 'My Profile')
 
 @push('styles')
-    <link rel="stylesheet" href="{{ asset('css/admin/admin-base.css') }}">
-    <link rel="stylesheet" href="{{ asset('css/admin/admin-profile.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/shared/dashboard-base.css') . '?v=' . filemtime(public_path('css/shared/dashboard-base.css')) }}">
+    <link rel="stylesheet" href="{{ asset('css/shared/profile.css') . '?v=' . filemtime(public_path('css/shared/profile.css')) }}">
 @endpush
 
 @section('content')

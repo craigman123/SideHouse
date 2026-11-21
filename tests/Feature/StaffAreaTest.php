@@ -63,13 +63,82 @@ class StaffAreaTest extends TestCase
         $staff = $this->staff();
 
         $dashboard = $this->signInStaff($staff)->get('/staff/dashboard')->assertOk();
-        $dashboard->assertSee('staff-layout.css')->assertSee('staff-overview.css')->assertSee('staff-overview.js');
-        $dashboard->assertDontSee('admin-shell.css')->assertDontSee('admin-shell.js')->assertDontSee('admin-overview.css');
+        $dashboard->assertSee('shared/dashboard-shell.css')->assertSee('shared/dashboard-shell.js')
+            ->assertSee('shared/overview.css')->assertSee('staff-overview.css')->assertSee('staff-overview.js');
+        $dashboard->assertDontSee('css/admin/')->assertDontSee('js/admin/')->assertDontSee('staff-layout.css');
         $dashboard->assertSee('staffSyncStatus')->assertSee("Today's bookings", false);
 
         $profile = $this->signInStaff($staff)->get('/staff/profile')->assertOk();
-        $profile->assertSee('staff-profile.css')->assertDontSee('admin-profile.css');
+        $profile->assertSee('shared/profile.css')->assertSee('shared/dashboard-base.css')->assertDontSee('css/admin/');
         $profile->assertSee('Change password')->assertSee('Pending setup');
+        $profile->assertSee('id="staffLogoutForm"', false)
+            ->assertSee('action="'.route('logout').'"', false)
+            ->assertSee('name="_token"', false)
+            ->assertSee('Sign out')
+            ->assertDontSee('Delete Account')
+            ->assertDontSee('Disable MFA');
+
+        preg_match('/<aside\b[^>]*id="adminSidebar"[^>]*>.*?<\/aside>/s', $dashboard->getContent(), $sidebarMatch);
+        $this->assertSame(1, count($sidebarMatch), 'The staff sidebar markup should be present.');
+        $this->assertStringNotContainsString('Log out', $sidebarMatch[0]);
+        $this->assertStringNotContainsString('logout-form', $sidebarMatch[0]);
+        $this->assertStringNotContainsString('dashboard-shell-logout', $sidebarMatch[0]);
+        $profile->assertSee('href="'.route('staff.profile').'" class="active"', false);
+
+        $this->signInStaff($staff)->post(route('logout'))
+            ->assertRedirect(route('login'))
+            ->assertSessionHas('success', 'Logged out successfully.');
+        $this->assertGuest();
+    }
+
+    public function test_admin_sidebar_profile_link_and_shared_shell_remain_unchanged(): void
+    {
+        $admin = User::create([
+            'username' => 'staff-area-admin',
+            'name' => 'Admin Person',
+            'email' => 'staff-area-admin@example.test',
+            'password' => 'current-password-123',
+            'role' => 'admin',
+        ]);
+
+        $response = $this->actingAs($admin)->withSession([
+            'access_version_user_id' => $admin->user_id,
+            'access_version' => 1,
+            'mfa_passed_at' => now()->timestamp,
+            'mfa_passed_user_id' => $admin->user_id,
+        ])->get('/dashboard')->assertOk();
+
+        $response->assertSee('href="'.route('admin.profile').'"', false)
+            ->assertSee('Profile')
+            ->assertSee('id="logout-form"', false);
+        preg_match('/<aside\b[^>]*id="adminSidebar"[^>]*>.*?<\/aside>/s', $response->getContent(), $sidebarMatch);
+        $this->assertSame(1, count($sidebarMatch), 'The admin sidebar markup should be present.');
+        $this->assertStringNotContainsString('dashboard-shell-logout', $sidebarMatch[0]);
+    }
+
+    public function test_staff_overview_count_and_lists_exclude_cancelled_and_expired_bookings(): void
+    {
+        $staff = $this->staff();
+        $booking = $this->bookingForToday($staff);
+
+        foreach ([['Cancelled Customer', 'cancelled'], ['Expired Customer', 'expired'], ['Pending Customer', 'pending']] as [$name, $status]) {
+            Booking::create([
+                'user_id' => $staff->user_id,
+                'customer_name' => $name,
+                'contact_number' => '09171234567',
+                'court_id' => $booking->court_id,
+                'date' => now('Asia/Manila')->toDateString(),
+                'start_time' => '23:00', 'end_time' => '23:30',
+                'status' => $status, 'source' => 'walk_in', 'amount' => 250,
+            ]);
+        }
+
+        $data = $this->signInStaff($staff)->getJson('/staff/overview/data')->assertOk();
+        $data->assertJsonPath('booking_count', 2);
+        $this->assertSame(['Pending Customer'], array_column($data->json('needs_attention'), 'customer'));
+        $listedCustomers = collect($data->json('upcoming'))->pluck('customer')->all();
+        $this->assertNotContains('Cancelled Customer', $listedCustomers);
+        $this->assertNotContains('Expired Customer', $listedCustomers);
     }
 
     public function test_staff_navigation_is_permission_driven_and_contains_only_the_allowed_sections(): void
@@ -77,9 +146,15 @@ class StaffAreaTest extends TestCase
         $staff = $this->staff(['bookings.view', 'customers.view', 'activity_logs.view']);
         $response = $this->signInStaff($staff)->get('/staff/dashboard')->assertOk();
         $response->assertSee('Overview')->assertSee('Bookings')->assertSee('Customers')->assertSee('Activity Logs');
-        $response->assertDontSee('Courts')->assertDontSee('Configuration')->assertDontSee('Equipment')
-            ->assertDontSee('Announcements')->assertDontSee('Reports')->assertDontSee('User access');
-        $response->assertSee('Profile')->assertSee('staff-user-block');
+        $response->assertDontSee('href="http://localhost/courts"')->assertDontSee('href="http://localhost/admin/configuration"')
+            ->assertDontSee('href="http://localhost/admin/equipment/availability"')->assertDontSee('href="http://localhost/announcements"')
+            ->assertDontSee('href="http://localhost/reports"')->assertDontSee('href="http://localhost/admin/user-access"');
+        $response->assertSee('Profile')->assertSee('admin-profile-trigger');
+        $response->assertSee('Bookings')->assertDontSee('Add walk-in')->assertDontSee('Add event');
+
+        $withActions = $this->signInStaff($this->staff(['bookings.view', 'bookings.create', 'calendar_events.manage']))
+            ->get('/staff/dashboard')->assertOk();
+        $withActions->assertSee('Add walk-in')->assertSee('Add event');
 
         $withoutLogs = $this->signInStaff($this->staff(['bookings.view', 'customers.view']))->get('/staff/dashboard')->assertOk();
         $withoutLogs->assertDontSee('Activity Logs');
@@ -129,7 +204,7 @@ class StaffAreaTest extends TestCase
         foreach ($excluded as [$action, $subjectType, $subjectId]) $this->activity($action, $subjectType, $subjectId);
 
         $page = $this->signInStaff($staff)->get('/staff/activity-logs')->assertOk();
-        $page->assertSee('staff-activity-logs.css')->assertSee('staff-activity-logs.js')->assertDontSee('IP Address');
+        $page->assertSee('shared/activity-logs.css')->assertSee('staff-activity-logs.js')->assertDontSee('IP Address');
         $response = $this->getJson('/staff/activity-logs/data')->assertOk();
         $actions = array_column($response->json('data'), 'action');
         $this->assertEqualsCanonicalizing(['booking.created', 'court_block.created', 'calendar.admin_override'], $actions);
@@ -184,8 +259,8 @@ class StaffAreaTest extends TestCase
         $this->bookingForToday($staff);
 
         $response = $this->signInStaff($staff)->get('/staff/bookings')->assertOk();
-        $response->assertSee('admin-bookings-board.css')->assertSee('admin-bookings-board.js')->assertSee('staff-bookings.js');
-        $response->assertDontSee('admin-shell.css')->assertDontSee('admin-shell.js')->assertDontSee('admin-base.css');
+        $response->assertSee('shared/bookings-board.css')->assertSee('shared/bookings-board.js')->assertSee('staff-bookings.js');
+        $response->assertSee('shared/dashboard-base.css')->assertSee('shared/dashboard-shell.css')->assertDontSee('css/admin/')->assertDontSee('js/admin/');
         $this->assertStringNotContainsString('500.00', $response->getContent());
         $this->assertStringNotContainsString('hourly_rate', $response->getContent());
     }
@@ -196,8 +271,8 @@ class StaffAreaTest extends TestCase
         $this->bookingForToday($staff);
 
         $page = $this->signInStaff($staff)->get('/staff/customers')->assertOk();
-        $page->assertSee('staff-customers.css')->assertSee('staff-customers.js');
-        $page->assertDontSee('admin-customers.css')->assertDontSee('admin-customers.js')->assertDontSee('admin-shell.js');
+        $page->assertSee('shared/customers.css')->assertSee('staff-customers.js');
+        $page->assertSee('shared/dashboard-shell.js')->assertDontSee('css/admin/')->assertDontSee('js/admin/');
 
         $data = $this->getJson('/customers/data')->assertOk()->json('customers.0');
         $this->assertArrayNotHasKey('total_spent', $data);

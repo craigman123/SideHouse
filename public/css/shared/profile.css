@@ -284,3 +284,98 @@ html.admin-layout-shell .danger-zone-sub {
         width: 100%;
     }
 }
+
+html.staff-layout-shell .profile-page {
+    max-width: 1200px;
+    gap: var(--s9);
+}
+
+html.staff-layout-shell .profile-card {
+    padding: var(--s5);
+    border: 1px solid transparent;
+    border-top-width: 1px;
+    border-radius: var(--r-lg);
+    background-image: linear-gradient(var(--surface), var(--surface)), var(--brand-grad);
+    background-origin: border-box;
+    background-clip: padding-box, border-box;
+}
+
+html.staff-layout-shell .staff-mfa-card > div:first-child {
+    display: grid;
+    gap: var(--s3);
+    margin-bottom: var(--s4);
+}
+
+html.staff-layout-shell .staff-signout-card > div:first-child {
+    display: grid;
+    gap: var(--s3);
+    margin-bottom: var(--s4);
+}
+
+html.staff-layout-shell .staff-signout-card h2 {
+    margin: 0;
+    font-size: var(--font-size-h3);
+    font-weight: var(--font-weight-h3);
+}
+
+html.staff-layout-shell .staff-signout-card p {
+    color: var(--text-muted);
+    font-size: var(--font-size-body);
+    line-height: var(--line-height-body);
+}
+
+html.staff-layout-shell .staff-signout-card .profile-actions {
+    margin-top: 0;
+}
+
+html.staff-layout-shell .profile-card > h2,
+html.staff-layout-shell .staff-mfa-card h2 {
+    margin-bottom: var(--s4);
+    font-size: var(--font-size-h3);
+    font-weight: var(--font-weight-h3);
+}
+
+html.staff-layout-shell .profile-item label {
+    font-weight: var(--font-weight-small);
+}
+
+html.staff-layout-shell .profile-item input {
+    border-color: var(--border);
+}
+
+html.staff-layout-shell .profile-page .btn-primary,
+html.staff-layout-shell .profile-page .btn-primary:hover {
+    color: var(--on-brand, var(--text));
+}
+
+html.staff-layout-shell .profile-flash-success,
+html.staff-layout-shell .profile-flash-error {
+    width: 100%;
+    max-width: 840px;
+    padding: var(--s3) var(--s4);
+    border: 1px solid var(--border);
+    border-radius: var(--r-md);
+    font-size: var(--font-size-small);
+}
+
+html.staff-layout-shell .profile-flash-success {
+    color: var(--brand-hover);
+}
+
+html.staff-layout-shell .profile-flash-error {
+    color: var(--danger);
+}
+
+html.staff-layout-shell .recovery-codes {
+    margin-top: var(--s4);
+    padding: var(--s4);
+    border: 1px solid var(--border);
+    border-radius: var(--r-md);
+    background: var(--surface-2);
+}
+
+@media (max-width: 767px) {
+    html.staff-layout-shell .profile-page {
+        gap: var(--s7);
+    }
+}

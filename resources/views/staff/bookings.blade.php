@@ -6,11 +6,10 @@
 @php($showFinancials = false)
 
 @push('styles')
-    <link rel="stylesheet" href="{{ asset('css/staff/staff-layout.css') . '?v=' . filemtime(public_path('css/staff/staff-layout.css')) }}">
+    <link rel="stylesheet" href="{{ asset('css/shared/dashboard-base.css') . '?v=' . filemtime(public_path('css/shared/dashboard-base.css')) }}">
     <link rel="stylesheet" href="{{ asset('css/user/dashboard.css') . '?v=' . filemtime(public_path('css/user/dashboard.css')) }}">
     <link rel="stylesheet" href="{{ asset('css/booking/bookings.css') . '?v=' . filemtime(public_path('css/booking/bookings.css')) }}">
-    <link rel="stylesheet" href="{{ asset('css/admin/admin-bookings-board.css') . '?v=' . filemtime(public_path('css/admin/admin-bookings-board.css')) }}">
-    <link rel="stylesheet" href="{{ asset('css/staff/staff-bookings.css') . '?v=' . filemtime(public_path('css/staff/staff-bookings.css')) }}">
+    <link rel="stylesheet" href="{{ asset('css/shared/bookings-board.css') . '?v=' . filemtime(public_path('css/shared/bookings-board.css')) }}">
 @endpush
 
 @section('content')

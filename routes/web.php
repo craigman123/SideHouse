@@ -239,6 +239,12 @@ Route::middleware(['auth', 'admin', 'admin.mfa', 'throttle:120,1'])->group(funct
         Route::post('/admin/users', [UserAccessController::class, 'store'])->name('admin.users.store');
         Route::patch('/admin/users/{user}', [UserAccessController::class, 'update'])->name('admin.users.update');
         Route::post('/admin/users/{user}/remove-access', [UserAccessController::class, 'removeAccess'])->name('admin.users.remove-access');
+        Route::middleware(['can.access:user_details.edit'])->group(function () {
+            Route::get('/admin/users/{user}/details', [UserAccessController::class, 'details'])
+                ->name('admin.users.details');
+            Route::patch('/admin/users/{user}/details', [UserAccessController::class, 'updateDetails'])
+                ->name('admin.users.details.update');
+        });
     });
 
     // Profile

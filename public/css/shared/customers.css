@@ -1,4 +1,4 @@
-html.staff-layout-shell .customers-page {
+html.admin-layout-shell .customers-page {
     display: flex;
     max-width: 1440px;
     min-width: 0;
@@ -8,7 +8,7 @@ html.staff-layout-shell .customers-page {
     color: var(--text);
 }
 
-html.staff-layout-shell .customers-header {
+html.admin-layout-shell .customers-header {
     display: flex;
     align-items: flex-end;
     justify-content: space-between;
@@ -16,14 +16,14 @@ html.staff-layout-shell .customers-header {
     gap: var(--s4);
 }
 
-html.staff-layout-shell .customers-toolbar {
+html.admin-layout-shell .customers-toolbar {
     display: flex;
     min-width: 0;
     align-items: center;
     gap: var(--s3);
 }
 
-html.staff-layout-shell .customers-type-filter {
+html.admin-layout-shell .customers-type-filter {
     display: flex;
     min-width: 0;
     align-items: stretch;
@@ -34,7 +34,7 @@ html.staff-layout-shell .customers-type-filter {
     background: var(--surface-2);
 }
 
-html.staff-layout-shell .customers-type-option {
+html.admin-layout-shell .customers-type-option {
     display: inline-flex;
     min-width: 0;
     min-height: 44px;
@@ -50,47 +50,47 @@ html.staff-layout-shell .customers-type-option {
     cursor: pointer;
 }
 
-html.staff-layout-shell .customers-type-option[data-customer-type="registered"] { color: var(--brand-hover); }
-html.staff-layout-shell .customers-type-option[data-customer-type="guest"] { color: var(--text-muted); }
-html.staff-layout-shell .customers-type-option[data-customer-type="all"] { color: var(--text); }
-html.staff-layout-shell .customers-type-option[data-customer-type="registered"].is-active {
+html.admin-layout-shell .customers-type-option[data-customer-type="registered"] { color: var(--brand-hover); }
+html.admin-layout-shell .customers-type-option[data-customer-type="guest"] { color: var(--text-muted); }
+html.admin-layout-shell .customers-type-option[data-customer-type="all"] { color: var(--text); }
+html.admin-layout-shell .customers-type-option[data-customer-type="registered"].is-active {
     border-color: var(--brand-hover);
     background: color-mix(in srgb, var(--brand) 14%, var(--surface));
 }
-html.staff-layout-shell .customers-type-option[data-customer-type="guest"].is-active {
+html.admin-layout-shell .customers-type-option[data-customer-type="guest"].is-active {
     border-color: var(--text-muted);
     background: var(--surface);
 }
-html.staff-layout-shell .customers-type-option[data-customer-type="all"].is-active {
+html.admin-layout-shell .customers-type-option[data-customer-type="all"].is-active {
     border-color: var(--brand);
     background: color-mix(in srgb, var(--brand) 14%, var(--surface));
     color: var(--brand-hover);
 }
-html.staff-layout-shell .customers-type-count { white-space: nowrap; font-variant-numeric: tabular-nums; }
-html.staff-layout-shell .customers-type-option:focus-visible,
-html.staff-layout-shell .customers-clear-filters:focus-visible {
+html.admin-layout-shell .customers-type-count { white-space: nowrap; font-variant-numeric: tabular-nums; }
+html.admin-layout-shell .customers-type-option:focus-visible,
+html.admin-layout-shell .customers-clear-filters:focus-visible {
     outline: 2px solid var(--brand);
     outline-offset: 2px;
 }
 
-html.staff-layout-shell .customers-subtitle {
+html.admin-layout-shell .customers-subtitle {
     margin: 0;
     color: var(--text-muted);
     font-size: var(--font-size-body);
     line-height: var(--line-height-body);
 }
 
-html.staff-layout-shell .customers-search-wrap {
+html.admin-layout-shell .customers-search-wrap {
     flex: 1 1 280px;
     min-width: min(100%, 240px);
 }
 
-html.staff-layout-shell .customers-search-input {
+html.admin-layout-shell .customers-search-input {
     width: 100%;
     min-height: 48px;
 }
 
-html.staff-layout-shell .customers-table-wrap {
+html.admin-layout-shell .customers-table-wrap {
     padding: var(--s2);
     border: 1px solid transparent;
     border-radius: var(--r-lg);
@@ -99,103 +99,103 @@ html.staff-layout-shell .customers-table-wrap {
     background-clip: padding-box, border-box;
 }
 
-html.staff-layout-shell .customers-table {
+html.admin-layout-shell .customers-table {
     width: 100%;
     min-width: 820px;
     table-layout: auto;
 }
 
-html.staff-layout-shell .customers-table th,
-html.staff-layout-shell .customers-table td {
+html.admin-layout-shell .customers-table th,
+html.admin-layout-shell .customers-table td {
     padding: var(--s3) var(--s4);
     border-bottom: 1px solid var(--border);
     text-align: left;
     vertical-align: middle;
 }
 
-html.staff-layout-shell .customers-table thead th {
+html.admin-layout-shell .customers-table thead th {
     font-size: var(--font-size-small);
     font-weight: var(--font-weight-button);
 }
 
-html.staff-layout-shell .customers-table tbody tr {
+html.admin-layout-shell .customers-table tbody tr {
     cursor: pointer;
     transition: background-color 160ms ease;
 }
 
-html.staff-layout-shell .customers-table tbody tr:hover {
+html.admin-layout-shell .customers-table tbody tr:hover {
     background: var(--surface-2);
 }
 
-html.staff-layout-shell .customers-table .col-rank {
+html.admin-layout-shell .customers-table .col-rank {
     width: 48px;
     color: var(--text-muted);
     font-weight: var(--font-weight-button);
 }
 
-html.staff-layout-shell .customers-table .col-num {
+html.admin-layout-shell .customers-table .col-num {
     text-align: right;
     font-variant-numeric: tabular-nums;
     white-space: nowrap;
 }
 
-html.staff-layout-shell .customers-table .col-type {
+html.admin-layout-shell .customers-table .col-type {
     width: 132px;
 }
 
-html.staff-layout-shell .customer-name-cell,
-html.staff-layout-shell .customer-contact-cell {
+html.admin-layout-shell .customer-name-cell,
+html.admin-layout-shell .customer-contact-cell {
     display: flex;
     min-width: 0;
     flex-direction: column;
     gap: var(--s1);
 }
 
-html.staff-layout-shell .customer-name-cell .name {
+html.admin-layout-shell .customer-name-cell .name {
     color: var(--text);
     font-weight: var(--font-weight-button);
     overflow-wrap: anywhere;
 }
 
-html.staff-layout-shell .customer-contact-cell {
+html.admin-layout-shell .customer-contact-cell {
     color: var(--text-muted);
     font-size: var(--font-size-small);
     overflow-wrap: anywhere;
 }
 
-html.staff-layout-shell .customer-type-pill {
+html.admin-layout-shell .customer-type-pill {
     min-height: 28px;
     text-transform: capitalize;
 }
 
-html.staff-layout-shell .customer-type-pill.type-registered {
+html.admin-layout-shell .customer-type-pill.type-registered {
     background: color-mix(in srgb, var(--brand) 14%, var(--surface));
     color: var(--brand-hover);
 }
 
-html.staff-layout-shell .customer-type-pill.type-guest {
+html.admin-layout-shell .customer-type-pill.type-guest {
     background: var(--surface-2);
     color: var(--text-muted);
 }
 
-html.staff-layout-shell .customers-empty,
-html.staff-layout-shell .customers-error {
+html.admin-layout-shell .customers-empty,
+html.admin-layout-shell .customers-error {
     margin: 0;
     padding: var(--s5);
     color: var(--text-muted);
     text-align: center;
 }
 
-html.staff-layout-shell .customers-empty {
+html.admin-layout-shell .customers-empty {
     display: flex;
     flex-direction: column;
     align-items: center;
     gap: var(--s3);
 }
 
-html.staff-layout-shell .customers-empty[hidden] { display: none; }
-html.staff-layout-shell .customers-empty p { margin: 0; }
-html.staff-layout-shell .customers-clear-filters {
+html.admin-layout-shell .customers-empty[hidden] { display: none; }
+html.admin-layout-shell .customers-empty p { margin: 0; }
+html.admin-layout-shell .customers-clear-filters {
     min-height: 44px;
     padding: var(--s2) var(--s4);
     border: 1px solid var(--brand);
@@ -205,22 +205,22 @@ html.staff-layout-shell .customers-clear-filters {
     font: var(--font-weight-button) var(--font-size-small)/1.2 var(--font-family);
     cursor: pointer;
 }
-html.staff-layout-shell .customers-clear-filters:hover { background: color-mix(in srgb, var(--brand) 12%, transparent); }
+html.admin-layout-shell .customers-clear-filters:hover { background: color-mix(in srgb, var(--brand) 12%, transparent); }
 
-html.staff-layout-shell .customers-error {
+html.admin-layout-shell .customers-error {
     color: var(--danger);
 }
 
-html.staff-layout-shell .customers-empty[hidden],
-html.staff-layout-shell .customers-error[hidden] {
+html.admin-layout-shell .customers-empty[hidden],
+html.admin-layout-shell .customers-error[hidden] {
     display: none;
 }
 
-html.staff-layout-shell .customers-skeleton-row td {
+html.admin-layout-shell .customers-skeleton-row td {
     padding-block: var(--s4);
 }
 
-html.staff-layout-shell .customers-skeleton-row .skeleton {
+html.admin-layout-shell .customers-skeleton-row .skeleton {
     display: block;
     width: 100%;
     height: var(--s3);
@@ -230,7 +230,7 @@ html.staff-layout-shell .customers-skeleton-row .skeleton {
     animation: admin-customer-skeleton-shimmer 1.4s ease infinite;
 }
 
-html.staff-layout-shell .customers-page:not(.is-loading) .customers-skeleton-row {
+html.admin-layout-shell .customers-page:not(.is-loading) .customers-skeleton-row {
     display: none;
 }
 
@@ -239,31 +239,31 @@ html.staff-layout-shell .customers-page:not(.is-loading) .customers-skeleton-row
     100% { background-position: 0 50%; }
 }
 
-html.staff-layout-shell #customerBookingsModal:not([hidden]) {
+html.admin-layout-shell #customerBookingsModal:not([hidden]) {
     display: flex;
 }
 
-html.staff-layout-shell #customerBookingsModal .modal-box {
+html.admin-layout-shell #customerBookingsModal .modal-box {
     max-width: 600px;
 }
 
-html.staff-layout-shell #customerBookingsModal .modal-header {
+html.admin-layout-shell #customerBookingsModal .modal-header {
     flex: 0 0 auto;
 }
 
-html.staff-layout-shell #customerBookingsModal .modal-body {
+html.admin-layout-shell #customerBookingsModal .modal-body {
     min-height: 0;
     padding-top: var(--s3);
     overflow-y: auto;
 }
 
-html.staff-layout-shell .customer-bookings-list {
+html.admin-layout-shell .customer-bookings-list {
     display: flex;
     flex-direction: column;
     gap: var(--s3);
 }
 
-html.staff-layout-shell .customer-booking-row {
+html.admin-layout-shell .customer-booking-row {
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -274,73 +274,116 @@ html.staff-layout-shell .customer-booking-row {
     background: var(--surface-2);
 }
 
-html.staff-layout-shell .customer-booking-main,
-html.staff-layout-shell .customer-booking-side {
+html.admin-layout-shell .customer-booking-main,
+html.admin-layout-shell .customer-booking-side {
     display: flex;
     min-width: 0;
     flex-direction: column;
     gap: var(--s1);
 }
 
-html.staff-layout-shell .customer-booking-court,
-html.staff-layout-shell .customer-booking-amount {
+html.admin-layout-shell .customer-booking-court,
+html.admin-layout-shell .customer-booking-amount {
     color: var(--text);
     font-size: var(--font-size-body);
     font-weight: var(--font-weight-button);
 }
 
-html.staff-layout-shell .customer-booking-datetime {
+html.admin-layout-shell .customer-booking-datetime {
     color: var(--text-muted);
     font-size: var(--font-size-small);
 }
 
-html.staff-layout-shell .customer-booking-side {
+html.admin-layout-shell .customer-booking-side {
     flex: 0 0 auto;
     align-items: flex-end;
 }
 
 @media (max-width: 767px) {
-    html.staff-layout-shell .customers-header {
+    html.admin-layout-shell .customers-header {
         align-items: stretch;
         flex-direction: column;
     }
 
-    html.staff-layout-shell .customers-toolbar {
+    html.admin-layout-shell .customers-toolbar {
         width: 100%;
         flex-direction: column;
         align-items: stretch;
     }
 
-    html.staff-layout-shell .customers-type-filter { width: 100%; box-sizing: border-box; }
-    html.staff-layout-shell .customers-type-option { flex: 1 1 0; padding-inline: var(--s2); }
+    html.admin-layout-shell .customers-type-filter { width: 100%; box-sizing: border-box; }
+    html.admin-layout-shell .customers-type-option { flex: 1 1 0; padding-inline: var(--s2); }
 
-    html.staff-layout-shell .customers-search-wrap {
+    html.admin-layout-shell .customers-search-wrap {
         flex-basis: auto;
         width: 100%;
     }
 
-    html.staff-layout-shell .customers-table-wrap {
+    html.admin-layout-shell .customers-table-wrap {
         padding: var(--s1);
     }
 
-    html.staff-layout-shell .customer-booking-row {
+    html.admin-layout-shell .customer-booking-row {
         align-items: flex-start;
         flex-direction: column;
     }
 
-    html.staff-layout-shell .customer-booking-side {
+    html.admin-layout-shell .customer-booking-side {
         align-items: flex-start;
     }
 }
 
 @media (max-width: 400px) {
-    html.staff-layout-shell .customers-type-option { flex-direction: column; gap: 2px; }
+    html.admin-layout-shell .customers-type-option { flex-direction: column; gap: 2px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-    html.staff-layout-shell .customers-table tbody tr,
-    html.staff-layout-shell .customers-skeleton-row .skeleton {
+    html.admin-layout-shell .customers-table tbody tr,
+    html.admin-layout-shell .customers-skeleton-row .skeleton {
         animation: none;
         transition: none;
+    }
+}
+
+html.staff-layout-shell .customers-page {
+    max-width: 1200px;
+    gap: var(--s9);
+}
+
+html.staff-layout-shell .customers-table-wrap {
+    padding: var(--s5);
+}
+
+html.staff-layout-shell .customers-type-filter {
+    box-sizing: border-box;
+    height: 48px;
+    padding: 2px;
+}
+
+html.staff-layout-shell .customers-type-option {
+    min-height: 42px;
+}
+
+html.staff-layout-shell .customers-search-wrap {
+    min-width: min(100%, 280px);
+}
+
+@media (max-width: 767px) {
+    html.staff-layout-shell .customers-page {
+        gap: var(--s7);
+    }
+
+    html.staff-layout-shell .customers-table-wrap {
+        padding: var(--s4);
+    }
+
+    html.staff-layout-shell .customers-toolbar {
+        width: 100%;
+        flex-wrap: wrap;
+    }
+
+    html.staff-layout-shell .customers-type-filter,
+    html.staff-layout-shell .customers-search-wrap {
+        flex: 1 1 100%;
     }
 }

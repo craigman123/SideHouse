@@ -11,6 +11,7 @@ return [
         'customers.view_spending' => ['label' => 'View customer spending', 'group' => 'Customers'],
         'activity_logs.view' => ['label' => 'View activity logs', 'group' => 'Activity logs'],
         'reports.system' => ['label' => 'View system reports', 'group' => 'Reports'],
+        'user_details.edit' => ['label' => 'Edit staff and owner account details', 'group' => 'User access'],
         'user_access.manage' => ['label' => 'Manage user access', 'group' => 'User access'],
         'user_access.manage_owners' => ['label' => 'Manage owner accounts', 'group' => 'User access'],
     ],
@@ -38,6 +39,7 @@ return [
             'customers.view_spending',
             'activity_logs.view',
             'reports.system',
+            'user_details.edit',
             'user_access.manage',
         ],
         'staff' => [

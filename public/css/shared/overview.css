@@ -209,6 +209,112 @@ html.admin-layout-shell .admin-overview-page .empty-row {
     }
 }
 
+/* Staff uses the shared dashboard components, with its widget grid kept local. */
+html.staff-layout-shell .admin-overview-page {
+    max-width: 1200px;
+}
+
+html.staff-layout-shell .admin-overview-page .overview-intro {
+    margin: 0;
+}
+
+html.staff-layout-shell .staff-overview .overview-intro strong {
+    color: var(--brand);
+}
+
+html.staff-layout-shell .staff-sync-status {
+    flex: 0 0 auto;
+    margin: 0;
+    color: var(--text-muted);
+    font-size: var(--font-size-small);
+}
+
+html.staff-layout-shell .staff-overview-error {
+    margin: 0;
+    color: var(--danger);
+}
+
+html.staff-layout-shell .staff-stat-grid .card,
+html.staff-layout-shell .staff-overview-card {
+    min-width: 0;
+    padding: var(--s5);
+    border: 1px solid transparent;
+    border-radius: var(--r-lg);
+    background-image: linear-gradient(var(--surface), var(--surface)), var(--brand-grad);
+    background-origin: border-box;
+    background-clip: padding-box, border-box;
+}
+
+html.staff-layout-shell .staff-stat-grid .card {
+    min-height: 132px;
+}
+
+html.staff-layout-shell .staff-stat-grid .value {
+    margin-top: var(--s3);
+}
+
+html.staff-layout-shell .staff-overview-card > .dashboard-panel-header {
+    margin-bottom: var(--s4);
+}
+
+html.staff-layout-shell .staff-overview-card > .dashboard-panel-header h2 {
+    margin: 0;
+    color: var(--text);
+    font-size: var(--font-size-h3);
+    font-weight: var(--font-weight-h3);
+}
+
+html.staff-layout-shell .staff-overview-row strong {
+    color: var(--text);
+    font-size: var(--font-size-small);
+    font-weight: var(--font-weight-button);
+}
+
+html.staff-layout-shell .staff-overview-row {
+    padding-block: var(--s3);
+    border-top: 1px solid var(--border);
+}
+
+html.staff-layout-shell .staff-overview-row:first-child {
+    padding-top: 0;
+    border-top: 0;
+}
+
+html.staff-layout-shell .staff-overview-row span,
+html.staff-layout-shell .staff-overview-empty {
+    color: var(--text-muted);
+    font-size: var(--font-size-small);
+}
+
+html.staff-layout-shell .staff-overview-empty {
+    display: grid;
+    min-height: 96px;
+    place-items: center;
+    padding: var(--s5);
+    text-align: center;
+}
+
+html.staff-layout-shell .dashboard-skeleton {
+    display: block;
+    width: min(100%, 220px);
+    height: var(--s3);
+    border-radius: var(--r-sm);
+    background: linear-gradient(90deg, var(--surface-2) 25%, var(--text-muted) 37%, var(--surface-2) 63%);
+    background-size: 400% 100%;
+    animation: dashboard-skeleton-shimmer 1.4s ease infinite;
+}
+
+@keyframes dashboard-skeleton-shimmer {
+    0% { background-position: 100% 50%; }
+    100% { background-position: 0 50%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    html.staff-layout-shell .dashboard-skeleton {
+        animation: none;
+    }
+}
+
 @media (max-width: 420px) {
     html.admin-layout-shell .admin-overview-page .card-grid {
         grid-template-columns: minmax(0, 1fr);

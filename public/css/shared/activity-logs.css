@@ -244,3 +244,48 @@ html.admin-layout-shell .admin-activity-logs-page .pagination-wrapper span[aria-
         padding: var(--s4);
     }
 }
+
+html.staff-layout-shell .admin-activity-logs-page {
+    max-width: 1200px;
+    gap: var(--s9);
+}
+
+html.staff-layout-shell .admin-activity-logs-page .activity-filters-panel,
+html.staff-layout-shell .admin-activity-logs-page .activity-table-panel {
+    padding: var(--s5);
+    border: 1px solid transparent;
+    border-radius: var(--r-lg);
+    background-image: linear-gradient(var(--surface), var(--surface)), var(--brand-grad);
+    background-origin: border-box;
+    background-clip: padding-box, border-box;
+}
+
+html.staff-layout-shell .admin-activity-logs-page .filter-group label {
+    font-weight: var(--font-weight-small);
+}
+
+html.staff-layout-shell .admin-activity-logs-page .activity-table-panel h2 {
+    font-weight: var(--font-weight-h3);
+}
+
+html.staff-layout-shell .admin-activity-logs-page .filter-group input {
+    border-color: var(--border);
+}
+
+html.staff-layout-shell .admin-activity-logs-page .btn-filter {
+    color: var(--on-brand, var(--text));
+}
+
+html.staff-layout-shell .admin-activity-logs-page .btn-clear {
+    border-color: var(--brand);
+}
+
+html.staff-layout-shell .admin-activity-logs-page .btn-clear:hover {
+    background: color-mix(in srgb, var(--brand) 12%, transparent);
+}
+
+@media (max-width: 767px) {
+    html.staff-layout-shell .admin-activity-logs-page {
+        gap: var(--s7);
+    }
+}

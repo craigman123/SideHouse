@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Mail\AdminChangedAccountEmailNotice;
 use App\Models\User;
 use App\Services\UserAccessService;
 use App\Support\ActivityLogger;
@@ -12,7 +13,11 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
@@ -241,6 +246,197 @@ class UserAccessController extends Controller
             'message' => 'Access removed. The person remains a customer account.',
             'user_id' => (int) $removed->user_id,
         ]);
+    }
+
+    public function details(Request $request, User $user): JsonResponse
+    {
+        $actor = $this->freshAdmin($request);
+        $target = User::query()->findOrFail($user->user_id);
+        $this->assertDetailsTarget($target);
+
+        ActivityLogger::log(
+            'user_details.viewed',
+            "Admin account #{$actor->user_id} viewed account details for elevated account #{$target->user_id}.",
+            actor: $actor,
+            subject: $target,
+            properties: ['fields' => ['name', 'username', 'email', 'phone_number']],
+        );
+
+        return response()->json(['details' => $this->detailsSnapshot($target)]);
+    }
+
+    public function updateDetails(Request $request, User $user): JsonResponse
+    {
+        $actor = $this->freshAdmin($request);
+        $target = User::query()->findOrFail($user->user_id);
+        $this->assertDetailsTarget($target);
+
+        $normalizedEmail = mb_strtolower(trim((string) $request->input('email')));
+        $request->merge([
+            'name' => trim((string) $request->input('name')),
+            'username' => trim((string) $request->input('username')),
+            'email' => $normalizedEmail,
+            'phone_number' => trim((string) $request->input('phone_number')) ?: null,
+        ]);
+
+        $validator = Validator::make($request->all(), [
+            'name' => ['required', 'string', 'max:255'],
+            'username' => [
+                'required', 'string', 'max:255',
+                Rule::unique('users', 'username')->ignore($target->user_id, 'user_id'),
+            ],
+            'email' => ['required', 'string', 'email', 'max:255'],
+            'phone_number' => ['nullable', 'string', 'max:30', 'regex:/^[0-9+\-\s()]{7,30}$/'],
+            'expected_updated_at' => ['required', 'date'],
+            'password' => ['required', 'string'],
+        ]);
+        $validator->after(function ($validator) use ($target, $normalizedEmail) {
+            $emailTaken = User::query()
+                ->where('user_id', '<>', $target->user_id)
+                ->whereRaw('LOWER(email) = ?', [$normalizedEmail])
+                ->exists();
+
+            if ($emailTaken) {
+                $validator->errors()->add('email', 'This email address is already in use.');
+            }
+        });
+        $validated = $validator->validate();
+        $this->assertPassword($actor, $validated['password']);
+
+        $result = DB::transaction(function () use ($actor, $target, $validated, $normalizedEmail) {
+            $locked = User::query()->whereKey($target->user_id)->lockForUpdate()->firstOrFail();
+            $this->assertDetailsTarget($locked);
+
+            $expectedUpdatedAt = Carbon::parse($validated['expected_updated_at']);
+            if (! $locked->updated_at || ! $expectedUpdatedAt->equalTo($locked->updated_at)) {
+                return [
+                    'conflict' => true,
+                    'current' => $this->detailsSnapshot($locked),
+                ];
+            }
+
+            $emailTaken = User::query()
+                ->where('user_id', '<>', $locked->user_id)
+                ->whereRaw('LOWER(email) = ?', [$normalizedEmail])
+                ->exists();
+            if ($emailTaken) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'email' => 'This email address is already in use.',
+                ]);
+            }
+
+            $oldValues = [
+                'name' => $locked->name,
+                'username' => $locked->username,
+                'email' => $locked->email,
+                'phone_number' => $locked->phone_number,
+            ];
+            $newValues = [
+                'name' => $validated['name'],
+                'username' => $validated['username'],
+                'email' => $normalizedEmail,
+                'phone_number' => $validated['phone_number'] ?: null,
+            ];
+            $changes = [];
+            foreach ($newValues as $field => $newValue) {
+                if ($oldValues[$field] !== $newValue) {
+                    $changes[$field] = ['old' => $oldValues[$field], 'new' => $newValue];
+                }
+            }
+
+            $emailChanged = mb_strtolower((string) $locked->email) !== $normalizedEmail;
+            $updates = $newValues;
+            if ($emailChanged) {
+                $updates += [
+                    'email_verified_at' => null,
+                    'access_version' => (int) $locked->access_version + 1,
+                    'remember_token' => Str::random(60),
+                ];
+            }
+
+            if ($changes) {
+                $savedAt = now();
+                if ($locked->updated_at && $savedAt->format('Y-m-d H:i:s') <= $locked->updated_at->format('Y-m-d H:i:s')) {
+                    $savedAt = $locked->updated_at->copy()->addSecond();
+                }
+                $updates['updated_at'] = $savedAt;
+                $locked->forceFill($updates)->save();
+                $changedFields = array_keys($changes);
+                $descriptionFields = implode(', ', $changedFields);
+
+                ActivityLogger::log(
+                    'user_details.updated',
+                    "Admin account #{$actor->user_id} updated elevated account #{$locked->user_id} details (fields: {$descriptionFields}).",
+                    actor: $actor,
+                    subject: $locked,
+                    properties: ['changes' => $changes],
+                );
+            }
+
+            return [
+                'conflict' => false,
+                'email_changed' => $emailChanged,
+                'old_email' => $emailChanged ? $oldValues['email'] : null,
+                'user' => $locked->fresh('promotedBy'),
+            ];
+        });
+
+        if ($result['conflict']) {
+            return response()->json([
+                'message' => 'These account details changed after you opened the form. Review the current values and try again.',
+                'current' => $result['current'],
+            ], 409);
+        }
+
+        $noticeSent = null;
+        if ($result['email_changed']) {
+            try {
+                $mailer = app()->environment('local') ? 'log' : config('mail.default');
+                Mail::mailer($mailer)->to($result['old_email'])->send(new AdminChangedAccountEmailNotice());
+                $noticeSent = true;
+            } catch (\Throwable $exception) {
+                $noticeSent = false;
+                Log::warning('Admin account email change notice could not be sent.', [
+                    'user_id' => $result['user']->user_id,
+                    'exception' => get_class($exception),
+                ]);
+            }
+        }
+
+        $message = $noticeSent === false
+            ? 'Account details saved, but the notice to the old email address could not be sent.'
+            : 'Account details saved.'.($noticeSent === true ? ' A notice was sent to the old email address.' : '');
+
+        return response()->json([
+            'message' => $message,
+            'notice_sent' => $noticeSent,
+            'user' => $this->serializeUser($result['user'], (int) $actor->user_id),
+        ]);
+    }
+
+    private function detailsSnapshot(User $user): array
+    {
+        return [
+            'id' => (int) $user->user_id,
+            'name' => $user->name,
+            'username' => $user->username,
+            'email' => $user->email,
+            'phone_number' => $user->phone_number,
+            'updated_at' => $user->updated_at?->toISOString(),
+        ];
+    }
+
+    private function assertDetailsTarget(User $target): void
+    {
+        abort_unless(in_array($target->role, ['staff', 'owner'], true), 404);
+    }
+
+    private function freshAdmin(Request $request): User
+    {
+        $actor = User::query()->findOrFail($request->user()->user_id);
+        abort_unless($actor->role === 'admin', 403);
+
+        return $actor;
     }
 
     private function applySearch(Builder $query, string $term): void

@@ -2834,8 +2834,9 @@
     if (isoDateIsValid(requestedDate)) monthInput.value = toMonthValue(new Date(`${requestedDate}T00:00:00`));
     changeView(initialView, false);
 
-    if (new URLSearchParams(window.location.search).get('new') === 'walk-in'
-        && hasPermission('bookings.create')) {
+    const requestedNewItem = new URLSearchParams(window.location.search).get('new');
+    if ((requestedNewItem === 'walk-in' && hasPermission('bookings.create'))
+        || (requestedNewItem === 'event' && hasPermission('calendar_events.manage'))) {
         const currentMinutes = venueNowMinutes();
         const firstOpen = BIZ_OPEN_HOUR * 60;
         const rawClose = BIZ_CLOSE_HOUR <= BIZ_OPEN_HOUR ? BIZ_CLOSE_HOUR + 24 : BIZ_CLOSE_HOUR;
@@ -2847,8 +2848,11 @@
             startMinutes = firstOpen;
         }
         openCreateModal({ date, startMinutes, endMinutes: startMinutes + stepMinutes });
-        if (walkInType.querySelector('option[value="walk_in"]') && hasPermission('bookings.create')) {
+        if (requestedNewItem === 'walk-in' && walkInType.querySelector('option[value="walk_in"]')) {
             walkInType.value = 'walk_in';
+            updateTypeFields();
+        } else if (requestedNewItem === 'event') {
+            walkInType.value = 'open_play';
             updateTypeFields();
         }
         const url = new URL(window.location.href);

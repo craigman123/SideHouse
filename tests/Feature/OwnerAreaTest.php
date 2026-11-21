@@ -54,7 +54,7 @@ class OwnerAreaTest extends TestCase
 
         foreach ($pages as $path) {
             $response = $this->signIn($owner)->get($path)->assertOk();
-            $response->assertSee('owner-layout.css')->assertSee('owner-shell.js');
+            $response->assertSee('shared/dashboard-shell.css')->assertSee('shared/dashboard-shell.js');
             $this->assertStringNotContainsString('css/admin/admin-shell.css', $response->getContent());
             $this->assertStringNotContainsString('js/admin/admin-shell.js', $response->getContent());
             $this->signIn($admin)->get($path)->assertForbidden();
@@ -174,9 +174,47 @@ class OwnerAreaTest extends TestCase
             ]);
         }
         $ownerHome = $this->signIn($owner)->get('/owner/dashboard')->assertOk();
-        $ownerHome->assertSee('owner-layout.css')->assertSee('Overview')->assertSee('Upcoming Customer')->assertDontSee('Cancelled Customer');
+        $ownerHome->assertSee('shared/dashboard-shell.css')->assertSee('Overview')->assertSee('Upcoming Customer')->assertDontSee('Cancelled Customer');
 
         $adminHome = $this->signIn($admin)->get('/dashboard')->assertOk();
-        $adminHome->assertSee('css/admin/admin-shell.css')->assertSee('Total Income')->assertSee('Cancelled Customer')->assertDontSee('owner-layout.css');
+        $adminHome->assertSee('shared/dashboard-shell.css')->assertSee('Total Income')->assertSee('Upcoming Customer')->assertDontSee('Cancelled Customer');
+    }
+
+    public function test_staff_admin_and_owner_overview_counts_exclude_cancelled_and_expired_bookings(): void
+    {
+        $staff = $this->user('staff', ['bookings.view']);
+        $admin = $this->user('admin');
+        $owner = $this->user('owner');
+        BusinessSetting::current();
+        $court = Court::create([
+            'name' => 'Count Court', 'width' => 10, 'length' => 20, 'hourly_rate' => 500, 'status' => 'active',
+        ]);
+
+        foreach ([
+            ['Active Customer', 'paid'],
+            ['Pending Customer', 'pending'],
+            ['Cancelled Customer', 'cancelled'],
+            ['Expired Customer', 'expired'],
+        ] as [$name, $status]) {
+            Booking::create([
+                'user_id' => null, 'customer_name' => $name, 'contact_number' => '09171234567',
+                'court_id' => $court->id, 'date' => now('Asia/Manila')->toDateString(),
+                'start_time' => '23:00', 'end_time' => '23:30', 'status' => $status,
+                'source' => 'online', 'amount' => 250,
+            ]);
+        }
+
+        $staffData = $this->signIn($staff)->getJson('/staff/overview/data')->assertOk();
+        $staffData->assertJsonPath('booking_count', 2);
+        $this->assertSame(['Active Customer', 'Pending Customer'], array_column($staffData->json('upcoming'), 'customer'));
+        $this->assertSame(['Pending Customer'], array_column($staffData->json('needs_attention'), 'customer'));
+
+        $adminPage = $this->signIn($admin)->get('/dashboard')->assertOk();
+        $adminPage->assertViewHas('todayBookings', 2);
+        $adminPage->assertViewHas('upcomingBookings', fn ($rows) => $rows->pluck('customer_name')->all() === ['Active Customer', 'Pending Customer']);
+
+        $ownerPage = $this->signIn($owner)->get('/owner/dashboard')->assertOk();
+        $ownerPage->assertViewHas('todayBookings', 2);
+        $ownerPage->assertViewHas('upcomingBookings', fn ($rows) => $rows->pluck('customer_name')->all() === ['Active Customer', 'Pending Customer']);
     }
 }

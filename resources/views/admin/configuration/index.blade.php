@@ -4,7 +4,7 @@
 @section('page-title', 'Configuration')
     
 @push('styles')
-    <link rel="stylesheet" href="{{ asset('css/admin/admin-base.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/shared/dashboard-base.css') . '?v=' . filemtime(public_path('css/shared/dashboard-base.css')) }}">
     <link rel="stylesheet" href="{{ asset('css/admin/specific-date-closures.css') }}">
     <link rel="stylesheet" href="{{ asset('css/admin/admin-schedule.css') }}">
     <link rel="stylesheet" href="{{ asset('css/booking/manual-booking.css') }}">

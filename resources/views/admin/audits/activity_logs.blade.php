@@ -4,8 +4,8 @@
 @section('page-title', 'Activity Logs')
 
 @push('styles')
-    <link rel="stylesheet" href="{{ asset('css/admin/admin-base.css') }}">
-    <link rel="stylesheet" href="{{ asset('css/admin/admin-activity-logs.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/shared/dashboard-base.css') . '?v=' . filemtime(public_path('css/shared/dashboard-base.css')) }}">
+    <link rel="stylesheet" href="{{ asset('css/shared/activity-logs.css') . '?v=' . filemtime(public_path('css/shared/activity-logs.css')) }}">
 @endpush
 
 @section('content')

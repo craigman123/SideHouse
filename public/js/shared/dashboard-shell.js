@@ -1,6 +1,6 @@
 (function () {
-    const key = 'sidehouse-admin-sidebar-collapsed';
     const root = document.documentElement;
+    const key = `sidehouse-${root.dataset.shellArea || 'admin'}-sidebar-collapsed`;
 
     function readCollapsed() {
         try {

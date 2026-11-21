@@ -102,7 +102,7 @@
                     </table>
                 </div>
 
-                <p style="text-align: center">Showing {{ $bookings->firstItem() }} to {{ $bookings->lastItem() }} of {{ $bookings->total() }} results</p>
+                <p class="bookings-results-count">Showing {{ $bookings->firstItem() }} to {{ $bookings->lastItem() }} of {{ $bookings->total() }} results</p>
                 @if ($bookings->hasPages())
                     <div class="pagination-wrapper">
                         {{ $bookings->links() }}
@@ -346,5 +346,5 @@
         ];
     @endphp
     <script id="courtBoardData" type="application/json">{!! json_encode($courtBoardData, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) !!}</script>
-    <script src="{{ asset('js/admin/admin-bookings-board.js') . '?v=' . filemtime(public_path('js/admin/admin-bookings-board.js')) }}" defer></script>
+    <script src="{{ asset('js/shared/bookings-board.js') . '?v=' . filemtime(public_path('js/shared/bookings-board.js')) }}" defer></script>
 @endpush

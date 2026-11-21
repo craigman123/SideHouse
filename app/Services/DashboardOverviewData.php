@@ -8,23 +8,25 @@ class DashboardOverviewData
 {
     public function forAdmin(): array
     {
-        return $this->make(false);
+        return $this->make();
     }
 
     public function forOwner(): array
     {
-        return $this->make(true);
+        return $this->make();
     }
 
-    private function make(bool $excludeCancelled): array
+    private function make(): array
     {
         $totalIncome = Booking::where('status', 'paid')->sum('amount');
         $todayIncome = Booking::where('status', 'paid')->whereDate('created_at', today())->sum('amount');
         $totalBookings = Booking::count();
-        $todayBookings = Booking::whereDate('date', today())->count();
+        $todayBookings = Booking::whereDate('date', today())
+            ->whereNotIn('status', ['cancelled', 'expired'])
+            ->count();
 
         $upcoming = Booking::where('date', '>=', today())
-            ->when($excludeCancelled, fn ($query) => $query->where('status', '!=', 'cancelled'))
+            ->whereNotIn('status', ['cancelled', 'expired'])
             ->orderBy('date')->orderBy('start_time')->limit(5)->get();
 
         return compact('totalIncome', 'todayIncome', 'totalBookings', 'todayBookings') + [

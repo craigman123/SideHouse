@@ -4,7 +4,7 @@
 @section('page-title', 'Overview')
 
 @push('styles')
-    <link rel="stylesheet" href="{{ asset('css/admin/admin-overview.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/shared/overview.css') . '?v=' . filemtime(public_path('css/shared/overview.css')) }}">
 @endpush
 
 @section('content')

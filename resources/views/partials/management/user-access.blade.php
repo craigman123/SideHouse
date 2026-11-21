@@ -4,6 +4,8 @@
         data-create-url="{{ route('admin.users.store') }}"
         data-update-url-template="{{ route('admin.users.update', ['user' => '__USER__']) }}"
         data-remove-url-template="{{ route('admin.users.remove-access', ['user' => '__USER__']) }}"
+        data-details-url-template="{{ $actorRole === 'admin' ? route('admin.users.details', ['user' => '__USER__']) : '' }}"
+        data-can-edit-details="{{ $actorRole === 'admin' ? 'true' : 'false' }}"
         data-actor-role="{{ $actorRole }}"
         data-current-id="{{ $actorId }}"
         data-owner-exists="{{ $ownerExists ? 'true' : 'false' }}">
@@ -109,6 +111,52 @@
             </footer>
         </form>
     </dialog>
+
+    @if ($actorRole === 'admin')
+        <dialog class="access-dialog account-details-dialog" id="accountDetailsDialog" aria-labelledby="accountDetailsTitle">
+            <form class="access-dialog-card" id="accountDetailsForm" novalidate>
+                <header class="access-dialog-header">
+                    <div><p class="user-access-eyebrow">Staff and owner account</p><h2 id="accountDetailsTitle">Edit details</h2></div>
+                    <button type="button" class="dialog-close" data-close-details aria-label="Close dialog">×</button>
+                </header>
+                <p class="account-details-error" id="accountDetailsError" role="alert" hidden></p>
+                <div class="access-dialog-body" id="accountDetailsFieldsStep">
+                    <div class="account-details-field">
+                        <label class="field-label" for="accountDetailsName">Name</label>
+                        <input id="accountDetailsName" name="name" type="text" maxlength="255" required autocomplete="name" aria-describedby="accountDetailsNameError">
+                        <span class="account-details-field-error" id="accountDetailsNameError" data-details-error="name" hidden></span>
+                    </div>
+                    <div class="account-details-field">
+                        <label class="field-label" for="accountDetailsUsername">Username</label>
+                        <input id="accountDetailsUsername" name="username" type="text" maxlength="255" required autocomplete="username" aria-describedby="accountDetailsUsernameError">
+                        <span class="account-details-field-error" id="accountDetailsUsernameError" data-details-error="username" hidden></span>
+                    </div>
+                    <div class="account-details-field">
+                        <label class="field-label" for="accountDetailsEmail">Email</label>
+                        <input id="accountDetailsEmail" name="email" type="email" maxlength="255" required autocomplete="email" aria-describedby="accountDetailsEmailNote accountDetailsEmailError">
+                        <small class="account-details-email-note" id="accountDetailsEmailNote">Changing the email signs this person out and notifies the old address.</small>
+                        <span class="account-details-field-error" id="accountDetailsEmailError" data-details-error="email" hidden></span>
+                    </div>
+                    <div class="account-details-field">
+                        <label class="field-label" for="accountDetailsPhone">Phone number</label>
+                        <input id="accountDetailsPhone" name="phone_number" type="tel" maxlength="30" autocomplete="tel" pattern="[0-9+()\-\s]{7,30}" aria-describedby="accountDetailsPhoneError">
+                        <span class="account-details-field-error" id="accountDetailsPhoneError" data-details-error="phone_number" hidden></span>
+                    </div>
+                </div>
+                <div class="access-confirm-step" id="accountDetailsPasswordStep" hidden>
+                    <p>Confirm your password to save these account details.</p>
+                    <label class="field-label" for="accountDetailsPassword">Confirm your password</label>
+                    <input id="accountDetailsPassword" name="password" type="password" autocomplete="current-password" required>
+                </div>
+                <footer class="access-dialog-footer">
+                    <button type="button" class="user-access-secondary" data-close-details>Cancel</button>
+                    <button type="button" class="user-access-secondary" id="backToAccountDetails" hidden>Back</button>
+                    <button type="button" class="user-access-primary" id="continueAccountDetails">Continue</button>
+                    <button type="submit" class="user-access-primary" id="saveAccountDetails" hidden>Save details</button>
+                </footer>
+            </form>
+        </dialog>
+    @endif
 
     <dialog class="access-dialog" id="removeAccessDialog" aria-labelledby="removeDialogTitle">
         <form class="access-dialog-card" id="removeAccessForm" novalidate>

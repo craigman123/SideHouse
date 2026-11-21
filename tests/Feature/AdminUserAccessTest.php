@@ -4,7 +4,10 @@ namespace Tests\Feature;
 
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Mail;
+use App\Mail\AdminChangedAccountEmailNotice;
 use Tests\TestCase;
 
 class AdminUserAccessTest extends TestCase
@@ -369,5 +372,109 @@ class AdminUserAccessTest extends TestCase
             'password' => 'password',
         ])->assertForbidden();
         $this->assertSame(1, User::where('role', 'owner')->count());
+    }
+
+    public function test_only_admin_can_view_and_edit_staff_or_owner_account_details(): void
+    {
+        $target = $this->makeUser('staff');
+        $admin = $this->makeUser('admin');
+        $response = $this->signedIn($admin)->getJson("/admin/users/{$target->user_id}/details")->assertOk();
+        $response->assertJsonPath('details.email', $target->email)
+            ->assertJsonPath('details.phone_number', null);
+        $this->assertDatabaseHas('activity_logs', [
+            'action' => 'user_details.viewed',
+            'user_id' => $admin->user_id,
+            'subject_id' => $target->user_id,
+        ]);
+
+        foreach (['owner', 'staff', 'user'] as $role) {
+            $actor = $this->makeUser($role);
+            $this->signedIn($actor)->getJson("/admin/users/{$target->user_id}/details")->assertForbidden();
+            $this->signedIn($actor)->patchJson("/admin/users/{$target->user_id}/details", [])->assertForbidden();
+        }
+
+        $adminTarget = $this->makeUser('admin');
+        $this->signedIn($admin)->getJson("/admin/users/{$adminTarget->user_id}/details")->assertNotFound();
+        $customerTarget = $this->makeUser('user');
+        $this->signedIn($admin)->getJson("/admin/users/{$customerTarget->user_id}/details")->assertNotFound();
+    }
+
+    public function test_account_details_update_requires_password_and_fresh_timestamp_and_preserves_access_fields(): void
+    {
+        $admin = $this->makeUser('admin');
+        $target = $this->makeUser('staff', ['bookings.view'], ['phone_number' => '+63 917 123 4567']);
+        $target->forceFill([
+            'email_verified_at' => now(),
+            'mfa_enabled' => true,
+            'mfa_secret' => 'mfa-secret',
+            'remember_token' => 'original-remember-token',
+        ])->save();
+        $before = $target->fresh();
+        $url = "/admin/users/{$target->user_id}/details";
+        $this->signedIn($admin)->patchJson($url, [
+            'name' => 'Updated Staff', 'username' => $target->username, 'email' => 'updated.staff@example.test',
+            'phone_number' => '+63 917 765 4321', 'expected_updated_at' => $before->updated_at->toISOString(),
+        ])->assertUnprocessable();
+        $this->signedIn($admin)->patchJson($url, [
+            'name' => 'Updated Staff', 'username' => $target->username, 'email' => 'updated.staff@example.test',
+            'phone_number' => '+63 917 765 4321', 'expected_updated_at' => $before->updated_at->toISOString(),
+            'password' => 'wrong-password',
+        ])->assertUnprocessable();
+
+        $response = $this->signedIn($admin)->patchJson($url, [
+            'name' => 'Updated Staff', 'username' => $target->username, 'email' => ' Updated.Staff@Example.Test ',
+            'phone_number' => '+63 917 765 4321', 'expected_updated_at' => $before->updated_at->toISOString(),
+            'password' => 'password', 'role' => 'admin', 'permissions' => [], 'mfa_enabled' => false,
+        ])->assertOk();
+        $response->assertJsonPath('user.email', 'upd******@example.test')
+            ->assertJsonMissing(['email' => 'updated.staff@example.test']);
+
+        $updated = $target->fresh();
+        $this->assertSame('Updated Staff', $updated->name);
+        $this->assertSame('updated.staff@example.test', $updated->email);
+        $this->assertSame('staff', $updated->role);
+        $this->assertSame(['bookings.view'], $updated->permissions);
+        $this->assertTrue($updated->mfa_enabled);
+        $this->assertSame('mfa-secret', $updated->mfa_secret);
+        $this->assertNull($updated->email_verified_at);
+        $this->assertSame((int) $before->access_version + 1, (int) $updated->access_version);
+        $this->assertNotSame('original-remember-token', $updated->remember_token);
+        $this->assertDatabaseHas('activity_logs', ['action' => 'user_details.updated', 'subject_id' => $target->user_id]);
+        $description = DB::table('activity_logs')->where('action', 'user_details.updated')->value('description');
+        $this->assertStringNotContainsString('updated.staff@example.test', $description);
+
+        $this->signedIn($admin)->patchJson($url, [
+            'name' => 'Stale update', 'username' => $target->username, 'email' => $updated->email,
+            'phone_number' => $updated->phone_number, 'expected_updated_at' => $before->updated_at->toISOString(),
+            'password' => 'password',
+        ])->assertStatus(409)->assertJsonPath('current.name', 'Updated Staff');
+    }
+
+    public function test_details_update_validates_unique_normalized_email_username_phone_and_notifies_old_email(): void
+    {
+        Mail::fake();
+        $admin = $this->makeUser('admin');
+        $target = $this->makeUser('owner');
+        $target->forceFill(['email_verified_at' => now()])->save();
+        $other = $this->makeUser('user');
+        $base = [
+            'name' => $target->name, 'username' => $target->username, 'email' => $target->email,
+            'phone_number' => $target->phone_number, 'expected_updated_at' => $target->updated_at->toISOString(),
+            'password' => 'password',
+        ];
+        $this->signedIn($admin)->patchJson("/admin/users/{$target->user_id}/details", [...$base, 'email' => strtoupper($other->email)])
+            ->assertUnprocessable()->assertJsonValidationErrors('email');
+        $this->signedIn($admin)->patchJson("/admin/users/{$target->user_id}/details", [...$base, 'username' => $other->username])
+            ->assertUnprocessable()->assertJsonValidationErrors('username');
+        $this->signedIn($admin)->patchJson("/admin/users/{$target->user_id}/details", [...$base, 'phone_number' => 'bad phone!'])
+            ->assertUnprocessable()->assertJsonValidationErrors('phone_number');
+
+        $oldEmail = $target->email;
+        $response = $this->signedIn($admin)->patchJson("/admin/users/{$target->user_id}/details", [
+            ...$base, 'email' => 'owner.new@example.test', 'phone_number' => '',
+        ])->assertOk();
+        $response->assertDontSee($oldEmail)->assertDontSee('owner.new@example.test');
+        Mail::assertSent(AdminChangedAccountEmailNotice::class, fn ($mail) => $mail->hasTo($oldEmail));
+        $this->assertNull($target->fresh()->phone_number);
     }
 }

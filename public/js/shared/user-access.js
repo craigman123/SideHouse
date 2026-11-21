@@ -38,6 +38,16 @@
     const candidateResults = document.getElementById('candidateResults');
     const selectedCandidateNode = document.getElementById('selectedCandidate');
     const configNode = document.getElementById('userAccessConfig');
+    const detailsDialog = document.getElementById('accountDetailsDialog');
+    const detailsForm = document.getElementById('accountDetailsForm');
+    const detailsUrlTemplate = page.dataset.detailsUrlTemplate;
+    const canEditDetails = page.dataset.canEditDetails === 'true' && Boolean(detailsDialog && detailsForm);
+    const detailsInputs = canEditDetails ? {
+        name: document.getElementById('accountDetailsName'),
+        username: document.getElementById('accountDetailsUsername'),
+        email: document.getElementById('accountDetailsEmail'),
+        phone_number: document.getElementById('accountDetailsPhone'),
+    } : {};
 
     let config = { permissions: {}, staffPreset: [] };
     try { config = JSON.parse(configNode?.textContent || '{}'); } catch (_) { /* use empty permissions */ }
@@ -54,6 +64,8 @@
         candidateController: null,
         listController: null,
         returnFocus: null,
+        detailsUser: null,
+        detailsUpdatedAt: null,
     };
 
     const roleNames = { owner: 'Owner', admin: 'Admin', staff: 'Staff' };
@@ -87,7 +99,10 @@
         const payload = await response.json().catch(() => ({}));
         if (!response.ok) {
             const validation = payload.errors ? Object.values(payload.errors).flat()[0] : null;
-            throw new Error(validation || payload.message || `Request failed (${response.status}).`);
+            const error = new Error(validation || payload.message || `Request failed (${response.status}).`);
+            error.status = response.status;
+            error.payload = payload;
+            throw error;
         }
         return payload;
     }
@@ -155,6 +170,12 @@
         summaryButton.setAttribute('aria-label', `Actions for ${user.name}`);
         const menu = element('div', 'user-access-action-menu');
         const reason = guardReason(user);
+        if (canEditDetails && ['staff', 'owner'].includes(user.role)) {
+            const detailsButton = element('button', '', 'Edit details');
+            detailsButton.type = 'button';
+            detailsButton.addEventListener('click', () => { details.open = false; openDetails(user, detailsButton); });
+            menu.append(detailsButton);
+        }
         const edit = element('button', '', 'Edit access');
         edit.type = 'button';
         edit.disabled = Boolean(reason);
@@ -379,6 +400,109 @@
         document.getElementById('removeAccessPassword').focus();
     }
 
+    async function openDetails(user, opener) {
+        if (!canEditDetails) return;
+        state.detailsUser = user;
+        state.detailsUpdatedAt = null;
+        detailsDialog.dataset.userId = String(user.id);
+        document.getElementById('accountDetailsTitle').textContent = `Edit details for ${user.name}`;
+        document.getElementById('accountDetailsError').hidden = true;
+        const previousConflict = document.getElementById('accountDetailsConflict');
+        if (previousConflict) { previousConflict.hidden = true; previousConflict.textContent = ''; }
+        document.querySelectorAll('[data-details-error]').forEach((node) => { node.hidden = true; node.textContent = ''; });
+        detailsForm.reset();
+        document.getElementById('accountDetailsFieldsStep').hidden = false;
+        document.getElementById('accountDetailsPasswordStep').hidden = true;
+        document.getElementById('backToAccountDetails').hidden = true;
+        document.getElementById('continueAccountDetails').hidden = false;
+        document.getElementById('saveAccountDetails').hidden = true;
+        openDialog(detailsDialog, opener);
+        try {
+            const url = detailsUrlTemplate.replace('__USER__', encodeURIComponent(user.id));
+            const payload = await request(url);
+            Object.entries(detailsInputs).forEach(([key, input]) => { input.value = payload.details?.[key] || ''; });
+            state.detailsUpdatedAt = payload.details?.updated_at || null;
+            detailsInputs.name.focus();
+        } catch (loadError) {
+            showDetailsError(loadError.message);
+        }
+    }
+
+    function showDetailsError(message) {
+        const node = document.getElementById('accountDetailsError');
+        node.textContent = message;
+        node.hidden = false;
+    }
+
+    function showDetailsValidation(errors = {}) {
+        let first = null;
+        Object.entries(errors).forEach(([field, messages]) => {
+            const node = document.querySelector(`[data-details-error="${field}"]`);
+            if (!node) return;
+            node.textContent = Array.isArray(messages) ? messages[0] : String(messages);
+            node.hidden = false;
+            first ||= detailsInputs[field];
+        });
+        first?.focus();
+    }
+
+    function enterDetailsPasswordStep() {
+        const invalid = Object.values(detailsInputs).find((input) => !input.checkValidity());
+        if (invalid) { invalid.focus(); invalid.reportValidity(); return; }
+        if (!state.detailsUpdatedAt) return;
+        document.getElementById('accountDetailsFieldsStep').hidden = true;
+        document.getElementById('accountDetailsPasswordStep').hidden = false;
+        document.getElementById('continueAccountDetails').hidden = true;
+        document.getElementById('backToAccountDetails').hidden = false;
+        document.getElementById('saveAccountDetails').hidden = false;
+        document.getElementById('accountDetailsPassword').focus();
+    }
+
+    async function saveDetails(event) {
+        event.preventDefault();
+        const errorNode = document.getElementById('accountDetailsError');
+        errorNode.hidden = true;
+        document.querySelectorAll('[data-details-error]').forEach((node) => { node.hidden = true; node.textContent = ''; });
+        const button = document.getElementById('saveAccountDetails');
+        button.disabled = true;
+        const payload = Object.fromEntries(Object.entries(detailsInputs).map(([key, input]) => [key, input.value]));
+        payload.expected_updated_at = state.detailsUpdatedAt;
+        payload.password = document.getElementById('accountDetailsPassword').value;
+        try {
+            const url = detailsUrlTemplate.replace('__USER__', encodeURIComponent(state.detailsUser.id));
+            const result = await request(url, { method: 'PATCH', body: JSON.stringify(payload) });
+            closeDialog(detailsDialog);
+            toast(result.message || 'Account details saved.', result.notice_sent === false ? 'error' : 'success');
+            await loadUsers({ refreshAll: true });
+        } catch (saveError) {
+            showDetailsError(saveError.message);
+            if (saveError.status === 422 && saveError.payload?.errors) {
+                if (Object.keys(detailsInputs).some((field) => saveError.payload.errors[field])) {
+                    document.getElementById('accountDetailsFieldsStep').hidden = false;
+                    document.getElementById('accountDetailsPasswordStep').hidden = true;
+                    document.getElementById('backToAccountDetails').hidden = true;
+                    document.getElementById('saveAccountDetails').hidden = true;
+                    document.getElementById('continueAccountDetails').hidden = false;
+                }
+                showDetailsValidation(saveError.payload.errors);
+            }
+            if (saveError.status === 409 && saveError.payload?.current) {
+                const current = saveError.payload.current;
+                Object.entries(detailsInputs).forEach(([key, input]) => { input.dataset.currentValue = current[key] || ''; });
+                let conflict = document.getElementById('accountDetailsConflict');
+                if (!conflict) {
+                    conflict = element('p', 'account-details-conflict');
+                    conflict.id = 'accountDetailsConflict';
+                    errorNode.after(conflict);
+                }
+                conflict.textContent = `Current server values: ${current.name}, @${current.username}, ${current.email}, ${current.phone_number || 'no phone number'}. Review the form and save again.`;
+                conflict.hidden = false;
+            }
+        } finally {
+            button.disabled = false;
+        }
+    }
+
     function showCandidateResults(items) {
         state.candidateItems = items;
         state.candidateIndex = items.length ? 0 : -1;
@@ -516,6 +640,21 @@
     continueButton.addEventListener('click', enterPasswordStep);
     accessForm.addEventListener('submit', saveAccess);
     removeForm.addEventListener('submit', removeAccess);
+    if (canEditDetails) {
+        document.getElementById('continueAccountDetails').addEventListener('click', enterDetailsPasswordStep);
+        document.getElementById('backToAccountDetails').addEventListener('click', () => {
+            document.getElementById('accountDetailsFieldsStep').hidden = false;
+            document.getElementById('accountDetailsPasswordStep').hidden = true;
+            document.getElementById('backToAccountDetails').hidden = true;
+            document.getElementById('saveAccountDetails').hidden = true;
+            document.getElementById('continueAccountDetails').hidden = false;
+            detailsInputs.name.focus();
+        });
+        detailsForm.addEventListener('submit', saveDetails);
+        document.querySelectorAll('[data-close-details]').forEach((button) => button.addEventListener('click', () => closeDialog(detailsDialog)));
+        detailsDialog.addEventListener('click', (event) => { if (event.target === detailsDialog) closeDialog(detailsDialog); });
+        detailsDialog.addEventListener('close', () => { state.returnFocus?.focus?.(); state.returnFocus = null; });
+    }
     roleSelect.addEventListener('change', updatePermissionVisibility);
     search.addEventListener('input', () => {
         clearTimeout(search._filterTimer);

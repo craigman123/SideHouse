@@ -220,6 +220,13 @@
 .access-confirm-step > p:first-child { margin: 0; color: var(--text-muted); }
 .mfa-setup-note { margin: 0; padding: var(--s3); border-radius: var(--r-md); background: var(--surface-2); color: var(--text-muted); font-size: .8125rem; }
 .access-dialog-error { margin: 0; color: var(--danger); font-size: .875rem; }
+.account-details-dialog { container-type: inline-size; }
+.account-details-field { display: grid; gap: var(--s1); min-width: 0; }
+.account-details-field-error,
+.account-details-error { color: var(--danger); font-size: .8125rem; }
+.account-details-email-note { color: var(--text-muted); font-size: .75rem; }
+.account-details-conflict { min-width: 0; margin: 0; padding: var(--s3); border: 1px solid var(--warning); border-radius: var(--r-md); color: var(--text); overflow-wrap: anywhere; }
+.account-details-field input { min-width: 0; max-width: 100%; }
 .access-dialog-footer { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: var(--s2); padding-top: var(--s3); border-top: 1px solid var(--border); }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 

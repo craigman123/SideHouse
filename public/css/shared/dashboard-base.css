@@ -376,3 +376,35 @@ html.admin-layout-shell .toast-close:hover {
         transition: none;
     }
 }
+
+/* Staff controls use the design system borders and button variants without altering admin pages. */
+html.staff-layout-shell .btn-secondary {
+    border-color: var(--brand);
+}
+
+html.staff-layout-shell .btn-secondary:hover {
+    border-color: var(--brand);
+    background: color-mix(in srgb, var(--brand) 12%, transparent);
+}
+
+html.staff-layout-shell .btn-primary:disabled,
+html.staff-layout-shell .btn-secondary:disabled,
+html.staff-layout-shell .btn-danger:disabled {
+    border-color: var(--border);
+    background: var(--surface-2);
+    color: var(--text-muted);
+    cursor: not-allowed;
+}
+
+html.staff-layout-shell :is(.customers-search-input, .profile-item input, .filter-group input, .filter-group select) {
+    border-color: var(--border);
+    font-family: var(--font-family);
+}
+
+html.staff-layout-shell :is(.profile-item label, .filter-group label) {
+    font-weight: var(--font-weight-small);
+}
+
+html.staff-layout-shell .dashboard-skeleton {
+    min-width: 0;
+}

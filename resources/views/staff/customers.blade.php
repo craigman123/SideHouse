@@ -4,8 +4,8 @@
 @section('page-title', 'Customers')
 
 @push('styles')
-    <link rel="stylesheet" href="{{ asset('css/staff/staff-layout.css') . '?v=' . filemtime(public_path('css/staff/staff-layout.css')) }}">
-    <link rel="stylesheet" href="{{ asset('css/staff/staff-customers.css') . '?v=' . filemtime(public_path('css/staff/staff-customers.css')) }}">
+    <link rel="stylesheet" href="{{ asset('css/shared/dashboard-base.css') . '?v=' . filemtime(public_path('css/shared/dashboard-base.css')) }}">
+    <link rel="stylesheet" href="{{ asset('css/shared/customers.css') . '?v=' . filemtime(public_path('css/shared/customers.css')) }}">
 @endpush
 
 @section('content')

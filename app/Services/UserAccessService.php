@@ -35,6 +35,10 @@ class UserAccessService
             return false;
         }
 
+        if ($permission === 'user_details.edit' && $user->role !== 'admin') {
+            return false;
+        }
+
         return in_array($permission, $this->permissionsFor($user), true);
     }
 

@@ -182,6 +182,10 @@ html[data-theme="light"] .admin-bookings-page .btn-filter {
     color: var(--text);
 }
 
+.admin-bookings-page .bookings-results-count {
+    text-align: center;
+}
+
 .admin-bookings-page .count-badge {
     display: inline-flex;
     align-items: center;
