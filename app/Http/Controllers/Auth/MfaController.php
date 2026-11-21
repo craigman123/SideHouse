@@ -204,13 +204,12 @@ class MfaController extends Controller
 
     private function homePath(User $user): string
     {
-        if ($user->isAdmin()) {
-            return route('admin.dashboard', absolute: false);
-        }
-
-        // Stage C replaces this interim customer-area destination with the
-        // staff dashboard, while preserving staff access to customer routes.
-        return route('user.dashboard', absolute: false);
+        return match ($user->role) {
+            'owner' => route('owner.dashboard', absolute: false),
+            'admin' => route('admin.dashboard', absolute: false),
+            'staff' => route('staff.dashboard', absolute: false),
+            default => route('user.dashboard', absolute: false),
+        };
     }
 
     /**

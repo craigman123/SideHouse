@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Services\UserAccessService;
 use App\Support\ActivityLogger;
+use App\Support\Mask;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -13,10 +14,26 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use Illuminate\View\View;
 
 class UserAccessController extends Controller
 {
     private const MANAGED_ROLES = ['owner', 'admin', 'staff'];
+
+    public function page(): View
+    {
+        $permissionDefinitions = config('user_access.permissions', []);
+
+        return view('admin.user-access.index', [
+            'actorRole' => auth()->user()->role,
+            'actorId' => (int) auth()->user()->user_id,
+            'permissionDefinitions' => collect(config('user_access.staff_permissions', []))
+                ->mapWithKeys(fn (string $key) => [$key => $permissionDefinitions[$key] ?? null])
+                ->all(),
+            'staffPreset' => config('user_access.presets.staff', []),
+            'ownerExists' => User::query()->where('role', 'owner')->exists(),
+        ]);
+    }
 
     public function index(Request $request): JsonResponse
     {
@@ -35,7 +52,7 @@ class UserAccessController extends Controller
 
         $users = $query->orderByRaw("CASE role WHEN 'owner' THEN 0 WHEN 'admin' THEN 1 ELSE 2 END")
             ->orderBy('name')->get()
-            ->map(fn (User $user) => $this->serializeUser($user));
+            ->map(fn (User $user) => $this->serializeUser($user, (int) $request->user()->user_id));
 
         return response()->json(['users' => $users]);
     }
@@ -55,7 +72,7 @@ class UserAccessController extends Controller
                 'id' => (int) $user->user_id,
                 'name' => $user->name,
                 'username' => $user->username,
-                'email' => $user->email,
+                'email' => Mask::email($user->email),
             ]);
 
         return response()->json(['candidates' => $candidates]);
@@ -67,7 +84,7 @@ class UserAccessController extends Controller
         $validated = $request->validate([
             'user_id' => ['required', 'integer'],
             'role' => ['required', Rule::in(['staff', 'admin', 'owner'])],
-            'permissions' => ['sometimes', 'array', 'max:5'],
+            'permissions' => ['sometimes', 'array', 'max:'.count(config('user_access.staff_permissions', []))],
             'permissions.*' => ['string', 'distinct', Rule::in(array_keys(config('user_access.permissions', [])))],
             'password' => ['required', 'string'],
         ]);
@@ -115,7 +132,7 @@ class UserAccessController extends Controller
         $actor = $this->freshActor($request);
         $validated = $request->validate([
             'role' => ['required', Rule::in(self::MANAGED_ROLES)],
-            'permissions' => ['sometimes', 'array', 'max:5'],
+            'permissions' => ['sometimes', 'array', 'max:'.count(config('user_access.staff_permissions', []))],
             'permissions.*' => ['string', 'distinct', Rule::in(array_keys(config('user_access.permissions', [])))],
             'password' => ['required', 'string'],
         ]);
@@ -230,20 +247,29 @@ class UserAccessController extends Controller
     {
         $escaped = str_replace(['!', '%', '_'], ['!!', '!%', '!_'], mb_strtolower($term));
         $pattern = '%'.$escaped.'%';
-        $query->where(function (Builder $nested) use ($pattern) {
-            foreach (['name', 'username', 'email'] as $column) {
+        $exactEmail = filter_var($term, FILTER_VALIDATE_EMAIL) !== false
+            ? mb_strtolower($term)
+            : null;
+
+        $query->where(function (Builder $nested) use ($pattern, $exactEmail) {
+            foreach (['name', 'username'] as $column) {
                 $nested->orWhereRaw("LOWER({$column}) LIKE ? ESCAPE '!'", [$pattern]);
+            }
+            if ($exactEmail !== null) {
+                $nested->orWhereRaw('LOWER(email) = ?', [$exactEmail]);
             }
         });
     }
 
-    private function serializeUser(User $user): array
+    private function serializeUser(User $user, ?int $actorId = null): array
     {
         return [
             'id' => (int) $user->user_id,
             'name' => $user->name,
             'username' => $user->username,
-            'email' => $user->email,
+            'email' => $actorId !== null && (int) $user->user_id === $actorId
+                ? $user->email
+                : Mask::email($user->email),
             'role' => $user->role,
             'permissions' => $user->role === 'staff' ? ($user->permissions ?? config('user_access.presets.staff')) : [],
             'mfa_enabled' => $user->hasMfaEnabled(),

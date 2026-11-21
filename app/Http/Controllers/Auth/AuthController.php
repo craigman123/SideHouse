@@ -74,12 +74,12 @@ class AuthController extends Controller
 
         if ($request->expectsJson()) {
             return response()->json([
-                'redirect' => route('user.dashboard', absolute: false),
+                'redirect' => $this->homePath($user),
                 'message'  => 'Logged in successfully!',
             ]);
         }
 
-        return redirect()->route('user.dashboard')->with('success', 'Logged in successfully!');
+        return redirect($this->homePath($user))->with('success', 'Logged in successfully!');
     }
 
     public function showRegister()
@@ -175,9 +175,7 @@ class AuthController extends Controller
 
         return response()->json([
             'message'  => $isNewAccount ? 'Account created! Welcome to Side House.' : 'Logged in successfully!',
-            // Until the staff pages are added in Stage C, staff remain able
-            // to use the customer area, with MFA enforced by its route group.
-            'redirect' => $user->isAdmin() ? route('admin.dashboard', absolute: false) : route('user.dashboard', absolute: false),
+            'redirect' => $this->homePath($user),
         ]);
     }
 
@@ -217,6 +215,16 @@ class AuthController extends Controller
         $user->forceFill(['last_login_at' => now()])->save();
         $user->refresh();
         EnsureAccessVersion::stamp($request, $user);
+    }
+
+    private function homePath(User $user): string
+    {
+        return match ($user->role) {
+            'owner' => route('owner.dashboard', absolute: false),
+            'admin' => route('admin.dashboard', absolute: false),
+            'staff' => route('staff.dashboard', absolute: false),
+            default => route('user.dashboard', absolute: false),
+        };
     }
 
     public function logout(Request $request)

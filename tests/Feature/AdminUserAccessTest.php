@@ -51,6 +51,58 @@ class AdminUserAccessTest extends TestCase
         }
     }
 
+    public function test_user_access_page_and_sidebar_are_available_only_to_owners_and_admins(): void
+    {
+        foreach (['owner', 'admin'] as $role) {
+            $user = $this->makeUser($role);
+            if ($role === 'owner') {
+                $this->signedIn($user)->get('/admin/user-access')->assertRedirect(route('owner.user-access'));
+                $response = $this->get('/owner/user-access')->assertOk();
+            } else {
+                $response = $this->signedIn($user)->get('/admin/user-access')->assertOk();
+                $response->assertSee(route('admin.user-access.page'));
+            }
+            $response->assertSee('User access')->assertSee('user-access.css')->assertSee('shared/user-access.js');
+        }
+
+        foreach (['staff', 'user'] as $role) {
+            $this->signedIn($this->makeUser($role))->get('/admin/user-access')->assertForbidden();
+            $this->getJson('/admin/users')->assertForbidden();
+        }
+    }
+
+    public function test_page_explains_how_to_bootstrap_the_first_owner(): void
+    {
+        $admin = $this->makeUser('admin');
+        $response = $this->signedIn($admin)->get('/admin/user-access')->assertOk();
+
+        $response->assertSee('data-owner-exists="false"', false)
+            ->assertSee('No owner account has been set.')
+            ->assertSee('php artisan users:make-owner &lt;email&gt;', false);
+    }
+
+    public function test_elevated_account_list_uses_search_and_role_filters_and_never_returns_customers(): void
+    {
+        $admin = $this->makeUser('admin');
+        $this->makeUser('owner', null, ['name' => 'A Owner']);
+        $this->makeUser('staff', ['bookings.view'], ['name' => 'Searchable Staff']);
+        $this->makeUser('admin', null, ['name' => 'Searchable Admin']);
+        $this->makeUser('user', null, ['name' => 'Searchable Customer']);
+
+        $all = $this->signedIn($admin)->getJson('/admin/users')->assertOk()->json('users');
+        $this->assertCount(4, $all);
+        $this->assertNotContains('user', array_column($all, 'role'));
+
+        $staff = $this->getJson('/admin/users?q=searchable&role=staff')->assertOk()->json('users');
+        $this->assertCount(1, $staff);
+        $this->assertSame('Searchable Staff', $staff[0]['name']);
+        $this->assertSame('staff', $staff[0]['role']);
+
+        $admins = $this->getJson('/admin/users?q=searchable&role=admin')->assertOk()->json('users');
+        $this->assertCount(1, $admins);
+        $this->assertSame('Searchable Admin', $admins[0]['name']);
+    }
+
     public function test_permission_middleware_reads_each_roles_current_permissions(): void
     {
         Route::middleware(['web', 'auth', 'can.access:bookings.view'])
@@ -111,7 +163,7 @@ class AdminUserAccessTest extends TestCase
         $this->assertSame(1, User::where('role', 'owner')->count());
     }
 
-    public function test_only_role_user_accounts_can_be_promoted_and_staff_default_to_all_five_permissions(): void
+    public function test_only_role_user_accounts_can_be_promoted_and_staff_default_to_the_staff_preset(): void
     {
         $admin = $this->makeUser('admin');
         $customer = $this->makeUser();
@@ -121,7 +173,11 @@ class AdminUserAccessTest extends TestCase
 
         $staff = $customer->fresh();
         $this->assertSame(config('user_access.staff_permissions'), $staff->permissions);
+        $this->assertContains('activity_logs.view', $staff->permissions);
         $this->assertSame(2, (int) $staff->access_version);
+
+        $page = $this->signedIn($admin)->get('/admin/user-access')->assertOk();
+        $page->assertSee('activity_logs.view')->assertSee('View activity logs');
 
         $this->signedIn($admin)->postJson('/admin/users', [
             'user_id' => $staff->user_id, 'role' => 'admin', 'password' => 'password',
@@ -154,6 +210,65 @@ class AdminUserAccessTest extends TestCase
             $response = $this->getJson('/admin/users/candidates?q=searchable');
         }
         $response->assertTooManyRequests();
+    }
+
+    public function test_other_people_emails_are_masked_in_every_user_access_json_response(): void
+    {
+        $admin = $this->makeUser('admin', null, ['email' => 'access-admin@example.test']);
+        $target = $this->makeUser('user', null, [
+            'name' => 'Private Person', 'username' => 'private-person', 'email' => 'private.person@example.test',
+        ]);
+
+        $list = $this->signedIn($admin)->getJson('/admin/users')->assertOk();
+        self::assertStringNotContainsString($target->email, $list->getContent());
+        self::assertSame($admin->email, collect($list->json('users'))->firstWhere('id', $admin->user_id)['email']);
+        $page = $this->get('/admin/user-access')->assertOk();
+        self::assertStringNotContainsString($target->email, $page->getContent());
+
+        $candidate = $this->getJson('/admin/users/candidates?q=Private+Person')->assertOk();
+        self::assertStringNotContainsString($target->email, $candidate->getContent());
+        self::assertSame('pri******@example.test', $candidate->json('candidates.0.email'));
+
+        $promote = $this->postJson('/admin/users', [
+            'user_id' => $target->user_id, 'role' => 'staff', 'permissions' => ['bookings.view'], 'password' => 'password',
+        ])->assertCreated();
+        self::assertStringNotContainsString($target->email, $promote->getContent());
+
+        $update = $this->patchJson("/admin/users/{$target->user_id}", [
+            'role' => 'staff', 'permissions' => ['bookings.view'], 'password' => 'password',
+        ])->assertOk();
+        self::assertStringNotContainsString($target->email, $update->getContent());
+
+        $remove = $this->postJson("/admin/users/{$target->user_id}/remove-access", ['password' => 'password'])->assertOk();
+        self::assertStringNotContainsString($target->email, $remove->getContent());
+        foreach (\App\Models\ActivityLog::query()->pluck('description') as $description) {
+            self::assertStringNotContainsString($target->email, (string) $description);
+        }
+    }
+
+    public function test_email_search_requires_an_exact_address_and_is_case_insensitive(): void
+    {
+        $admin = $this->makeUser('admin', null, ['email' => 'search-admin@example.test']);
+        $target = $this->makeUser('staff', ['bookings.view'], [
+            'name' => 'Another Staff', 'username' => 'staff-with-private-email', 'email' => 'specific.person@example.test',
+        ]);
+        $candidateTarget = $this->makeUser('user', null, [
+            'name' => 'Customer Candidate', 'username' => 'email-candidate', 'email' => 'candidate.address@example.test',
+        ]);
+        $this->signedIn($admin);
+
+        $partial = $this->getJson('/admin/users?q=specific.person')->assertOk();
+        self::assertNotContains($target->user_id, array_column($partial->json('users'), 'id'));
+
+        $exact = $this->getJson('/admin/users?q=SPECIFIC.PERSON@EXAMPLE.TEST')->assertOk();
+        self::assertSame($target->user_id, $exact->json('users.0.id'));
+        self::assertStringNotContainsString($target->email, $exact->getContent());
+
+        $partialCandidate = $this->getJson('/admin/users/candidates?q=candidate.address')->assertOk();
+        self::assertSame([], $partialCandidate->json('candidates'));
+        $candidate = $this->getJson('/admin/users/candidates?q=CANDIDATE.ADDRESS@EXAMPLE.TEST')->assertOk();
+        self::assertSame($candidateTarget->user_id, $candidate->json('candidates.0.id'));
+        self::assertStringNotContainsString($candidateTarget->email, $candidate->getContent());
     }
 
     public function test_access_version_change_logs_out_an_existing_session(): void

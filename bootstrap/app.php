@@ -33,6 +33,10 @@ return Application::configure(basePath: dirname(__DIR__))
             'admin'       => \App\Http\Middleware\EnsureUserIsAdmin::class,
             'admin.mfa'   => \App\Http\Middleware\EnsureAdminMfa::class,
             'can.access'  => \App\Http\Middleware\EnsurePermission::class,
+            'staff'       => \App\Http\Middleware\EnsureUserIsStaff::class,
+            'staff.redact' => \App\Http\Middleware\RedactStaffFinancialData::class,
+            'owner.only' => \App\Http\Middleware\EnsureUserIsOwner::class,
+            'owner.page.redirect' => \App\Http\Middleware\RedirectOwnerFromAdminPage::class,
         ]);
 
         $middleware->trustProxies(

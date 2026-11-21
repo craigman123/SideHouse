@@ -1,0 +1,7 @@
+.staff-layout-shell .admin-bookings-page { min-width: 0; }
+.staff-layout-shell .filters-panel,
+.staff-layout-shell .bookings-table-panel { border-color: var(--border); background: var(--surface); color: var(--text); }
+.staff-layout-shell .filters-panel :where(label, th, td, p),
+.staff-layout-shell .bookings-table-panel :where(th, td, p) { color: var(--text); }
+.staff-layout-shell .filters-panel :where(input, select) { border-color: var(--border); background: var(--surface-2); color: var(--text); }
+.staff-layout-shell [data-permission][hidden] { display: none !important; }

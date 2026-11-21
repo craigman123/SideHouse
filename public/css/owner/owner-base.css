@@ -1,0 +1,378 @@
+html.owner-layout-shell :is(button, a, input, select, textarea):focus-visible {
+    outline: 2px solid var(--brand);
+    outline-offset: 2px;
+}
+
+html.owner-layout-shell :is(input:not([type="hidden"]), select, textarea) {
+    box-sizing: border-box;
+    min-height: 48px;
+    padding: var(--s2) var(--s3);
+    border: 1px solid var(--text-muted);
+    border-radius: var(--r-md);
+    background: var(--surface-2);
+    color: var(--text);
+    font-family: var(--font-family);
+    font-size: var(--font-size-body);
+}
+
+html.owner-layout-shell :is(input:not([type="hidden"]), select, textarea)::placeholder {
+    color: var(--text-muted);
+    opacity: 1;
+}
+
+html.owner-layout-shell :is(input:not([type="hidden"]), select, textarea):focus {
+    border-color: var(--brand);
+}
+
+html.owner-layout-shell .btn-primary,
+html.owner-layout-shell .btn-primary-sm {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    padding: var(--s2) var(--s4);
+    border: 1px solid var(--brand);
+    border-radius: var(--r-pill);
+    background: var(--brand);
+    color: var(--on-brand, var(--text));
+    font-family: var(--font-family);
+    font-size: var(--font-size-button);
+    font-weight: var(--font-weight-button);
+    text-decoration: none;
+    cursor: pointer;
+}
+
+html.owner-layout-shell .btn-primary:hover,
+html.owner-layout-shell .btn-primary-sm:hover {
+    border-color: var(--brand-hover);
+    background: var(--brand-hover);
+}
+
+html.owner-layout-shell .btn-secondary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    padding: var(--s2) var(--s4);
+    border: 1px solid var(--text-muted);
+    border-radius: var(--r-pill);
+    background: transparent;
+    color: var(--text);
+    font-family: var(--font-family);
+    font-size: var(--font-size-button);
+    font-weight: var(--font-weight-button);
+    text-decoration: none;
+    cursor: pointer;
+}
+
+html.owner-layout-shell .btn-secondary:hover {
+    border-color: var(--brand);
+    background: var(--surface-2);
+}
+
+html.owner-layout-shell .btn-danger,
+html.owner-layout-shell .btn-delete,
+html.owner-layout-shell .equip-delete-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    padding: var(--s2) var(--s4);
+    border: 1px solid var(--danger);
+    border-radius: var(--r-pill);
+    background: transparent;
+    color: var(--danger);
+    font-family: var(--font-family);
+    font-size: var(--font-size-button);
+    font-weight: var(--font-weight-button);
+    text-decoration: none;
+    cursor: pointer;
+}
+
+html.owner-layout-shell .btn-danger:hover,
+html.owner-layout-shell .btn-delete:hover,
+html.owner-layout-shell .equip-delete-btn:hover {
+    background: var(--danger);
+    color: var(--on-brand, var(--text));
+}
+
+html.owner-layout-shell .btn-icon,
+html.owner-layout-shell .equip-edit-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 44px;
+    min-height: 44px;
+    padding: var(--s2) var(--s3);
+    border: 1px solid var(--text-muted);
+    border-radius: var(--r-md);
+    background: transparent;
+    color: var(--text);
+    font-family: var(--font-family);
+    font-size: var(--font-size-small);
+    font-weight: var(--font-weight-button);
+    text-decoration: none;
+    cursor: pointer;
+}
+
+html.owner-layout-shell .btn-icon:hover,
+html.owner-layout-shell .equip-edit-btn:hover {
+    border-color: var(--brand);
+    color: var(--brand);
+}
+
+html.owner-layout-shell .actions-cell {
+    display: flex;
+    align-items: center;
+    gap: var(--s2);
+    white-space: nowrap;
+}
+
+html.owner-layout-shell :is(.admin-courts-page .panel, .equip-add-panel, .customers-table-wrap) {
+    min-width: 0;
+    border: 1px solid var(--text-muted);
+    border-radius: var(--r-lg);
+    background: var(--surface);
+    color: var(--text);
+}
+
+html.owner-layout-shell .admin-courts-page .panel {
+    padding: var(--s5);
+}
+
+html.owner-layout-shell .admin-courts-page .table-responsive,
+html.owner-layout-shell .equip-table-wrap,
+html.owner-layout-shell .customers-table-wrap {
+    box-sizing: border-box;
+    max-width: 100%;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scrollbar-color: var(--text-muted) var(--surface);
+    scrollbar-width: thin;
+}
+
+html.owner-layout-shell .admin-courts-page table,
+html.owner-layout-shell .equip-table,
+html.owner-layout-shell .customers-table {
+    border-collapse: collapse;
+    color: var(--text);
+}
+
+html.owner-layout-shell .admin-courts-page th,
+html.owner-layout-shell .admin-courts-page td,
+html.owner-layout-shell .equip-table th,
+html.owner-layout-shell .equip-table td,
+html.owner-layout-shell .customers-table th,
+html.owner-layout-shell .customers-table td {
+    padding: var(--s3) var(--s4);
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+    vertical-align: middle;
+}
+
+html.owner-layout-shell .admin-courts-page th,
+html.owner-layout-shell .equip-table th,
+html.owner-layout-shell .customers-table th {
+    position: sticky;
+    z-index: 1;
+    top: 0;
+    background: var(--surface-2);
+    color: var(--text-muted);
+    font-size: var(--font-size-small);
+    font-weight: var(--font-weight-button);
+    text-align: left;
+    text-transform: uppercase;
+}
+
+html.owner-layout-shell .admin-courts-page tbody tr:hover,
+html.owner-layout-shell .equip-table tbody tr:hover,
+html.owner-layout-shell .customers-table tbody tr:hover {
+    background: var(--surface-2);
+}
+
+html.owner-layout-shell .status,
+html.owner-layout-shell .equip-available-badge,
+html.owner-layout-shell .customer-type-pill {
+    display: inline-flex;
+    min-height: 28px;
+    align-items: center;
+    justify-content: center;
+    padding: var(--s1) var(--s3);
+    border: 1px solid currentColor;
+    border-radius: var(--r-pill);
+    font-size: var(--font-size-small);
+    font-weight: var(--font-weight-button);
+    line-height: 1.2;
+}
+
+html.owner-layout-shell .status-active,
+html.owner-layout-shell .status-paid,
+html.owner-layout-shell .equip-available-ok,
+html.owner-layout-shell .type-registered {
+    background: color-mix(in srgb, var(--brand) 14%, var(--surface));
+    color: var(--brand-hover);
+}
+
+html.owner-layout-shell .status-maintenance,
+html.owner-layout-shell .status-pending,
+html.owner-layout-shell .equip-available-low,
+html.owner-layout-shell .type-guest {
+    background: color-mix(in srgb, var(--warning) 14%, var(--surface));
+    color: var(--warning);
+}
+
+html.owner-layout-shell .status-inactive,
+html.owner-layout-shell .equip-available-none,
+html.owner-layout-shell .status-cancelled {
+    background: color-mix(in srgb, var(--danger) 14%, var(--surface));
+    color: var(--danger);
+}
+
+html.owner-layout-shell .modal-overlay {
+    position: fixed;
+    z-index: 1000;
+    inset: 0;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: var(--s4);
+    background: color-mix(in srgb, var(--bg) 70%, transparent);
+}
+
+html[data-theme="light"].owner-layout-shell .modal-overlay {
+    background: color-mix(in srgb, var(--text) 65%, transparent);
+}
+
+html.owner-layout-shell .modal-overlay.open {
+    display: flex;
+}
+
+html.owner-layout-shell .modal-overlay[hidden] {
+    display: none;
+}
+
+html.owner-layout-shell .modal-box,
+html.owner-layout-shell .equip-modal {
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 520px;
+    max-height: calc(100vh - 2 * var(--s4));
+    max-height: calc(100dvh - 2 * var(--s4));
+    overflow-y: auto;
+    padding: var(--s5);
+    border: 1px solid var(--text-muted);
+    border-radius: var(--r-lg);
+    background: var(--surface);
+    color: var(--text);
+}
+
+html.owner-layout-shell .modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--s3);
+    margin-bottom: var(--s4);
+    padding-bottom: var(--s3);
+    border-bottom: 1px solid var(--border);
+}
+
+html.owner-layout-shell .modal-header h3,
+html.owner-layout-shell .equip-modal-title {
+    margin: 0;
+    color: var(--text);
+    font-size: var(--font-size-h3);
+}
+
+html.owner-layout-shell .modal-close,
+html.owner-layout-shell .equip-modal-close {
+    display: inline-flex;
+    flex: 0 0 44px;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    min-width: 44px;
+    min-height: 44px;
+    padding: 0;
+    border: 1px solid var(--text-muted);
+    border-radius: var(--r-md);
+    background: transparent;
+    color: var(--text);
+    cursor: pointer;
+}
+
+html.owner-layout-shell .modal-close:hover,
+html.owner-layout-shell .equip-modal-close:hover {
+    border-color: var(--danger);
+    color: var(--danger);
+}
+
+html.owner-layout-shell .modal-actions,
+html.owner-layout-shell .equip-form-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: var(--s3);
+}
+
+html.owner-layout-shell :is(.field-error, .error-text, .equip-field-error, .equip-error, .customers-error) {
+    color: var(--danger);
+}
+
+html.owner-layout-shell .toast-container {
+    position: fixed;
+    z-index: 1200;
+    top: var(--s4);
+    right: var(--s4);
+    display: flex;
+    flex-direction: column;
+    gap: var(--s3);
+    max-width: min(420px, calc(100vw - 2 * var(--s4)));
+}
+
+html.owner-layout-shell .toast {
+    display: flex;
+    align-items: center;
+    gap: var(--s3);
+    padding: var(--s3) var(--s4);
+    border: 1px solid var(--text-muted);
+    border-left: var(--s1) solid var(--brand);
+    border-radius: var(--r-md);
+    background: var(--surface);
+    color: var(--text);
+}
+
+html.owner-layout-shell .toast-error {
+    border-left-color: var(--danger);
+}
+
+html.owner-layout-shell .toast-close {
+    min-width: 44px;
+    min-height: 44px;
+    border: 0;
+    background: transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+}
+
+html.owner-layout-shell .toast-close:hover {
+    color: var(--text);
+}
+
+@media (max-width: 767px) {
+    html.owner-layout-shell .modal-actions,
+    html.owner-layout-shell .equip-form-actions {
+        flex-direction: column-reverse;
+        align-items: stretch;
+    }
+
+    html.owner-layout-shell .modal-actions > button,
+    html.owner-layout-shell .equip-form-actions > button {
+        width: 100%;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    html.owner-layout-shell .toast {
+        transition: none;
+    }
+}

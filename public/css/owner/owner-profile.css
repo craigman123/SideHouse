@@ -1,0 +1,286 @@
+html.owner-layout-shell .profile-page {
+    display: grid;
+    justify-items: center;
+    gap: var(--s5);
+    width: 100%;
+    min-width: 0;
+    padding: var(--s2);
+}
+
+html.owner-layout-shell .profile-card,
+html.owner-layout-shell .danger-zone {
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 840px;
+    min-width: 0;
+    padding: var(--s5);
+    border: 1px solid var(--text-muted);
+    border-radius: var(--r-lg);
+    background: var(--surface);
+    color: var(--text);
+}
+
+html.owner-layout-shell .profile-card {
+    border-top: var(--s1) solid var(--brand);
+}
+
+html.owner-layout-shell .profile-header {
+    display: flex;
+    align-items: center;
+    gap: var(--s4);
+    min-width: 0;
+    margin-bottom: var(--s5);
+    padding-bottom: var(--s4);
+    border-bottom: 1px solid var(--border);
+}
+
+html.owner-layout-shell .profile-avatar-lg {
+    display: flex;
+    flex: 0 0 72px;
+    align-items: center;
+    justify-content: center;
+    width: 72px;
+    height: 72px;
+    border: 1px solid var(--brand-hover);
+    border-radius: 50%;
+    background: var(--surface-2);
+    color: var(--brand-hover);
+    font-size: var(--font-size-h2);
+    font-weight: var(--font-weight-h2);
+}
+
+html.owner-layout-shell .profile-header > div:nth-child(2) {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+html.owner-layout-shell .profile-header h2 {
+    margin: 0 0 var(--s1);
+    color: var(--text);
+    font-size: var(--font-size-h2);
+    font-weight: var(--font-weight-h2);
+    overflow-wrap: anywhere;
+}
+
+html.owner-layout-shell .profile-email-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--s2);
+    color: var(--text-muted);
+    font-size: var(--font-size-small);
+    overflow-wrap: anywhere;
+}
+
+html.owner-layout-shell .verify-badge,
+html.owner-layout-shell .admin-role-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 28px;
+    padding: var(--s1) var(--s3);
+    border: 1px solid currentColor;
+    border-radius: var(--r-pill);
+    font-size: var(--font-size-small);
+    font-weight: var(--font-weight-button);
+}
+
+html.owner-layout-shell .verify-badge-yes,
+html.owner-layout-shell .admin-role-badge {
+    background: color-mix(in srgb, var(--brand) 14%, var(--surface));
+    color: var(--brand-hover);
+}
+
+html.owner-layout-shell .verify-badge-no {
+    background: color-mix(in srgb, var(--warning) 14%, var(--surface));
+    color: var(--warning);
+}
+
+html.owner-layout-shell .admin-role-badge {
+    margin-top: var(--s2);
+}
+
+html.owner-layout-shell .logout-form {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    margin-left: auto;
+}
+
+html.owner-layout-shell .profile-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--s4);
+}
+
+html.owner-layout-shell .profile-item {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    gap: var(--s2);
+}
+
+html.owner-layout-shell .profile-item label {
+    color: var(--text-muted);
+    font-size: var(--font-size-small);
+    font-weight: var(--font-weight-button);
+}
+
+html.owner-layout-shell .profile-item input {
+    width: 100%;
+    min-height: 48px;
+    padding: var(--s3);
+    border: 1px solid var(--text-muted);
+    border-radius: var(--r-md);
+    background: var(--surface-2);
+    color: var(--text);
+    font-family: var(--font-family);
+    font-size: var(--font-size-body);
+    font-weight: var(--font-weight-small);
+}
+
+html.owner-layout-shell .profile-item input:read-only:not(:disabled) {
+    color: var(--text);
+}
+
+html.owner-layout-shell .profile-item input:disabled {
+    color: var(--text-muted);
+    cursor: not-allowed;
+}
+
+html.owner-layout-shell .profile-item input.editable {
+    border-color: var(--brand);
+    background: var(--surface-2);
+}
+
+html.owner-layout-shell .profile-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--s3);
+    margin-top: var(--s5);
+}
+
+html.owner-layout-shell .profile-actions .btn,
+html.owner-layout-shell .logout-form .btn,
+html.owner-layout-shell .danger-zone .btn {
+    min-height: 44px;
+    margin: 0;
+}
+
+html.owner-layout-shell .profile-page .btn-primary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    padding: var(--s2) var(--s4);
+    border: 1px solid var(--brand);
+    border-radius: var(--r-pill);
+    background: var(--brand);
+    color: var(--bg);
+    font-family: var(--font-family);
+    font-size: var(--font-size-button);
+    font-weight: var(--font-weight-button);
+    cursor: pointer;
+}
+
+html.owner-layout-shell .profile-page .btn-primary:hover {
+    border-color: var(--brand-hover);
+    background: var(--brand-hover);
+    color: var(--bg);
+}
+
+html.owner-layout-shell .profile-page .delete-confirm-input {
+    width: 100%;
+    min-height: 48px;
+    margin: var(--s1) 0;
+    padding: var(--s3);
+    border: 1px solid var(--text-muted);
+    border-radius: var(--r-md);
+    background: var(--surface-2);
+    color: var(--text);
+    font-family: var(--font-family);
+    font-size: var(--font-size-body);
+}
+
+html.owner-layout-shell .profile-page .delete-confirm-input:focus {
+    border-color: var(--danger);
+}
+
+html.owner-layout-shell .profile-page .danger-zone {
+    border-top: var(--s1) solid var(--danger);
+}
+
+html.owner-layout-shell .danger-zone-title {
+    margin: 0 0 var(--s4);
+    color: var(--danger);
+    font-size: var(--font-size-h3);
+}
+
+html.owner-layout-shell .danger-zone-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--s4);
+}
+
+html.owner-layout-shell .danger-zone-label {
+    margin: 0 0 var(--s1);
+    color: var(--text);
+    font-size: var(--font-size-body);
+    font-weight: var(--font-weight-button);
+}
+
+html.owner-layout-shell .danger-zone-sub {
+    margin: 0;
+    color: var(--text-muted);
+    font-size: var(--font-size-small);
+    line-height: var(--line-height-body);
+}
+
+@media (max-width: 700px) {
+    html.owner-layout-shell .profile-grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
+@media (max-width: 560px) {
+    html.owner-layout-shell .profile-page {
+        padding: 0;
+    }
+
+    html.owner-layout-shell .profile-card,
+    html.owner-layout-shell .danger-zone {
+        padding: var(--s4);
+    }
+
+    html.owner-layout-shell .profile-header {
+        flex-wrap: wrap;
+    }
+
+    html.owner-layout-shell .profile-avatar-lg {
+        flex-basis: 56px;
+        width: 56px;
+        height: 56px;
+        font-size: var(--font-size-h3);
+    }
+
+    html.owner-layout-shell .logout-form {
+        width: 100%;
+        margin-left: 0;
+    }
+
+    html.owner-layout-shell .logout-form .btn {
+        width: 100%;
+    }
+
+    html.owner-layout-shell .profile-actions,
+    html.owner-layout-shell .danger-zone-row {
+        flex-direction: column-reverse;
+        align-items: stretch;
+    }
+
+    html.owner-layout-shell .profile-actions .btn,
+    html.owner-layout-shell .danger-zone-row .btn {
+        width: 100%;
+    }
+}

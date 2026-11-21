@@ -1,0 +1,346 @@
+html.owner-layout-shell .customers-page {
+    display: flex;
+    max-width: 1440px;
+    min-width: 0;
+    flex-direction: column;
+    gap: var(--s4);
+    margin-inline: auto;
+    color: var(--text);
+}
+
+html.owner-layout-shell .customers-header {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: var(--s4);
+}
+
+html.owner-layout-shell .customers-toolbar {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    gap: var(--s3);
+}
+
+html.owner-layout-shell .customers-type-filter {
+    display: flex;
+    min-width: 0;
+    align-items: stretch;
+    gap: 2px;
+    padding: 3px;
+    border: 1px solid var(--border);
+    border-radius: var(--r-md);
+    background: var(--surface-2);
+}
+
+html.owner-layout-shell .customers-type-option {
+    display: inline-flex;
+    min-width: 0;
+    min-height: 44px;
+    align-items: center;
+    justify-content: center;
+    gap: var(--s1);
+    padding: var(--s2) var(--s3);
+    border: 1px solid transparent;
+    border-radius: var(--r-sm);
+    background: transparent;
+    color: var(--text-muted);
+    font: var(--font-weight-small) var(--font-size-small)/1.2 var(--font-family);
+    cursor: pointer;
+}
+
+html.owner-layout-shell .customers-type-option[data-customer-type="registered"] { color: var(--brand-hover); }
+html.owner-layout-shell .customers-type-option[data-customer-type="guest"] { color: var(--text-muted); }
+html.owner-layout-shell .customers-type-option[data-customer-type="all"] { color: var(--text); }
+html.owner-layout-shell .customers-type-option[data-customer-type="registered"].is-active {
+    border-color: var(--brand-hover);
+    background: color-mix(in srgb, var(--brand) 14%, var(--surface));
+}
+html.owner-layout-shell .customers-type-option[data-customer-type="guest"].is-active {
+    border-color: var(--text-muted);
+    background: var(--surface);
+}
+html.owner-layout-shell .customers-type-option[data-customer-type="all"].is-active {
+    border-color: var(--brand);
+    background: color-mix(in srgb, var(--brand) 14%, var(--surface));
+    color: var(--brand-hover);
+}
+html.owner-layout-shell .customers-type-count { white-space: nowrap; font-variant-numeric: tabular-nums; }
+html.owner-layout-shell .customers-type-option:focus-visible,
+html.owner-layout-shell .customers-clear-filters:focus-visible {
+    outline: 2px solid var(--brand);
+    outline-offset: 2px;
+}
+
+html.owner-layout-shell .customers-subtitle {
+    margin: 0;
+    color: var(--text-muted);
+    font-size: var(--font-size-body);
+    line-height: var(--line-height-body);
+}
+
+html.owner-layout-shell .customers-search-wrap {
+    flex: 1 1 280px;
+    min-width: min(100%, 240px);
+}
+
+html.owner-layout-shell .customers-search-input {
+    width: 100%;
+    min-height: 48px;
+}
+
+html.owner-layout-shell .customers-table-wrap {
+    padding: var(--s2);
+    border: 1px solid transparent;
+    border-radius: var(--r-lg);
+    background-image: linear-gradient(var(--surface), var(--surface)), var(--brand-grad);
+    background-origin: border-box;
+    background-clip: padding-box, border-box;
+}
+
+html.owner-layout-shell .customers-table {
+    width: 100%;
+    min-width: 820px;
+    table-layout: auto;
+}
+
+html.owner-layout-shell .customers-table th,
+html.owner-layout-shell .customers-table td {
+    padding: var(--s3) var(--s4);
+    border-bottom: 1px solid var(--border);
+    text-align: left;
+    vertical-align: middle;
+}
+
+html.owner-layout-shell .customers-table thead th {
+    font-size: var(--font-size-small);
+    font-weight: var(--font-weight-button);
+}
+
+html.owner-layout-shell .customers-table tbody tr {
+    cursor: pointer;
+    transition: background-color 160ms ease;
+}
+
+html.owner-layout-shell .customers-table tbody tr:hover {
+    background: var(--surface-2);
+}
+
+html.owner-layout-shell .customers-table .col-rank {
+    width: 48px;
+    color: var(--text-muted);
+    font-weight: var(--font-weight-button);
+}
+
+html.owner-layout-shell .customers-table .col-num {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+html.owner-layout-shell .customers-table .col-type {
+    width: 132px;
+}
+
+html.owner-layout-shell .customer-name-cell,
+html.owner-layout-shell .customer-contact-cell {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: var(--s1);
+}
+
+html.owner-layout-shell .customer-name-cell .name {
+    color: var(--text);
+    font-weight: var(--font-weight-button);
+    overflow-wrap: anywhere;
+}
+
+html.owner-layout-shell .customer-contact-cell {
+    color: var(--text-muted);
+    font-size: var(--font-size-small);
+    overflow-wrap: anywhere;
+}
+
+html.owner-layout-shell .customer-type-pill {
+    min-height: 28px;
+    text-transform: capitalize;
+}
+
+html.owner-layout-shell .customer-type-pill.type-registered {
+    background: color-mix(in srgb, var(--brand) 14%, var(--surface));
+    color: var(--brand-hover);
+}
+
+html.owner-layout-shell .customer-type-pill.type-guest {
+    background: var(--surface-2);
+    color: var(--text-muted);
+}
+
+html.owner-layout-shell .customers-empty,
+html.owner-layout-shell .customers-error {
+    margin: 0;
+    padding: var(--s5);
+    color: var(--text-muted);
+    text-align: center;
+}
+
+html.owner-layout-shell .customers-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--s3);
+}
+
+html.owner-layout-shell .customers-empty[hidden] { display: none; }
+html.owner-layout-shell .customers-empty p { margin: 0; }
+html.owner-layout-shell .customers-clear-filters {
+    min-height: 44px;
+    padding: var(--s2) var(--s4);
+    border: 1px solid var(--brand);
+    border-radius: var(--r-pill);
+    background: transparent;
+    color: var(--text);
+    font: var(--font-weight-button) var(--font-size-small)/1.2 var(--font-family);
+    cursor: pointer;
+}
+html.owner-layout-shell .customers-clear-filters:hover { background: color-mix(in srgb, var(--brand) 12%, transparent); }
+
+html.owner-layout-shell .customers-error {
+    color: var(--danger);
+}
+
+html.owner-layout-shell .customers-empty[hidden],
+html.owner-layout-shell .customers-error[hidden] {
+    display: none;
+}
+
+html.owner-layout-shell .customers-skeleton-row td {
+    padding-block: var(--s4);
+}
+
+html.owner-layout-shell .customers-skeleton-row .skeleton {
+    display: block;
+    width: 100%;
+    height: var(--s3);
+    border-radius: var(--r-sm);
+    background: linear-gradient(90deg, var(--surface-2) 25%, var(--text-muted) 37%, var(--surface-2) 63%);
+    background-size: 400% 100%;
+    animation: admin-customer-skeleton-shimmer 1.4s ease infinite;
+}
+
+html.owner-layout-shell .customers-page:not(.is-loading) .customers-skeleton-row {
+    display: none;
+}
+
+@keyframes admin-customer-skeleton-shimmer {
+    0% { background-position: 100% 50%; }
+    100% { background-position: 0 50%; }
+}
+
+html.owner-layout-shell #customerBookingsModal:not([hidden]) {
+    display: flex;
+}
+
+html.owner-layout-shell #customerBookingsModal .modal-box {
+    max-width: 600px;
+}
+
+html.owner-layout-shell #customerBookingsModal .modal-header {
+    flex: 0 0 auto;
+}
+
+html.owner-layout-shell #customerBookingsModal .modal-body {
+    min-height: 0;
+    padding-top: var(--s3);
+    overflow-y: auto;
+}
+
+html.owner-layout-shell .customer-bookings-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--s3);
+}
+
+html.owner-layout-shell .customer-booking-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--s4);
+    padding: var(--s3);
+    border: 1px solid var(--text-muted);
+    border-radius: var(--r-md);
+    background: var(--surface-2);
+}
+
+html.owner-layout-shell .customer-booking-main,
+html.owner-layout-shell .customer-booking-side {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: var(--s1);
+}
+
+html.owner-layout-shell .customer-booking-court,
+html.owner-layout-shell .customer-booking-amount {
+    color: var(--text);
+    font-size: var(--font-size-body);
+    font-weight: var(--font-weight-button);
+}
+
+html.owner-layout-shell .customer-booking-datetime {
+    color: var(--text-muted);
+    font-size: var(--font-size-small);
+}
+
+html.owner-layout-shell .customer-booking-side {
+    flex: 0 0 auto;
+    align-items: flex-end;
+}
+
+@media (max-width: 767px) {
+    html.owner-layout-shell .customers-header {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    html.owner-layout-shell .customers-toolbar {
+        width: 100%;
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    html.owner-layout-shell .customers-type-filter { width: 100%; box-sizing: border-box; }
+    html.owner-layout-shell .customers-type-option { flex: 1 1 0; padding-inline: var(--s2); }
+
+    html.owner-layout-shell .customers-search-wrap {
+        flex-basis: auto;
+        width: 100%;
+    }
+
+    html.owner-layout-shell .customers-table-wrap {
+        padding: var(--s1);
+    }
+
+    html.owner-layout-shell .customer-booking-row {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    html.owner-layout-shell .customer-booking-side {
+        align-items: flex-start;
+    }
+}
+
+@media (max-width: 400px) {
+    html.owner-layout-shell .customers-type-option { flex-direction: column; gap: 2px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    html.owner-layout-shell .customers-table tbody tr,
+    html.owner-layout-shell .customers-skeleton-row .skeleton {
+        animation: none;
+        transition: none;
+    }
+}

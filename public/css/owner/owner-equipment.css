@@ -1,0 +1,251 @@
+html.owner-layout-shell .equip-page {
+    display: flex;
+    max-width: 1440px;
+    min-width: 0;
+    flex-direction: column;
+    gap: var(--s5);
+    margin-inline: auto;
+    color: var(--text);
+}
+
+html.owner-layout-shell .equip-header {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: var(--s4);
+}
+
+html.owner-layout-shell .equip-title {
+    margin: 0;
+    color: var(--text);
+    font-size: var(--font-size-h2);
+    font-weight: var(--font-weight-h2);
+}
+
+html.owner-layout-shell .equip-subtitle {
+    max-width: 70ch;
+    margin: var(--s2) 0 0;
+    color: var(--text-muted);
+    font-size: var(--font-size-body);
+    line-height: var(--line-height-body);
+}
+
+html.owner-layout-shell .equip-date-wrap {
+    display: flex;
+    min-width: min(100%, 240px);
+    align-items: center;
+    gap: var(--s3);
+}
+
+html.owner-layout-shell .equip-date-label,
+html.owner-layout-shell .equip-field label {
+    color: var(--text-muted);
+    font-size: var(--font-size-small);
+    font-weight: var(--font-weight-small);
+}
+
+html.owner-layout-shell .equip-date-input {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+html.owner-layout-shell .equip-flash {
+    padding: var(--s3) var(--s4);
+    border: 1px solid var(--text-muted);
+    border-radius: var(--r-md);
+    background: var(--surface);
+    color: var(--text);
+}
+
+html.owner-layout-shell .equip-flash-success {
+    border-color: var(--brand);
+    color: var(--brand-hover);
+}
+
+html.owner-layout-shell .equip-flash-error {
+    border-color: var(--danger);
+    color: var(--danger);
+}
+
+html.owner-layout-shell .equip-add-panel {
+    padding: calc(var(--s4) - 15px) var(--s5);
+    border: 1px solid transparent;
+    border-radius: var(--r-lg);
+    background-image: linear-gradient(var(--surface), var(--surface)), var(--brand-grad);
+    background-origin: border-box;
+    background-clip: padding-box, border-box;
+}
+
+html.owner-layout-shell .equip-add-panel summary {
+    display: flex;
+    min-height: 44px;
+    align-items: center;
+    color: var(--brand-hover);
+    font-size: var(--font-size-body);
+    font-weight: var(--font-weight-button);
+    cursor: pointer;
+}
+
+html.owner-layout-shell .equip-add-panel summary:focus-visible {
+    outline: 2px solid var(--brand);
+    outline-offset: 2px;
+}
+
+html.owner-layout-shell .equip-add-form {
+    display: flex;
+    flex-direction: column;
+    gap: var(--s4);
+    margin-top: var(--s4);
+}
+
+html.owner-layout-shell .equip-field-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
+    gap: var(--s4);
+}
+
+html.owner-layout-shell .equip-field {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: var(--s2);
+}
+
+html.owner-layout-shell .equip-field-error {
+    color: var(--danger);
+    font-size: var(--font-size-small);
+}
+
+html.owner-layout-shell .equip-field :is(input, select):has(+ .equip-field-error:not(:empty)) {
+    border-color: var(--danger);
+}
+
+html.owner-layout-shell #equipEditForm:has(#equipEditError:not([hidden])) .equip-field-grid :is(input, select) {
+    border-color: var(--danger);
+}
+
+html.owner-layout-shell .equip-table-wrap {
+    padding: var(--s2);
+    border: 1px solid transparent;
+    border-radius: var(--r-lg);
+    background-image: linear-gradient(var(--surface), var(--surface)), var(--brand-grad);
+    background-origin: border-box;
+    background-clip: padding-box, border-box;
+}
+
+html.owner-layout-shell .equip-table {
+    width: 100%;
+    min-width: 760px;
+    font-size: var(--font-size-body);
+}
+
+html.owner-layout-shell .equip-table td {
+    overflow-wrap: anywhere;
+}
+
+html.owner-layout-shell .equip-item-name {
+    font-weight: var(--font-weight-button);
+}
+
+html.owner-layout-shell .equip-category-pill {
+    color: var(--text-muted);
+    font-size: var(--font-size-small);
+}
+
+html.owner-layout-shell .equip-available-badge {
+    min-width: 44px;
+    font-variant-numeric: tabular-nums;
+}
+
+html.owner-layout-shell .equip-table td:last-child {
+    display: flex;
+    align-items: center;
+    gap: var(--s2);
+}
+
+html.owner-layout-shell .equip-empty-note,
+html.owner-layout-shell .equip-error {
+    margin: var(--s4);
+    color: var(--text-muted);
+    text-align: center;
+}
+
+html.owner-layout-shell .equip-error {
+    color: var(--danger);
+}
+
+html.owner-layout-shell .equip-skeleton-row .skeleton {
+    display: block;
+    width: 100%;
+    min-width: var(--s7);
+    height: var(--s3);
+    border-radius: var(--r-sm);
+    background: linear-gradient(90deg, var(--surface-2) 25%, var(--text-muted) 37%, var(--surface-2) 63%);
+    background-size: 400% 100%;
+    animation: admin-equip-skeleton-shimmer 1.4s ease infinite;
+}
+
+@keyframes admin-equip-skeleton-shimmer {
+    0% { background-position: 100% 50%; }
+    100% { background-position: 0 50%; }
+}
+
+html.owner-layout-shell .equip-modal {
+    position: relative;
+    max-width: 560px;
+}
+
+html.owner-layout-shell .equip-modal-title {
+    margin: 0 0 var(--s4);
+}
+
+html.owner-layout-shell .equip-modal-close {
+    position: absolute;
+    top: var(--s3);
+    right: var(--s3);
+}
+
+html.owner-layout-shell .equip-modal-title + .equip-add-form {
+    padding-top: var(--s4);
+}
+
+html.owner-layout-shell #equipDeleteModal .equip-modal > p {
+    color: var(--text-muted);
+    line-height: var(--line-height-body);
+}
+
+html.owner-layout-shell #equipDeleteModal .equip-modal > p strong {
+    color: var(--text);
+}
+
+html.owner-layout-shell .equip-edit-btn,
+html.owner-layout-shell .equip-delete-btn {
+    min-width: 72px;
+}
+
+@media (max-width: 767px) {
+    html.owner-layout-shell .equip-header {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    html.owner-layout-shell .equip-date-wrap {
+        width: 100%;
+    }
+
+    html.owner-layout-shell .equip-add-panel {
+        padding: var(--s3) var(--s4);
+    }
+
+    html.owner-layout-shell .equip-table-wrap {
+        padding: var(--s1);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    html.owner-layout-shell .equip-skeleton-row .skeleton {
+        animation: none;
+        background: var(--surface-2);
+    }
+}

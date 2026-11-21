@@ -62,6 +62,12 @@
                 <svg class="sidebar-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
                 <span class="admin-nav-text">Customers</span>
             </a>
+            @if (auth()->user() && in_array(auth()->user()->role, ['owner', 'admin'], true) && app(\App\Services\UserAccessService::class)->allows(auth()->user(), 'user_access.manage'))
+                <a href="{{ route('admin.user-access.page') }}" class="{{ request()->routeIs('admin.user-access.*') ? 'active' : '' }}" aria-label="User access" title="User access">
+                    <svg class="sidebar-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="4"/><path d="M2 21v-1a7 7 0 0 1 14 0v1M19 8v6M16 11h6"/></svg>
+                    <span class="admin-nav-text">User access</span>
+                </a>
+            @endif
             <a href="{{ route('admin.announcements.index') }}" class="{{ request()->routeIs('admin.announcements.*') ? 'active' : '' }}" aria-label="Announcements" title="Announcements">
                 <svg class="sidebar-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 11 18-5-5 18-4-8-9-5Z"/><path d="M12 16 3 11m9 5 2-6"/></svg>
                 <span class="admin-nav-text">Announcements</span>
