@@ -2067,6 +2067,77 @@
         return `${startText} - ${endText}`;
     };
 
+    const icons = {
+        lock: '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/><path d="M12 14v3"/></svg>',
+        padel: '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M7 3c4-2 9 0 11 4s1 9-3 12-9 2-11-2S3 6 7 3Z"/><path d="m8 18-4 4"/><circle cx="8" cy="7" r=".7"/><circle cx="14" cy="6" r=".7"/><circle cx="16" cy="11" r=".7"/><circle cx="10" cy="13" r=".7"/><circle cx="7" cy="10" r=".7"/></svg>',
+        wrench: '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M14.5 6.5a5 5 0 0 0-6.6 6.6L3 18l3 3 4.9-4.9a5 5 0 0 0 6.6-6.6L14 13l-3-3 3.5-3.5Z"/></svg>',
+    };
+    workspace.querySelectorAll('[data-calendar-legend-icon]').forEach((legend) => {
+        const name = legend.dataset.calendarLegendIcon;
+        if (icons[name]) legend.insertAdjacentHTML('afterbegin', icons[name]);
+    });
+    const displayTime = (value) => {
+        const normalized = normalizeTime(value);
+        const [rawHour, rawMinute] = normalized.split(':').map(Number);
+        const minutes = rawHour * 60 + rawMinute;
+        const hour = Math.floor((minutes % 1440) / 60);
+        const minute = minutes % 60;
+        return { clock: `${hour % 12 || 12}:${String(minute).padStart(2, '0')}`, period: hour < 12 ? 'AM' : 'PM' };
+    };
+    const formatTimeRange = (start, end) => {
+        const from = displayTime(start);
+        const to = displayTime(end);
+        return `${from.clock} - ${to.clock}${from.period === to.period ? ` ${to.period}` : ` ${from.period} - ${to.period}`}`;
+    };
+    const courtNameFor = (item) => {
+        if (item.court_id == null) return 'All courts';
+        if (courts.length <= 1) return '';
+        return courts.find((court) => Number(court.id) === Number(item.court_id))?.name || item.court || `Court ${item.court_id}`;
+    };
+    const appendCalendarContent = (button, { icon, title, time, lines, fullInfo }) => {
+        const full = document.createElement('span');
+        full.className = 'calendar-item-full';
+        if (icon) full.insertAdjacentHTML('beforeend', icons[icon]);
+        const fullText = document.createElement('span');
+        fullText.className = 'calendar-item-copy';
+        lines.forEach((line, index) => {
+            const row = document.createElement('span');
+            row.className = index === 0 ? 'calendar-item-title' : 'calendar-item-line';
+            row.textContent = line;
+            fullText.append(row);
+        });
+        full.append(fullText);
+        button.append(full);
+
+        const compact = document.createElement('span');
+        compact.className = 'calendar-item-compact';
+        const compactHeading = document.createElement('span');
+        compactHeading.className = 'calendar-item-compact-heading';
+        if (icon) compactHeading.insertAdjacentHTML('beforeend', icons[icon]);
+        const compactTitle = document.createElement('span');
+        compactTitle.className = 'calendar-item-title';
+        compactTitle.textContent = title;
+        compactHeading.append(compactTitle);
+        compact.append(compactHeading);
+        const compactTime = document.createElement('span');
+        compactTime.className = 'calendar-item-time';
+        compactTime.textContent = time;
+        compact.append(compactTime);
+        button.append(compact);
+
+        const tiny = document.createElement('span');
+        tiny.className = 'calendar-item-tiny';
+        if (icon) tiny.insertAdjacentHTML('beforeend', icons[icon]);
+        const tinyTime = document.createElement('span');
+        const tinyStart = displayTime(time.split(' - ')[0]);
+        tinyTime.textContent = `${tinyStart.clock} ${tinyStart.period}`;
+        tiny.append(tinyTime);
+        button.append(tiny);
+        button.title = fullInfo;
+        button.setAttribute('aria-label', fullInfo);
+        return { fullText, compactHeading };
+    };
+
     const renderCalendarGrid = (startDate, dayCount, mode, targetGrid, changedDates = null) => {
         if (!startDate || !dayCount || !targetGrid) return;
         const baseDate = new Date(`${startDate}T00:00:00`);
@@ -2108,6 +2179,7 @@
             const d = new Date(`${dateStr}T00:00:00`);
             const dayNum = d.getDate();
             const weekday = d.toLocaleDateString('en-US', { weekday: 'short' });
+            const weekdayNarrow = new Intl.DateTimeFormat('en-PH', { weekday: 'narrow' }).format(d);
             const isToday = dateStr === todayValue;
 
             const cell = document.createElement('button');
@@ -2118,8 +2190,20 @@
             const monthTag = colIndex === 0 || dayNum === 1
                 ? ` <small>${d.toLocaleDateString('en-US', { month: 'short' })}</small>`
                 : '';
-            cell.innerHTML = `<strong>${dayNum}${mode === 'week' ? monthTag : ''}</strong><span>${weekday}</span>`;
-            cell.title = `Open ${formatDate(dateStr)} on the daily board`;
+            const dayNumber = document.createElement('strong');
+            dayNumber.className = 'court-month-day-number';
+            dayNumber.textContent = String(dayNum);
+            if (mode === 'week' && monthTag) dayNumber.insertAdjacentHTML('beforeend', monthTag);
+            const weekdayShort = document.createElement('span');
+            weekdayShort.className = 'court-month-weekday-short';
+            weekdayShort.textContent = weekday;
+            const weekdayLetter = document.createElement('span');
+            weekdayLetter.className = 'court-month-weekday-narrow';
+            weekdayLetter.textContent = weekdayNarrow;
+            cell.append(dayNumber, weekdayShort, weekdayLetter);
+            const accessibleDate = d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+            cell.title = accessibleDate;
+            cell.setAttribute('aria-label', accessibleDate);
             cell.addEventListener('click', () => jumpToDay(dateStr));
             header.append(cell);
         });
@@ -2276,25 +2360,31 @@
                     event.style.cssText = `top:${topPx}px;left:${mode === 'week' ? `calc(${laneLeft(lane)} + 2px)` : laneLeft(lane)};width:${mode === 'week' ? `calc(${laneWidth} - 4px)` : laneWidth};height:${heightPx}px;`;
                     const sessionCount = block.participant_count ?? block.attendee_count ?? block.players_count;
                     const sessionCapacity = block.capacity ?? block.max_participants ?? block.max_capacity;
-                    let blockLabel = block.title || block.type.replace('_', ' ');
-                    if (block.type === 'open_play' && sessionCount !== null && sessionCount !== undefined
-                        && sessionCapacity !== null && sessionCapacity !== undefined
-                        && Number.isFinite(Number(sessionCount)) && Number.isFinite(Number(sessionCapacity))) {
-                        blockLabel = `Open play ${Number(sessionCount)}/${Number(sessionCapacity)}`;
-                        if (block.is_full || block.status === 'full' || Number(sessionCount) >= Number(sessionCapacity)) blockLabel += ' · Full';
-                    } else if (block.type === 'open_play' && (block.is_full || block.status === 'full')) {
-                        blockLabel = `${blockLabel} · Full`;
+                    const type = block.type === 'closed' ? 'Closed' : block.type === 'maintenance' ? 'Maintenance' : 'Open play';
+                    const title = block.title || type;
+                    const time = formatTimeRange(block.start_time, block.end_time);
+                    const court = courtNameFor(block);
+                    const cancelled = block.status === 'cancelled' || block.cancelled_at;
+                    const fullSession = block.is_full || block.status === 'full' || (sessionCount != null && sessionCapacity != null && Number(sessionCount) >= Number(sessionCapacity));
+                    let statusLine = '';
+                    let price = '';
+                    if (block.type === 'open_play') {
+                        statusLine = cancelled ? 'Cancelled' : fullSession ? 'Full'
+                            : sessionCount != null && sessionCapacity != null
+                                ? `${Number(sessionCount)}/${Number(sessionCapacity)} joined`
+                                : block.joined_text || '';
+                        const perPlayer = block.price_per_player ?? block.price ?? block.amount_per_player;
+                        if (perPlayer != null && Number.isFinite(Number(perPlayer))) price = `₱${Number(perPlayer).toLocaleString('en-PH')}/player`;
                     }
-                    event.textContent = blockLabel;
-                    event.title = `${block.title || block.type} · ${block.start_time}–${block.end_time}`;
-                    event.setAttribute('aria-label', `${block.title || block.type}, ${block.type.replace('_', ' ')}, ${formatDate(block.block_date)}. Open event details.`);
+                    if (cancelled) event.classList.add('is-cancelled');
+                    const details = [type, title, formatDate(block.block_date), time, court, statusLine || block.status, price].filter(Boolean).join(' · ');
+                    appendCalendarContent(event, { icon: block.type === 'closed' ? 'lock' : block.type === 'maintenance' ? 'wrench' : 'padel', title, time, lines: [title, time, court, statusLine, price].filter(Boolean), fullInfo: details });
                     col.append(event);
                     return;
                 }
 
                 const colors = STATUS_COLORS[booking.status] || STATUS_COLORS.paid;
                 const accentColor = LANE_ACCENTS[index % LANE_ACCENTS.length];
-                const initials = toInitials(booking.customer || '');
 
                 const bar = document.createElement('button');
                 bar.type = 'button';
@@ -2307,8 +2397,8 @@
                     left: ${mode === 'week' ? `calc(${laneLeft(lane)} + 2px)` : laneLeft(lane)};
                     width: ${mode === 'week' ? `calc(${laneWidth} - 4px)` : laneWidth};
                     height: ${heightPx}px;
-                    background: ${colors.bg};
-                    border: 1px solid ${colors.border};
+                    background: var(--calendar-booking-fill, ${colors.bg});
+                    border: 1px solid var(--calendar-booking-border, ${colors.border});
                     border-left: 3px solid ${accentColor};
                     border-radius: 4px;
                     color: ${colors.text};
@@ -2324,21 +2414,18 @@
                     overflow-wrap: ${mode === 'week' ? 'anywhere' : 'normal'};
                     letter-spacing: .03em;
                 `;
-                if (mode === 'week') {
-                    const timeText = `${formatTimeInput(startMinutes)}–${endMinutes === 1440 ? '24:00' : formatTimeInput(endMinutes)}`;
-                    const courtText = booking.court || `Court ${booking.court_id}`;
-                    const customerName = document.createElement('span');
-                    customerName.className = 'court-week-bar-customer';
-                    customerName.textContent = booking.customer || 'Booking';
-                    const details = document.createElement('span');
-                    details.className = 'court-week-bar-details';
-                    details.textContent = `${timeText} · ${courtText} · ${booking.status}`;
-                    bar.append(customerName, details);
-                } else {
-                    bar.textContent = booking.source === 'walk_in' ? 'Walk-in' : initials;
-                }
-                if (booking.source === 'walk_in') bar.classList.add('source-walk-in');
-                bar.title = `${booking.source === 'walk_in' ? 'Walk-in · ' : ''}${booking.customer || 'Booking'} · ${booking.court || ''} · ${booking.status}`;
+                const customer = booking.customer || 'Booking';
+                const time = formatTimeRange(booking.start, booking.end);
+                const court = courtNameFor(booking);
+                const walkIn = booking.source === 'walk_in';
+                const fullInfo = [walkIn ? 'Walk-in' : 'Booking', customer, formatDate(booking.date), time, court, booking.status, booking.payment_method || ''].filter(Boolean).join(' · ');
+                const content = appendCalendarContent(bar, { title: customer, time, lines: [customer, time, court, booking.status], fullInfo });
+                const payment = document.createElement('span');
+                payment.className = `calendar-payment-marker payment-${String(booking.status || '').replace(/[^a-z0-9_-]/gi, '')}`;
+                payment.setAttribute('aria-hidden', 'true');
+                payment.textContent = booking.status === 'paid' || booking.status === 'confirmed' ? '✓' : booking.status === 'cancelled' ? '×' : '•';
+                content.fullText.append(payment.cloneNode(true));
+                content.compactHeading.append(payment);
                 col.append(bar);
             });
 

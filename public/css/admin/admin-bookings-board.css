@@ -446,6 +446,13 @@ html[data-theme="light"] .admin-bookings-page .btn-filter {
     gap: var(--s2);
 }
 
+.admin-bookings-page .court-board-legend > span { min-width: 0; }
+.admin-bookings-page .court-board-legend .legend-booking { color: var(--calendar-booking-border); }
+.admin-bookings-page .court-board-legend .legend-closed { color: var(--calendar-closed-border); }
+.admin-bookings-page .court-board-legend .legend-maintenance { color: var(--calendar-maintenance-border); }
+.admin-bookings-page .court-board-legend .legend-open-play { color: var(--calendar-open-border); }
+.admin-bookings-page .court-board-legend svg { width: 14px; height: 14px; flex: 0 0 14px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
 .admin-bookings-page .legend-dot {
     width: var(--s2);
     height: var(--s2);
@@ -481,13 +488,15 @@ html[data-theme="light"] .admin-bookings-page .btn-filter {
 }
 .admin-bookings-page .court-board-sync-status[hidden] { display: none; }
 .admin-bookings-page .court-month-bar.is-drag-placeholder,
-.admin-bookings-page .court-month-block.is-drag-placeholder { opacity: .35 !important; }
+.admin-bookings-page .court-month-block.is-drag-placeholder { opacity: .35 !important; filter: none !important; }
 .court-month-drag-clone { position: fixed; z-index: 2000; margin: 0; box-sizing: border-box; opacity: .96; pointer-events: none; will-change: transform; box-shadow: 0 12px 36px color-mix(in srgb, var(--bg) 78%, transparent); }
 .court-month-drag-clone.is-settling { transition: transform 150ms ease; }
 .admin-bookings-page .court-month-bar.is-saving,
-.admin-bookings-page .court-month-block.is-saving { opacity: .82; }
+.admin-bookings-page .court-month-bar.is-saving,
+.admin-bookings-page .court-month-block.is-saving { opacity: 1; animation: calendar-saving-border 900ms ease-in-out infinite alternate; }
+@keyframes calendar-saving-border { from { outline: 1px solid transparent; outline-offset: -1px; } to { outline: 1px solid currentColor; outline-offset: -1px; } }
 .admin-bookings-page .court-month-selection-ghost.is-booking-drag-ghost { z-index: 4; }
-.court-month-selection-ghost.is-booking-drag-ghost.is-conflict { border-color: var(--danger); background: color-mix(in srgb, var(--danger) 7%, transparent); }
+.court-month-selection-ghost.is-booking-drag-ghost.is-conflict { border: 2px dashed var(--danger); background: transparent; }
 .admin-bookings-page .court-week-scroll {
     width: 100%;
     max-width: 100%;
@@ -528,6 +537,7 @@ html[data-theme="light"] .admin-bookings-page .btn-filter {
 }
 .admin-bookings-page .court-week-grid .court-month-date-header strong,
 .admin-bookings-page .court-week-grid .court-month-date-header span { max-width: 100%; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.admin-bookings-page .court-week-grid .court-month-date-header .court-month-weekday-narrow { display: none; }
 .admin-bookings-page .court-week-grid .court-month-corner,
 .admin-bookings-page .court-week-grid .court-month-time-col { box-sizing: border-box; }
 .admin-bookings-page .court-week-grid .court-month-date-header strong small { display: inline; color: var(--brand); font-size: var(--font-size-small); }
@@ -795,13 +805,52 @@ html[data-theme="light"] .admin-bookings-page .btn-filter {
     from { opacity: .68; }
     to { opacity: 1; }
 }
-.admin-bookings-page .court-month-bar { position: absolute; display: flex; align-items: center; justify-content: center; overflow: hidden; box-sizing: border-box; min-height: 44px; padding: 0; border-radius: 4px; font-size: var(--font-size-small); font-weight: 700; cursor: pointer; -webkit-font-smoothing: antialiased; transition: outline 150ms ease; }
+.admin-bookings-page .court-month-bar { position: absolute; display: flex; align-items: center; justify-content: center; overflow: hidden; box-sizing: border-box; min-width: 0; min-height: 18px; padding: 2px; border-radius: 4px; font-size: var(--font-size-small); font-weight: 700; cursor: pointer; -webkit-font-smoothing: antialiased; transition: outline 150ms ease; container-type: size; }
 .admin-bookings-page .court-month-bar:hover { filter: brightness(1.15); outline: 2px solid var(--text-muted); outline-offset: 1px; z-index: 10; }
-.court-month-block { position: absolute; z-index: 2; display: flex; align-items: center; justify-content: center; overflow: hidden; min-height: 22px; box-sizing: border-box; padding: var(--s1); border: 1px solid; border-radius: 4px; font: var(--font-weight-small) var(--font-size-small)/1.2 var(--font-family); text-align: center; cursor: pointer; -webkit-font-smoothing: antialiased; }
-.court-month-block.type-closed { border-color: var(--danger); background: color-mix(in srgb, var(--danger) 24%, var(--surface)); color: var(--danger); }
-.court-month-block.type-maintenance { border-color: var(--warning); background: color-mix(in srgb, var(--warning) 24%, var(--surface)); color: var(--warning); }
-.court-month-block.type-open_play { border-color: var(--info); background: color-mix(in srgb, var(--info) 24%, var(--surface)); color: var(--info); }
-.court-month-selection-ghost.is-booking-drag-ghost { border: 1px dashed var(--brand); background: color-mix(in srgb, var(--brand) 7%, transparent); }
+.court-month-block { position: absolute; z-index: 2; display: flex; align-items: center; justify-content: center; overflow: hidden; min-width: 0; min-height: 18px; box-sizing: border-box; padding: 2px; border: 1px solid; border-radius: 4px; font: var(--font-weight-small) var(--font-size-small)/1.2 var(--font-family); text-align: left; cursor: pointer; -webkit-font-smoothing: antialiased; container-type: size; }
+.court-month-block.type-closed { border-color: var(--calendar-closed-border); background: var(--calendar-closed-fill); color: var(--calendar-on-fill); }
+.court-month-block.type-maintenance { border-color: var(--calendar-maintenance-border); background: var(--calendar-maintenance-fill); color: var(--calendar-on-fill); }
+.court-month-block.type-open_play { border-color: var(--calendar-open-border); background: var(--calendar-open-fill); color: var(--calendar-on-fill); }
+.court-month-bar { color: var(--calendar-on-fill) !important; }
+.court-month-bar.status-pending { background: color-mix(in srgb, var(--calendar-booking-fill) 82%, var(--warning)) !important; }
+.court-month-bar.status-cancelled { background: color-mix(in srgb, var(--calendar-booking-fill) 72%, var(--surface)) !important; }
+.court-month-bar.source-walk-in { border-style: solid !important; }
+.court-month-selection-ghost.is-booking-drag-ghost { border: 2px dashed color-mix(in srgb, var(--brand) 55%, white); background: transparent; }
+.court-month-selection-ghost.is-booking-drag-ghost.is-conflict { border-color: var(--danger); background: transparent; }
+.court-month-selection-ghost.is-booking-drag-ghost.is-override { border-color: var(--warning); }
+.calendar-item-full, .calendar-item-compact, .calendar-item-tiny { display: none; width: 100%; min-width: 0; height: 100%; align-items: center; gap: 3px; overflow: hidden; }
+.calendar-item-full, .calendar-item-compact { flex-direction: row; align-items: flex-start; justify-content: flex-start; }
+.calendar-item-full > svg, .calendar-item-compact > svg, .calendar-item-tiny > svg { width: 14px; height: 14px; flex: 0 0 14px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.calendar-item-copy, .calendar-item-title, .calendar-item-line, .calendar-item-time { display: block; width: 100%; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.calendar-item-copy { flex: 1 1 auto; }
+.calendar-item-title { font-weight: 800; }
+.calendar-item-line, .calendar-item-time { font-size: .6875rem; font-weight: 600; line-height: 1.2; }
+.calendar-payment-marker { display: inline-block; margin-left: 3px; font-size: .75rem; font-weight: 800; }
+.calendar-item-compact, .calendar-item-tiny { flex-direction: row; justify-content: flex-start; }
+.calendar-item-compact { flex-direction: column; align-items: flex-start; }
+.calendar-item-compact-heading { display: flex; align-items: center; gap: 3px; width: 100%; min-width: 0; }
+.calendar-item-compact-heading > svg { width: 14px; height: 14px; flex: 0 0 14px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.calendar-item-compact-heading .calendar-item-title { flex: 1 1 auto; }
+.calendar-item-time { margin-top: auto; }
+.calendar-payment-marker.payment-paid, .calendar-payment-marker.payment-confirmed { color: var(--brand-hover); }
+.calendar-payment-marker.payment-pending { color: var(--warning); }
+.calendar-payment-marker.payment-cancelled { color: var(--danger); }
+.court-month-block.is-cancelled .calendar-item-title { text-decoration: line-through; }
+.court-month-block.is-cancelled { opacity: .58; }
+@container (min-width: 120px) and (min-height: 82px) {
+    .calendar-item-full { display: flex; }
+    .calendar-item-full > svg { width: 16px; height: 16px; }
+}
+@container (max-width: 90px), (max-height: 34px) {
+    .calendar-item-full, .calendar-item-compact { display: none; }
+    .calendar-item-tiny { display: flex; justify-content: center; }
+}
+@container (min-width: 91px) and (min-height: 35px) and (max-width: 119px), (min-width: 91px) and (max-height: 81px) {
+    .calendar-item-full { display: none; }
+    .calendar-item-compact { display: flex; }
+    .calendar-item-compact > svg { width: 14px; height: 14px; }
+}
+.court-month-bar:focus-visible, .court-month-block:focus-visible { outline: 2px solid var(--brand-hover); outline-offset: 2px; z-index: 11; }
 .admin-bookings-page .court-month-block:hover { z-index: 10; outline: 2px solid currentColor; outline-offset: 1px; }
 .admin-bookings-page .court-month-closure-col { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; pointer-events: none; }
 .admin-bookings-page .court-month-closed-label { writing-mode: vertical-rl; transform: rotate(180deg); color: var(--danger); font-size: var(--font-size-h1); font-weight: 700; letter-spacing: var(--s5); }
@@ -910,3 +959,63 @@ html[data-theme="light"] .admin-bookings-page .btn-filter {
 .court-booking-duration-control button { width: 38px; height: 38px; border: 1px solid var(--border); border-radius: var(--r-sm); background: var(--surface-2); color: var(--text); font-size: 1.2rem; cursor: pointer; }
 .court-booking-duration-control [data-duration-value] { min-width: 4rem; text-align: center; color: var(--text); }
 .court-booking-duration-control [data-duration-warning] { color: var(--warning, var(--brand)); }
+:root {
+    --calendar-booking-fill: #07552f;
+    --calendar-booking-border: #00a85d;
+    --calendar-closed-fill: #454545;
+    --calendar-closed-border: #888;
+    --calendar-open-fill: #633500;
+    --calendar-open-border: #d98a00;
+    --calendar-maintenance-fill: #123b62;
+    --calendar-maintenance-border: #3989c9;
+    --calendar-on-fill: #fff;
+}
+html[data-theme="light"] {
+    --calendar-booking-fill: #d5f4e2;
+    --calendar-booking-border: #147a42;
+    --calendar-closed-fill: #e1e1e1;
+    --calendar-closed-border: #686868;
+    --calendar-open-fill: #fff0d6;
+    --calendar-open-border: #8a4b00;
+    --calendar-maintenance-fill: #dceeff;
+    --calendar-maintenance-border: #155b91;
+    --calendar-on-fill: #171717;
+}
+
+@media (max-width: 640px) {
+    .admin-bookings-page .court-week-grid .court-month-date-header {
+        min-height: 50px;
+        gap: 2px;
+        padding: 2px 1px;
+        overflow: visible;
+    }
+    .admin-bookings-page .court-week-grid .court-month-date-header .court-month-weekday-short { display: none !important; }
+    .admin-bookings-page .court-week-grid .court-month-date-header .court-month-weekday-narrow {
+        display: block;
+        order: 1;
+        width: auto;
+        max-width: none;
+        overflow: visible !important;
+        text-overflow: clip !important;
+        white-space: nowrap;
+        color: var(--text-muted);
+        font-size: .875rem;
+        font-weight: 600;
+        line-height: 1;
+    }
+    .admin-bookings-page .court-week-grid .court-month-date-header .court-month-day-number {
+        order: 2;
+        width: auto;
+        max-width: none;
+        overflow: visible;
+        text-overflow: clip;
+        white-space: nowrap;
+        font-size: .75rem;
+        font-weight: 600;
+        font-variant-numeric: tabular-nums;
+        line-height: 1;
+    }
+    .admin-bookings-page .court-week-grid .court-month-date-header .court-month-day-number small { display: none; }
+    .admin-bookings-page .court-week-grid .court-month-date-header.is-today .court-month-weekday-narrow { color: var(--brand); }
+    .admin-bookings-page .court-week-grid .court-month-time-cell { padding-right: 2px; font-size: .6875rem; }
+}

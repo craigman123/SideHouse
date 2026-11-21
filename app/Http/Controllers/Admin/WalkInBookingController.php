@@ -6,7 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Booking;
 use App\Models\BusinessSetting;
 use App\Models\Court;
-use App\Services\CourtConflictService;
+use App\Services\AdminCalendarOverrideWarnings;
 use App\Support\ActivityLogger;
 use App\Support\BookingHours;
 use Carbon\CarbonImmutable;
@@ -17,7 +17,7 @@ use Illuminate\Validation\ValidationException;
 
 class WalkInBookingController extends Controller
 {
-    public function store(Request $request, CourtConflictService $conflicts): JsonResponse
+    public function store(Request $request, AdminCalendarOverrideWarnings $overrideWarnings): JsonResponse
     {
         $validated = $request->validate([
             'customer_name' => ['required', 'string', 'max:255'],
@@ -28,38 +28,41 @@ class WalkInBookingController extends Controller
             'start_time' => ['required', 'date_format:H:i'],
             'end_time' => ['required', 'date_format:H:i', 'different:start_time'],
             'notes' => ['nullable', 'string', 'max:5000'],
-            'amount' => ['nullable', 'numeric', 'min:0', 'max:99999999.99'],
+            'amount' => ['nullable', 'numeric', 'decimal:0,2', 'min:0', 'max:999999.99'],
             'payment_method' => ['nullable', 'in:cash,gcash'],
         ]);
 
         $start = CarbonImmutable::createFromFormat('!Y-m-d H:i', $validated['date'].' '.$validated['start_time'], config('app.timezone'));
         $end = CarbonImmutable::createFromFormat('!Y-m-d H:i', $validated['date'].' '.$validated['end_time'], config('app.timezone'));
+        if ($end->equalTo($start)) throw ValidationException::withMessages(['end_time' => 'End time must be after start time.']);
         if ($end->lessThanOrEqualTo($start)) $end = $end->addDay();
         $duration = $start->diffInMinutes($end);
         $step = BookingHours::stepMinutes();
-        if ($duration < BookingHours::minDurationHours() * 60 || $duration > BookingHours::maxDurationHours() * 60
-            || $start->minute % $step !== 0 || $end->minute % $step !== 0) {
-            throw ValidationException::withMessages(['end_time' => 'Choose a duration and time aligned with the configured booking step.']);
+        if ($duration < $step) {
+            throw ValidationException::withMessages(['end_time' => "Choose a duration of at least {$step} minutes."]);
         }
 
-        $result = DB::transaction(function () use ($validated, $conflicts, $start, $end, $step) {
+        $result = DB::transaction(function () use ($validated, $overrideWarnings, $start, $end, $step) {
             $court = Court::query()->whereKey($validated['court_id'])->lockForUpdate()->firstOrFail();
-            $conflict = $conflicts->findConflict(
+            $warnings = $overrideWarnings->forInterval(
                 (int) $court->id,
                 $validated['date'],
                 $validated['start_time'],
                 $validated['end_time'],
             );
-            if ($conflict !== null) return ['conflict' => $conflict];
 
             $settings = BusinessSetting::current();
             $slotPrices = [];
-            for ($cursor = $start; $cursor->lessThan($end); $cursor = $cursor->addMinutes($step)) {
+            for ($cursor = $start; $cursor->lessThan($end);) {
+                $slotEnd = $cursor->addMinutes($step);
+                if ($slotEnd->greaterThan($end)) $slotEnd = $end;
+                $slotMinutes = $cursor->diffInMinutes($slotEnd);
                 $rate = $court->hourly_rate;
                 $slotPrices[] = $rate === null ? null : round(
-                    $settings->applyPeakAdjustment((float) $rate, $cursor->hour) * ($step / 60),
+                    $settings->applyPeakAdjustment((float) $rate, $cursor->hour) * ($slotMinutes / 60),
                     2
                 );
+                $cursor = $slotEnd;
             }
             $priced = ! in_array(null, $slotPrices, true);
             if (! $priced && ! array_key_exists('amount', $validated)) {
@@ -86,25 +89,21 @@ class WalkInBookingController extends Controller
                 'confirmed_at' => now(),
             ]);
 
-            for ($cursor = $start, $index = 0; $cursor->lessThan($end); $cursor = $cursor->addMinutes($step), $index++) {
+            for ($cursor = $start, $index = 0; $cursor->lessThan($end); $index++) {
+                $slotEnd = $cursor->addMinutes($step);
+                if ($slotEnd->greaterThan($end)) $slotEnd = $end;
                 $booking->slots()->create([
                     'court_id' => $court->id,
                     'date' => $cursor->toDateString(),
                     'start_time' => $cursor->format('H:i:s'),
-                    'end_time' => $cursor->addMinutes($step)->format('H:i:s'),
+                    'end_time' => $slotEnd->format('H:i:s'),
                     'price' => $slotPrices[$index] ?? 0,
                 ]);
+                $cursor = $slotEnd;
             }
 
-            return ['booking' => $booking->load(['court', 'slots'])];
+            return ['booking' => $booking->load(['court', 'slots']), 'warnings' => $warnings];
         });
-
-        if (isset($result['conflict'])) {
-            return response()->json([
-                'message' => 'The selected time conflicts with an existing booking, block, or closure.',
-                'conflict' => $result['conflict'],
-            ], 422);
-        }
 
         /** @var Booking $booking */
         $booking = $result['booking'];
@@ -114,9 +113,24 @@ class WalkInBookingController extends Controller
             subject: $booking,
             properties: $booking->only(['court_id', 'date', 'start_time', 'end_time', 'amount', 'payment_method', 'source']),
         );
+        $overlappedItemIds = collect($result['warnings'])->filter(fn ($warning) => str_starts_with($warning['code'], 'overlaps_'))
+            ->flatMap(fn ($warning) => $warning['item_ids'])->unique()->values()->all();
+        ActivityLogger::log(
+            'calendar.admin_override',
+            sprintf('%s created walk-in booking #%s with admin override rules.', auth()->user()->name, $booking->id),
+            subject: $booking,
+            properties: [
+                'admin_override' => true, 'booking_id' => $booking->id, 'warnings' => $result['warnings'],
+                'old_time' => null,
+                'new_time' => ['date' => $booking->date->toDateString(), 'start' => substr((string) $booking->start_time, 0, 5), 'end' => substr((string) $booking->end_time, 0, 5)],
+                'old_amount' => null, 'new_amount' => (float) $booking->amount, 'overlapped_item_ids' => $overlappedItemIds,
+            ],
+        );
 
         return response()->json([
             'message' => 'Walk-in booking created.',
+            'admin_override' => true,
+            'warnings' => $result['warnings'],
             'booking' => [
                 'id' => $booking->id,
                 'customer' => $booking->customer_name,

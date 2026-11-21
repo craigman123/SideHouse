@@ -8,7 +8,7 @@ use App\Models\BusinessSetting;
 use App\Models\Court;
 use App\Models\CourtBlock;
 use App\Models\CourtClosure;
-use App\Services\CourtConflictService;
+use App\Services\AdminCalendarOverrideWarnings;
 use App\Services\AdminBookingsCalendarData;
 use App\Support\ActivityLogger;
 use App\Support\BookingHours;
@@ -81,7 +81,7 @@ class BookingController extends Controller
             ->header('X-Venue-Time', CarbonImmutable::now('Asia/Manila')->toIso8601String());
     }
 
-    public function update(Request $request, Booking $booking, CourtConflictService $conflicts): JsonResponse
+    public function update(Request $request, Booking $booking, AdminCalendarOverrideWarnings $overrideWarnings): JsonResponse
     {
         $validated = $request->validate([
             'customer_name' => ['sometimes', 'required', 'string', 'max:255'],
@@ -92,14 +92,14 @@ class BookingController extends Controller
             'date' => ['sometimes', 'required', 'date_format:Y-m-d', 'after_or_equal:'.CarbonImmutable::now('Asia/Manila')->toDateString()],
             'start_time' => ['sometimes', 'required', 'date_format:H:i'],
             'end_time' => ['sometimes', 'required', 'date_format:H:i'],
-            'amount' => ['sometimes', 'nullable', 'numeric', 'min:0', 'max:99999999.99'],
+            'amount' => ['sometimes', 'nullable', 'numeric', 'decimal:0,2', 'min:0', 'max:999999.99'],
             'acknowledge_price_change' => ['sometimes', 'boolean'],
             'dry_run' => ['sometimes', 'boolean'],
             'adjust_minutes' => ['sometimes', 'integer'],
             'expected_updated_at' => ['sometimes', 'required', 'date'],
         ]);
 
-        $result = DB::transaction(function () use ($booking, $validated, $conflicts) {
+        $result = DB::transaction(function () use ($booking, $validated, $overrideWarnings) {
             $locked = Booking::query()->whereKey($booking->id)->lockForUpdate()->firstOrFail();
             if (isset($validated['expected_updated_at'])
                 && \Carbon\Carbon::parse($validated['expected_updated_at'])->format('U.u') !== $locked->updated_at->format('U.u')) {
@@ -127,6 +127,9 @@ class BookingController extends Controller
                 }
             } else {
                 $end = CarbonImmutable::createFromFormat('!Y-m-d H:i', "{$date} ".($validated['end_time'] ?? substr((string) $locked->end_time, 0, 5)), config('app.timezone'));
+                if ($end->equalTo($start)) {
+                    throw ValidationException::withMessages(['end_time' => 'End time must be after start time.']);
+                }
                 if ($end->lessThanOrEqualTo($start)) $end = $end->addDay();
             }
             $endTime = $end->format('H:i');
@@ -134,12 +137,9 @@ class BookingController extends Controller
             $settings = BusinessSetting::current();
             $step = BookingHours::stepMinutes();
             $duration = $start->diffInMinutes($end);
-            if ($start->minute % $step !== 0 || $end->minute % $step !== 0
-                || $duration < BookingHours::minDurationHours() * 60
-                || $duration > BookingHours::maxDurationHours() * 60
-                || (array_key_exists('adjust_minutes', $validated) && $adjustMinutes % $step !== 0)) {
+            if ($duration < $step) {
                 throw ValidationException::withMessages([
-                    'end_time' => 'Choose a duration and time aligned with the configured booking step.',
+                    'end_time' => "Choose a duration of at least {$step} minutes.",
                 ]);
             }
 
@@ -159,9 +159,6 @@ class BookingController extends Controller
                 && $validated['amount'] !== null && abs((float) $validated['amount'] - (float) $locked->amount) >= 0.005))) {
                 return ['rejected' => 'Past bookings cannot have their date, time, court, or amount changed.'];
             }
-            if ($scheduleChanged && $date === $venueNow->toDateString() && $startTime < $venueNow->format('H:i')) {
-                return ['rejected' => 'Choose a start time that has not passed in Asia/Manila.'];
-            }
 
             $courtIds = array_values(array_unique(array_filter([$oldCourtId, $courtId], fn ($id) => $id > 0)));
             sort($courtIds);
@@ -169,50 +166,10 @@ class BookingController extends Controller
             $court = $courts->get($courtId);
             if ($scheduleChanged && ! $court) return ['rejected' => 'The selected court is no longer available.'];
 
-            if ($scheduleChanged) {
-                $extending = array_key_exists('adjust_minutes', $validated) && $adjustMinutes > 0
-                    && $courtId === $oldCourtId && $date === $locked->date->toDateString();
-                $conflict = $conflicts->findConflict($courtId, $date, $startTime, $endTime, (int) $locked->id, null, ! $extending);
-                if ($conflict !== null) return ['conflict' => $conflict];
-            }
-
-            $overlapIds = [];
-            if (isset($extending) && $extending) {
-                $extensionStart = $oldEnd;
-                $overlapSlots = DB::table('booking_slots')
-                    ->join('bookings', 'bookings.id', '=', 'booking_slots.booking_id')
-                    ->where('booking_slots.court_id', $courtId)->where('booking_slots.is_active', true)
-                    ->where('booking_slots.booking_id', '!=', $locked->id)
-                    ->whereNotIn('bookings.status', ['cancelled', 'expired'])
-                    ->whereDate('booking_slots.date', '>=', $extensionStart->toDateString())
-                    ->whereDate('booking_slots.date', '<=', $end->toDateString())
-                    ->get(['bookings.id as booking_id', 'booking_slots.date', 'booking_slots.start_time', 'booking_slots.end_time']);
-                foreach ($overlapSlots as $slot) {
-                    $slotDate = substr((string) $slot->date, 0, 10);
-                    $slotStart = CarbonImmutable::parse($slotDate.' '.$slot->start_time, config('app.timezone'));
-                    $slotEnd = CarbonImmutable::parse($slotDate.' '.$slot->end_time, config('app.timezone'));
-                    if ($slotEnd->lessThanOrEqualTo($slotStart)) $slotEnd = $slotEnd->addDay();
-                    if ($slotStart->lessThan($end) && $slotEnd->greaterThan($extensionStart)) {
-                        $overlapIds[] = (int) $slot->booking_id;
-                    }
-                }
-                $legacyBookings = Booking::query()
-                    ->where('court_id', $courtId)->whereNotIn('status', ['cancelled', 'expired'])
-                    ->whereDoesntHave('slots')
-                    ->whereDate('date', '>=', $extensionStart->subDay()->toDateString())
-                    ->whereDate('date', '<=', $end->toDateString())
-                    ->where('id', '!=', $locked->id)->get();
-                foreach ($legacyBookings as $legacy) {
-                    $legacyDate = substr((string) $legacy->date, 0, 10);
-                    $legacyStart = CarbonImmutable::parse($legacyDate.' '.$legacy->start_time, config('app.timezone'));
-                    $legacyEnd = CarbonImmutable::parse($legacyDate.' '.$legacy->end_time, config('app.timezone'));
-                    if ($legacyEnd->lessThanOrEqualTo($legacyStart)) $legacyEnd = $legacyEnd->addDay();
-                    if ($legacyStart->lessThan($end) && $legacyEnd->greaterThan($extensionStart)) {
-                        $overlapIds[] = (int) $legacy->id;
-                    }
-                }
-                $overlapIds = array_values(array_unique($overlapIds));
-            }
+            $warnings = $scheduleChanged
+                ? $overrideWarnings->forInterval($courtId, $date, $startTime, $endTime, (int) $locked->id)
+                : [];
+            $overlapIds = collect($warnings)->where('code', 'overlaps_booking')->flatMap(fn ($warning) => $warning['item_ids'])->unique()->values()->all();
 
             $oldAmount = (float) $locked->amount;
             $oldSlotTotal = (float) $locked->slots()->where('is_active', true)->sum('price');
@@ -222,8 +179,9 @@ class BookingController extends Controller
                 && $courtId === $oldCourtId && $date === $locked->date->toDateString();
             if ($scheduleChanged && ! $adjustOnly) {
                 for ($cursor = $start; $cursor->lessThan($end); $cursor = $cursor->addMinutes($step)) {
+                    $slotMinutes = min($step, $cursor->diffInMinutes($end));
                     $slotPrices[] = round(
-                        $settings->applyPeakAdjustment((float) $court->hourly_rate, $cursor->hour) * ($step / 60),
+                        $settings->applyPeakAdjustment((float) $court->hourly_rate, $cursor->hour) * ($slotMinutes / 60),
                         2
                     );
                 }
@@ -248,6 +206,10 @@ class BookingController extends Controller
                 $newAmount = round((float) $validated['amount'], 2);
             }
             $amountChanged = abs($newAmount - $oldAmount) >= 0.005;
+            if ($amountChanged && in_array($locked->status, ['paid', 'confirmed'], true) && $newAmount < $oldAmount) {
+                $warnings[] = ['code' => 'amount_below_paid', 'message' => 'Amount is lower than the amount previously paid', 'item_ids' => []];
+            }
+            if ($scheduleChanged) $warnings = [...$warnings, ...$this->equipmentStockWarnings($locked, $start, $end, $step)];
             if ($validated['dry_run'] ?? false) {
                 return ['quote' => [
                     'old_amount' => $oldAmount, 'new_amount' => $newAmount,
@@ -258,14 +220,7 @@ class BookingController extends Controller
                     'date' => $date,
                     'start' => $start->format('H:i'), 'end' => $end->format('H:i'),
                     'court_id' => $courtId,
-                ]];
-            }
-            if ($amountChanged && in_array($locked->status, ['paid', 'confirmed'], true)
-                && ! ($validated['acknowledge_price_change'] ?? false)) {
-                return ['price_acknowledgement_required' => [
-                    'message' => 'Acknowledge the price change before saving this paid or confirmed booking.',
-                    'old_amount' => $oldAmount,
-                    'new_amount' => $newAmount,
+                    'warnings' => $warnings,
                 ]];
             }
 
@@ -285,7 +240,7 @@ class BookingController extends Controller
                         $locked->slots()->create([
                             'court_id' => $courtId, 'date' => $slotStart->toDateString(),
                             'start_time' => $slotStart->format('H:i:s'),
-                            'end_time' => $slotStart->addMinutes($step)->format('H:i:s'), 'price' => $price,
+                        'end_time' => $slotStart->addMinutes($step)->format('H:i:s'), 'price' => $price,
                         ]);
                     }
                 } elseif ($adjustMinutes < 0) {
@@ -304,11 +259,13 @@ class BookingController extends Controller
                 $locked->slots()->delete();
                 foreach ($slotPrices as $index => $price) {
                     $slotStart = $start->addMinutes($index * $step);
+                    $slotEnd = $slotStart->addMinutes($step);
+                    if ($slotEnd->greaterThan($end)) $slotEnd = $end;
                     $locked->slots()->create([
                         'court_id' => $courtId,
                         'date' => $slotStart->toDateString(),
                         'start_time' => $slotStart->format('H:i:s'),
-                        'end_time' => $slotStart->addMinutes($step)->format('H:i:s'),
+                        'end_time' => $slotEnd->format('H:i:s'),
                         'price' => $price,
                     ]);
                 }
@@ -322,6 +279,7 @@ class BookingController extends Controller
                 'new_amount' => $newAmount,
                 'adjust_minutes' => $adjustMinutes,
                 'overlapping_booking_ids' => $overlapIds,
+                'warnings' => $warnings,
             ];
         });
 
@@ -351,15 +309,6 @@ class BookingController extends Controller
             ], 409);
         }
 
-        if (isset($result['conflict'])) {
-            return response()->json([
-                'message' => 'The selected time conflicts with an existing booking, block, or closure.',
-                'conflict' => $result['conflict'],
-            ], 422);
-        }
-        if (isset($result['price_acknowledgement_required'])) {
-            return response()->json($result['price_acknowledgement_required'], 422);
-        }
         if (isset($result['rejected'])) return response()->json(['message' => $result['rejected']], 422);
 
         /** @var Booking $updated */
@@ -389,6 +338,22 @@ class BookingController extends Controller
                 properties: ['old_amount' => $result['old_amount'], 'new_amount' => $result['new_amount']],
             );
         }
+        if ($result['schedule_changed'] || $result['amount_changed']) {
+            ActivityLogger::log(
+                'calendar.admin_override',
+                sprintf('%s applied an admin calendar override to booking #%s.', auth()->user()->name, $updated->id),
+                subject: $updated,
+                properties: [
+                    'admin_override' => true,
+                    'booking_id' => $updated->id,
+                    'warnings' => $result['warnings'],
+                    'old_time' => ['date' => $booking->date->toDateString(), 'start' => substr((string) $booking->start_time, 0, 5), 'end' => substr((string) $booking->end_time, 0, 5)],
+                    'new_time' => ['date' => $updated->date->toDateString(), 'start' => substr((string) $updated->start_time, 0, 5), 'end' => substr((string) $updated->end_time, 0, 5)],
+                    'old_amount' => $result['old_amount'], 'new_amount' => $result['new_amount'],
+                    'overlapped_item_ids' => $result['overlapping_booking_ids'],
+                ],
+            );
+        }
         ActivityLogger::log(
             'booking.admin_updated',
             sprintf('%s edited booking #%s.', auth()->user()->name, $updated->id),
@@ -398,6 +363,8 @@ class BookingController extends Controller
 
         return response()->json([
             'message' => 'Booking updated.',
+            'admin_override' => true,
+            'warnings' => $result['warnings'],
             'booking' => [
                 'id' => $updated->id,
                 'updated_at' => $updated->updated_at?->format('Y-m-d\\TH:i:s.uP'),
@@ -422,7 +389,47 @@ class BookingController extends Controller
                     'name' => $line->equipment?->name ?? 'Equipment',
                     'quantity' => $line->quantity,
                 ])->values(),
+                'admin_override' => true,
+                'warnings' => $result['warnings'],
             ],
         ]);
+    }
+
+    private function equipmentStockWarnings(Booking $booking, CarbonImmutable $start, CarbonImmutable $end, int $step): array
+    {
+        $booking->loadMissing(['equipment.equipment', 'slots']);
+        $warnings = [];
+        foreach ($booking->equipment as $rental) {
+            $equipment = $rental->equipment;
+            if (! $equipment) continue;
+            $unavailable = false;
+            for ($cursor = $start; $cursor->lessThan($end);) {
+                $slotEnd = $cursor->addMinutes($step);
+                if ($slotEnd->greaterThan($end)) $slotEnd = $end;
+                $available = $equipment->availableStock(
+                    $cursor->toDateString(), $cursor->format('H:i:s'), $slotEnd->format('H:i:s')
+                );
+                $selfReservedHere = $booking->slots->contains(function ($slot) use ($cursor, $slotEnd) {
+                    $date = $slot->date->toDateString();
+                    if ($date !== $cursor->toDateString()) return false;
+                    $ownStart = CarbonImmutable::parse($date.' '.$slot->start_time, config('app.timezone'));
+                    $ownEnd = CarbonImmutable::parse($date.' '.$slot->end_time, config('app.timezone'));
+                    return $ownStart->lessThan($slotEnd) && $ownEnd->greaterThan($cursor);
+                });
+                if ($available + ($selfReservedHere ? (int) $rental->quantity : 0) < (int) $rental->quantity) {
+                    $unavailable = true;
+                    break;
+                }
+                $cursor = $slotEnd;
+            }
+            if ($unavailable) {
+                $warnings[] = [
+                    'code' => 'equipment_stock',
+                    'message' => "Equipment stock may be unavailable: {$equipment->name}",
+                    'item_ids' => [(int) $equipment->id],
+                ];
+            }
+        }
+        return $warnings;
     }
 }

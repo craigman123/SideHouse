@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Court;
 use App\Models\CourtBlock;
 use App\Services\CourtConflictService;
+use App\Services\AdminCalendarOverrideWarnings;
 use App\Support\ActivityLogger;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
@@ -126,7 +127,7 @@ class CourtBlockController extends Controller
         return response()->json(['message' => 'Court block deleted.', 'id' => $block->id]);
     }
 
-    public function update(Request $request, CourtBlock $block, CourtConflictService $conflicts): JsonResponse
+    public function update(Request $request, CourtBlock $block, AdminCalendarOverrideWarnings $overrideWarnings): JsonResponse
     {
         $validated = $request->validate([
             'type' => ['sometimes', 'required', Rule::in(['closed', 'maintenance', 'open_play'])],
@@ -139,7 +140,7 @@ class CourtBlockController extends Controller
             'expected_updated_at' => ['sometimes', 'required', 'date'],
         ]);
 
-        $result = DB::transaction(function () use ($block, $validated, $conflicts) {
+        $result = DB::transaction(function () use ($block, $validated, $overrideWarnings) {
             $locked = CourtBlock::query()->whereKey($block->id)->lockForUpdate()->firstOrFail();
             if (isset($validated['expected_updated_at'])
                 && \Carbon\Carbon::parse($validated['expected_updated_at'])->format('U.u') !== $locked->updated_at->format('U.u')) {
@@ -162,9 +163,6 @@ class CourtBlockController extends Controller
             if ($oldIsPast && ($date !== $locked->block_date->toDateString()
                 || $startTime !== $oldStart || $endTime !== $oldEnd || $courtId !== $locked->court_id)) {
                 return ['rejected' => 'Past calendar events cannot have their date, time, or court changed.'];
-            }
-            if ($scheduleChanged && $date === $venueNow->toDateString() && $startTime < $venueNow->format('H:i')) {
-                return ['rejected' => 'Choose a start time that has not passed in Asia/Manila.'];
             }
             $duration = $this->minutes($endTime) <= $this->minutes($startTime)
                 ? (1440 - $this->minutes($startTime)) + $this->minutes($endTime)
@@ -190,20 +188,18 @@ class CourtBlockController extends Controller
                 return ['conflict' => ['type' => 'court', 'id' => null, 'title' => 'No courts are available.']];
             }
 
+            $warnings = [];
             foreach ($targetCourts as $court) {
-                $conflict = $conflicts->findConflict(
+                $warnings = [...$warnings, ...$overrideWarnings->forInterval(
                     (int) $court->id,
                     $date,
                     $startTime,
                     $endTime,
                     null,
                     (int) $locked->id,
-                );
-                if ($conflict !== null) {
-                    $conflict['court_id'] = (int) $court->id;
-                    return ['conflict' => $conflict];
-                }
+                )];
             }
+            $warnings = collect($warnings)->unique(fn ($warning) => $warning['code'].':'.implode(',', $warning['item_ids']))->values()->all();
 
             $locked->fill([
                 'type' => $validated['type'] ?? $locked->type,
@@ -215,7 +211,7 @@ class CourtBlockController extends Controller
                 'end_time' => $endTime,
             ])->save();
 
-            return ['block' => $locked->load('court')];
+            return ['block' => $locked->load('court'), 'warnings' => $warnings];
         });
 
         if (isset($result['stale'])) {
@@ -232,16 +228,23 @@ class CourtBlockController extends Controller
             ], 409);
         }
 
-        if (isset($result['conflict'])) {
-            return response()->json([
-                'message' => 'The selected time conflicts with an existing booking, block, or closure.',
-                'conflict' => $result['conflict'],
-            ], 422);
-        }
         if (isset($result['rejected'])) return response()->json(['message' => $result['rejected']], 422);
 
         /** @var CourtBlock $updated */
         $updated = $result['block'];
+        $overlappedItemIds = collect($result['warnings'])->filter(fn ($warning) => str_starts_with($warning['code'], 'overlaps_'))
+            ->flatMap(fn ($warning) => $warning['item_ids'])->unique()->values()->all();
+        ActivityLogger::log(
+            'calendar.admin_override',
+            sprintf('%s applied an admin calendar override to event #%s.', auth()->user()->name, $updated->id),
+            subject: $updated,
+            properties: [
+                'admin_override' => true, 'event_id' => $updated->id, 'warnings' => $result['warnings'],
+                'old_time' => ['date' => $block->block_date->toDateString(), 'start' => substr((string) $block->start_time, 0, 5), 'end' => substr((string) $block->end_time, 0, 5)],
+                'new_time' => ['date' => $updated->block_date->toDateString(), 'start' => substr((string) $updated->start_time, 0, 5), 'end' => substr((string) $updated->end_time, 0, 5)],
+                'old_amount' => null, 'new_amount' => null, 'overlapped_item_ids' => $overlappedItemIds,
+            ],
+        );
         ActivityLogger::log(
             'court_block.updated',
             sprintf('%s edited the %s block (%s) for %s.', auth()->user()->name, $updated->type, $updated->title, $updated->block_date->format('M j, Y')),
@@ -251,6 +254,8 @@ class CourtBlockController extends Controller
 
         return response()->json([
             'message' => 'Calendar event updated.',
+            'admin_override' => true,
+            'warnings' => $result['warnings'],
             'block' => [
                 'id' => $updated->id,
                 'updated_at' => $updated->updated_at?->format('Y-m-d\\TH:i:s.uP'),

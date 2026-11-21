@@ -140,14 +140,8 @@
                     </div>
                 </div>
 
-                <div class="court-board-legend" aria-label="Booking status legend">
-                    <span><i class="legend-dot legend-paid"></i>Paid</span>
-                    <span><i class="legend-dot legend-pending"></i>Pending</span>
-                    <span><i class="legend-dot legend-cancelled"></i>Cancelled</span>
-                    <span><i class="legend-dot legend-closure"></i>Closure</span>
-                    <span><i class="legend-dot legend-walk-in"></i>Walk-in</span>
-                    <span><i class="legend-dot legend-maintenance"></i>Maintenance</span>
-                    <span><i class="legend-dot legend-open-play"></i>Open play</span>
+                <div class="court-board-legend" aria-label="Calendar item legend">
+                    <span class="legend-booking">Booking</span><span data-calendar-legend-icon="lock" class="legend-closed">Closed</span><span data-calendar-legend-icon="wrench" class="legend-maintenance">Maintenance</span><span data-calendar-legend-icon="padel" class="legend-open-play">Open play</span>
                 </div>
 
                 <div id="courtBoardSummary" class="court-board-summary" aria-live="polite"></div>
@@ -170,14 +164,8 @@
                     </div>
                 </div>
 
-                <div class="court-board-legend" aria-label="Booking status legend">
-                    <span><i class="legend-dot legend-paid"></i>Paid</span>
-                    {{-- <span><i class="legend-dot legend-pending"></i>Pending</span>
-                    <span><i class="legend-dot legend-cancelled"></i>Cancelled</span> --}}
-                    <span><i class="legend-dot legend-closure"></i>Closure</span>
-                    <span><i class="legend-dot legend-walk-in"></i>Walk-in</span>
-                    <span><i class="legend-dot legend-maintenance"></i>Maintenance</span>
-                    <span><i class="legend-dot legend-open-play"></i>Open play</span>
+                <div class="court-board-legend" aria-label="Calendar item legend">
+                    <span class="legend-booking">Booking</span><span data-calendar-legend-icon="lock" class="legend-closed">Closed</span><span data-calendar-legend-icon="wrench" class="legend-maintenance">Maintenance</span><span data-calendar-legend-icon="padel" class="legend-open-play">Open play</span>
                 </div>
 
                 <div id="courtMonthSummary" class="court-board-summary" aria-live="polite"></div>
@@ -201,12 +189,8 @@
                         <button type="button" class="btn-clear court-board-today" data-week-nav="today">This week</button>
                     </div>
                 </div>
-                <div class="court-board-legend" aria-label="Booking status legend">
-                    <span><i class="legend-dot legend-paid"></i>Paid</span>
-                    <span><i class="legend-dot legend-closure"></i>Closure</span>
-                    <span><i class="legend-dot legend-walk-in"></i>Walk-in</span>
-                    <span><i class="legend-dot legend-maintenance"></i>Maintenance</span>
-                    <span><i class="legend-dot legend-open-play"></i>Open play</span>
+                <div class="court-board-legend" aria-label="Calendar item legend">
+                    <span class="legend-booking">Booking</span><span data-calendar-legend-icon="lock" class="legend-closed">Closed</span><span data-calendar-legend-icon="wrench" class="legend-maintenance">Maintenance</span><span data-calendar-legend-icon="padel" class="legend-open-play">Open play</span>
                 </div>
                 <div id="courtWeekSummary" class="court-board-summary" aria-live="polite"></div>
                 <div class="court-week-scroll court-month-scroll">
