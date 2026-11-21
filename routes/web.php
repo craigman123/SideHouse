@@ -181,6 +181,7 @@ Route::middleware(['auth', 'admin', 'admin.mfa', 'throttle:120,1'])->group(funct
 
     // Bookings CRUD
     Route::get('/bookings', [BookingController::class, 'index'])->name('bookings.index');
+    Route::get('/admin/bookings/calendar', [BookingController::class, 'calendar'])->name('admin.bookings.calendar');
     Route::patch('/admin/bookings/{booking}', [BookingController::class, 'update'])
         ->middleware('throttle:20,1')
         ->name('admin.bookings.update');

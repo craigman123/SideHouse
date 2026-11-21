@@ -472,6 +472,36 @@ html[data-theme="light"] .admin-bookings-page .btn-filter {
     color: var(--text);
 }
 
+.admin-bookings-page .court-board-sync-status {
+    display: block;
+    width: fit-content;
+    margin: var(--s2) 0;
+    color: var(--warning);
+    font-size: var(--font-size-small);
+}
+.admin-bookings-page .court-board-sync-status[hidden] { display: none; }
+.admin-bookings-page .court-month-bar.is-drag-placeholder,
+.admin-bookings-page .court-month-block.is-drag-placeholder { opacity: .35 !important; }
+.court-month-drag-clone { position: fixed; z-index: 2000; margin: 0; box-sizing: border-box; filter: drop-shadow(0 var(--s3) var(--s5) color-mix(in srgb, var(--bg) 78%, transparent)); }
+.court-month-drag-clone.is-settling { transition: transform 150ms ease; }
+.admin-bookings-page .court-month-bar.is-saving,
+.admin-bookings-page .court-month-block.is-saving { opacity: .72; }
+.admin-bookings-page .court-month-bar.is-saving::after,
+.admin-bookings-page .court-month-block.is-saving::after {
+    content: 'Saving';
+    position: absolute;
+    right: var(--s1);
+    bottom: var(--s1);
+    padding: 2px var(--s1);
+    border-radius: var(--r-pill);
+    background: var(--surface);
+    color: var(--text);
+    font-size: var(--font-size-small);
+    line-height: 1.2;
+}
+.admin-bookings-page .court-month-selection-ghost.is-booking-drag-ghost { z-index: 4; }
+.admin-bookings-page .court-month-selection-ghost.is-booking-drag-ghost.is-conflict { border-color: var(--danger); background: color-mix(in srgb, var(--danger) 28%, transparent); }
+
 .admin-bookings-page .court-board {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
@@ -741,4 +771,5 @@ html[data-theme="light"] .admin-bookings-page .btn-filter {
 
 @media (prefers-reduced-motion: reduce) {
     .admin-bookings-page .court-month-bar { transition: none; }
+    .court-month-drag-clone.is-settling { transition: none; }
 }

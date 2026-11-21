@@ -6,9 +6,10 @@
     if (!workspace || !dataElement || !board) return;
 
     const data = JSON.parse(dataElement.textContent || '{}');
-    const bookings  = data.bookings  || [];
-    const closures  = data.closures  || [];
+    let bookings  = data.bookings  || [];
+    let closures  = data.closures  || [];
     let blocks      = Array.isArray(data.blocks) ? data.blocks : [];
+    let closingCutoffs = data.closingCutoffs || [];
     const courts    = data.courts    || [];
     const bizSettings = data.businessSettings || {};
     // Open/close hours from BusinessSetting — fallback to sane defaults
@@ -104,6 +105,142 @@
         start_time: normalizeTime(block.start_time),
         end_time: normalizeTime(block.end_time),
     });
+    const rangeCache = [];
+    const protectedItems = new Set();
+    const etags = new Map();
+    let pollTimer = null;
+    let pollDelay = 45000;
+    let authReloadPrompted = false;
+    let activeDragKey = null;
+    let syncIndicator = null;
+    let calendarDataDirty = false;
+    let affectedCalendarDates = null;
+    const dateInRange = (date, from, to) => date >= from && date <= to;
+    const rangeIsCached = (from, to) => rangeCache.some((range) => range.from <= from && range.to >= to);
+    const currentVisibleRange = () => {
+        if (panels.month && !panels.month.hidden) {
+            const [year, month] = monthInput.value.split('-').map(Number);
+            return { from: `${year}-${String(month).padStart(2, '0')}-01`, to: `${year}-${String(month).padStart(2, '0')}-${String(new Date(year, month, 0).getDate()).padStart(2, '0')}` };
+        }
+        return { from: dateInput.value, to: dateInput.value };
+    };
+    const setSyncState = (message = '') => {
+        if (!syncIndicator) {
+            syncIndicator = document.createElement('span');
+            syncIndicator.className = 'court-board-sync-status';
+            syncIndicator.setAttribute('role', 'status');
+            workspace.append(syncIndicator);
+        }
+        if (syncIndicator) {
+            syncIndicator.textContent = message;
+            syncIndicator.hidden = !message;
+        }
+    };
+    const renderCalendar = () => {
+        data.bookings = bookings;
+        data.blocks = blocks;
+        data.closures = closures;
+        data.closingCutoffs = closingCutoffs;
+        const affectedDates = affectedCalendarDates;
+        affectedCalendarDates = null;
+        if (panels.month && !panels.month.hidden) renderMonth(affectedDates);
+        if (panels.board && !panels.board.hidden) renderBoard();
+        calendarDataDirty = false;
+    };
+    const mergeCalendarRange = (incoming, from, to) => {
+        const before = [
+            ['booking', bookings, (item) => item.id, (item) => item.date],
+            ['block', blocks, (item) => item.id, (item) => item.block_date],
+            ['closure', closures, (item) => `${item.court_id ?? 'all'}:${item.date}`, (item) => item.date],
+            ['cutoff', closingCutoffs, (item) => item.date, (item) => item.date],
+        ].map(([kind, items, keyOf, dateOf]) => [kind, new Map(items.map((item) => [String(keyOf(item)), { json: JSON.stringify(item), date: dateOf(item) }]))]);
+        const isProtected = (id) => protectedItems.has(String(id))
+            || protectedItems.has(`booking:${id}`) || protectedItems.has(`block:${id}`)
+            || activeDragKey === String(id);
+        const mergeItems = (current, fresh, keyOf, dateOf, rangeFrom = from) => {
+            const freshById = new Map(fresh.map((item) => [String(keyOf(item)), item]));
+            const merged = current.filter((item) => {
+                const key = String(keyOf(item));
+                if (isProtected(key)) return true;
+                return !dateInRange(dateOf(item), rangeFrom, to) || freshById.has(key);
+            }).map((item) => {
+                const key = String(keyOf(item));
+                if (isProtected(key)) return item;
+                return freshById.get(key) || item;
+            });
+            const existing = new Set(merged.map((item) => String(keyOf(item))));
+            fresh.forEach((item) => { if (!existing.has(String(keyOf(item)))) merged.push(item); });
+            return merged;
+        };
+        const overlapFrom = addDays(from, -1);
+        bookings = mergeItems(bookings, incoming.bookings || [], (item) => item.id, (item) => item.date, overlapFrom);
+        blocks = mergeItems(blocks, (incoming.blocks || []).map(normalizeBlock), (item) => item.id, (item) => item.block_date, overlapFrom);
+        closures = mergeItems(closures, incoming.closures || [], (item) => `${item.court_id ?? 'all'}:${item.date}`, (item) => item.date);
+        closingCutoffs = mergeItems(closingCutoffs, incoming.closingCutoffs || [], (item) => item.date, (item) => item.date);
+        data.bookings = bookings;
+        data.blocks = blocks;
+        data.closures = closures;
+        data.closingCutoffs = closingCutoffs;
+        const changedDates = new Set();
+        const after = [
+            ['booking', bookings, (item) => item.id, (item) => item.date],
+            ['block', blocks, (item) => item.id, (item) => item.block_date],
+            ['closure', closures, (item) => `${item.court_id ?? 'all'}:${item.date}`, (item) => item.date],
+            ['cutoff', closingCutoffs, (item) => item.date, (item) => item.date],
+        ];
+        after.forEach(([kind, items, keyOf, dateOf]) => {
+            const old = before.find(([oldKind]) => oldKind === kind)[1];
+            const fresh = new Map(items.map((item) => [String(keyOf(item)), { json: JSON.stringify(item), date: dateOf(item) }]));
+            for (const [id, prior] of old) if (!fresh.has(id) || fresh.get(id).json !== prior.json) changedDates.add(prior.date);
+            for (const [id, current] of fresh) if (!old.has(id) || old.get(id).json !== current.json) changedDates.add(current.date);
+        });
+        return [...changedDates].filter(Boolean);
+    };
+    const loadCalendarRange = async (from, to, { force = false } = {}) => {
+        if (!force && rangeIsCached(from, to)) return true;
+        const key = `${from}:${to}`;
+        const headers = { Accept: 'application/json' };
+        if (etags.has(key)) headers['If-None-Match'] = etags.get(key);
+        try {
+            const response = await fetch(`/admin/bookings/calendar?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`, {
+                credentials: 'same-origin', headers,
+            });
+            if (response.status === 304) {
+                pollDelay = 45000;
+                setSyncState('');
+                return true;
+            }
+            if ((response.status === 419 || response.status === 401
+                || (response.redirected && /mfa\.(challenge|setup)/.test(response.url))) && !authReloadPrompted) {
+                authReloadPrompted = true;
+                const reload = window.confirm('Your admin session needs attention. Reload the page now?');
+                if (reload) window.location.reload();
+                setSyncState('Session expired · reload to sync');
+                return false;
+            }
+            if (!response.ok) {
+                throw new Error(`Calendar sync failed (${response.status})`);
+            }
+            const incoming = await response.json();
+            const changedDates = mergeCalendarRange(incoming, from, to);
+            affectedCalendarDates = changedDates.length ? changedDates : null;
+            const etag = response.headers.get('ETag');
+            if (etag) etags.set(key, etag);
+            rangeCache.push({ from, to });
+            pollDelay = 45000;
+            setSyncState('');
+            if (calendarDrag || !blockModal.hidden) calendarDataDirty = true;
+            return true;
+        } catch (error) {
+            if (authReloadPrompted) {
+                setSyncState('Session expired · reload to sync');
+                return false;
+            }
+            pollDelay = Math.min(Math.max(pollDelay * 2, 45000), 300000);
+            setSyncState('Sync paused');
+            return false;
+        }
+    };
     const notify = (message, type = 'success') => {
         if (typeof window.showToast === 'function') window.showToast(message, type);
     };
@@ -137,12 +274,15 @@
     const closeBlockModal = (force = false) => {
         if (savingBlock && !force) return;
         blockModal.hidden = true;
+        if (selectedBlock) protectedItems.delete(`block:${selectedBlock.id}`);
+        if (selectedBooking) protectedItems.delete(`booking:${selectedBooking.id}`);
         selectedBlock = null;
         selectedBooking = null;
         document.getElementById('courtWalkInCustomer').value = '';
         document.getElementById('courtWalkInContact').value = '';
         document.getElementById('courtWalkInEmail').value = '';
         document.getElementById('courtWalkInNotes').value = '';
+        if (calendarDataDirty) renderCalendar();
     };
 
     const showModalPanel = (panel, titleId) => {
@@ -194,6 +334,8 @@
     };
 
     const openBlockDetails = (block) => {
+        if (selectedBooking) protectedItems.delete(`booking:${selectedBooking.id}`);
+        protectedItems.add(`block:${block.id}`);
         selectedBlock = block;
         selectedBooking = null;
         showModalPanel(blockDetailsPanel, 'courtBlockDetailsTitle');
@@ -228,6 +370,8 @@
     };
 
     const openBookingDetails = (booking) => {
+        if (selectedBlock) protectedItems.delete(`block:${selectedBlock.id}`);
+        protectedItems.add(`booking:${booking.id}`);
         selectedBooking = booking;
         selectedBlock = null;
         const panel = bookingDetailsPanel;
@@ -340,11 +484,17 @@
                 return;
             }
 
-            if (result.block) blocks.push(normalizeBlock(result.block));
-            if (result.booking) bookings.push(result.booking);
+            if (result.block) {
+                blocks.push(normalizeBlock(result.block));
+                affectedCalendarDates = [result.block.block_date];
+            }
+            if (result.booking) {
+                bookings.push(result.booking);
+                affectedCalendarDates = [result.booking.date];
+            }
             closeBlockModal(true);
             notify(result.message || (isWalkIn ? 'Walk-in booking created.' : 'Calendar event created.'), 'success');
-            renderMonth();
+            renderCalendar();
         } catch (error) {
             blockFormMessage.textContent = 'Something went wrong. Please try again.';
             blockFormMessage.classList.add('is-error');
@@ -375,6 +525,7 @@
             return;
         }
         const payload = Object.fromEntries(new FormData(bookingEditForm).entries());
+        const previousDate = selectedBooking.date;
         payload.court_id = Number(payload.court_id);
         payload.amount = Number(payload.amount);
         if (Math.abs(payload.amount - Number(selectedBooking.amount || 0)) < 0.005) delete payload.amount;
@@ -407,10 +558,10 @@
             }
             const index = bookings.findIndex((booking) => String(booking.id) === String(result.booking.id));
             if (index >= 0) bookings[index] = result.booking;
+            affectedCalendarDates = [previousDate, result.booking.date];
             selectedBooking = result.booking;
             closeBlockModal(true);
-            renderMonth();
-            renderBoard();
+            renderCalendar();
             notify(result.message || 'Booking updated.', 'success');
         } catch (error) {
             bookingEditMessage.textContent = 'Something went wrong. Please try again.';
@@ -433,6 +584,7 @@
             return;
         }
         const payload = Object.fromEntries(new FormData(blockEditForm).entries());
+        const previousDate = selectedBlock.block_date;
         payload.court_id = payload.court_id === 'all' ? null : Number(payload.court_id);
         payload.notes = payload.notes.trim() || null;
         savingBlock = true;
@@ -457,9 +609,9 @@
             }
             const index = blocks.findIndex((item) => String(item.id) === String(result.block.id));
             if (index >= 0) blocks[index] = normalizeBlock(result.block);
+            affectedCalendarDates = [previousDate, result.block.block_date];
             closeBlockModal(true);
-            renderMonth();
-            renderBoard();
+            renderCalendar();
             notify(result.message || 'Calendar event updated.', 'success');
         } catch (error) {
             blockEditMessage.textContent = 'Something went wrong. Please try again.';
@@ -506,10 +658,12 @@
                 return;
             }
 
+            const deletedDate = selectedBlock.block_date;
             blocks = blocks.filter((block) => String(block.id) !== String(selectedBlock.id));
+            affectedCalendarDates = [deletedDate];
             closeBlockModal(true);
             notify(result.message || 'Calendar event deleted.', 'success');
-            renderMonth();
+            renderCalendar();
         } catch (error) {
             blockDeleteMessage.textContent = 'Something went wrong. Please try again.';
             blockDeleteMessage.classList.add('is-error');
@@ -554,8 +708,7 @@
         Object.entries(panels).forEach(([key, panel]) => {
             if (panel) panel.hidden = key !== view;
         });
-        if (view === 'board') renderBoard();
-        if (view === 'month') renderMonth();
+        if (view === 'board' || view === 'month') renderCalendar();
         if (updateUrl) {
             const url = new URL(window.location.href);
             url.searchParams.set('view', view);
@@ -730,6 +883,222 @@
         };
     };
 
+    let calendarDrag = null;
+    let suppressCalendarClick = false;
+    let dragFrame = 0;
+    const releaseDragVisuals = (drag) => {
+        if (drag?.ghost) drag.ghost.remove();
+        if (drag?.clone) drag.clone.remove();
+        if (drag?.source?.isConnected) drag.source.classList.remove('is-drag-placeholder');
+        if (drag?.key) {
+            activeDragKey = null;
+            protectedItems.delete(drag.key);
+        }
+        cancelAnimationFrame(dragFrame);
+        dragFrame = 0;
+        monthGrid.classList.remove('is-booking-drag');
+        endMonthDrag(drag?.pointerId);
+        if (calendarDataDirty && blockModal.hidden) renderCalendar();
+    };
+    const updateDragClone = (drag, clientX, clientY) => {
+        if (!drag.clone) return;
+        cancelAnimationFrame(dragFrame);
+        dragFrame = requestAnimationFrame(() => {
+            drag.clone.style.transform = `translate3d(${clientX - drag.grabX}px, ${clientY - drag.grabY}px, 0) scale(1.04)`;
+        });
+    };
+    const beginCalendarDrag = (event) => {
+        const source = event.target.closest?.('[data-calendar-kind][data-calendar-id]');
+        if (!source || !monthGrid.contains(source) || calendarDrag
+            || (event.pointerType === 'mouse' && event.button !== 0)) return;
+        const kind = source.dataset.calendarKind;
+        const id = source.dataset.calendarId;
+        const item = kind === 'booking'
+            ? bookings.find((entry) => String(entry.id) === id)
+            : blocks.find((entry) => String(entry.id) === id);
+        if (!item) return;
+        const rect = source.getBoundingClientRect();
+        let start = kind === 'booking' ? toMinutes(item.start) : toMinutes(item.start_time);
+        let end = kind === 'booking' ? toMinutes(item.end) : toMinutes(item.end_time);
+        if (end <= start) end += 1440;
+        const key = `${kind}:${id}`;
+        activeDragKey = key;
+        protectedItems.add(key);
+        calendarDrag = {
+            pointerId: event.pointerId, kind, id, key, item, original: { ...item }, source,
+            startX: event.clientX, startY: event.clientY, moved: false,
+            duration: Math.max(kind === 'booking' ? stepMinutes : 1, end - start),
+            grabX: event.clientX - rect.left, grabY: event.clientY - rect.top,
+            ghost: null, clone: null, target: null,
+        };
+    };
+    const moveCalendarDrag = (event) => {
+        const drag = calendarDrag;
+        if (!drag || drag.pointerId !== event.pointerId) return;
+        if (!drag.moved && Math.hypot(event.clientX - drag.startX, event.clientY - drag.startY) > 5) {
+            drag.moved = true;
+            monthGrid.setPointerCapture?.(event.pointerId);
+            beginMonthDrag(event.pointerId);
+            monthGrid.classList.add('is-booking-drag');
+            const rect = drag.source.getBoundingClientRect();
+            drag.clone = drag.source.cloneNode(true);
+            drag.clone.classList.add('court-month-drag-clone');
+            drag.clone.setAttribute('aria-hidden', 'true');
+            Object.assign(drag.clone.style, {
+                left: '0', top: '0', width: `${rect.width}px`, height: `${rect.height}px`,
+                opacity: '.96', pointerEvents: 'none',
+                transformOrigin: `${drag.grabX}px ${drag.grabY}px`,
+                transform: `translate3d(${event.clientX - drag.grabX}px, ${event.clientY - drag.grabY}px, 0) scale(1.04)`,
+            });
+            document.body.append(drag.clone);
+            drag.source.classList.add('is-drag-placeholder');
+        }
+        if (!drag.moved) return;
+        event.preventDefault();
+        lockMonthScroll();
+        updateDragClone(drag, event.clientX, event.clientY);
+        const targetColumn = document.elementsFromPoint(event.clientX, event.clientY)
+            .map((element) => element.closest?.('.court-month-date-col'))
+            .find((column) => column && monthGrid.contains(column));
+        const slot = targetColumn ? slotFromPoint(event, targetColumn) : null;
+        if (!targetColumn || !slot) {
+            drag.target = null;
+            drag.ghost?.remove();
+            drag.ghost = null;
+            return;
+        }
+        const startMinutes = slot.minutes;
+        const endMinutes = startMinutes + drag.duration;
+        if (!drag.ghost) {
+            drag.ghost = document.createElement('div');
+            drag.ghost.className = 'court-month-selection-ghost is-booking-drag-ghost';
+            drag.ghost.setAttribute('aria-hidden', 'true');
+        }
+        if (drag.ghost.parentElement !== targetColumn) targetColumn.append(drag.ghost);
+        const yForTarget = targetColumn._monthYForMinute || (() => 0);
+        drag.ghost.style.top = `${yForTarget(startMinutes)}px`;
+        drag.ghost.style.height = `${Math.max(8, yForTarget(endMinutes) - yForTarget(startMinutes))}px`;
+        const conflict = drag.kind === 'block'
+            ? rangeHasConflict(slot.date, startMinutes, endMinutes, null, drag.item.court_id, drag.item.id)
+            : rangeHasConflict(slot.date, startMinutes, endMinutes, drag.item.id, drag.item.court_id);
+        drag.ghost.classList.toggle('is-conflict', conflict);
+        drag.target = { date: slot.date, startMinutes, endMinutes, conflict, targetColumn };
+    };
+    const stopCalendarDrag = async (event, cancelled = false) => {
+        const drag = calendarDrag;
+        if (!drag || drag.pointerId !== event.pointerId) return;
+        calendarDrag = null;
+        if (monthGrid.hasPointerCapture?.(event.pointerId)) monthGrid.releasePointerCapture(event.pointerId);
+        if (!drag.moved) { releaseDragVisuals(drag); return; }
+        event.preventDefault();
+        suppressCalendarClick = true;
+        window.setTimeout(() => { suppressCalendarClick = false; }, 0);
+        const target = drag.target;
+        drag.ghost?.remove();
+        drag.ghost = null;
+        if (cancelled || !target) { releaseDragVisuals(drag); return; }
+        endMonthDrag(event.pointerId);
+        if (target.conflict) {
+            releaseDragVisuals(drag);
+            notify('That time overlaps a booking, closure, or another calendar event.', 'error');
+            return;
+        }
+        const payload = drag.kind === 'block'
+            ? { block_date: target.date, start_time: formatTimeInput(target.startMinutes), end_time: formatTimeInput(target.endMinutes) }
+            : { date: target.date, start_time: formatTimeInput(target.startMinutes), end_time: formatTimeInput(target.endMinutes) };
+        const snapshot = { ...drag.original };
+        const movedDates = [drag.kind === 'block' ? snapshot.block_date : snapshot.date, target.date];
+        const optimistic = drag.kind === 'block'
+            ? { ...snapshot, ...payload, _saving: true }
+            : { ...snapshot, date: payload.date, start: payload.start_time, end: payload.end_time, _saving: true };
+        const list = drag.kind === 'block' ? blocks : bookings;
+        const index = list.findIndex((entry) => String(entry.id) === drag.id);
+        if (index >= 0) list[index] = optimistic;
+        affectedCalendarDates = movedDates;
+        renderCalendar();
+        const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        const settle = monthGrid.querySelector(`[data-calendar-kind="${drag.kind}"][data-calendar-id="${CSS.escape(drag.id)}"]`);
+        if (drag.clone && settle && !reducedMotion) {
+            const rect = settle.getBoundingClientRect();
+            drag.clone.classList.add('is-settling');
+            drag.clone.style.transform = `translate3d(${rect.left}px, ${rect.top}px, 0) scale(1)`;
+            await new Promise((resolve) => window.setTimeout(resolve, 150));
+        }
+        drag.clone?.remove();
+        drag.source?.classList.remove('is-drag-placeholder');
+        const token = csrfToken();
+        if (!token) {
+            if (index >= 0) list[index] = snapshot;
+            releaseDragVisuals(drag);
+            renderCalendar();
+            notify('Your security token is missing. Reload the page and try again.', 'error');
+            return;
+        }
+        try {
+            const response = await fetch(`/admin/${drag.kind === 'block' ? 'blocks' : 'bookings'}/${encodeURIComponent(drag.id)}`, {
+                method: 'PATCH', credentials: 'same-origin',
+                headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': token },
+                body: JSON.stringify(payload),
+            });
+            const result = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                if (index >= 0) list[index] = snapshot;
+                affectedCalendarDates = movedDates;
+                renderCalendar();
+                if (drag.kind === 'booking' && result.new_amount !== undefined) {
+                    openBookingDetails(list[index]);
+                    openBookingEdit();
+                    const form = document.getElementById('courtBookingEditForm');
+                    form.elements.date.value = payload.date;
+                    form.elements.start_time.value = payload.start_time;
+                    form.elements.end_time.value = payload.end_time;
+                    form.elements.amount.value = Number(result.new_amount).toFixed(2);
+                    updatePriceAcknowledgementVisibility();
+                    bookingEditMessage.textContent = result.message || 'Review and acknowledge the price change to finish rescheduling.';
+                    bookingEditMessage.classList.add('is-error');
+                } else notify(result.message || 'Could not move this calendar item.', 'error');
+                return;
+            }
+            const updated = drag.kind === 'block' ? normalizeBlock(result.block) : result.booking;
+            if (!updated) throw new Error('The server response did not include the updated item.');
+            delete updated._saving;
+            const updatedIndex = list.findIndex((entry) => String(entry.id) === drag.id);
+            if (updatedIndex >= 0) list[updatedIndex] = updated;
+            affectedCalendarDates = movedDates;
+            renderCalendar();
+            notify(result.message || 'Calendar item moved.', 'success');
+        } catch (error) {
+            if (index >= 0) list[index] = snapshot;
+            affectedCalendarDates = movedDates;
+            renderCalendar();
+            notify('Could not move this calendar item. Please try again.', 'error');
+        } finally {
+            releaseDragVisuals(drag);
+        }
+    };
+    monthGrid.addEventListener('pointerdown', beginCalendarDrag);
+    monthGrid.addEventListener('pointermove', moveCalendarDrag);
+    monthGrid.addEventListener('pointerup', (event) => { void stopCalendarDrag(event); });
+    monthGrid.addEventListener('pointercancel', (event) => { void stopCalendarDrag(event, true); });
+    monthGrid.addEventListener('lostpointercapture', (event) => { void stopCalendarDrag(event, true); });
+    monthGrid.addEventListener('click', (event) => {
+        const target = event.target.closest?.('[data-calendar-kind][data-calendar-id]');
+        if (!target || suppressCalendarClick) { if (suppressCalendarClick) event.preventDefault(); return; }
+        event.stopPropagation();
+        const item = target.dataset.calendarKind === 'booking'
+            ? bookings.find((entry) => String(entry.id) === target.dataset.calendarId)
+            : blocks.find((entry) => String(entry.id) === target.dataset.calendarId);
+        if (item) (target.dataset.calendarKind === 'booking' ? openBookingDetails(item) : openBlockDetails(item));
+    });
+    monthGrid.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape' && calendarDrag) {
+            const drag = calendarDrag;
+            calendarDrag = null;
+            if (monthGrid.hasPointerCapture?.(drag.pointerId)) monthGrid.releasePointerCapture(drag.pointerId);
+            releaseDragVisuals(drag);
+        }
+    });
+
     const formatHourLabel = (hour) => {
         const h = ((hour % 24) + 24) % 24;
         const period = h >= 12 ? 'PM' : 'AM';
@@ -899,7 +1268,7 @@
     };
 
     // ── Month view: dates across the top, time down the left ────────────────
-    const renderMonth = () => {
+    const renderMonth = (changedDates = null) => {
         if (!monthInput.value) return;
         const [year, month] = monthInput.value.split('-').map(Number);
         const daysInMonth = new Date(year, month, 0).getDate();
@@ -921,8 +1290,9 @@
 
         const gridW = TIME_LABEL_W + dates.length * COL_W;
 
-        monthGrid.replaceChildren();
-        monthGrid.style.width = `${gridW}px`;
+        const nextGrid = document.createElement('div');
+        nextGrid.className = 'court-month-grid';
+        nextGrid.style.width = `${gridW}px`;
 
         // ── Header row: blank corner + one date column per day ──────────────
         const header = document.createElement('div');
@@ -948,13 +1318,14 @@
             const cell = document.createElement('button');
             cell.type = 'button';
             cell.className = 'court-month-date-header' + (isToday ? ' is-today' : '');
+            cell.dataset.date = dateStr;
             cell.style.cssText = `flex:0 0 ${COL_W}px;width:${COL_W}px;`;
             cell.innerHTML = `<strong>${dayNum}</strong><span>${weekday}</span>`;
             cell.title = `Open ${formatDate(dateStr)} on the daily board`;
             cell.addEventListener('click', () => jumpToDay(dateStr));
             header.append(cell);
         });
-        monthGrid.append(header);
+        nextGrid.append(header);
 
         // ── Body: one row per hour, one column per date ─────────────────────
         // Pre-build booking and block windows per date.
@@ -1096,134 +1467,13 @@
                 if (kind === 'block') {
                     const event = document.createElement('button');
                     event.type = 'button';
-                    event.className = `court-month-block type-${block.type}`;
+                    event.className = `court-month-block type-${block.type}${block._saving ? ' is-saving' : ''}`;
+                    event.dataset.calendarKind = 'block';
+                    event.dataset.calendarId = String(block.id);
                     event.style.cssText = `top:${topPx}px;left:${lane * barW + 2}px;width:${barW - 2}px;height:${heightPx}px;`;
                     event.textContent = block.title || block.type.replace('_', ' ');
                     event.title = `${block.title || block.type} · ${block.start_time}–${block.end_time}`;
                     event.setAttribute('aria-label', `${block.title || block.type}, ${block.type.replace('_', ' ')}, ${formatDate(block.block_date)}. Open event details.`);
-                    event.addEventListener('click', (clickEvent) => {
-                        if (event._suppressCalendarClick) {
-                            event._suppressCalendarClick = false;
-                            clickEvent.preventDefault();
-                            clickEvent.stopPropagation();
-                            return;
-                        }
-                        clickEvent.stopPropagation();
-                        openBlockDetails(block);
-                    });
-                    event.addEventListener('pointerdown', (pointerEvent) => {
-                        if ((pointerEvent.pointerType === 'mouse' && pointerEvent.button !== 0) || event._calendarDrag) return;
-                        console.debug('[board] bar pointerdown', {
-                            kind: 'block', id: block.id, pointerType: pointerEvent.pointerType,
-                            target: document.elementFromPoint(pointerEvent.clientX, pointerEvent.clientY)?.className,
-                        });
-                        event.setPointerCapture(pointerEvent.pointerId);
-                        event._calendarDrag = {
-                            pointerId: pointerEvent.pointerId,
-                            startX: pointerEvent.clientX,
-                            startY: pointerEvent.clientY,
-                            moved: false,
-                            duration: (() => {
-                                const start = toMinutes(block.start_time);
-                                let end = toMinutes(block.end_time);
-                                if (end <= start) end += 1440;
-                                return end - start;
-                            })(),
-                            ghost: null,
-                            target: null,
-                        };
-                    });
-                    event.addEventListener('pointermove', (pointerEvent) => {
-                        const drag = event._calendarDrag;
-                        if (!drag || drag.pointerId !== pointerEvent.pointerId) return;
-                        if (!drag.moved && Math.hypot(pointerEvent.clientX - drag.startX, pointerEvent.clientY - drag.startY) > 5) {
-                            drag.moved = true;
-                            beginMonthDrag(pointerEvent.pointerId);
-                            monthGrid.classList.add('is-booking-drag');
-                            console.debug('[board] threshold reached', { kind: 'block', id: block.id });
-                        }
-                        if (!drag.moved) return;
-                        pointerEvent.preventDefault();
-                        lockMonthScroll();
-                        const targetColumn = document.elementsFromPoint(pointerEvent.clientX, pointerEvent.clientY)
-                            .map((elementAtPoint) => elementAtPoint.closest?.('.court-month-date-col'))
-                            .find((candidate) => candidate && monthGrid.contains(candidate));
-                        const slot = targetColumn ? slotFromPoint(pointerEvent, targetColumn) : null;
-                        if (!targetColumn || !slot) {
-                            drag.target = null;
-                            drag.ghost?.remove();
-                            drag.ghost = null;
-                            return;
-                        }
-                        const startMinutes = slot.minutes;
-                        const endMinutes = startMinutes + drag.duration;
-                        if (!drag.ghost) {
-                            drag.ghost = document.createElement('div');
-                            drag.ghost.className = 'court-month-selection-ghost is-booking-drag-ghost';
-                            drag.ghost.setAttribute('aria-hidden', 'true');
-                        }
-                        if (drag.ghost.parentElement !== targetColumn) targetColumn.append(drag.ghost);
-                        const yForTarget = targetColumn._monthYForMinute || (() => 0);
-                        drag.ghost.style.top = `${yForTarget(startMinutes)}px`;
-                        drag.ghost.style.height = `${Math.max(8, yForTarget(endMinutes) - yForTarget(startMinutes))}px`;
-                        const conflict = rangeHasConflict(slot.date, startMinutes, endMinutes, null, block.court_id, block.id);
-                        drag.ghost.classList.toggle('is-conflict', conflict);
-                        drag.target = { date: slot.date, startMinutes, endMinutes, conflict };
-                    });
-                    const stopBlockDrag = async (pointerEvent, cancelled = false) => {
-                        const drag = event._calendarDrag;
-                        if (!drag || drag.pointerId !== pointerEvent.pointerId) return;
-                        event._calendarDrag = null;
-                        if (event.hasPointerCapture(pointerEvent.pointerId)) event.releasePointerCapture(pointerEvent.pointerId);
-                        drag.ghost?.remove();
-                        if (!drag.moved) return;
-                        pointerEvent.preventDefault();
-                        event._suppressCalendarClick = true;
-                        window.setTimeout(() => { event._suppressCalendarClick = false; }, 0);
-                        endMonthDrag(pointerEvent.pointerId);
-                        monthGrid.classList.remove('is-booking-drag');
-                        if (cancelled || !drag.target) return;
-                        console.debug('[board] drop target', { kind: 'block', id: block.id, ...drag.target });
-                        if (drag.target.conflict) {
-                            notify('That time overlaps a booking, closure, or another calendar event.', 'error');
-                            return;
-                        }
-                        const token = csrfToken();
-                        if (!token) {
-                            notify('Your security token is missing. Reload the page and try again.', 'error');
-                            return;
-                        }
-                        const payload = {
-                            block_date: drag.target.date,
-                            start_time: formatTimeInput(drag.target.startMinutes),
-                            end_time: formatTimeInput(drag.target.endMinutes),
-                        };
-                        try {
-                            const response = await fetch(`/admin/blocks/${encodeURIComponent(block.id)}`, {
-                                method: 'PATCH',
-                                credentials: 'same-origin',
-                                headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': token },
-                                body: JSON.stringify(payload),
-                            });
-                            const result = await response.json().catch(() => ({}));
-                            console.debug('[board] PATCH response', { kind: 'block', id: block.id, status: response.status, ok: response.ok, message: result.message, conflict: result.conflict?.type });
-                            if (!response.ok) {
-                                notify(result.message || 'Could not move this calendar event.', 'error');
-                                return;
-                            }
-                            const index = blocks.findIndex((item) => String(item.id) === String(result.block.id));
-                            if (index >= 0) blocks[index] = normalizeBlock(result.block);
-                            renderMonth();
-                            renderBoard();
-                            notify(result.message || 'Calendar event moved.', 'success');
-                        } catch (error) {
-                            console.debug('[board] PATCH response', { kind: 'block', id: block.id, error: error?.message });
-                            notify('Could not move this calendar event. Please try again.', 'error');
-                        }
-                    };
-                    event.addEventListener('pointerup', (pointerEvent) => { void stopBlockDrag(pointerEvent); });
-                    event.addEventListener('pointercancel', (pointerEvent) => { void stopBlockDrag(pointerEvent, true); });
-                    event.addEventListener('lostpointercapture', (pointerEvent) => { void stopBlockDrag(pointerEvent, true); });
                     col.append(event);
                     return;
                 }
@@ -1234,7 +1484,9 @@
 
                 const bar = document.createElement('button');
                 bar.type = 'button';
-                bar.className = `court-month-bar status-${booking.status}`;
+                bar.className = `court-month-bar status-${booking.status}${booking._saving ? ' is-saving' : ''}`;
+                bar.dataset.calendarKind = 'booking';
+                bar.dataset.calendarId = String(booking.id);
                 bar.style.cssText = `
                     position: absolute;
                     top: ${topPx}px;
@@ -1259,150 +1511,6 @@
                 bar.textContent = booking.source === 'walk_in' ? 'Walk-in' : initials;
                 if (booking.source === 'walk_in') bar.classList.add('source-walk-in');
                 bar.title = `${booking.source === 'walk_in' ? 'Walk-in · ' : ''}${booking.customer || 'Booking'} · ${booking.court || ''} · ${booking.status}`;
-                bar.addEventListener('click', (clickEvent) => {
-                    if (bar._suppressCalendarClick) {
-                        bar._suppressCalendarClick = false;
-                        clickEvent.preventDefault();
-                        return;
-                    }
-                    openBookingDetails(booking);
-                });
-                bar.addEventListener('pointerdown', (pointerEvent) => {
-                    if ((pointerEvent.pointerType === 'mouse' && pointerEvent.button !== 0) || bar._calendarDrag) return;
-                    console.debug('[board] bar pointerdown', {
-                        kind: 'booking', id: booking.id, status: booking.status,
-                        pointerType: pointerEvent.pointerType,
-                        target: document.elementFromPoint(pointerEvent.clientX, pointerEvent.clientY)?.className,
-                    });
-                    bar.setPointerCapture(pointerEvent.pointerId);
-                    bar._calendarDrag = {
-                        pointerId: pointerEvent.pointerId,
-                        startX: pointerEvent.clientX,
-                        startY: pointerEvent.clientY,
-                        moved: false,
-                        booking,
-                        duration: Math.max(stepMinutes, (() => {
-                            const startMinutes = toMinutes(booking.start);
-                            let endMinutes = toMinutes(booking.end);
-                            if (endMinutes <= startMinutes) endMinutes += 1440;
-                            return endMinutes - startMinutes;
-                        })()),
-                        ghost: null,
-                        target: null,
-                    };
-                });
-                bar.addEventListener('pointermove', (pointerEvent) => {
-                    const drag = bar._calendarDrag;
-                    if (!drag || drag.pointerId !== pointerEvent.pointerId) return;
-                    if (!drag.moved && Math.hypot(pointerEvent.clientX - drag.startX, pointerEvent.clientY - drag.startY) > 5) {
-                        drag.moved = true;
-                        beginMonthDrag(pointerEvent.pointerId);
-                        monthGrid.classList.add('is-booking-drag');
-                        console.debug('[board] threshold reached', { kind: 'booking', id: booking.id });
-                    }
-                    if (!drag.moved) return;
-                    pointerEvent.preventDefault();
-                    lockMonthScroll();
-                    const targetColumn = document.elementsFromPoint(pointerEvent.clientX, pointerEvent.clientY)
-                        .map((element) => element.closest?.('.court-month-date-col'))
-                        .find((column) => column && monthGrid.contains(column));
-                    const slot = targetColumn ? slotFromPoint(pointerEvent, targetColumn) : null;
-                    if (!targetColumn || !slot) {
-                        drag.target = null;
-                        drag.ghost?.remove();
-                        drag.ghost = null;
-                        return;
-                    }
-                    const startMinutes = slot.minutes;
-                    const endMinutes = startMinutes + drag.duration;
-                    if (!drag.ghost) {
-                        drag.ghost = document.createElement('div');
-                        drag.ghost.className = 'court-month-selection-ghost is-booking-drag-ghost';
-                        drag.ghost.setAttribute('aria-hidden', 'true');
-                    }
-                    if (drag.ghost.parentElement !== targetColumn) targetColumn.append(drag.ghost);
-                    const yForTarget = targetColumn._monthYForMinute || ((minutes) => {
-                        const matching = targetColumn.querySelector(`.court-month-hour-cell[data-hour="${Math.floor(minutes / 60)}"]`);
-                        return matching ? matching.offsetTop + ((minutes % 60) / 60) * matching.offsetHeight : 0;
-                    });
-                    const top = yForTarget(startMinutes);
-                    const bottom = yForTarget(endMinutes);
-                    drag.ghost.style.top = `${top}px`;
-                    drag.ghost.style.height = `${Math.max(8, bottom - top)}px`;
-                    const conflict = rangeHasConflict(slot.date, startMinutes, endMinutes, booking.id, booking.court_id);
-                    drag.ghost.classList.toggle('is-conflict', conflict);
-                    drag.target = { date: slot.date, startMinutes, endMinutes, conflict };
-                });
-                const stopBookingDrag = async (pointerEvent, cancelled = false) => {
-                    const drag = bar._calendarDrag;
-                    if (!drag || drag.pointerId !== pointerEvent.pointerId) return;
-                    bar._calendarDrag = null;
-                    if (bar.hasPointerCapture(pointerEvent.pointerId)) bar.releasePointerCapture(pointerEvent.pointerId);
-                    drag.ghost?.remove();
-                    if (drag.moved) {
-                        pointerEvent.preventDefault();
-                        bar._suppressCalendarClick = true;
-                        window.setTimeout(() => { bar._suppressCalendarClick = false; }, 0);
-                        endMonthDrag(pointerEvent.pointerId);
-                        monthGrid.classList.remove('is-booking-drag');
-                        if (cancelled || !drag.target) return;
-                        console.debug('[board] drop target', { kind: 'booking', id: booking.id, ...drag.target });
-                        if (drag.target.conflict) {
-                            notify('That time overlaps another booking or calendar event.', 'error');
-                            return;
-                        }
-                        const token = csrfToken();
-                        if (!token) {
-                            notify('Your security token is missing. Reload the page and try again.', 'error');
-                            return;
-                        }
-                        const payload = {
-                            date: drag.target.date,
-                            start_time: formatTimeInput(drag.target.startMinutes),
-                            end_time: formatTimeInput(drag.target.endMinutes),
-                        };
-                        try {
-                            const response = await fetch(`/admin/bookings/${encodeURIComponent(booking.id)}`, {
-                                method: 'PATCH',
-                                credentials: 'same-origin',
-                                headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': token },
-                                body: JSON.stringify(payload),
-                            });
-                            const result = await response.json().catch(() => ({}));
-                            console.debug('[board] PATCH response', { kind: 'booking', id: booking.id, status: response.status, ok: response.ok, message: result.message, conflict: result.conflict?.type });
-                            if (!response.ok) {
-                                if (result.new_amount !== undefined) {
-                                    openBookingDetails(booking);
-                                    openBookingEdit();
-                                    const form = document.getElementById('courtBookingEditForm');
-                                    form.elements.date.value = payload.date;
-                                    form.elements.start_time.value = payload.start_time;
-                                    form.elements.end_time.value = payload.end_time;
-                                    form.elements.amount.value = Number(result.new_amount).toFixed(2);
-                                    updatePriceAcknowledgementVisibility();
-                                    bookingEditMessage.textContent = result.message || 'Review and acknowledge the price change to finish rescheduling.';
-                                    bookingEditMessage.classList.add('is-error');
-                                } else {
-                                    notify(result.message || 'Could not reschedule this booking.', 'error');
-                                }
-                                return;
-                            }
-                            const index = bookings.findIndex((item) => String(item.id) === String(result.booking.id));
-                            if (index >= 0) bookings[index] = result.booking;
-                            renderMonth();
-                            renderBoard();
-                            notify(result.message || 'Booking rescheduled.', 'success');
-                        } catch (error) {
-                            console.debug('[board] PATCH response', { kind: 'booking', id: booking.id, error: error?.message });
-                            notify('Could not reschedule this booking. Please try again.', 'error');
-                        }
-                        return;
-                    }
-                    if (cancelled) return;
-                };
-                bar.addEventListener('pointerup', (pointerEvent) => { void stopBookingDrag(pointerEvent); });
-                bar.addEventListener('pointercancel', (pointerEvent) => { void stopBookingDrag(pointerEvent, true); });
-                bar.addEventListener('lostpointercapture', (pointerEvent) => { void stopBookingDrag(pointerEvent, true); });
                 col.append(bar);
             });
 
@@ -1570,7 +1678,26 @@
             body.append(banner);
         }
 
-        monthGrid.append(body);
+        nextGrid.append(body);
+
+        let updatedOnly = Boolean(changedDates?.length && monthGrid.children.length);
+        if (updatedOnly) {
+            const currentHeader = monthGrid.querySelector('.court-month-header');
+            const nextHeader = nextGrid.querySelector('.court-month-header');
+            const currentBody = monthGrid.querySelector('.court-month-body');
+            const nextBody = nextGrid.querySelector('.court-month-body');
+            for (const date of new Set(changedDates)) {
+                const oldHeader = Array.from(currentHeader?.querySelectorAll('[data-date]') || []).find((item) => item.dataset.date === date);
+                const newHeader = Array.from(nextHeader?.querySelectorAll('[data-date]') || []).find((item) => item.dataset.date === date);
+                const oldColumn = Array.from(currentBody?.querySelectorAll('.court-month-date-col') || []).find((item) => item.dataset.date === date);
+                const newColumn = Array.from(nextBody?.querySelectorAll('.court-month-date-col') || []).find((item) => item.dataset.date === date);
+                if (!oldHeader || !newHeader || !oldColumn || !newColumn) { updatedOnly = false; break; }
+                oldHeader.replaceWith(newHeader);
+                oldColumn.replaceWith(newColumn);
+            }
+        }
+        if (!updatedOnly) monthGrid.replaceChildren(...nextGrid.childNodes);
+        monthGrid.style.width = `${gridW}px`;
 
         const monthLabel = new Date(year, month - 1, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
         const activeCount = [...windowsByDate.values()].flat().filter((event) => event.kind === 'booking').length;
@@ -1597,9 +1724,49 @@
         }
     };
 
-    tabs.forEach((tab) => tab.addEventListener('click', () => changeView(tab.dataset.bookingsView)));
-    dateInput.addEventListener('change', renderBoard);
-    monthInput.addEventListener('change', renderMonth);
+    const loadVisibleRangeThenRender = async (range, summaryElement, render) => {
+        if (!rangeIsCached(range.from, range.to)) {
+            summaryElement.textContent = 'Loading calendar…';
+            const loaded = await loadCalendarRange(range.from, range.to);
+            if (!loaded) {
+                render();
+                return;
+            }
+        }
+        render();
+    };
+    const stopPolling = () => {
+        if (pollTimer) window.clearTimeout(pollTimer);
+        pollTimer = null;
+    };
+    const schedulePoll = () => {
+        stopPolling();
+        if (authReloadPrompted) return;
+        if (document.visibilityState !== 'visible') return;
+        if ((!panels.month || panels.month.hidden) && (!panels.board || panels.board.hidden)) return;
+        pollTimer = window.setTimeout(async () => {
+            if (document.visibilityState !== 'visible') return schedulePoll();
+            const range = currentVisibleRange();
+            const loaded = await loadCalendarRange(range.from, range.to, { force: true });
+            if (loaded) {
+                if (!calendarDrag && blockModal.hidden) renderCalendar();
+                else calendarDataDirty = true;
+            }
+            schedulePoll();
+        }, pollDelay);
+    };
+
+    tabs.forEach((tab) => tab.addEventListener('click', () => {
+        changeView(tab.dataset.bookingsView);
+        schedulePoll();
+    }));
+    dateInput.addEventListener('change', () => {
+        void loadVisibleRangeThenRender({ from: dateInput.value, to: dateInput.value }, summary, renderBoard);
+    });
+    monthInput.addEventListener('change', () => {
+        const range = currentVisibleRange();
+        void loadVisibleRangeThenRender(range, monthSummary, renderMonth);
+    });
 
     changeView(initialView, false);
 
@@ -1611,7 +1778,8 @@
             if (button.dataset.monthNav === 'previous') cursor.setMonth(cursor.getMonth() - 1);
             if (button.dataset.monthNav === 'next') cursor.setMonth(cursor.getMonth() + 1);
             monthInput.value = toMonthValue(cursor);
-            renderMonth();
+            const range = currentVisibleRange();
+            void loadVisibleRangeThenRender(range, monthSummary, renderMonth).then(schedulePoll);
         });
     });
 
@@ -1623,7 +1791,15 @@
             if (button.dataset.boardDate === 'previous') value.setDate(value.getDate() - 1);
             if (button.dataset.boardDate === 'next') value.setDate(value.getDate() + 1);
             dateInput.value = toDateValue(value);
-            renderBoard();
+            void loadVisibleRangeThenRender({ from: dateInput.value, to: dateInput.value }, summary, renderBoard).then(schedulePoll);
         });
     });
+    document.addEventListener('visibilitychange', schedulePoll);
+    blockModal.addEventListener('transitionend', schedulePoll);
+
+    const initialToday = toDateValue(new Date());
+    const initialEnd = new Date(`${initialToday}T00:00:00`);
+    initialEnd.setMonth(initialEnd.getMonth() + 6);
+    rangeCache.push({ from: addDays(initialToday, -1), to: toDateValue(initialEnd) });
+    schedulePoll();
 })();

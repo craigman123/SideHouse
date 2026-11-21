@@ -9,6 +9,7 @@ use App\Models\Court;
 use App\Models\CourtBlock;
 use App\Models\CourtClosure;
 use App\Services\CourtConflictService;
+use App\Services\AdminBookingsCalendarData;
 use App\Support\ActivityLogger;
 use App\Support\BookingHours;
 use Carbon\Carbon;
@@ -20,7 +21,7 @@ use Illuminate\Validation\ValidationException;
 
 class BookingController extends Controller
 {
-    public function index(Request $request)
+    public function index(Request $request, AdminBookingsCalendarData $calendarData)
     {
         $bookings = Booking::query()
             ->status($request->status)
@@ -37,70 +38,42 @@ class BookingController extends Controller
         $boardStart = Carbon::today()->subDay(); // includes overnight tails
         $boardEnd = Carbon::today()->addMonths(6);
 
-        $courtBoardBookings = Booking::with(['court', 'slots', 'equipment.equipment'])
-            ->whereBetween('date', [$boardStart, $boardEnd])
-            ->orderBy('date')
-            ->orderBy('start_time')
-            ->get()
-            ->map(fn (Booking $booking) => [
-                'id'       => $booking->id,
-                'customer' => $booking->customer_name,
-                'contact_number' => $booking->contact_number,
-                'email' => $booking->email,
-                'notes' => $booking->notes,
-                'court_id' => $booking->court_id,
-                'court'    => $booking->court?->name ?? ('Court ' . $booking->court_id),
-                'date'     => $booking->date?->toDateString(),
-                'start'    => substr((string) $booking->start_time, 0, 5),
-                'end'      => substr((string) $booking->end_time, 0, 5),
-                'status'   => $booking->status,
-                'source'   => $booking->source,
-                'amount'   => (float) $booking->amount,
-                'slots'    => $booking->slots->map(fn ($slot) => [
-                    'date'  => $slot->date?->toDateString(),
-                    'start' => substr((string) $slot->start_time, 0, 5),
-                    'end'   => substr((string) $slot->end_time, 0, 5),
-                ])->values(),
-                'equipment' => $booking->equipment->map(fn ($line) => [
-                    'name'     => $line->equipment?->name ?? 'Equipment',
-                    'quantity' => $line->quantity,
-                ])->values(),
-            ])
-            ->values();
+        $boardData = $calendarData->forRange($boardStart, $boardEnd);
+        $courtBoardBookings = $boardData['bookings'];
+        $courtBoardClosures = $boardData['closures'];
+        $courtBoardBlocks = $boardData['blocks'];
+        $courtBoardClosingCutoffs = $boardData['closingCutoffs'];
+        $courts = $boardData['courts'];
 
-        $courtBoardClosures = CourtClosure::whereBetween('date', [$boardStart, $boardEnd])
-            ->get()
-            ->map(fn (CourtClosure $closure) => [
-                'court_id' => $closure->court_id,
-                'date'     => $closure->date->toDateString(),
-                'reason'   => $closure->reason,
-            ])
-            ->values();
-
-        $courtBoardBlocks = CourtBlock::with('court')
-            ->whereBetween('block_date', [$boardStart, $boardEnd])
-            ->orderBy('block_date')
-            ->orderBy('start_time')
-            ->get()
-            ->map(fn (CourtBlock $block) => [
-                'id'         => $block->id,
-                'court_id'   => $block->court?->id,
-                'type'       => $block->type,
-                'title'      => $block->title,
-                'notes'      => $block->notes,
-                'block_date' => $block->block_date?->toDateString(),
-                'start_time' => substr((string) $block->start_time, 0, 5),
-                'end_time'   => substr((string) $block->end_time, 0, 5),
-            ])
-            ->values();
-
-        $courts = Court::orderBy('name')->get(['id', 'name', 'hourly_rate']);
-
-        $businessSettings = BusinessSetting::current();
+        $businessSettings = (object) $boardData['businessSettings'];
 
         return view('admin.bookings.index', compact(
-            'bookings', 'courts', 'courtBoardBookings', 'courtBoardClosures', 'courtBoardBlocks', 'businessSettings'
+            'bookings', 'courts', 'courtBoardBookings', 'courtBoardClosures', 'courtBoardBlocks', 'courtBoardClosingCutoffs', 'businessSettings'
         ));
+    }
+
+    public function calendar(Request $request, AdminBookingsCalendarData $calendarData): JsonResponse
+    {
+        $validated = $request->validate([
+            'from' => ['required', 'date_format:Y-m-d'],
+            'to' => ['required', 'date_format:Y-m-d', 'after_or_equal:from'],
+        ]);
+        $from = CarbonImmutable::createFromFormat('!Y-m-d', $validated['from']);
+        $to = CarbonImmutable::createFromFormat('!Y-m-d', $validated['to']);
+        if ($from->diffInDays($to) >= 100) {
+            throw ValidationException::withMessages(['to' => 'The requested calendar range cannot exceed 100 days.']);
+        }
+
+        $version = $calendarData->versionForRange($from, $to);
+        $etag = '"'.$version.'"';
+        if ($request->headers->get('If-None-Match') === $etag) {
+            return response()->json(null, 304)->header('ETag', $etag);
+        }
+
+        return response()->json([
+            ...$calendarData->forRange($from, $to),
+            'server_time' => now('Asia/Manila')->toIso8601String(),
+        ])->header('ETag', $etag);
     }
 
     public function update(Request $request, Booking $booking, CourtConflictService $conflicts): JsonResponse
