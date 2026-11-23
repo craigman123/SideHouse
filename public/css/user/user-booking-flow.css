@@ -1929,3 +1929,173 @@ html.user-layout-shell.user-book-court-page #timePickerModal .modal-actions .btn
         display: none;
     }
 }
+
+/* USER PAYMENT MODAL - body parity */
+
+#courtPaymentModal .modal-box.modal-box-lg.modal-box-scrollable .modal-scroll-body {
+    padding-bottom: calc(var(--s4) + env(safe-area-inset-bottom, 0px));
+}
+
+#courtPaymentModal .modal-box.modal-box-lg.modal-box-scrollable .modal-scroll-body > .booking-section:first-child {
+    padding: var(--s3);
+}
+
+#courtPaymentModal .modal-box.modal-box-lg.modal-box-scrollable .booking-section-label {
+    margin: 0 0 var(--s3);
+    color: var(--text-muted);
+    font-family: var(--font-family);
+    font-size: var(--font-size-small);
+    font-weight: var(--font-weight-small);
+}
+
+#courtPaymentModal .modal-box.modal-box-lg.modal-box-scrollable .booking-section-label::before {
+    display: none;
+}
+
+#courtPaymentModal .modal-box.modal-box-lg.modal-box-scrollable .guest-info-item {
+    gap: var(--s2);
+}
+
+#courtPaymentModal .modal-box.modal-box-lg.modal-box-scrollable .guest-info-item label {
+    margin: 0;
+    color: var(--text-muted);
+    font-family: var(--font-family);
+    font-size: var(--font-size-small);
+    font-weight: var(--font-weight-small);
+}
+
+#courtPaymentModal .modal-box.modal-box-lg.modal-box-scrollable .guest-info-item input {
+    box-sizing: border-box;
+    display: block;
+    width: 100%;
+    min-height: 48px;
+    padding: var(--s3) var(--s4);
+    border: 1px solid var(--border);
+    border-radius: var(--r-md);
+    background: var(--surface);
+    color: var(--text);
+    font-family: var(--font-family);
+    font-size: var(--font-size-body);
+}
+
+#courtPaymentModal .modal-box.modal-box-lg.modal-box-scrollable #contactNumber:focus-visible {
+    border-color: var(--brand-hover);
+    outline: 2px solid var(--brand-hover);
+    outline-offset: 2px;
+}
+
+#courtPaymentModal .modal-box.modal-box-lg.modal-box-scrollable .payment-btn {
+    box-sizing: border-box;
+    display: flex;
+    width: 100%;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--s2);
+    padding: var(--s3);
+    border: 1px solid var(--brand);
+    border-radius: var(--r-md);
+    background: var(--surface);
+    color: var(--text);
+    font-family: var(--font-family);
+    text-align: left;
+    transform: none;
+}
+
+#courtPaymentModal .modal-box.modal-box-lg.modal-box-scrollable .payment-btn.selected {
+    border-color: var(--brand-hover);
+    background: color-mix(in srgb, var(--brand) 18%, var(--surface));
+    color: var(--text);
+}
+
+#courtPaymentModal .modal-box.modal-box-lg.modal-box-scrollable .payment-btn:hover,
+#courtPaymentModal .modal-box.modal-box-lg.modal-box-scrollable .payment-btn:focus-visible {
+    border-color: var(--brand-hover);
+    transform: none;
+}
+
+#courtPaymentModal .modal-box.modal-box-lg.modal-box-scrollable .payment-btn:focus-visible {
+    outline: 2px solid var(--brand-hover);
+    outline-offset: 2px;
+}
+
+#courtPaymentModal .modal-box.modal-box-lg.modal-box-scrollable .payment-btn-title {
+    display: block;
+    color: var(--text);
+    font-family: var(--font-family);
+    font-size: var(--font-size-body);
+    font-weight: var(--font-weight-h3);
+}
+
+#courtPaymentModal .modal-box.modal-box-lg.modal-box-scrollable .payment-btn-sub {
+    display: block;
+    color: var(--text-muted);
+    font-family: var(--font-family);
+    font-size: var(--font-size-small);
+}
+
+#courtPaymentModal .modal-box.modal-box-lg.modal-box-scrollable #bookingSummary {
+    border: 1px solid var(--border);
+    border-radius: var(--r-md);
+    background-color: var(--surface-2);
+    background-image: none;
+    color: var(--text);
+}
+
+#courtPaymentModal .modal-box.modal-box-lg.modal-box-scrollable #bookingSummary .booking-summary-title {
+    margin: 0 0 var(--s2);
+    padding: 0;
+    border: 0;
+    color: var(--brand-hover);
+    font-family: var(--font-family);
+    font-size: var(--font-size-small);
+    font-weight: var(--font-weight-small);
+}
+
+#courtPaymentModal .modal-box.modal-box-lg.modal-box-scrollable #bookingSummary > p:not(.booking-summary-title) {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--s2) var(--s3);
+    margin: 0;
+    padding: var(--s2) 0;
+    border-bottom: 1px solid var(--border);
+    color: var(--text-muted);
+    font-family: var(--font-family);
+    font-size: var(--font-size-small);
+    overflow-wrap: anywhere;
+}
+
+#courtPaymentModal .modal-box.modal-box-lg.modal-box-scrollable #bookingSummary > p:nth-of-type(2) {
+    justify-content: space-between;
+    white-space: normal;
+    overflow-wrap: anywhere;
+}
+
+#courtPaymentModal .modal-box.modal-box-lg.modal-box-scrollable #bookingSummary > p:nth-of-type(2) span {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+#courtPaymentModal .modal-box.modal-box-lg.modal-box-scrollable #bookingSummary strong {
+    max-width: 68%;
+    color: var(--text);
+    text-align: right;
+    overflow-wrap: anywhere;
+}
+
+#courtPaymentModal .modal-box.modal-box-lg.modal-box-scrollable #bookingSummary > p:last-child {
+    margin-top: var(--s2);
+    padding-top: var(--s3);
+    border-top: 1px solid var(--border);
+    border-bottom: 0;
+    color: var(--brand);
+    font-size: var(--font-size-body);
+    font-weight: var(--font-weight-button);
+}
+
+#courtPaymentModal .modal-box.modal-box-lg.modal-box-scrollable #bookingSummary .booking-summary-total strong {
+    color: var(--brand);
+    font-size: var(--font-size-h3);
+    font-weight: var(--font-weight-h3);
+}
