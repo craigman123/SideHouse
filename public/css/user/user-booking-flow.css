@@ -458,3 +458,614 @@ html[data-theme="light"] .user-booking-waiting-page .wt-confirm-stay:hover:not(:
 .user-book-court-page #timePickerModal .modal-close {
     margin: 0;
 }
+
+/* TIME PICKER MODAL - guest parity */
+
+/* Frame */
+html.user-layout-shell.user-book-court-page #timePickerModal .modal-box-timepicker {
+    border: 1px solid var(--border);
+    border-radius: var(--r-lg);
+    background: var(--surface);
+    background-image: none;
+    color: var(--text);
+    font-family: var(--font-family);
+}
+
+/* Size and safe area */
+html.user-layout-shell.user-book-court-page #timePickerModal {
+    box-sizing: border-box;
+    align-items: center;
+    justify-content: center;
+    padding:
+        max(var(--s3), env(safe-area-inset-top, 0px))
+        max(var(--s3), env(safe-area-inset-right, 0px))
+        max(var(--s3), env(safe-area-inset-bottom, 0px))
+        max(var(--s3), env(safe-area-inset-left, 0px));
+}
+
+html.user-layout-shell.user-book-court-page #timePickerModal .modal-box-timepicker {
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    width: min(560px, calc(100% - var(--s4) - var(--s4)));
+    max-width: 560px;
+    height: auto;
+    max-height: calc(100vh - var(--s3) - var(--s3));
+    max-height: calc(
+        100dvh
+        - max(var(--s3), env(safe-area-inset-top, 0px))
+        - max(var(--s3), env(safe-area-inset-bottom, 0px))
+    );
+    min-height: 0;
+    margin: 0;
+    padding: var(--s4);
+    overflow: hidden;
+}
+
+/* Header */
+html.user-layout-shell.user-book-court-page #timePickerModal .modal-header-timepicker {
+    display: flex;
+    flex: 0 0 auto;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--s3);
+    margin: 0 0 var(--s3);
+}
+
+html.user-layout-shell.user-book-court-page #timePickerModal .modal-back-time {
+    display: inline-flex;
+    align-items: center;
+    justify-content: flex-start;
+    min-height: 44px;
+    margin: 0;
+    padding: var(--s2) var(--s1);
+    border: 1px solid transparent;
+    border-radius: var(--r-pill);
+    background: transparent;
+    color: var(--text);
+    font-family: var(--font-family);
+    font-size: var(--font-size-small);
+    font-weight: var(--font-weight-small);
+}
+
+html.user-layout-shell.user-book-court-page #timePickerModal .modal-close {
+    display: inline-flex;
+    flex: 0 0 44px;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    min-height: 44px;
+    margin: 0;
+    padding: 0;
+    border: 1px solid transparent;
+    border-radius: var(--r-pill);
+    background: transparent;
+    color: var(--text);
+    font-size: var(--font-size-h3);
+}
+
+html.user-layout-shell.user-book-court-page #timePickerModal .modal-back-time:hover,
+html.user-layout-shell.user-book-court-page #timePickerModal .modal-close:hover {
+    border-color: var(--danger);
+    background: color-mix(in srgb, var(--danger) 12%, var(--surface));
+    color: var(--danger);
+}
+
+html.user-layout-shell.user-book-court-page #timePickerModal .modal-back-time:focus-visible,
+html.user-layout-shell.user-book-court-page #timePickerModal .modal-close:focus-visible {
+    outline: 2px solid var(--danger);
+    outline-offset: 2px;
+}
+
+/* Stepper */
+html.user-layout-shell.user-book-court-page #timePickerModal .booking-flow-progress {
+    display: grid;
+    width: 100%;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: var(--s1);
+    margin: 0;
+}
+
+html.user-layout-shell.user-book-court-page #timePickerModal .booking-flow-step {
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 0;
+    min-height: 36px;
+    gap: var(--s1);
+    padding: var(--s1);
+    border: 1px solid var(--border);
+    border-radius: var(--r-pill);
+    background: var(--surface-2);
+    color: var(--text-muted);
+    font-family: var(--font-family);
+    font-size: var(--font-size-small);
+    text-align: center;
+}
+
+html.user-layout-shell.user-book-court-page #timePickerModal .booking-flow-step.active {
+    border-color: var(--brand);
+    background: color-mix(in srgb, var(--brand) 18%, var(--surface));
+    color: var(--text);
+}
+
+html.user-layout-shell.user-book-court-page #timePickerModal .booking-flow-step.complete {
+    border-color: var(--brand);
+    color: var(--text);
+}
+
+html.user-layout-shell.user-book-court-page #timePickerModal .booking-flow-step b {
+    display: inline;
+    flex: 0 0 auto;
+    width: auto;
+    height: auto;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    color: var(--brand-hover);
+    font-size: inherit;
+}
+
+/* Date row */
+html.user-layout-shell.user-book-court-page #timePickerModal .time-picker-scroll-area {
+    box-sizing: border-box;
+    flex: 1 1 auto;
+    min-height: 0;
+    padding-bottom: calc(var(--s5) + env(safe-area-inset-bottom, 0px));
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-y;
+    scroll-padding-bottom: calc(var(--s5) + env(safe-area-inset-bottom, 0px));
+}
+
+html.user-layout-shell.user-book-court-page #timePickerModal .time-picker-day-switch {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+    gap: var(--s3);
+    margin: 0 calc(20px + var(--s1)) var(--s3);
+}
+
+html.user-layout-shell.user-book-court-page #timePickerModal .time-picker-day-switch h3 {
+    flex: 1 1 auto;
+    min-width: 0;
+    margin: 0;
+    color: var(--text);
+    font-family: var(--font-family);
+    font-size: var(--font-size-h3);
+    font-weight: var(--font-weight-h3);
+    text-align: center;
+}
+
+html.user-layout-shell.user-book-court-page #timePickerModal .time-picker-day-nav {
+    display: inline-flex;
+    flex: 0 0 44px;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    min-height: 44px;
+    padding: 0;
+    border: 1px solid var(--border);
+    border-radius: var(--r-pill);
+    background: var(--surface-2);
+    color: var(--text);
+    font-family: var(--font-family);
+}
+
+html.user-layout-shell.user-book-court-page #timePickerModal .time-picker-day-nav:hover:not(:disabled) {
+    border-color: var(--brand);
+    background: var(--surface);
+}
+
+html.user-layout-shell.user-book-court-page #timePickerModal .time-picker-day-nav:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+}
+
+html.user-layout-shell.user-book-court-page #timePickerModal .time-picker-day-nav:focus-visible {
+    outline: 2px solid var(--brand-hover);
+    outline-offset: 2px;
+}
+
+html.user-layout-shell.user-book-court-page #timePickerModal .time-picker-body {
+    display: flex;
+    flex: 0 0 auto;
+    flex-direction: column;
+    gap: var(--s3);
+    min-height: 0;
+    margin: 0;
+    overflow: visible;
+}
+
+html.user-layout-shell.user-book-court-page #timePickerModal .time-picker-body .booking-section-label {
+    margin: 0;
+}
+
+/* Legend */
+html.user-layout-shell.user-book-court-page #timePickerModal .time-picker-legend {
+    display: flex;
+    flex: 0 0 auto;
+    flex-wrap: wrap;
+    gap: var(--s3);
+    margin: 0;
+}
+
+html.user-layout-shell.user-book-court-page #timePickerModal .time-picker-legend-item {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--s2);
+    color: var(--text-muted);
+    font-family: var(--font-family);
+    font-size: var(--font-size-small);
+    font-weight: var(--font-weight-small);
+}
+
+html.user-layout-shell.user-book-court-page #timePickerModal .time-picker-legend-swatch {
+    flex: 0 0 var(--s4);
+    width: var(--s4);
+    height: var(--s4);
+    border: 1px solid var(--brand);
+    border-radius: var(--r-sm);
+    background: var(--surface-2);
+    opacity: 1;
+}
+
+html.user-layout-shell.user-book-court-page #timePickerModal .time-picker-legend-swatch.legend-selected {
+    border-color: var(--brand-hover);
+    background: color-mix(in srgb, var(--brand) 18%, var(--surface));
+}
+
+html.user-layout-shell.user-book-court-page #timePickerModal .time-picker-legend-swatch.legend-booked {
+    border-color: var(--border);
+    background: var(--surface-2);
+}
+
+/* Rows */
+html.user-layout-shell.user-book-court-page #timePickerModal .time-slot-list > * {
+    flex-shrink: 0;
+}
+
+html.user-layout-shell.user-book-court-page #timePickerModal .time-slot-list {
+    box-sizing: border-box;
+    flex: 0 1 auto;
+    gap: var(--s2);
+    max-height: min(320px, 38vh);
+    padding: var(--s1) var(--s2) var(--s1) 0;
+    overflow-y: auto;
+    scrollbar-color: var(--text-muted) var(--surface-2);
+    scrollbar-width: thin;
+}
+
+html.user-layout-shell.user-book-court-page #timePickerModal .time-slot-row {
+    display: grid;
+    grid-template-columns: minmax(0, 200px) minmax(0, 1fr);
+    align-items: center;
+    gap: var(--s2);
+    min-width: 0;
+    min-height: 44px;
+}
+
+html.user-layout-shell.user-book-court-page #timePickerModal .time-slot-row-time {
+    display: flex;
+    align-items: center;
+    min-width: 0;
+    min-height: 44px;
+    color: var(--text);
+    font-family: var(--font-family);
+    font-size: var(--font-size-small);
+    font-weight: var(--font-weight-small);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+html.user-layout-shell.user-book-court-page #timePickerModal .time-slot-row-toggle {
+    box-sizing: border-box;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    min-width: 0;
+    min-height: 44px;
+    gap: var(--s2);
+    padding: var(--s2) var(--s3);
+    border: 1px solid var(--brand);
+    border-radius: var(--r-md);
+    background: var(--surface-2);
+    color: var(--text);
+    font-family: var(--font-family);
+    font-size: var(--font-size-small);
+    font-weight: var(--font-weight-small);
+    line-height: var(--line-height-body);
+}
+
+html.user-layout-shell.user-book-court-page #timePickerModal .time-slot-row-toggle > span:not(.time-slot-row-check) {
+    color: var(--text);
+    font: inherit;
+    line-height: inherit;
+}
+
+html.user-layout-shell.user-book-court-page #timePickerModal .time-slot-row-toggle::before {
+    content: none;
+}
+
+html.user-layout-shell.user-book-court-page #timePickerModal .time-slot-row-toggle:hover:not(:disabled) {
+    border-color: var(--brand-hover);
+    background: var(--surface);
+    color: var(--text);
+}
+
+html.user-layout-shell.user-book-court-page #timePickerModal .time-slot-row-toggle.selected {
+    border-color: var(--brand-hover);
+    background: color-mix(in srgb, var(--brand) 18%, var(--surface));
+    color: var(--text);
+}
+
+html.user-layout-shell.user-book-court-page #timePickerModal .time-slot-row-toggle:disabled,
+html.user-layout-shell.user-book-court-page #timePickerModal .time-slot-row.disabled .time-slot-row-time {
+    border-color: var(--border);
+    background: var(--surface-2);
+    color: var(--text-muted);
+    cursor: not-allowed;
+}
+
+html.user-layout-shell.user-book-court-page #timePickerModal .time-slot-row-toggle:disabled > span:not(.time-slot-row-check) {
+    color: var(--text-muted);
+}
+
+html.user-layout-shell.user-book-court-page #timePickerModal .time-slot-row[data-tooltip*="already booked"] .time-slot-row-toggle {
+    border-style: dashed;
+}
+
+html.user-layout-shell.user-book-court-page #timePickerModal .time-slot-row-peak .time-slot-row-toggle:not(:disabled) {
+    border-color: var(--warning);
+}
+
+html.user-layout-shell.user-book-court-page #timePickerModal .time-slot-row-peak .time-slot-row-time::after {
+    content: "Peak";
+    margin-left: var(--s2);
+    padding: 0 var(--s2);
+    border: 1px solid var(--warning);
+    border-radius: var(--r-pill);
+    color: var(--warning);
+    font-size: var(--font-size-small);
+    line-height: 1.5;
+}
+
+html.user-layout-shell.user-book-court-page #timePickerModal .time-slot-row-check {
+    color: var(--brand-hover);
+}
+
+html.user-layout-shell.user-book-court-page #timePickerModal .time-slot-row-toggle:focus-visible {
+    outline: 2px solid var(--brand-hover);
+    outline-offset: 2px;
+}
+
+html.user-layout-shell.user-book-court-page #timePickerModal .time-slot-icon {
+    display: inline-flex;
+    align-items: center;
+    flex: 0 0 auto;
+    margin-right: var(--s2);
+}
+
+html.user-layout-shell.user-book-court-page #timePickerModal .time-slot-icon svg {
+    width: var(--s4);
+    height: var(--s4);
+}
+
+html.user-layout-shell.user-book-court-page #timePickerModal .time-slot-skeleton {
+    box-sizing: border-box;
+    flex: 0 0 44px;
+    width: 100%;
+    min-height: 44px;
+    height: 44px;
+    border: 1px solid var(--border);
+    border-radius: var(--r-md);
+    background-color: var(--surface-2);
+    background-image: linear-gradient(90deg, var(--surface-2) 25%, var(--surface) 37%, var(--surface-2) 63%);
+}
+
+/* Scroll area and footer */
+html.user-layout-shell.user-book-court-page #timePickerModal .user-booking-selection {
+    position: static;
+    box-sizing: border-box;
+    width: 100%;
+    margin: var(--s3) 0 0;
+    padding: var(--s4);
+    border: 1px solid var(--border);
+    border-radius: var(--r-md);
+    background: var(--surface-2);
+    color: var(--text);
+    font-family: var(--font-family);
+}
+
+html.user-layout-shell.user-book-court-page #timePickerModal .user-booking-selection-title,
+html.user-layout-shell.user-book-court-page #timePickerModal .user-booking-selection .booking-selection-summary-title {
+    margin: 0 0 var(--s2);
+    color: var(--brand-hover);
+    font-size: var(--font-size-small);
+    font-weight: var(--font-weight-small);
+}
+
+html.user-layout-shell.user-book-court-page #timePickerModal .user-booking-selection p:not(.booking-selection-summary-title) {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--s3);
+    margin: 0;
+    padding: var(--s2) 0;
+    border-top: 1px solid var(--border);
+    color: var(--text-muted);
+}
+
+html.user-layout-shell.user-book-court-page #timePickerModal .user-booking-selection strong {
+    max-width: 68%;
+    color: var(--text);
+    text-align: right;
+    overflow-wrap: anywhere;
+}
+
+html.user-layout-shell.user-book-court-page #timePickerModal .user-booking-selection .booking-selection-total strong {
+    color: var(--text);
+}
+
+html.user-layout-shell.user-book-court-page #timePickerModal .modal-actions {
+    display: flex;
+    flex: 0 0 auto;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: var(--s3);
+    position: sticky;
+    bottom: 0;
+    z-index: 2;
+    margin: var(--s3) 0 0;
+    padding: var(--s3) 0 calc(var(--s3) + env(safe-area-inset-bottom, 0px));
+    border-top: 1px solid var(--border);
+    background: var(--surface);
+}
+
+html.user-layout-shell.user-book-court-page #timePickerModal .modal-actions .btn {
+    min-width: 0;
+    min-height: 44px;
+    flex: 1 1 140px;
+    border-radius: var(--r-pill);
+    font-family: var(--font-family);
+    font-weight: var(--font-weight-button);
+}
+
+html.user-layout-shell.user-book-court-page #timePickerModal .modal-actions .btn-primary {
+    border: 1px solid var(--brand);
+    background: var(--brand);
+    color: var(--text);
+}
+
+html.user-layout-shell.user-book-court-page #timePickerModal .modal-actions .btn-secondary {
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--text);
+}
+
+html.user-layout-shell.user-book-court-page #timePickerModal .modal-actions .btn-secondary:hover:not(:disabled) {
+    border-color: var(--danger);
+    background: color-mix(in srgb, var(--danger) 12%, var(--surface));
+    color: var(--danger);
+}
+
+html.user-layout-shell.user-book-court-page #timePickerModal .modal-actions .btn:disabled {
+    border-color: var(--border);
+    background: var(--surface-2);
+    color: var(--text-muted);
+    cursor: not-allowed;
+}
+
+html.user-layout-shell.user-book-court-page #timePickerModal .modal-actions .btn:focus-visible {
+    outline: 2px solid var(--brand-hover);
+    outline-offset: 2px;
+}
+
+/* Guest-matching narrow-screen behavior */
+@media (max-width: 560px) {
+    html.user-layout-shell.user-book-court-page #timePickerModal .booking-flow-step {
+        min-height: 44px;
+        flex-direction: column;
+        gap: var(--s1);
+        padding: var(--s1) 0;
+        white-space: nowrap;
+    }
+
+    html.user-layout-shell.user-book-court-page #timePickerModal .time-picker-day-switch {
+        flex: 0 0 auto;
+    }
+
+    html.user-layout-shell.user-book-court-page #timePickerModal .time-picker-scroll-area {
+        padding-bottom: calc(var(--s5) + env(safe-area-inset-bottom, 0px));
+    }
+
+    html.user-layout-shell.user-book-court-page #timePickerModal .time-slot-list {
+        flex: 1 0 auto;
+        min-height: calc(4 * 44px + 3 * var(--s2));
+        max-height: none;
+        overflow-y: visible;
+    }
+
+    html.user-layout-shell.user-book-court-page #timePickerModal .time-picker-legend {
+        flex-flow: row wrap;
+        gap: var(--s2);
+    }
+
+    html.user-layout-shell.user-book-court-page #timePickerModal .user-booking-selection {
+        padding: var(--s2) var(--s3);
+    }
+
+    html.user-layout-shell.user-book-court-page #timePickerModal .user-booking-selection-title,
+    html.user-layout-shell.user-book-court-page #timePickerModal .user-booking-selection .booking-selection-summary-title {
+        margin-bottom: var(--s1);
+    }
+
+    html.user-layout-shell.user-book-court-page #timePickerModal .user-booking-selection p:not(.booking-selection-summary-title) {
+        align-items: center;
+        gap: var(--s2);
+        padding: var(--s1) 0;
+        white-space: nowrap;
+    }
+
+    html.user-layout-shell.user-book-court-page #timePickerModal .user-booking-selection p:not(.booking-selection-summary-title) > span {
+        flex: 0 0 auto;
+    }
+
+    html.user-layout-shell.user-book-court-page #timePickerModal .user-booking-selection strong {
+        min-width: 0;
+        max-width: none;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    html.user-layout-shell.user-book-court-page #timePickerModal .time-slot-row-peak .time-slot-row-time::after {
+        margin-left: var(--s1);
+        padding: 0 var(--s1);
+    }
+}
+
+@media (max-width: 400px) {
+    html.user-layout-shell.user-book-court-page #timePickerModal .booking-flow-step {
+        font-size: 0;
+    }
+
+    html.user-layout-shell.user-book-court-page #timePickerModal .booking-flow-step b {
+        font-size: var(--font-size-small);
+    }
+}
+
+@media (max-width: 390px) {
+    html.user-layout-shell.user-book-court-page #timePickerModal .time-slot-row {
+        grid-template-columns: minmax(0, 1fr);
+        gap: var(--s1);
+    }
+
+    html.user-layout-shell.user-book-court-page #timePickerModal .time-slot-row-time {
+        min-height: 40px;
+    }
+
+    html.user-layout-shell.user-book-court-page #timePickerModal .time-slot-list {
+        min-height: calc(4 * (40px + 44px + var(--s1)) + 3 * var(--s2));
+    }
+}
+
+@media (max-height: 480px) {
+    html.user-layout-shell.user-book-court-page #timePickerModal .time-slot-list {
+        flex: 1 0 auto;
+        min-height: calc(4 * 44px + 3 * var(--s2));
+        max-height: none;
+        overflow-y: visible;
+    }
+}
