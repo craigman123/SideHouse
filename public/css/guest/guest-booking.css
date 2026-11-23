@@ -714,32 +714,6 @@ body > .landing-wrapper {
     font-family: var(--font-family);
 }
 
-#timePickerModal .time-slot-row-openplay {
-    flex: 0 0 auto;          /* never shrink in the flex list */
-    align-items: stretch;
-    min-height: auto;        /* not 0 */
-}
-
-#timePickerModal .time-slot-openplay-times {
-    display: flex;
-    flex-direction: column;
-    gap: var(--s2);          /* same gap as .time-slot-list rows */
-}
-
-#timePickerModal .time-slot-openplay-times .time-slot-row-time {
-    min-height: 58px;
-}
-
-#timePickerModal .time-slot-openplay-toggle {
-    align-self: stretch;
-    height: auto;
-    padding: 14px;
-    border-radius: 14px;
-    text-align: left;
-    gap: 10px;
-    background: linear-gradient(180deg, rgba(0,160,90,.18), rgba(0,160,90,.06));
-}
-
 #timePickerModal .time-slot-list > * {
     flex-shrink: 0;
 }
@@ -1515,93 +1489,62 @@ body > .landing-wrapper {
     .landing-wrapper .nav-title-landing { margin-left: 0; max-width: 18vw; }
 }
 
-.time-slot-icon {
+/* =====================================================================
+   Time slot icons + OPEN PLAY row (keep this block LAST in the file)
+   All rules use #timePickerModal + !important so nothing earlier or in
+   the shared stylesheet can collapse the row.
+   ===================================================================== */
+#timePickerModal .time-slot-icon {
     display: inline-flex;
     align-items: center;
     margin-right: 6px;
 }
-.time-slot-icon svg {
+
+#timePickerModal .time-slot-icon svg {
     width: 16px;
     height: 16px;
 }
 
-.time-slot-row-openplay {
-    align-items: stretch;
-    min-height: 0;
-}
-.time-slot-openplay-times {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;              /* match the gap between your normal rows */
-}
-.time-slot-openplay-times .time-slot-row-time {
-    display: flex;
-    align-items: center;
-    min-height: 58px;      /* match the height of a normal row */
-}
-.time-slot-openplay-toggle {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 10px;
-    align-self: stretch;
-    height: auto;
-    padding: 14px;
-    text-align: left;
-    border-radius: 14px;
-    background: linear-gradient(180deg, rgba(0,160,90,.18), rgba(0,160,90,.06));
-}
-.time-slot-openplay-toggle .time-slot-icon svg {
-    width: 26px;
-    height: 26px;
-}
-.time-slot-openplay-body {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-}
-.time-slot-openplay-title { display: block; font-size: 1rem; }
-.time-slot-openplay-meta  { display: block; font-size: .85rem; opacity: .85; }
-
-/* ---- Open play row ---- */
-#timePickerModal .time-slot-list {
-    align-content: start;
-    grid-auto-rows: auto;
-}
-
-#timePickerModal .time-slot-list > .time-slot-row-openplay {
-    display: grid;
-    grid-template-columns: minmax(0, 200px) minmax(0, 1fr);
-    grid-template-rows: auto;
-    grid-auto-rows: auto;
-    flex: 0 0 auto;
-    height: auto;
-    min-height: auto;
-    max-height: none;
-    overflow: visible;
-    contain: none;
-    align-items: stretch;
+#timePickerModal .time-slot-row-openplay {
+    display: grid !important;
+    grid-template-columns: minmax(0, 200px) minmax(0, 1fr) !important;
+    grid-template-rows: auto !important;
+    grid-auto-rows: auto !important;
+    flex: 0 0 auto !important;
+    height: auto !important;
+    /* 4 stacked hour rows (58px each) + 3 gaps. Adjust if open play covers
+       a different number of hours, or delete this line to size by content. */
+    min-height: calc(4 * 58px + 3 * var(--s2)) !important;
+    max-height: none !important;
+    overflow: visible !important;
+    contain: none !important;
+    align-items: stretch !important;
+    position: relative;
 }
 
 #timePickerModal .time-slot-openplay-times {
-    display: flex;
-    flex-direction: column;
+    display: flex !important;
+    flex-direction: column !important;
     gap: var(--s2);
+    height: auto !important;
+    min-width: 0;
 }
 
 #timePickerModal .time-slot-openplay-times .time-slot-row-time {
-    height: 58px;
-    min-height: 58px;
+    display: flex;
+    align-items: center;
+    height: 58px !important;
+    min-height: 58px !important;
 }
 
 #timePickerModal .time-slot-openplay-toggle {
-    display: flex;
+    display: flex !important;
     flex-direction: row;
     align-items: center;
     justify-content: center;
-    align-self: stretch;
-    height: auto;
-    min-height: 0;
+    align-self: stretch !important;
+    height: auto !important;
+    min-height: 0 !important;
     padding: 14px;
     border-radius: 14px;
     text-align: left;
@@ -1624,4 +1567,8 @@ body > .landing-wrapper {
 #timePickerModal .time-slot-openplay-title { display: block; font-size: 1rem; }
 #timePickerModal .time-slot-openplay-meta  { display: block; font-size: .85rem; opacity: .85; }
 
-
+@media (max-width: 390px) {
+    #timePickerModal .time-slot-row-openplay {
+        grid-template-columns: minmax(0, 200px) minmax(0, 1fr) !important;
+    }
+}
