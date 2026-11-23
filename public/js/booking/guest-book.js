@@ -1314,6 +1314,23 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    function renderTimeSlotSkeleton() {
+        timeSlotGrid.innerHTML = '';
+
+        // Same slot-count math as renderTimeSlots(), so the number of
+        // placeholders matches the real list that replaces it.
+        const spanMinutes = OVERNIGHT ? (24 - OPEN_HOUR + CLOSE_HOUR) * 60 : (CLOSE_HOUR - OPEN_HOUR) * 60;
+        const lastStart = spanMinutes - STEP_MINUTES;
+        const slotCount = Math.floor(lastStart / STEP_MINUTES) + 1;
+
+        for (let i = 0; i < slotCount; i++) {
+            const skeleton = document.createElement('div');
+            skeleton.className = 'time-slot-skeleton';
+            skeleton.style.animationDelay = `${(i % 8) * 0.05}s`;
+            timeSlotGrid.appendChild(skeleton);
+        }
+    }
+
     async function fetchAvailability(dateStr) {
         const empty = { booked: [], open_play: [], closed: false, closedReason: null,
             maintenanceBlocked: [], closedBlocks: [], close_minutes: null, failed: true };
