@@ -1631,3 +1631,142 @@ html.user-layout-shell.user-book-court-page #timePickerModal .modal-actions .btn
         font-size: var(--font-size-small);
     }
 }
+
+/* USER EQUIPMENT MODAL - body parity */
+
+#equipmentModal .modal-box.modal-box-lg.modal-box-scrollable .equipment-grid {
+    display: flex;
+    flex-direction: column;
+    gap: var(--s2);
+}
+
+#equipmentModal .modal-box.modal-box-lg.modal-box-scrollable .equipment-category-label {
+    margin: var(--s3) 0 var(--s2);
+    color: var(--text-muted);
+    font-family: var(--font-family);
+    font-size: var(--font-size-small);
+    font-weight: var(--font-weight-small);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+#equipmentModal .modal-box.modal-box-lg.modal-box-scrollable .equipment-category-label:first-child {
+    margin-top: 0;
+}
+
+#equipmentModal .modal-box.modal-box-lg.modal-box-scrollable .equipment-card {
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--s3);
+    min-width: 0;
+    padding: var(--s3);
+    border: 1px solid var(--border);
+    border-radius: var(--r-md);
+    background: var(--surface);
+    color: var(--text);
+    font-family: var(--font-family);
+}
+
+#equipmentModal .modal-box.modal-box-lg.modal-box-scrollable .equipment-card.has-qty {
+    border-color: var(--brand);
+    background: color-mix(in srgb, var(--brand) 12%, var(--surface));
+}
+
+#equipmentModal .modal-box.modal-box-lg.modal-box-scrollable .equipment-card > div:not(.equipment-qty-stepper) {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+#equipmentModal .modal-box.modal-box-lg.modal-box-scrollable .equipment-card-name {
+    display: block;
+    min-width: 0;
+    margin: 0 0 var(--s1);
+    color: var(--text);
+    font-family: var(--font-family);
+    font-size: var(--font-size-body);
+    font-weight: var(--font-weight-h3);
+}
+
+#equipmentModal .modal-box.modal-box-lg.modal-box-scrollable .equipment-card-meta {
+    display: block;
+    margin: 0;
+    color: var(--text-muted);
+    font-family: var(--font-family);
+    font-size: var(--font-size-small);
+}
+
+#equipmentModal .modal-box.modal-box-lg.modal-box-scrollable .equipment-card-meta.equipment-sold-out {
+    color: var(--danger);
+    font-weight: var(--font-weight-button);
+}
+
+#equipmentModal .modal-box.modal-box-lg.modal-box-scrollable .equipment-qty-stepper {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: var(--s2);
+}
+
+#equipmentModal .modal-box.modal-box-lg.modal-box-scrollable .qty-btn {
+    box-sizing: border-box;
+    display: inline-grid;
+    flex: 0 0 40px;
+    width: 40px;
+    aspect-ratio: 1;
+    place-items: center;
+    padding: 0;
+    border: 1px solid var(--border);
+    border-radius: var(--r-pill);
+    background: var(--surface-2);
+    color: var(--text);
+    font-family: var(--font-family);
+    font-size: var(--font-size-body);
+    font-weight: var(--font-weight-button);
+    line-height: 1;
+    cursor: pointer;
+}
+
+#equipmentModal .modal-box.modal-box-lg.modal-box-scrollable .qty-btn:hover:not(:disabled) {
+    border-color: var(--brand);
+    background: color-mix(in srgb, var(--brand) 12%, var(--surface));
+    color: var(--text);
+}
+
+#equipmentModal .modal-box.modal-box-lg.modal-box-scrollable .qty-btn:disabled {
+    border-color: var(--border);
+    background: var(--surface-2);
+    color: var(--text-muted);
+    cursor: not-allowed;
+}
+
+#equipmentModal .modal-box.modal-box-lg.modal-box-scrollable .qty-btn:focus-visible {
+    outline: 2px solid var(--brand-hover);
+    outline-offset: 2px;
+}
+
+#equipmentModal .modal-box.modal-box-lg.modal-box-scrollable .qty-value {
+    min-width: 24px;
+    color: var(--text);
+    font-family: var(--font-family);
+    font-size: var(--font-size-small);
+    font-weight: var(--font-weight-button);
+    text-align: center;
+}
+
+#equipmentModal .modal-box.modal-box-lg.modal-box-scrollable .user-booking-selection {
+    margin: var(--s3) 0 0;
+}
+
+@media (max-width: 560px) {
+    #equipmentModal .modal-box.modal-box-lg.modal-box-scrollable .equipment-card {
+        align-items: flex-start;
+        flex-wrap: wrap;
+    }
+
+    #equipmentModal .modal-box.modal-box-lg.modal-box-scrollable .equipment-qty-stepper {
+        margin-left: auto;
+    }
+}

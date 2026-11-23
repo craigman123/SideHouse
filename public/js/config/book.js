@@ -1130,7 +1130,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const metaEl = document.createElement('p');
         metaEl.className = 'equipment-card-meta' + (item.available === 0 ? ' equipment-sold-out' : '');
-        metaEl.textContent = `₱${Number(item.price).toLocaleString()} · ${item.available === 0 ? 'Sold out for this time' : `${item.available} available`}`;
+        metaEl.textContent = `₱${Number(item.price).toLocaleString()} each · ${item.available === 0 ? 'Sold out for this time' : `${item.available} available`}`;
 
         info.appendChild(nameEl);
         info.appendChild(metaEl);
