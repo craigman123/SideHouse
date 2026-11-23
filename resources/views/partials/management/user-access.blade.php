@@ -1,3 +1,7 @@
+@push('styles')
+    <link rel="stylesheet" href="{{ asset('css/shared/skeletons.css') . '?v=' . filemtime(public_path('css/shared/skeletons.css')) }}">
+@endpush
+
 <section class="user-access-page" id="userAccessPage"
         data-list-url="{{ route('admin.users.index') }}"
         data-candidates-url="{{ route('admin.users.candidates') }}"
@@ -8,21 +12,22 @@
         data-can-edit-details="{{ $actorRole === 'admin' ? 'true' : 'false' }}"
         data-actor-role="{{ $actorRole }}"
         data-current-id="{{ $actorId }}"
-        data-owner-exists="{{ $ownerExists ? 'true' : 'false' }}">
+        data-owner-exists="{{ $ownerExists ? 'true' : 'false' }}"
+        data-grantable-roles="{{ implode(',', $grantableRoles) }}">
         <script type="application/json" id="userAccessConfig">@json(['permissions' => $permissionDefinitions, 'staffPreset' => $staffPreset])</script>
 
         <header class="user-access-heading">
             <div>
                 <p class="user-access-eyebrow">People and permissions</p>
                 <h2>Manage <span>user access</span></h2>
-                <p>Review elevated accounts, assign staff permissions, and keep account changes auditable.</p>
+                <p>Review elevated accounts, assign staff permissions, and keep account changes auditable.<br> <span style="color: gold">MFA</span> are mandatory for high user access, to prevent future compromission.</p>
             </div>
             <button class="user-access-primary" id="addStaffButton" type="button">Add staff</button>
         </header>
 
         <aside class="owner-bootstrap-banner" id="ownerBootstrapBanner" role="status" hidden>
             <strong>No owner account has been set.</strong>
-            <span>Bootstrap the first owner from an existing account with <code>php artisan users:make-owner &lt;email&gt;</code>. Owner-only actions stay unavailable until an owner exists.</span>
+            <span>Promote a registered customer to owner from this page to enable owner-only actions.</span>
         </aside>
 
         <section class="user-access-summary" id="userAccessSummary" aria-label="Elevated account counts" aria-live="polite">
@@ -42,6 +47,7 @@
                         <option value="owner">Owner</option>
                         <option value="admin">Admin</option>
                         <option value="staff">Staff</option>
+                        @if ($actorRole === 'admin') <option value="user">Customer</option> @endif
                     </select>
                 </label>
             </div>
@@ -83,15 +89,18 @@
                     <div class="candidate-input-wrap">
                         <input id="candidateSearch" type="search" autocomplete="off" placeholder="Type at least 3 characters of the email" role="combobox" aria-autocomplete="list" aria-haspopup="listbox" aria-controls="candidateResults" aria-describedby="candidateSearchStatus" aria-expanded="false">
                         <input id="selectedCandidateUserId" name="user_id" type="hidden" value="">
-                        <div class="candidate-results" id="candidateResults" role="listbox" aria-label="Registered customer emails" hidden></div>
+                    <div class="candidate-results" id="candidateResults" role="listbox" aria-label="Registered customer emails" aria-busy="false" hidden></div>
                     </div>
                     <p class="candidate-search-status" id="candidateSearchStatus" role="status" aria-live="polite"></p>
+                    <span class="sr-only" id="candidateLoadingAnnouncement" aria-live="polite"></span>
                     <div class="selected-candidate" id="selectedCandidate" role="status" aria-live="polite" hidden></div>
                 </section>
 
                 <label class="field-label" for="accessRole">Role</label>
                 <select id="accessRole" required>
-                    <option value="staff">Staff</option><option value="admin">Admin</option><option value="owner">Owner</option>
+                    @foreach ($grantableRoles as $role)
+                        <option value="{{ $role }}">{{ ucfirst($role) }}</option>
+                    @endforeach
                 </select>
 
                 <fieldset class="permission-fieldset" id="permissionFieldset">
@@ -118,32 +127,35 @@
 
     @if ($actorRole === 'admin')
         <dialog class="access-dialog account-details-dialog" id="accountDetailsDialog" aria-labelledby="accountDetailsTitle">
-            <form class="access-dialog-card" id="accountDetailsForm" novalidate>
+            <form class="access-dialog-card" id="accountDetailsForm" data-load-state="idle" novalidate>
                 <header class="access-dialog-header">
-                    <div><p class="user-access-eyebrow">Staff and owner account</p><h2 id="accountDetailsTitle">Edit details</h2></div>
+                    <div><p class="user-access-eyebrow">Account details</p><h2 id="accountDetailsTitle">Edit details</h2></div>
                     <button type="button" class="dialog-close" data-close-details aria-label="Close dialog">×</button>
                 </header>
-                <p class="account-details-error" id="accountDetailsError" role="alert" hidden></p>
+                <div class="account-details-error" id="accountDetailsError" role="alert" hidden>
+                    <p id="accountDetailsErrorMessage"></p>
+                    <button type="button" id="retryAccountDetails" class="user-access-secondary" hidden>Retry</button>
+                </div>
                 <div class="access-dialog-body" id="accountDetailsFieldsStep">
                     <div class="account-details-field">
                         <label class="field-label" for="accountDetailsName">Name</label>
-                        <input id="accountDetailsName" name="name" type="text" maxlength="255" required autocomplete="name" aria-describedby="accountDetailsNameError">
+                        <div class="skeleton-input" data-details-skeleton="name"><input id="accountDetailsName" name="name" type="text" maxlength="255" required autocomplete="name" aria-describedby="accountDetailsNameError" disabled><span class="skeleton skeleton-line skeleton-input-bar" aria-hidden="true" hidden></span></div>
                         <span class="account-details-field-error" id="accountDetailsNameError" data-details-error="name" hidden></span>
                     </div>
                     <div class="account-details-field">
                         <label class="field-label" for="accountDetailsUsername">Username</label>
-                        <input id="accountDetailsUsername" name="username" type="text" maxlength="255" required autocomplete="username" aria-describedby="accountDetailsUsernameError">
+                        <div class="skeleton-input" data-details-skeleton="username"><input id="accountDetailsUsername" name="username" type="text" maxlength="255" required autocomplete="username" aria-describedby="accountDetailsUsernameError" disabled><span class="skeleton skeleton-line skeleton-input-bar" aria-hidden="true" hidden></span></div>
                         <span class="account-details-field-error" id="accountDetailsUsernameError" data-details-error="username" hidden></span>
                     </div>
                     <div class="account-details-field">
                         <label class="field-label" for="accountDetailsEmail">Email</label>
-                        <input id="accountDetailsEmail" name="email" type="email" maxlength="255" required autocomplete="email" aria-describedby="accountDetailsEmailNote accountDetailsEmailError">
+                        <div class="skeleton-input" data-details-skeleton="email"><input id="accountDetailsEmail" name="email" type="email" maxlength="255" required autocomplete="email" aria-describedby="accountDetailsEmailNote accountDetailsEmailError" disabled><span class="skeleton skeleton-line skeleton-input-bar" aria-hidden="true" hidden></span></div>
                         <small class="account-details-email-note" id="accountDetailsEmailNote">Changing the email signs this person out and notifies the old address.</small>
                         <span class="account-details-field-error" id="accountDetailsEmailError" data-details-error="email" hidden></span>
                     </div>
                     <div class="account-details-field">
                         <label class="field-label" for="accountDetailsPhone">Phone number</label>
-                        <input id="accountDetailsPhone" name="phone_number" type="tel" maxlength="30" autocomplete="tel" pattern="[0-9+()\-\s]{7,30}" aria-describedby="accountDetailsPhoneError">
+                        <div class="skeleton-input" data-details-skeleton="phone_number"><input id="accountDetailsPhone" name="phone_number" type="tel" maxlength="30" autocomplete="tel" pattern="[0-9+()\-\s]{7,30}" aria-describedby="accountDetailsPhoneError" disabled><span class="skeleton skeleton-line skeleton-input-bar" aria-hidden="true" hidden></span></div>
                         <span class="account-details-field-error" id="accountDetailsPhoneError" data-details-error="phone_number" hidden></span>
                     </div>
                 </div>
@@ -155,7 +167,7 @@
                 <footer class="access-dialog-footer">
                     <button type="button" class="user-access-secondary" data-close-details>Cancel</button>
                     <button type="button" class="user-access-secondary" id="backToAccountDetails" hidden>Back</button>
-                    <button type="button" class="user-access-primary" id="continueAccountDetails">Continue</button>
+                    <button type="button" class="user-access-primary" id="continueAccountDetails" disabled>Continue</button>
                     <button type="submit" class="user-access-primary" id="saveAccountDetails" hidden>Save details</button>
                 </footer>
             </form>

@@ -311,6 +311,7 @@ class GuestBookingController extends Controller
         return response()->json([
             'booked'              => $booked,
             'open_play'           => app(\App\Services\OpenPlayAvailability::class)->forDate($courtId, $date),
+            'closed_blocks'       => app(\App\Services\CourtBlockClosureAvailability::class)->closedRangesForDate($courtId, $date),
             'closed'              => BookingHours::isClosed($courtId, $date),
             'closed_reason'       => BookingHours::closedReason($courtId, $date),
             'maintenance_blocked' => $maintenanceRanges,
@@ -335,6 +336,7 @@ class GuestBookingController extends Controller
         $validated = $request->validate([
             'slots'   => ['required', 'array', 'min:1'],
             'slots.*' => ['required', 'date_format:Y-m-d H:i', 'distinct'],
+            'court_id' => ['nullable', 'integer', 'exists:courts,id'],
         ]);
 
         $stepMinutes = BookingHours::stepMinutes();
@@ -344,6 +346,17 @@ class GuestBookingController extends Controller
             $end   = $start->copy()->addMinutes($stepMinutes);
             return [$start->toDateString(), $start->format('H:i:s'), $end->format('H:i:s')];
         });
+
+        if (! empty($validated['court_id'])) {
+            foreach ($windows as $window) {
+                $start = Carbon::parse($window[0].' '.$window[1], 'Asia/Manila');
+                $end = Carbon::parse($window[0].' '.$window[2], 'Asia/Manila');
+                if ($end->lessThanOrEqualTo($start)) $end->addDay();
+                if (app(\App\Services\CourtBlockClosureAvailability::class)->firstClosedOverlap((int) $validated['court_id'], $start, $end)) {
+                    return response()->json(['message' => 'This court is closed during one of the selected times.'], 422);
+                }
+            }
+        }
 
         $equipment = Equipment::where('status', 'active')
             ->orderBy('category')
@@ -695,6 +708,10 @@ class GuestBookingController extends Controller
                             ->where('start_time', '<', $slotEnd->format('H:i:s'))
                             ->where('end_time', '>', $slotStart->format('H:i:s'))
                             ->exists();
+
+                        if (app(\App\Services\CourtBlockClosureAvailability::class)->firstClosedOverlap((int) $court->id, $slotStart, $slotEnd)) {
+                            throw new \RuntimeException('This court is closed during one of the selected times. Please choose another time.');
+                        }
 
                         $legacyConflict = Booking::where('court_id', $court->id)
                             ->where('date', $dateStr)

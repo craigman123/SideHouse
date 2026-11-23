@@ -15,7 +15,7 @@ Route::middleware(['auth', 'staff', 'admin.mfa', 'throttle:120,1'])
         Route::get('/overview/data', [OverviewController::class, 'data'])->name('overview.data');
 
         Route::get('/bookings', [BookingsController::class, 'index'])
-            ->middleware('can.access:bookings.view')
+            ->middleware('can.access:bookings.view,calendar_events.open_play')
             ->name('bookings');
         Route::get('/customers', [CustomersController::class, 'index'])
             ->middleware('can.access:customers.view')

@@ -26,29 +26,34 @@ class UserAccessController extends Controller
 {
     private const MANAGED_ROLES = ['owner', 'admin', 'staff'];
 
-    public function page(): View
+    public function page(UserAccessService $access): View
     {
+        $actor = auth()->user();
+        $effectiveActor = $access->effectiveUser($actor);
         $permissionDefinitions = config('user_access.permissions', []);
 
         return view('admin.user-access.index', [
-            'actorRole' => auth()->user()->role,
-            'actorId' => (int) auth()->user()->user_id,
+            'actorRole' => $effectiveActor->role,
+            'actorId' => (int) $actor->user_id,
             'permissionDefinitions' => collect(config('user_access.staff_permissions', []))
                 ->mapWithKeys(fn (string $key) => [$key => $permissionDefinitions[$key] ?? null])
                 ->all(),
             'staffPreset' => config('user_access.presets.staff', []),
             'ownerExists' => User::query()->where('role', 'owner')->exists(),
+            'grantableRoles' => $access->grantableRoles($effectiveActor),
         ]);
     }
 
-    public function index(Request $request): JsonResponse
+    public function index(Request $request, UserAccessService $access): JsonResponse
     {
         $validated = $request->validate([
             'q' => ['nullable', 'string', 'max:100'],
-            'role' => ['nullable', Rule::in(['all', ...self::MANAGED_ROLES])],
+            'role' => ['nullable', Rule::in(['all', ...self::MANAGED_ROLES, 'user'])],
         ]);
 
-        $query = User::query()->whereIn('role', self::MANAGED_ROLES)->with('promotedBy');
+        $actor = User::query()->findOrFail($request->user()->user_id);
+        $roles = $access->effectiveRole($actor, $request) === 'admin' ? [...self::MANAGED_ROLES, 'user'] : self::MANAGED_ROLES;
+        $query = User::query()->whereIn('role', $roles)->with('promotedBy');
         if (($validated['role'] ?? 'all') !== 'all') {
             $query->where('role', $validated['role']);
         }
@@ -58,7 +63,7 @@ class UserAccessController extends Controller
 
         $users = $query->orderByRaw("CASE role WHEN 'owner' THEN 0 WHEN 'admin' THEN 1 ELSE 2 END")
             ->orderBy('name')->get()
-            ->map(fn (User $user) => $this->serializeUser($user, (int) $request->user()->user_id));
+            ->map(fn (User $user) => $this->serializeUser($user, (int) $actor->user_id, $access, $actor));
 
         return response()->json(['users' => $users]);
     }
@@ -88,7 +93,7 @@ class UserAccessController extends Controller
 
     public function store(Request $request, UserAccessService $access): JsonResponse
     {
-        $actor = $this->freshActor($request);
+        $actor = $this->freshActor($request, $access);
         $validated = $request->validate([
             'user_id' => ['required', 'integer'],
             'role' => ['required', Rule::in(['staff', 'admin', 'owner'])],
@@ -97,7 +102,8 @@ class UserAccessController extends Controller
             'password' => ['required', 'string'],
         ]);
         $this->assertPassword($actor, $validated['password']);
-        $this->assertGrantable($actor, $validated['role'], $validated['permissions'] ?? [], $access);
+        $this->authorizeAction($actor, null, 'grant_role', $validated['role'], $access);
+        $this->assertStaffPermissions($actor, $validated['role'], $validated['permissions'] ?? [], $access);
 
         $user = DB::transaction(function () use ($validated, $actor, $access) {
             $user = User::query()->whereKey($validated['user_id'])->lockForUpdate()->firstOrFail();
@@ -132,12 +138,12 @@ class UserAccessController extends Controller
             return $user->fresh('promotedBy');
         });
 
-        return response()->json(['message' => 'Access updated.', 'user' => $this->serializeUser($user)], 201);
+        return response()->json(['message' => 'Access updated.', 'user' => $this->serializeUser($user, (int) $actor->user_id, $access, $actor)], 201);
     }
 
     public function update(Request $request, User $user, UserAccessService $access): JsonResponse
     {
-        $actor = $this->freshActor($request);
+        $actor = $this->freshActor($request, $access);
         $validated = $request->validate([
             'role' => ['required', Rule::in(self::MANAGED_ROLES)],
             'permissions' => ['sometimes', 'array', 'max:'.count(config('user_access.staff_permissions', []))],
@@ -145,19 +151,16 @@ class UserAccessController extends Controller
             'password' => ['required', 'string'],
         ]);
         $this->assertPassword($actor, $validated['password']);
-        $this->assertMayManageTarget($actor, $user);
-        $this->assertGrantable($actor, $validated['role'], $validated['permissions'] ?? [], $access);
+        $this->authorizeAction($actor, $user, 'edit_access', null, $access);
+        $this->authorizeAction($actor, $user, 'grant_role', $validated['role'], $access);
+        $this->assertStaffPermissions($actor, $validated['role'], $validated['permissions'] ?? [], $access);
 
         $updated = DB::transaction(function () use ($actor, $user, $validated, $access) {
             $target = User::query()->whereKey($user->user_id)->lockForUpdate()->firstOrFail();
             abort_unless(in_array($target->role, self::MANAGED_ROLES, true), 404);
-            $this->assertMayManageTarget($actor, $target);
-
-            $nextRole = $validated['role'];
-            if ($target->role === 'owner' && $nextRole !== 'owner') {
-                $this->lockOwnerRows();
-                abort_if(User::query()->where('role', 'owner')->count() <= 1, 409, 'The last owner cannot be demoted or removed.');
-            }
+            $this->authorizeAction($actor, $target, 'edit_access', null, $access);
+            $this->authorizeAction($actor, $target, 'grant_role', $nextRole = $validated['role'], $access);
+            if ($target->role === 'admin' && $nextRole !== 'admin') $this->assertNotLastAdmin();
 
             $oldRole = $target->role;
             $oldPermissions = $target->permissions ?? [];
@@ -199,24 +202,21 @@ class UserAccessController extends Controller
             return $target->fresh('promotedBy');
         });
 
-        return response()->json(['message' => 'Access updated.', 'user' => $this->serializeUser($updated)]);
+        return response()->json(['message' => 'Access updated.', 'user' => $this->serializeUser($updated, (int) $actor->user_id, $access, $actor)]);
     }
 
-    public function removeAccess(Request $request, User $user): JsonResponse
+    public function removeAccess(Request $request, User $user, UserAccessService $access): JsonResponse
     {
-        $actor = $this->freshActor($request);
+        $actor = $this->freshActor($request, $access);
         $validated = $request->validate(['password' => ['required', 'string']]);
         $this->assertPassword($actor, $validated['password']);
-        $this->assertMayManageTarget($actor, $user);
+        $this->authorizeAction($actor, $user, 'remove_access', null, $access);
 
-        $removed = DB::transaction(function () use ($actor, $user) {
+        $removed = DB::transaction(function () use ($actor, $user, $access) {
             $target = User::query()->whereKey($user->user_id)->lockForUpdate()->firstOrFail();
             abort_unless(in_array($target->role, self::MANAGED_ROLES, true), 404);
-            $this->assertMayManageTarget($actor, $target);
-            if ($target->role === 'owner') {
-                $this->lockOwnerRows();
-                abort_if(User::query()->where('role', 'owner')->count() <= 1, 409, 'The last owner cannot be demoted or removed.');
-            }
+            $this->authorizeAction($actor, $target, 'remove_access', null, $access);
+            if ($target->role === 'admin') $this->assertNotLastAdmin();
 
             $oldRole = $target->role;
             $oldPermissions = $target->permissions ?? [];
@@ -251,15 +251,16 @@ class UserAccessController extends Controller
         ]);
     }
 
-    public function details(Request $request, User $user): JsonResponse
+    public function details(Request $request, User $user, UserAccessService $access): JsonResponse
     {
-        $actor = $this->freshAdmin($request);
+        $actor = $this->freshActor($request, $access);
+        $this->authorizeAction($actor, $user, 'edit_details', null, $access);
         $target = User::query()->findOrFail($user->user_id);
-        $this->assertDetailsTarget($target);
+        $this->authorizeAction($actor, $target, 'edit_details', null, $access);
 
         ActivityLogger::log(
             'user_details.viewed',
-            "Admin account #{$actor->user_id} viewed account details for elevated account #{$target->user_id}.",
+            "Admin account #{$actor->user_id} viewed account details for account #{$target->user_id}.",
             actor: $actor,
             subject: $target,
             properties: ['fields' => ['name', 'username', 'email', 'phone_number']],
@@ -268,11 +269,12 @@ class UserAccessController extends Controller
         return response()->json(['details' => $this->detailsSnapshot($target)]);
     }
 
-    public function updateDetails(Request $request, User $user): JsonResponse
+    public function updateDetails(Request $request, User $user, UserAccessService $access): JsonResponse
     {
-        $actor = $this->freshAdmin($request);
+        $actor = $this->freshActor($request, $access);
+        $this->authorizeAction($actor, $user, 'edit_details', null, $access);
         $target = User::query()->findOrFail($user->user_id);
-        $this->assertDetailsTarget($target);
+        $this->authorizeAction($actor, $target, 'edit_details', null, $access);
 
         $normalizedEmail = mb_strtolower(trim((string) $request->input('email')));
         $request->merge([
@@ -306,9 +308,9 @@ class UserAccessController extends Controller
         $validated = $validator->validate();
         $this->assertPassword($actor, $validated['password']);
 
-        $result = DB::transaction(function () use ($actor, $target, $validated, $normalizedEmail) {
+        $result = DB::transaction(function () use ($actor, $target, $validated, $normalizedEmail, $access) {
             $locked = User::query()->whereKey($target->user_id)->lockForUpdate()->firstOrFail();
-            $this->assertDetailsTarget($locked);
+            $this->authorizeAction($actor, $locked, 'edit_details', null, $access);
 
             $expectedUpdatedAt = Carbon::parse($validated['expected_updated_at']);
             if (! $locked->updated_at || ! $expectedUpdatedAt->equalTo($locked->updated_at)) {
@@ -369,10 +371,10 @@ class UserAccessController extends Controller
 
                 ActivityLogger::log(
                     'user_details.updated',
-                    "Admin account #{$actor->user_id} updated elevated account #{$locked->user_id} details (fields: {$descriptionFields}).",
+                    "Admin account #{$actor->user_id} updated account #{$locked->user_id} details (fields: {$descriptionFields}).",
                     actor: $actor,
                     subject: $locked,
-                    properties: ['changes' => $changes],
+                    properties: ['old_role' => $locked->role, 'new_role' => $locked->role, 'changes' => $changes],
                 );
             }
 
@@ -429,15 +431,10 @@ class UserAccessController extends Controller
         ];
     }
 
-    private function assertDetailsTarget(User $target): void
-    {
-        abort_unless(in_array($target->role, ['staff', 'owner'], true), 404);
-    }
-
-    private function freshAdmin(Request $request): User
+    private function freshActor(Request $request, UserAccessService $access): User
     {
         $actor = User::query()->findOrFail($request->user()->user_id);
-        abort_unless($actor->role === 'admin', 403);
+        $this->authorizeAction($actor, null, 'edit_access', null, $access);
 
         return $actor;
     }
@@ -460,9 +457,9 @@ class UserAccessController extends Controller
         });
     }
 
-    private function serializeUser(User $user, ?int $actorId = null): array
+    private function serializeUser(User $user, ?int $actorId = null, ?UserAccessService $access = null, ?User $actor = null): array
     {
-        return [
+        $row = [
             'id' => (int) $user->user_id,
             'name' => $user->name,
             'username' => $user->username,
@@ -479,13 +476,17 @@ class UserAccessController extends Controller
             ] : null,
             'promoted_at' => $user->promoted_at?->toIso8601String(),
         ];
-    }
-
-    private function freshActor(Request $request): User
-    {
-        $user = User::query()->findOrFail($request->user()->user_id);
-        abort_unless(in_array($user->role, ['owner', 'admin'], true), 403);
-        return $user;
+        if ($access && $actor) {
+            $row['actions'] = [];
+            foreach (['edit_access', 'remove_access', 'edit_details'] as $action) {
+                $row['actions'][$action] = [
+                    'allowed' => $access->canManage($actor, $user, $action),
+                    'reason' => $access->canManage($actor, $user, $action) ? null : $access->managementReason($actor, $user, $action),
+                ];
+            }
+            $row['grantable_roles'] = $access->grantableRoles($actor);
+        }
+        return $row;
     }
 
     private function assertPassword(User $actor, string $password): void
@@ -493,22 +494,21 @@ class UserAccessController extends Controller
         abort_unless(Hash::check($password, $actor->password), 422, 'Password confirmation failed.');
     }
 
-    private function assertMayManageTarget(User $actor, User $target): void
+    private function authorizeAction(User $actor, ?User $target, string $action, ?string $role, UserAccessService $access): void
     {
-        abort_if((int) $actor->user_id === (int) $target->user_id, 403, 'You cannot change your own role, permissions, or access.');
-        abort_if($target->role === 'owner' && $actor->role !== 'owner', 403, 'Only an owner can manage owner accounts.');
+        if ($access->canManage($actor, $target, $action, $role)) return;
+        $message = $access->managementReason($actor, $target, $action, $role);
+        ActivityLogger::log('user_access.denied', "{$actor->name} was denied {$action} for account ".($target?->user_id ?? 'new').'.', actor: $actor, subject: $target,
+            properties: ['action' => $action, 'target_id' => $target?->user_id, 'target_role' => $target?->role, 'requested_role' => $role, 'reason' => $message]);
+        abort(403, $message);
     }
 
-    private function assertGrantable(User $actor, string $role, array $permissions, UserAccessService $access): void
+    private function assertStaffPermissions(User $actor, string $role, array $permissions, UserAccessService $access): void
     {
-        if ($role === 'owner') {
-            abort_unless($actor->role === 'owner', 403, 'Only an owner can grant the owner role.');
-        }
         if ($role !== 'staff') {
             abort_if($permissions !== [], 422, 'Permissions can only be customized for staff accounts.');
         }
         foreach ($permissions as $permission) {
-            abort_unless($access->mayGrant($actor, $permission), 403, 'You cannot grant a permission you do not have.');
             abort_unless(in_array($permission, $access->staffPermissionKeys(), true), 422, 'Only staff permissions can be customized.');
         }
     }
@@ -521,8 +521,9 @@ class UserAccessController extends Controller
         )));
     }
 
-    private function lockOwnerRows(): void
+    private function assertNotLastAdmin(): void
     {
-        User::query()->where('role', 'owner')->orderBy('user_id')->lockForUpdate()->get(['user_id']);
+        User::query()->where('role', 'admin')->orderBy('user_id')->lockForUpdate()->get(['user_id']);
+        abort_if(User::query()->where('role', 'admin')->count() <= 1, 409, 'The last admin cannot be demoted or removed.');
     }
 }

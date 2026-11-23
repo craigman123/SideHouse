@@ -889,6 +889,8 @@ html[data-theme="light"] .admin-bookings-page .btn-filter {
 .court-block-modal-actions button { min-height: 44px; padding: var(--s2) var(--s4); border: 1px solid var(--brand); border-radius: var(--r-pill); background: transparent; color: var(--text); font: var(--font-weight-button) var(--font-size-button)/1.2 var(--font-family); cursor: pointer; }
 .court-block-modal-actions .court-block-primary { background: var(--brand); }
 .court-block-modal-actions .court-block-primary:hover { background: var(--brand-hover); }
+.closure-court-block-primary { background: var(--brand); transition: background 150ms ease; }
+.closure-court-block-primary:hover { background: var(--brand-hover) }
 .court-block-modal-actions .court-block-danger { border-color: var(--danger); color: var(--danger); }
 .court-block-modal-actions button:disabled { border-color: var(--border); background: var(--surface-2); color: var(--text-muted); cursor: wait; }
 #courtBlockDetailsNotes { white-space: pre-wrap; color: var(--text-muted); }

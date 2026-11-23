@@ -15,7 +15,8 @@ class RedactStaffFinancialData
     public function handle(Request $request, Closure $next): Response
     {
         $response = $next($request);
-        if (! $request->user()?->isStaff() || ! $response instanceof JsonResponse) {
+        $user = $request->user();
+        if (! $user || app(UserAccessService::class)->effectiveRole($user, $request) !== 'staff' || ! $response instanceof JsonResponse) {
             return $response;
         }
 

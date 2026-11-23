@@ -3,6 +3,7 @@
 namespace App\Support;
 
 use App\Models\ActivityLog;
+use App\Models\User;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
@@ -49,6 +50,14 @@ class ActivityLogger
         array $properties = []
     ): void {
         $actor = $actor === self::ACTOR_NOT_PROVIDED ? auth()->user() : $actor;
+
+        $viewAs = request()?->hasSession() ? request()->session()->get('view_as') : null;
+        if ($actor && $viewAs !== null) {
+            $realRole = User::query()->whereKey($actor->user_id)->value('role');
+            if ($realRole === 'admin' && in_array($viewAs, ['admin', 'owner', 'staff', 'customer'], true)) {
+                $properties['view_as'] ??= $viewAs;
+            }
+        }
 
         $payload = [
             'user_id'      => $actor?->user_id,

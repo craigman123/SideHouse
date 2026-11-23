@@ -16,7 +16,7 @@ Route::middleware(['auth', 'owner.only', 'admin.mfa', 'throttle:120,1'])
         Route::put('/profile', 'updateProfile')->middleware('throttle:10,1')->name('profile.update');
         Route::get('/equipment', 'equipment')->name('equipment');
         Route::get('/customers', 'customers')->name('customers');
-        Route::get('/user-access', 'userAccess')->name('user-access');
+        Route::get('/user-access', 'userAccess')->middleware('can.access:user_access.manage')->name('user-access');
         Route::get('/announcements', 'announcements')->name('announcements');
         Route::get('/reports', 'reports')->name('reports');
         Route::get('/activity-logs', 'activityLogs')->name('activity-logs');

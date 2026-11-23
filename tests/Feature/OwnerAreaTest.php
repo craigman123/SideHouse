@@ -121,15 +121,22 @@ class OwnerAreaTest extends TestCase
         }
     }
 
-    public function test_owner_user_access_can_promote_an_account_to_owner_and_owner_profile_can_be_updated(): void
+    public function test_owner_user_access_can_promote_an_account_to_staff_but_not_owner_and_profile_can_be_updated(): void
     {
         $owner = $this->user('owner');
         $candidate = $this->user('user');
         $this->signIn($owner)->postJson('/admin/users', [
             'user_id' => $candidate->user_id,
+            'role' => 'staff',
+            'password' => 'password',
+        ])->assertCreated()->assertJsonPath('user.role', 'staff');
+
+        $otherCandidate = $this->user('user');
+        $this->postJson('/admin/users', [
+            'user_id' => $otherCandidate->user_id,
             'role' => 'owner',
             'password' => 'password',
-        ])->assertCreated()->assertJsonPath('user.role', 'owner');
+        ])->assertForbidden();
 
         $this->put('/owner/profile', [
             'name' => 'Updated Owner',

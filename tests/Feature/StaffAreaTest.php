@@ -152,7 +152,7 @@ class StaffAreaTest extends TestCase
         $response->assertSee('Profile')->assertSee('admin-profile-trigger');
         $response->assertSee('Bookings')->assertDontSee('Add walk-in')->assertDontSee('Add event');
 
-        $withActions = $this->signInStaff($this->staff(['bookings.view', 'bookings.create', 'calendar_events.manage']))
+        $withActions = $this->signInStaff($this->staff(['bookings.view', 'bookings.create', 'calendar_events.manage', 'calendar_events.open_play']))
             ->get('/staff/dashboard')->assertOk();
         $withActions->assertDontSee('Add walk-in')->assertSee('Bookings')->assertSee('Add event');
 
@@ -318,6 +318,49 @@ class StaffAreaTest extends TestCase
             'password' => 'current-password-123', 'role' => 'user',
         ]);
         $this->signInStaff($customer)->get('/staff/dashboard')->assertForbidden();
+    }
+
+    public function test_staff_overview_hides_booking_data_without_the_booking_permission(): void
+    {
+        $staff = $this->staff([]);
+        $booking = $this->bookingForToday($staff);
+
+        $page = $this->signInStaff($staff)->get('/staff/dashboard')->assertOk();
+        $page->assertDontSee('Today\'s bookings')
+            ->assertDontSee('Courts in use')
+            ->assertDontSee('Next up')
+            ->assertDontSee('Needs attention')
+            ->assertDontSee('Open play today')
+            ->assertDontSee('Court status')
+            ->assertDontSee($booking->customer_name)
+            ->assertDontSee('09:00')
+            ->assertDontSee('paid');
+
+        $this->getJson('/staff/overview/data')->assertForbidden()
+            ->assertJsonPath('message', 'You are not allowed to view booking data.');
+    }
+
+    public function test_legacy_walk_in_permission_does_not_allow_staff_to_create_walk_ins(): void
+    {
+        $staff = $this->staff(['bookings.create', 'bookings.view']);
+
+        $this->signInStaff($staff)->postJson('/admin/bookings', [])->assertForbidden();
+        $this->assertDatabaseCount('bookings', 0);
+    }
+
+    public function test_open_play_permission_can_open_the_board_without_exposing_booking_data(): void
+    {
+        $staff = $this->staff(['calendar_events.open_play']);
+        $this->bookingForToday($staff);
+        $date = now('Asia/Manila')->toDateString();
+
+        $page = $this->signInStaff($staff)->get('/staff/bookings')->assertOk();
+        $page->assertSee('calendar_events.open_play')
+            ->assertSee('"bookings":[]', false);
+
+        $calendar = $this->getJson("/admin/bookings/calendar?from={$date}&to={$date}")->assertOk();
+        $this->assertSame([], $calendar->json('bookings'));
+        $this->get('/staff/dashboard')->assertOk()->assertSee('Add event');
     }
 
     public function test_staff_profile_changes_require_the_current_password(): void

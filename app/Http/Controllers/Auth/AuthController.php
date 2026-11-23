@@ -39,6 +39,7 @@ class AuthController extends Controller
             return back()->withErrors(['username' => 'Invalid username or password.'])->onlyInput('username');
         }
 
+        $request->session()->forget('view_as');
         $request->session()->regenerate();
         $user = auth()->user();
         $this->recordSuccessfulLogin($request, $user);
@@ -104,6 +105,7 @@ class AuthController extends Controller
             'role' => 'user',
         ]);
 
+        $request->session()->forget('view_as');
         Auth::login($user);
         $this->recordSuccessfulLogin($request, $user);
 
@@ -161,6 +163,7 @@ class AuthController extends Controller
             $isNewAccount = true;
         }
 
+        $request->session()->forget('view_as');
         Auth::login($user);
         $request->session()->regenerate();
         $this->recordSuccessfulLogin($request, $user);
@@ -231,10 +234,6 @@ class AuthController extends Controller
     {
         $user = Auth::user();
 
-        Auth::logout();
-        $request->session()->invalidate();
-        $request->session()->regenerateToken();
-
         if ($user) {
             ActivityLogger::log(
                 'user.logged_out',
@@ -242,6 +241,11 @@ class AuthController extends Controller
                 subject: $user,
             );
         }
+
+        $request->session()->forget('view_as');
+        Auth::logout();
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
 
         return redirect()->route('login')->with('success', 'Logged out successfully.');
     }

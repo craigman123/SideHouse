@@ -4,6 +4,7 @@ namespace App\Http\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
+use App\Services\UserAccessService;
 
 class RedirectOwnerFromAdminPage
 {
@@ -24,7 +25,8 @@ class RedirectOwnerFromAdminPage
 
     public function handle(Request $request, Closure $next)
     {
-        if ($request->user()?->role === 'owner') {
+        $access = app(UserAccessService::class);
+        if ($access->effectiveRole($request->user(), $request) === 'owner') {
             $destination = self::OWNER_ROUTES[$request->route()?->getName() ?? ''] ?? null;
             if ($destination !== null) {
                 return redirect()->route($destination, $request->query());

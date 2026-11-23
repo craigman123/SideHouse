@@ -76,17 +76,40 @@ class AdminUserAccessTest extends TestCase
         }
     }
 
-    public function test_page_explains_how_to_bootstrap_the_first_owner(): void
+    public function test_grant_role_options_follow_the_actor_and_staff_denials_are_audited(): void
+    {
+        $admin = $this->makeUser('admin');
+        $owner = $this->makeUser('owner');
+        $adminPage = $this->signedIn($admin)->get('/admin/user-access')->assertOk();
+        $adminPage->assertSee('data-grantable-roles="staff,owner,admin"', false);
+        $ownerPage = $this->actingAs($owner)->withSession([
+            'access_version_user_id' => $owner->user_id, 'access_version' => 1,
+            'mfa_passed_at' => now()->timestamp, 'mfa_passed_user_id' => $owner->user_id,
+        ])->get('/owner/user-access')->assertOk();
+        $ownerPage->assertSee('data-grantable-roles="staff"', false)->assertDontSee('Edit details');
+
+        $staff = $this->makeUser('staff');
+        $this->signedIn($staff)->getJson('/admin/users')->assertForbidden();
+        $this->assertDatabaseHas('activity_logs', [
+            'action' => 'user_access.denied', 'user_id' => $staff->user_id,
+        ]);
+        $this->get('/owner/user-access')->assertForbidden();
+        $this->assertDatabaseHas('activity_logs', [
+            'action' => 'user_access.denied', 'user_id' => $staff->user_id,
+        ]);
+    }
+
+    public function test_page_explains_admin_can_promote_the_first_owner(): void
     {
         $admin = $this->makeUser('admin');
         $response = $this->signedIn($admin)->get('/admin/user-access')->assertOk();
 
         $response->assertSee('data-owner-exists="false"', false)
             ->assertSee('No owner account has been set.')
-            ->assertSee('php artisan users:make-owner &lt;email&gt;', false);
+            ->assertSee('Promote a registered customer to owner from this page');
     }
 
-    public function test_elevated_account_list_uses_search_and_role_filters_and_never_returns_customers(): void
+    public function test_admin_account_list_includes_customers_but_owner_list_remains_elevated_only(): void
     {
         $admin = $this->makeUser('admin');
         $this->makeUser('owner', null, ['name' => 'A Owner']);
@@ -95,8 +118,8 @@ class AdminUserAccessTest extends TestCase
         $this->makeUser('user', null, ['name' => 'Searchable Customer']);
 
         $all = $this->signedIn($admin)->getJson('/admin/users')->assertOk()->json('users');
-        $this->assertCount(4, $all);
-        $this->assertNotContains('user', array_column($all, 'role'));
+        $this->assertCount(5, $all);
+        $this->assertContains('user', array_column($all, 'role'));
 
         $staff = $this->getJson('/admin/users?q=searchable&role=staff')->assertOk()->json('users');
         $this->assertCount(1, $staff);
@@ -126,7 +149,7 @@ class AdminUserAccessTest extends TestCase
         $this->signedIn($customer)->getJson('/_test/bookings-view')->assertForbidden();
     }
 
-    public function test_admins_cannot_manage_owners_or_grant_permissions_they_lack(): void
+    public function test_admins_can_manage_owners_and_grant_roles_in_the_hierarchy(): void
     {
         $admin = $this->makeUser('admin');
         $owner = $this->makeUser('owner');
@@ -134,20 +157,21 @@ class AdminUserAccessTest extends TestCase
 
         $this->signedIn($admin)->patchJson("/admin/users/{$owner->user_id}", [
             'role' => 'admin', 'password' => 'password',
-        ])->assertForbidden();
+        ])->assertOk()->assertJsonPath('user.role', 'admin');
 
         $this->signedIn($admin)->postJson('/admin/users', [
             'user_id' => $customer->user_id,
             'role' => 'staff',
             'permissions' => ['user_access.manage_owners'],
             'password' => 'password',
-        ])->assertForbidden();
+        ])->assertUnprocessable();
 
+        $ownerCandidate = $this->makeUser();
         $this->signedIn($admin)->postJson('/admin/users', [
-            'user_id' => $customer->user_id,
+            'user_id' => $ownerCandidate->user_id,
             'role' => 'owner',
             'password' => 'password',
-        ])->assertForbidden();
+        ])->assertCreated()->assertJsonPath('user.role', 'owner');
 
         $this->assertSame('user', $customer->fresh()->role);
     }
@@ -166,6 +190,22 @@ class AdminUserAccessTest extends TestCase
 
         $this->assertDatabaseHas('users', ['user_id' => $owner->user_id, 'role' => 'owner']);
         $this->assertSame(1, User::where('role', 'owner')->count());
+    }
+
+    public function test_admin_hierarchy_blocks_self_and_last_admin_but_allows_demoting_last_owner(): void
+    {
+        $admin = $this->makeUser('admin');
+        $owner = $this->makeUser('owner');
+        $anotherAdmin = $this->makeUser('admin');
+
+        $this->signedIn($admin)->patchJson("/admin/users/{$admin->user_id}", ['role' => 'staff', 'password' => 'password'])->assertForbidden();
+        $this->signedIn($admin)->patchJson("/admin/users/{$anotherAdmin->user_id}", ['role' => 'staff', 'password' => 'password'])->assertOk();
+        $this->signedIn($admin)->patchJson("/admin/users/{$owner->user_id}", ['role' => 'staff', 'password' => 'password'])->assertOk();
+        $this->assertSame(1, User::where('role', 'admin')->count());
+        $this->assertSame(0, User::where('role', 'owner')->count());
+
+        $this->signedIn($admin)->postJson("/admin/users/{$admin->user_id}/remove-access", ['password' => 'password'])->assertForbidden();
+        $this->assertDatabaseHas('activity_logs', ['action' => 'user_access.denied', 'subject_id' => $admin->user_id]);
     }
 
     public function test_only_role_user_accounts_can_be_promoted_and_staff_default_to_the_staff_preset(): void
@@ -388,26 +428,26 @@ class AdminUserAccessTest extends TestCase
         ]);
     }
 
-    public function test_owner_last_owner_guard_uses_locked_owner_set_in_a_transaction(): void
+    public function test_owner_can_manage_staff_but_not_owner_or_admin_accounts(): void
     {
         $actor = $this->makeUser('owner');
-        $target = $this->makeUser('owner');
+        $staff = $this->makeUser('staff');
+        $targetOwner = $this->makeUser('owner');
+        $targetAdmin = $this->makeUser('admin');
 
-        $this->signedIn($actor)->postJson("/admin/users/{$target->user_id}/remove-access", [
+        $this->signedIn($actor)->postJson("/admin/users/{$staff->user_id}/remove-access", [
             'password' => 'password',
         ])->assertOk();
-
-        $this->assertSame(1, User::where('role', 'owner')->count());
-        $this->assertDatabaseHas('users', ['user_id' => $target->user_id, 'role' => 'user']);
-
-        // Once only the actor remains as owner, self-removal remains blocked.
-        $this->signedIn($actor)->postJson("/admin/users/{$actor->user_id}/remove-access", [
-            'password' => 'password',
-        ])->assertForbidden();
-        $this->assertSame(1, User::where('role', 'owner')->count());
+        $this->assertDatabaseHas('users', ['user_id' => $staff->user_id, 'role' => 'user']);
+        foreach ([$targetOwner, $targetAdmin] as $protected) {
+            $this->postJson("/admin/users/{$protected->user_id}/remove-access", ['password' => 'password'])->assertForbidden();
+        }
+        $customer = $this->makeUser();
+        $this->postJson('/admin/users', ['user_id' => $customer->user_id, 'role' => 'owner', 'password' => 'password'])->assertForbidden();
+        $this->patchJson("/admin/users/{$staff->user_id}/details", [])->assertForbidden();
     }
 
-    public function test_only_admin_can_view_and_edit_staff_or_owner_account_details(): void
+    public function test_only_admin_can_view_and_edit_any_non_self_account_details(): void
     {
         $target = $this->makeUser('staff');
         $admin = $this->makeUser('admin');
@@ -427,9 +467,9 @@ class AdminUserAccessTest extends TestCase
         }
 
         $adminTarget = $this->makeUser('admin');
-        $this->signedIn($admin)->getJson("/admin/users/{$adminTarget->user_id}/details")->assertNotFound();
+        $this->signedIn($admin)->getJson("/admin/users/{$adminTarget->user_id}/details")->assertOk();
         $customerTarget = $this->makeUser('user');
-        $this->signedIn($admin)->getJson("/admin/users/{$customerTarget->user_id}/details")->assertNotFound();
+        $this->signedIn($admin)->getJson("/admin/users/{$customerTarget->user_id}/details")->assertOk();
     }
 
     public function test_account_details_update_requires_password_and_fresh_timestamp_and_preserves_access_fields(): void
@@ -457,7 +497,7 @@ class AdminUserAccessTest extends TestCase
         $response = $this->signedIn($admin)->patchJson($url, [
             'name' => 'Updated Staff', 'username' => $target->username, 'email' => ' Updated.Staff@Example.Test ',
             'phone_number' => '+63 917 765 4321', 'expected_updated_at' => $before->updated_at->toISOString(),
-            'password' => 'password', 'role' => 'admin', 'permissions' => [], 'mfa_enabled' => false,
+            'password' => 'password', 'new_password' => 'unexpected-new-password', 'role' => 'admin', 'permissions' => [], 'mfa_enabled' => false,
         ])->assertOk();
         $response->assertJsonPath('user.email', 'upd******@example.test')
             ->assertJsonMissing(['email' => 'updated.staff@example.test']);
@@ -467,6 +507,7 @@ class AdminUserAccessTest extends TestCase
         $this->assertSame('updated.staff@example.test', $updated->email);
         $this->assertSame('staff', $updated->role);
         $this->assertSame(['bookings.view'], $updated->permissions);
+        $this->assertTrue(\Illuminate\Support\Facades\Hash::check('password', $updated->password));
         $this->assertTrue($updated->mfa_enabled);
         $this->assertSame('mfa-secret', $updated->mfa_secret);
         $this->assertNull($updated->email_verified_at);

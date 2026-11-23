@@ -1,7 +1,7 @@
 (() => {
     const page = document.getElementById('staffOverview');
     const payload = document.getElementById('staffOverviewData');
-    if (!page || !payload) return;
+    if (!page || !payload || !page.dataset.overviewUrl) return;
 
     const bookingCount = document.getElementById('staffTodayBookingCount');
     const courtCount = document.getElementById('staffCourtCount');

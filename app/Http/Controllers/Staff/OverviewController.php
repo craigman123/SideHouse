@@ -18,17 +18,22 @@ class OverviewController extends Controller
 {
     public function index(Request $request, UserAccessService $access): View
     {
+        $canViewBookings = $access->allows($request->user(), 'bookings.view');
+
         return view('staff.overview', [
             'user' => $request->user(),
-            'canViewBookings' => $access->allows($request->user(), 'bookings.view'),
-            'canCreateWalkIn' => $access->allows($request->user(), 'bookings.create'),
-            'canManageEvents' => $access->allows($request->user(), 'calendar_events.manage'),
-            'overviewData' => $this->todayData(),
+            'canViewBookings' => $canViewBookings,
+            'canCreateOpenPlay' => $access->allows($request->user(), 'calendar_events.open_play'),
+            'overviewData' => $canViewBookings ? $this->todayData() : [],
         ]);
     }
 
-    public function data(): JsonResponse
+    public function data(Request $request, UserAccessService $access): JsonResponse
     {
+        if (! $access->allows($request->user(), 'bookings.view')) {
+            return response()->json(['message' => 'You are not allowed to view booking data.'], 403);
+        }
+
         return response()->json($this->todayData());
     }
 

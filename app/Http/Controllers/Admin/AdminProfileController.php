@@ -82,6 +82,7 @@ class AdminProfileController extends Controller
             subject: $user,
         );
 
+        $request->session()->forget('view_as');
         auth()->logout();
         $user->delete();
 

@@ -58,6 +58,7 @@ class EnsureAccessVersion
 
     private function logoutForRevokedAccess(Request $request): Response
     {
+        $request->session()->forget('view_as');
         Auth::logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();

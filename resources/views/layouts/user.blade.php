@@ -15,9 +15,11 @@
     <link rel="stylesheet" href="{{ asset('css/app.css') }}">
     <link rel="stylesheet" href="{{ asset('css/user/user-navbar.css') }}">
     <link rel="stylesheet" href="{{ asset('css/user/sidebar-collapse.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/shared/switch-access.css') . '?v=' . filemtime(public_path('css/shared/switch-access.css')) }}">
     <link rel="stylesheet" href="{{ asset('css/guest/theme-toggle.css') }}">
     <link rel="icon" type="image/png" href="{{ asset('images/tab_icon.png') }}">
     <script src="{{ asset('js/app.js') }}" defer></script>
+    <script src="{{ asset('js/shared/switch-access.js') . '?v=' . filemtime(public_path('js/shared/switch-access.js')) }}" defer></script>
     @push('scripts')
         <script src="{{ asset('js/user/user-shell.js') }}" defer></script>
     @endpush
@@ -76,6 +78,8 @@
             </a>
         </nav>
 
+        @include('partials.switch-access.panel')
+
         <div class="sidebar-profile">
             <a href="/profile" class="profile-trigger {{ request()->is('profile') ? 'active' : '' }}" aria-label="Profile" title="Profile">
                 <span class="profile-avatar">{{ strtoupper(substr($userName, 0, 1)) }}</span>
@@ -93,6 +97,7 @@
     <button type="button" id="userSidebarBackdrop" class="user-sidebar-backdrop" data-user-sidebar-backdrop aria-hidden="true" tabindex="-1" hidden></button>
 
     <div class="main">
+        @include('partials.switch-access.banner')
         <header class="topbar">
             <div class="user-mobile-menu-group">
                 <button type="button" class="user-mobile-menu-toggle" data-user-mobile-menu-toggle aria-label="Open navigation" aria-expanded="false" aria-controls="userSidebar" title="Open navigation">

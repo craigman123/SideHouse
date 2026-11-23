@@ -7,6 +7,7 @@ use App\Models\Booking;
 use App\Models\BusinessSetting;
 use App\Models\Court;
 use App\Services\AdminCalendarOverrideWarnings;
+use App\Services\UserAccessService;
 use App\Support\ActivityLogger;
 use App\Support\BookingHours;
 use Carbon\CarbonImmutable;
@@ -17,8 +18,10 @@ use Illuminate\Validation\ValidationException;
 
 class WalkInBookingController extends Controller
 {
-    public function store(Request $request, AdminCalendarOverrideWarnings $overrideWarnings): JsonResponse
+    public function store(Request $request, AdminCalendarOverrideWarnings $overrideWarnings, UserAccessService $access): JsonResponse
     {
+        abort_unless($access->allows($request->user(), 'bookings.create'), 403);
+
         $validated = $request->validate([
             'customer_name' => ['required', 'string', 'max:255'],
             'contact_number' => ['required', 'string', 'max:30', 'regex:/^[0-9+\-\s()]{7,30}$/'],
@@ -44,6 +47,9 @@ class WalkInBookingController extends Controller
 
         $result = DB::transaction(function () use ($validated, $overrideWarnings, $start, $end, $step) {
             $court = Court::query()->whereKey($validated['court_id'])->lockForUpdate()->firstOrFail();
+            if (app(\App\Services\CourtBlockClosureAvailability::class)->firstClosedOverlap((int) $court->id, $start, $end)) {
+                throw ValidationException::withMessages(['start_time' => 'This court is closed during the selected time.']);
+            }
             $warnings = $overrideWarnings->forInterval(
                 (int) $court->id,
                 $validated['date'],

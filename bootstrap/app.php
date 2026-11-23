@@ -31,9 +31,12 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'cron.auth'   => \App\Http\Middleware\VerifyCronToken::class,
             'admin'       => \App\Http\Middleware\EnsureUserIsAdmin::class,
+            'admin.or.owner' => \App\Http\Middleware\EnsureUserIsAdminOrOwner::class,
             'admin.mfa'   => \App\Http\Middleware\EnsureAdminMfa::class,
             'can.access'  => \App\Http\Middleware\EnsurePermission::class,
             'staff'       => \App\Http\Middleware\EnsureUserIsStaff::class,
+            'customer.only' => \App\Http\Middleware\EnsureUserIsCustomer::class,
+            'real-admin.view-as' => \App\Http\Middleware\EnsureRealAdminForViewAs::class,
             'staff.redact' => \App\Http\Middleware\RedactStaffFinancialData::class,
             'owner.only' => \App\Http\Middleware\EnsureUserIsOwner::class,
             'owner.page.redirect' => \App\Http\Middleware\RedirectOwnerFromAdminPage::class,

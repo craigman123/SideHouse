@@ -610,6 +610,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentCloseMinutes = null;
     let selectedPayment = null;
     let bookedRanges = [];
+    let timedClosureRanges = [];
     let openPlayRanges = [];
     const openPlayEventsByDate = {};
     let maintenanceRanges = [];
@@ -822,6 +823,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         bookedRanges = availability.booked;
+        timedClosureRanges = availability.closedBlocks || [];
         openPlayRanges = availability.open_play || [];
         openPlayEventsByDate[dateStr] = openPlayRanges;
         maintenanceRanges = availability.maintenanceBlocked;
@@ -1020,6 +1022,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         currentCloseMinutes = availability.close_minutes ?? CLOSE_HOUR * 60;
         bookedRanges = availability.booked;
+        timedClosureRanges = availability.closedBlocks || [];
         openPlayRanges = availability.open_play || [];
         openPlayEventsByDate[selectedDate] = openPlayRanges;
         maintenanceRanges = availability.maintenanceBlocked;
@@ -1280,6 +1283,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         currentCloseMinutes = availability.close_minutes ?? CLOSE_HOUR * 60;
         bookedRanges = availability.booked;
+        timedClosureRanges = availability.closedBlocks || [];
         openPlayRanges = availability.open_play || [];
         openPlayEventsByDate[dateStr] = openPlayRanges;
         maintenanceRanges = availability.maintenanceBlocked;
@@ -1310,7 +1314,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function fetchAvailability(dateStr) {
-        if (!availabilityUrl) return { booked: [], open_play: [], closed: false, closedReason: null, maintenanceBlocked: [] };
+        if (!availabilityUrl) return { booked: [], open_play: [], closed: false, closedReason: null, maintenanceBlocked: [], closedBlocks: [] };
         try {
             const url = `${availabilityUrl}?court_id=${selectedCourt.id}&date=${dateStr}`;
             const res = await fetch(url, { headers: { Accept: 'application/json' } });
@@ -1322,11 +1326,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     closed: !!data.closed,
                     closedReason: data.closed_reason || null,
                     maintenanceBlocked: data.maintenance_blocked || [],
+                    closedBlocks: data.closed_blocks || [],
                     close_minutes: data.close_minutes ?? null, 
                 };
         } catch (err) {
             console.error(err);
-            return { booked: [], open_play: [], closed: false, closedReason: null, maintenanceBlocked: [] };
+            return { booked: [], open_play: [], closed: false, closedReason: null, maintenanceBlocked: [], closedBlocks: [] };
         }
     }
 
@@ -1350,6 +1355,12 @@ document.addEventListener('DOMContentLoaded', () => {
             const rangeEnd = timeToMinutes(r.end) || 1440;
             return totalMin < rangeEnd && slotEnd > rangeStart;
         });
+    }
+
+    function isSlotClosedAt(totalMin) {
+        const end = totalMin + STEP_MINUTES;
+        return timedClosureRanges.some((range) => totalMin < (timeToMinutes(range.end) || 1440)
+            && end > timeToMinutes(range.start));
     }
 
     function openPlayAt(totalMin, dateStr = selectedDate) {
@@ -1500,10 +1511,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const openPlay = openPlayAt(totalMin);
             const booked = isSlotBookedAt(totalMin) && !openPlay;
+            const timedClosed = isSlotClosedAt(totalMin);
             const full = openPlay && Number(openPlay.joined) >= Number(openPlay.max_players);
             const maintenanceBlocked = isSlotMaintenanceBlockedAt(totalMin);
             const past = isSlotPastAt(selectedDate, timeStr);
-            const unavailable = booked || full || maintenanceBlocked || past;
+            const unavailable = booked || full || maintenanceBlocked || timedClosed || past;
 
             // Single source of truth for *why* a slot is unavailable — used
             // for both the native browser tooltip (title) and the custom
@@ -1516,6 +1528,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     ? (!maintenanceSubject
                         ? `Payment temporarily unavailable — ${maintenanceSubject}`
                         : 'Payment system under scheduled maintenance during this time')
+                    : timedClosed
+                        ? 'Court closed during this time'
                     : past
                         ? 'This time has already passed'
                         : '';
@@ -1548,13 +1562,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 priceLabel.textContent = 'Booked';
             } else if (maintenanceBlocked) {
                 priceLabel.textContent = 'Unavailable';
+            } else if (timedClosed) {
+                priceLabel.textContent = 'Closed';
             } else if (past) {
                 priceLabel.textContent = 'Past';
             } else {
                 priceLabel.textContent = `₱${slotPrice(h).toLocaleString()}`;
             }
 
-            if (!booked && !maintenanceBlocked && !past && isPeakHour(h)) {
+            if (!booked && !maintenanceBlocked && !timedClosed && !past && isPeakHour(h)) {
                 row.classList.add('time-slot-row-peak');
                 row.dataset.tooltip = 'Peak pricing applies to this hour';
             }
@@ -2058,6 +2074,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const refreshedAvailability = await fetchAvailability(selectedDate);
                 currentCloseMinutes = refreshedAvailability.close_minutes ?? CLOSE_HOUR * 60;
                 bookedRanges = refreshedAvailability.booked;
+                timedClosureRanges = refreshedAvailability.closedBlocks || [];
                 openPlayRanges = refreshedAvailability.open_play || [];
                 openPlayEventsByDate[selectedDate] = openPlayRanges;
                 maintenanceRanges = refreshedAvailability.maintenanceBlocked;

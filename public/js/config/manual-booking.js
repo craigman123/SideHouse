@@ -68,6 +68,7 @@
     let calendarCursor = new Date();
     let pickerDate = null;
     let bookedRanges = [];
+    let timedClosureRanges = [];
     let selectedHours = []; // "HH:MM" strings picked in the currently-open time modal
 
     // Slots already committed to the booking: { date, start_time, end_time }
@@ -237,6 +238,7 @@
 
         const availability = await fetchAvailability(dateStr);
         bookedRanges = availability.booked;
+        timedClosureRanges = availability.closedBlocks || [];
 
         if (availability.closed) {
             timeSlotGrid.innerHTML = `<p class="mb-loading">${availability.closedReason || 'This date is closed.'}</p>`;
@@ -293,10 +295,11 @@
                 booked: (data.booked || []).map((b) => ({ start: b.start, end: b.end })),
                 closed: !!data.closed,
                 closedReason: data.closed_reason || null,
+                closedBlocks: data.closed_blocks || [],
             };
         } catch (err) {
             console.error(err);
-            return { booked: [], closed: false, closedReason: null };
+            return { booked: [], closed: false, closedReason: null, closedBlocks: [] };
         }
     }
 
@@ -310,8 +313,14 @@
             const timeStr = `${pad(Math.floor(totalMin / 60))}:${pad(totalMin % 60)}`;
 
             const booked = isSlotBookedAt(totalMin);
+            const timedClosed = timedClosureRanges.some((range) => {
+                const rangeStart = Number(range.start.slice(0, 2)) * 60 + Number(range.start.slice(3, 5));
+                const rangeEndValue = Number(range.end.slice(0, 2)) * 60 + Number(range.end.slice(3, 5));
+                const rangeEnd = rangeEndValue || 1440;
+                return totalMin < rangeEnd && totalMin + STEP_MINUTES > rangeStart;
+            });
             const past = isSlotPastAt(pickerDate, timeStr);
-            const unavailable = booked || past;
+            const unavailable = booked || timedClosed || past;
             const isSelected = selectedHours.includes(timeStr);
 
             const row = document.createElement('div');
@@ -325,7 +334,7 @@
             const toggle = document.createElement('button');
             toggle.type = 'button';
             toggle.className = 'mb-time-slot-toggle' + (isSelected ? ' selected' : '');
-            toggle.textContent = booked ? 'Booked' : past ? 'Past' : (isSelected ? '\u2713 Selected' : 'Available');
+            toggle.textContent = booked ? 'Booked' : timedClosed ? 'Closed' : past ? 'Past' : (isSelected ? '\u2713 Selected' : 'Available');
 
             if (unavailable) {
                 toggle.disabled = true;

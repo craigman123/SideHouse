@@ -159,6 +159,9 @@
                 <div class="court-month-scroll">
                     <div id="courtMonthGrid" class="court-month-grid" aria-live="polite"></div>
                 </div>
+                @if (auth()->user() && app(\App\Services\UserAccessService::class)->allows(auth()->user(), 'calendar_events.manage'))
+                    @include('partials.specific-date-closures')
+                @endif
             </div>
         </section>
         <section id="courtWeekView" class="bookings-view-panel" role="tabpanel" @if ($initialBookingsView !== 'week') hidden @endif>
@@ -183,6 +186,9 @@
                 <div class="court-week-scroll court-month-scroll">
                     <div id="courtWeekGrid" class="court-month-grid court-week-grid" aria-live="polite"></div>
                 </div>
+                @if (auth()->user() && app(\App\Services\UserAccessService::class)->allows(auth()->user(), 'calendar_events.manage'))
+                    @include('partials.specific-date-closures')
+                @endif
             </div>
         </section>
     </div>
@@ -200,7 +206,7 @@
                             <select name="type" id="courtBlockType" required>
                                 <option value="closed" data-event-permission="calendar_events.manage">Closed</option>
                                 <option value="maintenance" data-event-permission="calendar_events.manage">Maintenance</option>
-                                <option value="open_play" data-event-permission="calendar_events.manage">Open play</option>
+                                <option value="open_play" data-event-permission="calendar_events.open_play">Open play</option>
                                 <option value="walk_in" data-permission="bookings.create">Walk-in</option>
                             </select>
                         </label>
@@ -263,8 +269,8 @@
                 <p class="court-past-edit-note" id="courtBlockPastNote" hidden>Past calendar events are read-only except for notes.</p>
                 <div class="court-block-modal-actions">
                     <button type="button" class="court-block-secondary" id="courtBlockDetailsClose">Close</button>
-                    <button type="button" class="court-block-secondary" id="courtBlockEditOpen" data-permission="calendar_events.manage">Edit event</button>
-                    <button type="button" class="court-block-danger" id="courtBlockDelete" data-permission="calendar_events.manage">Delete event</button>
+                    <button type="button" class="court-block-secondary" id="courtBlockEditOpen">Edit event</button>
+                    <button type="button" class="court-block-danger" id="courtBlockDelete">Delete event</button>
                 </div>
             </div>
 
@@ -273,7 +279,7 @@
                 <form id="courtBlockEditForm">
                     <p class="court-past-edit-note" data-past-edit-note hidden>Past calendar events are read-only except for notes.</p>
                     <div class="court-block-form-grid">
-                        <label>Type<select name="type" required><option value="closed">Closed</option><option value="maintenance">Maintenance</option><option value="open_play">Open play</option></select></label>
+                        <label>Type<select name="type" required><option value="closed" data-event-permission="calendar_events.manage">Closed</option><option value="maintenance" data-event-permission="calendar_events.manage">Maintenance</option><option value="open_play" data-event-permission="calendar_events.open_play">Open play</option></select></label>
                         <label>Court<select name="court_id" required></select></label>
                         <label>Title<input name="title" type="text" maxlength="255" required></label>
                         <label>Date<input name="block_date" type="date" required></label>
@@ -286,7 +292,7 @@
                     <p class="court-block-modal-message" id="courtBlockEditMessage" role="status" aria-live="polite"></p>
                     <div class="court-block-modal-actions">
                         <button type="button" class="court-block-secondary" id="courtBlockEditCancel">Back</button>
-                        <button type="submit" class="court-block-primary" data-permission="calendar_events.manage">Save event</button>
+                        <button type="submit" class="court-block-primary">Save event</button>
                     </div>
                 </form>
             </div>

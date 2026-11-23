@@ -10,6 +10,7 @@ use App\Models\CourtBlock;
 use App\Models\CourtClosure;
 use App\Services\AdminCalendarOverrideWarnings;
 use App\Services\AdminBookingsCalendarData;
+use App\Services\UserAccessService;
 use App\Support\ActivityLogger;
 use App\Support\BookingHours;
 use Carbon\Carbon;
@@ -52,7 +53,7 @@ class BookingController extends Controller
         ));
     }
 
-    public function calendar(Request $request, AdminBookingsCalendarData $calendarData): JsonResponse
+    public function calendar(Request $request, AdminBookingsCalendarData $calendarData, UserAccessService $access): JsonResponse
     {
         $validated = $request->validate([
             'from' => ['required', 'date_format:Y-m-d'],
@@ -73,8 +74,13 @@ class BookingController extends Controller
                 ->header('X-Venue-Time', CarbonImmutable::now('Asia/Manila')->toIso8601String());
         }
 
+        $rangeData = $calendarData->forRange($from, $to);
+        if (! $access->allows($request->user(), 'bookings.view')) {
+            $rangeData['bookings'] = [];
+        }
+
         return response()->json([
-            ...$calendarData->forRange($from, $to),
+            ...$rangeData,
             'server_time' => now('Asia/Manila')->toIso8601String(),
         ])->header('ETag', $etag)
             ->header('X-Venue-Date', CarbonImmutable::now('Asia/Manila')->toDateString())

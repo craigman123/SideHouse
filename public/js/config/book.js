@@ -193,6 +193,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let activeSessionDate = null;
     const selectedPayment = 'qrph';
     let bookedRanges = [];
+    let timedClosureRanges = [];
     let openPlayRanges = [];
     const openPlayEventsByDate = {};
     let equipmentCatalog = [];
@@ -529,6 +530,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         bookedRanges = ranges.booked || [];
         openPlayRanges = ranges.open_play || [];
+        timedClosureRanges = ranges.closed_blocks || [];
         openPlayEventsByDate[dateStr] = openPlayRanges;
         renderTimeSlots();
         updateTimePickerFee();
@@ -550,16 +552,16 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function fetchAvailability(dateStr) {
-        if (!availabilityUrl || !selectedCourt) return { booked: [], open_play: [] };
+        if (!availabilityUrl || !selectedCourt) return { booked: [], open_play: [], closed_blocks: [] };
         try {
             const url = `${availabilityUrl}?court_id=${selectedCourt.id}&date=${dateStr}`;
             const res = await fetch(url, { headers: { Accept: 'application/json' } });
             if (!res.ok) throw new Error('Failed to load availability');
             const data = await res.json();
-            return { booked: data.booked || [], open_play: data.open_play || [] };
+            return { booked: data.booked || [], open_play: data.open_play || [], closed_blocks: data.closed_blocks || [] };
         } catch (err) {
             console.error(err);
-            return { booked: [], open_play: [] };
+            return { booked: [], open_play: [], closed_blocks: [] };
         }
     }
 
@@ -583,6 +585,12 @@ document.addEventListener('DOMContentLoaded', () => {
             const rangeEnd = timeToMinutes(r.end) || 1440;
             return totalMin < rangeEnd && slotEnd > rangeStart;
         });
+    }
+
+    function isSlotClosedAt(totalMin) {
+        const slotEnd = totalMin + STEP_MINUTES;
+        return timedClosureRanges.some((range) => totalMin < (timeToMinutes(range.end) || 1440)
+            && slotEnd > timeToMinutes(range.start));
     }
 
     function openPlayAt(totalMin, dateStr = selectedDate) {
@@ -677,9 +685,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const openPlay = openPlayAt(totalMin);
             const booked = isSlotBookedAt(totalMin) && !openPlay;
+            const timedClosed = isSlotClosedAt(totalMin);
             const full = openPlay && Number(openPlay.joined) >= Number(openPlay.max_players);
             const past = isSlotPastAt(selectedDate, timeStr);
-            const unavailable = booked || full || past;
+            const unavailable = booked || full || timedClosed || past;
             const isSelected = selectedSlots.includes(slotKey(selectedDate, timeStr));
 
             // The row itself is just a container — the time label on the
@@ -708,13 +717,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 priceLabel.textContent = `Open play · ${Math.max(0, Number(openPlay.max_players) - Number(openPlay.joined))} of ${openPlay.max_players} spots left · ₱${Number(openPlay.price_per_player).toLocaleString()}`;
             } else if (booked) {
                 priceLabel.textContent = 'Booked';
+            } else if (timedClosed) {
+                priceLabel.textContent = 'Closed';
             } else if (past) {
                 priceLabel.textContent = 'Past';
             } else {
                 priceLabel.textContent = `₱${slotPrice(h).toLocaleString()}`;
             }
 
-            if (!booked && !past && isPeakHour(h)) {
+            if (!booked && !timedClosed && !past && isPeakHour(h)) {
                 row.classList.add('time-slot-row-peak');
                 row.dataset.tooltip = 'Peak pricing applies to this hour';
             }
@@ -857,6 +868,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // this silently rendered as "no equipment" below since the
             // response was never checked for res.ok.)
             params.append('date', activeSessionDate || selectedDate);
+            if (selectedCourt?.id) params.append('court_id', selectedCourt.id);
             selectedSlots.forEach((key) => params.append('slots[]', key));
 
             const res = await fetch(`${equipmentUrl}?${params.toString()}`, { headers: { Accept: 'application/json' } });
@@ -1156,6 +1168,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 closePaymentModal();
                 const availability = await fetchAvailability(selectedDate);
                 bookedRanges = availability.booked || [];
+                timedClosureRanges = availability.closed_blocks || [];
                 openPlayRanges = availability.open_play || [];
                 openPlayEventsByDate[selectedDate] = openPlayRanges;
                 renderTimeSlots();

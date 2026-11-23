@@ -8,6 +8,9 @@
     const data = JSON.parse(dataElement.textContent || '{}');
     const permissions = data.permissions || {};
     const hasPermission = (permission) => permissions[permission] === true;
+    const canManageEventType = (type) => hasPermission('calendar_events.manage')
+        || (type === 'open_play' && hasPermission('calendar_events.open_play'));
+    const canManageBlock = (block) => Boolean(block && canManageEventType(block.type));
     let bookings  = data.bookings  || [];
     let closures  = data.closures  || [];
     let blocks      = Array.isArray(data.blocks) ? data.blocks : [];
@@ -77,6 +80,12 @@
         month: document.getElementById('courtMonthView'),
         week: document.getElementById('courtWeekView'),
     };
+    document.addEventListener('specific-closures:updated', () => {
+        const range = currentVisibleRange();
+        const view = Object.keys(panels).find((key) => !panels[key].hidden);
+        if (view === 'month') void loadCalendarRange(range.from, range.to, { force: true }).then(() => renderMonth());
+        else if (view === 'week') void loadCalendarRange(range.from, range.to, { force: true }).then(() => renderWeek());
+    });
 
     // ---------- Month view ----------
     const monthInput = document.getElementById('courtMonthInput');
@@ -613,7 +622,7 @@
     };
 
     const openCreateModal = (selection) => {
-        if (!hasPermission('calendar_events.manage') && !hasPermission('bookings.create')) return;
+        if (!hasPermission('calendar_events.manage') && !hasPermission('calendar_events.open_play') && !hasPermission('bookings.create')) return;
         if (isPastDate(selection.date)) return;
         selectedBlock = null;
         selectedBooking = null;
@@ -622,15 +631,17 @@
         blockModal.querySelector('[role="dialog"]').setAttribute('aria-labelledby', 'courtBlockModalTitle');
         blockForm.reset();
         blockForm.querySelectorAll('[data-event-permission]').forEach((option) => {
-            option.hidden = !hasPermission(option.dataset.eventPermission);
-            option.disabled = !hasPermission(option.dataset.eventPermission);
+            const allowed = canManageEventType(option.value);
+            option.hidden = !allowed;
+            option.disabled = !allowed;
         });
         const walkInOption = walkInType.querySelector('option[value="walk_in"]');
         if (walkInOption) {
             walkInOption.hidden = !hasPermission('bookings.create');
             walkInOption.disabled = !hasPermission('bookings.create');
         }
-        walkInType.value = hasPermission('calendar_events.manage') ? 'closed' : 'walk_in';
+        walkInType.value = hasPermission('calendar_events.manage') ? 'closed'
+            : (hasPermission('calendar_events.open_play') ? 'open_play' : 'walk_in');
         updateTypeFields();
         blockFormPanel.hidden = false;
         blockDetailsPanel.hidden = true;
@@ -663,11 +674,11 @@
         const blockPast = itemIsPast('block', block);
         document.getElementById('courtBlockPastNote').hidden = !blockPast;
         const editEventButton = document.getElementById('courtBlockEditOpen');
-        editEventButton.hidden = !hasPermission('calendar_events.manage');
-        editEventButton.disabled = !hasPermission('calendar_events.manage');
+        editEventButton.hidden = !canManageBlock(block);
+        editEventButton.disabled = !canManageBlock(block);
         const deleteEventButton = document.getElementById('courtBlockDelete');
-        deleteEventButton.hidden = !hasPermission('calendar_events.manage');
-        deleteEventButton.disabled = !hasPermission('calendar_events.manage');
+        deleteEventButton.hidden = !canManageBlock(block);
+        deleteEventButton.disabled = !canManageBlock(block);
         const court = courts.find((item) => Number(item.id) === Number(block.court_id));
         const courtLabel = block.court_id === null ? 'All courts' : (court?.name || 'Court');
         document.getElementById('courtBlockDetailsMeta').textContent =
@@ -680,9 +691,14 @@
     };
 
     const openBlockEdit = () => {
-        if (!selectedBlock || !hasPermission('calendar_events.manage')) return;
+        if (!selectedBlock || !canManageBlock(selectedBlock)) return;
         selectedBlock = blocks.find((item) => String(item.id) === String(selectedBlock.id)) || selectedBlock;
         const form = document.getElementById('courtBlockEditForm');
+        form.querySelectorAll('[data-event-permission]').forEach((option) => {
+            const allowed = canManageEventType(option.value);
+            option.hidden = !allowed;
+            option.disabled = !allowed;
+        });
         fillCourtOptions(form.elements.court_id, true);
         form.elements.type.value = selectedBlock.type;
         form.elements.court_id.value = selectedBlock.court_id === null ? 'all' : String(selectedBlock.court_id);
@@ -794,7 +810,7 @@
         event.preventDefault();
         const selectedType = walkInType.value;
         if ((selectedType === 'walk_in' && !hasPermission('bookings.create'))
-            || (selectedType !== 'walk_in' && !hasPermission('calendar_events.manage'))) return;
+            || (selectedType !== 'walk_in' && !canManageEventType(selectedType))) return;
         if (!validateCalendarForm(blockForm)) return;
         if (savingBlock) return;
 
@@ -1181,7 +1197,7 @@
     });
     blockEditForm.addEventListener('submit', async (event) => {
         event.preventDefault();
-        if (!hasPermission('calendar_events.manage')) return;
+        if (!selectedBlock || !canManageBlock(selectedBlock)) return;
         if (!validateCalendarForm(blockEditForm)) return;
         if (!selectedBlock || savingBlock) return;
         const token = csrfToken();
@@ -1259,7 +1275,7 @@
     });
 
     document.getElementById('courtBlockDelete').addEventListener('click', async () => {
-        if (!hasPermission('calendar_events.manage')) return;
+        if (!selectedBlock || !canManageBlock(selectedBlock)) return;
         if (!selectedBlock || savingBlock) return;
         if (!window.confirm(`Delete “${selectedBlock.title || 'this event'}”?`)) return;
 
@@ -1662,13 +1678,12 @@
         if (!source || !grid.contains(source) || calendarDrag
             || (event.pointerType === 'mouse' && event.button !== 0)) return;
         const kind = source.dataset.calendarKind;
-        if ((kind === 'booking' && !hasPermission('bookings.edit'))
-            || (kind === 'block' && !hasPermission('calendar_events.manage'))) return;
         const id = source.dataset.calendarId;
         const item = kind === 'booking'
             ? bookings.find((entry) => String(entry.id) === id)
             : blocks.find((entry) => String(entry.id) === id);
-        if (!item || itemIsPast(kind, item)) return;
+        if (!item || (kind === 'booking' && !hasPermission('bookings.edit'))
+            || (kind === 'block' && !canManageBlock(item)) || itemIsPast(kind, item)) return;
         const rect = source.getBoundingClientRect();
         let start = kind === 'booking' ? toMinutes(item.start) : toMinutes(item.start_time);
         let end = kind === 'booking' ? toMinutes(item.end) : toMinutes(item.end_time);
@@ -2856,7 +2871,7 @@
 
     const requestedNewItem = new URLSearchParams(window.location.search).get('new');
     if ((requestedNewItem === 'walk-in' && hasPermission('bookings.create'))
-        || (requestedNewItem === 'event' && hasPermission('calendar_events.manage'))) {
+        || (requestedNewItem === 'event' && (hasPermission('calendar_events.manage') || hasPermission('calendar_events.open_play')))) {
         const currentMinutes = venueNowMinutes();
         const firstOpen = BIZ_OPEN_HOUR * 60;
         const rawClose = BIZ_CLOSE_HOUR <= BIZ_OPEN_HOUR ? BIZ_CLOSE_HOUR + 24 : BIZ_CLOSE_HOUR;

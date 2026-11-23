@@ -1,0 +1,20 @@
+.specific-closures {
+    margin-top: var(--s4);
+    padding: var(--s4);
+    border: 1px solid var(--border);
+    border-radius: var(--r-lg);
+    background: var(--surface);
+    color: var(--text);
+}
+.specific-closures h2, .specific-closures h3 { margin: 0 0 var(--s2); }
+.specific-closures > p, .specific-closure-empty { color: var(--text-muted); }
+.specific-closure-fields { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--s3); }
+.specific-closure-fields label { display: grid; gap: var(--s1); color: var(--text-muted); }
+.specific-closure-fields input, .specific-closure-fields select { min-width: 0; padding: var(--s2) var(--s3); border: 1px solid var(--border); border-radius: var(--r-md); background: var(--surface-2); color: var(--text); }
+.specific-closure-preview { min-height: 1.5em; color: var(--text-muted); }
+.specific-closure-message.is-error { color: var(--danger); }
+.specific-closure-conflicts { max-height: 12rem; overflow-y: auto; padding: var(--s2) var(--s3); border: 1px solid var(--danger); border-radius: var(--r-md); }
+.specific-closure-row { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: var(--s2); padding: var(--s2) 0; border-top: 1px solid var(--border); }
+.specific-closure-row p { margin: 0; overflow-wrap: anywhere; }
+.specific-closure-upcoming { margin-top: var(--s4); }
+@media (max-width: 768px) { .specific-closure-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); } .specific-closure-row { grid-template-columns: 1fr 1fr; } .specific-closure-row p { grid-column: 1 / -1; } }

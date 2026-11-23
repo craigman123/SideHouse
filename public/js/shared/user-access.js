@@ -6,6 +6,7 @@
     const candidatesUrl = page.dataset.candidatesUrl;
     const createUrl = page.dataset.createUrl;
     const actorRole = page.dataset.actorRole;
+    const grantableRoles = (page.dataset.grantableRoles || '').split(',').filter(Boolean);
     window.userAccessCurrentId = page.dataset.currentId;
     const ownerAtRender = page.dataset.ownerExists === 'true';
     const csrf = document.querySelector('meta[name="csrf-token"]')?.content || '';
@@ -37,6 +38,7 @@
     const candidateSearch = document.getElementById('candidateSearch');
     const candidateResults = document.getElementById('candidateResults');
     const candidateSearchStatus = document.getElementById('candidateSearchStatus');
+    const candidateLoadingAnnouncement = document.getElementById('candidateLoadingAnnouncement');
     const selectedCandidateUserId = document.getElementById('selectedCandidateUserId');
     const selectedCandidateNode = document.getElementById('selectedCandidate');
     const configNode = document.getElementById('userAccessConfig');
@@ -69,11 +71,30 @@
         returnFocus: null,
         detailsUser: null,
         detailsUpdatedAt: null,
+        candidateLoad: null,
+        detailsController: null,
+        detailsRequestVersion: 0,
     };
 
-    const roleNames = { owner: 'Owner', admin: 'Admin', staff: 'Staff' };
+    const roleNames = { owner: 'Owner', admin: 'Admin', staff: 'Staff', user: 'Customer' };
     const roleOrder = { owner: 0, admin: 1, staff: 2 };
     const permissionOrder = Object.keys(config.permissions || {});
+
+    function setDetailsLoadState(loadState) {
+        detailsForm.dataset.loadState = loadState;
+        const loaded = loadState === 'loaded';
+        const loading = loadState === 'loading';
+        Object.entries(detailsInputs).forEach(([key, input]) => {
+            input.disabled = !loaded;
+            const skeleton = document.querySelector(`[data-details-skeleton="${key}"] .skeleton-input-bar`);
+            if (skeleton) skeleton.hidden = !loading;
+        });
+        document.getElementById('continueAccountDetails').disabled = !loaded;
+        if (loadState !== 'error') {
+            document.getElementById('accountDetailsError').hidden = true;
+            document.getElementById('retryAccountDetails').hidden = true;
+        }
+    }
 
     function element(tag, className, text) {
         const node = document.createElement(tag);
@@ -111,9 +132,9 @@
     }
 
     function formatDate(value) {
-        if (!value) return 'â€”';
+        if (!value) return '-';
         const date = new Date(value);
-        if (Number.isNaN(date.getTime())) return 'â€”';
+        if (Number.isNaN(date.getTime())) return '-';
         return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(date);
     }
 
@@ -122,8 +143,7 @@
     }
 
     function mayGrantRole(role) {
-        if (role === 'owner') return actorRole === 'owner' && currentOwnerCount() > 0;
-        return role === 'staff' || role === 'admin';
+        return grantableRoles.includes(role);
     }
 
     function updateOwnerMessage() {
@@ -131,9 +151,7 @@
         const ownerOption = roleSelect.querySelector('option[value="owner"]');
         if (ownerOption) {
             ownerOption.disabled = !mayGrantRole('owner');
-            ownerOption.title = ownerOption.disabled
-                ? (currentOwnerCount() === 0 ? 'Bootstrap the first owner with the command shown above.' : 'Only an owner can grant the owner role.')
-                : '';
+            ownerOption.title = ownerOption.disabled ? 'Only an admin can grant the owner role.' : '';
         }
     }
 
@@ -159,11 +177,7 @@
     }
 
     function guardReason(user) {
-        const reasons = [];
-        if (Number(user.id) === Number(page.dataset.currentId)) reasons.push('You cannot change your own role, permissions, or access.');
-        if (user.role === 'owner' && actorRole !== 'owner') reasons.push('Only an owner can manage owner accounts.');
-        if (user.role === 'owner' && currentOwnerCount() <= 1) reasons.push('The last owner cannot be demoted or removed.');
-        return reasons.join(' ');
+        return user.actions?.edit_access?.reason || 'You do not have permission to change this account.';
     }
 
     function actionMenu(user) {
@@ -173,21 +187,23 @@
         summaryButton.setAttribute('aria-label', `Actions for ${user.name}`);
         const menu = element('div', 'user-access-action-menu');
         const reason = guardReason(user);
-        if (canEditDetails && ['staff', 'owner'].includes(user.role)) {
+        if (canEditDetails) {
             const detailsButton = element('button', '', 'Edit details');
             detailsButton.type = 'button';
+            detailsButton.disabled = !user.actions?.edit_details?.allowed;
+            detailsButton.title = user.actions?.edit_details?.reason || '';
             detailsButton.addEventListener('click', () => { details.open = false; openDetails(user, detailsButton); });
             menu.append(detailsButton);
         }
         const edit = element('button', '', 'Edit access');
         edit.type = 'button';
-        edit.disabled = Boolean(reason);
-        edit.title = reason;
+        edit.disabled = !user.actions?.edit_access?.allowed;
+        edit.title = user.actions?.edit_access?.reason || '';
         edit.addEventListener('click', () => { details.open = false; openEdit(user, edit); });
         const remove = element('button', 'is-danger', 'Remove access');
         remove.type = 'button';
-        remove.disabled = Boolean(reason);
-        remove.title = reason;
+        remove.disabled = !user.actions?.remove_access?.allowed;
+        remove.title = user.actions?.remove_access?.reason || '';
         remove.addEventListener('click', () => { details.open = false; openRemove(user, remove); });
         menu.append(edit, remove);
         details.append(summaryButton, menu);
@@ -199,7 +215,7 @@
         const nameRow = element('div', 'user-access-name-row');
         nameRow.append(element('strong', 'user-access-person-name', user.name || 'Unnamed account'));
         if (Number(user.id) === Number(window.userAccessCurrentId)) nameRow.append(element('span', 'you-badge', 'You'));
-        cell.append(nameRow, element('span', 'user-access-username', `@${user.username || 'â€”'}`));
+        cell.append(nameRow, element('span', 'user-access-username', `@${user.username || '-'}`));
         return cell;
     }
 
@@ -207,12 +223,12 @@
         const row = document.createElement('tr');
         row.dataset.userId = String(user.id);
         const nameCell = document.createElement('td'); nameCell.append(personCell(user));
-        const emailCell = element('td', 'user-access-email', user.email || 'â€”');
+        const emailCell = element('td', 'user-access-email', user.email || '-');
         const roleCell = document.createElement('td'); roleCell.append(roleBadge(user.role));
         const mfaCell = document.createElement('td'); mfaCell.append(element('span', `mfa-status ${user.mfa_enabled ? 'is-enabled' : 'is-pending'}`, user.mfa_enabled ? 'Enabled' : 'Pending setup'));
         const lastLoginCell = element('td', 'user-access-date', formatDate(user.last_login_at));
         const promotedCell = document.createElement('td');
-        const promoter = user.promoted_by?.name || 'â€”';
+        const promoter = user.promoted_by?.name || '-';
         promotedCell.append(element('span', 'user-access-promoter', promoter));
         if (user.promoted_at) promotedCell.append(element('span', 'user-access-date', formatDate(user.promoted_at)));
         const actionsCell = document.createElement('td'); actionsCell.append(actionMenu(user));
@@ -227,10 +243,10 @@
         header.append(personCell(user), roleBadge(user.role));
         const list = element('dl', 'user-access-card-details');
         const fields = [
-            ['Email', user.email || 'â€”'],
+            ['Email', user.email || '-'],
             ['MFA', user.mfa_enabled ? 'Enabled' : 'Pending setup'],
             ['Last login', formatDate(user.last_login_at)],
-            ['Promoted by', user.promoted_by?.name || 'â€”'],
+            ['Promoted by', user.promoted_by?.name || '-'],
             ['Promoted date', formatDate(user.promoted_at)],
         ];
         fields.forEach(([label, value]) => list.append(element('dt', '', label), element('dd', '', value)));
@@ -314,17 +330,10 @@
     }
 
     function setRoleOptions(user = null) {
-        const ownerCount = currentOwnerCount();
         Array.from(roleSelect.options).forEach((option) => {
             option.disabled = !mayGrantRole(option.value);
         });
-        if (user && user.role === 'owner' && actorRole === 'admin') {
-            roleSelect.querySelector('option[value="owner"]').disabled = true;
-        }
-        if (user && user.role === 'owner' && ownerCount <= 1 && actorRole === 'owner') {
-            roleSelect.querySelector('option[value="admin"]').disabled = false;
-            roleSelect.querySelector('option[value="staff"]').disabled = false;
-        }
+        if (user && !grantableRoles.includes(user.role)) roleSelect.value = grantableRoles[0] || '';
     }
 
     function updatePermissionVisibility() {
@@ -410,36 +419,89 @@
 
     async function openDetails(user, opener) {
         if (!canEditDetails) return;
+        state.detailsController?.abort();
+        state.detailsRequestVersion += 1;
         state.detailsUser = user;
         state.detailsUpdatedAt = null;
         detailsDialog.dataset.userId = String(user.id);
         document.getElementById('accountDetailsTitle').textContent = `Edit details for ${user.name}`;
         document.getElementById('accountDetailsError').hidden = true;
+        document.getElementById('accountDetailsErrorMessage').textContent = '';
+        document.getElementById('retryAccountDetails').hidden = true;
         const previousConflict = document.getElementById('accountDetailsConflict');
         if (previousConflict) { previousConflict.hidden = true; previousConflict.textContent = ''; }
         document.querySelectorAll('[data-details-error]').forEach((node) => { node.hidden = true; node.textContent = ''; });
         detailsForm.reset();
+        Object.values(detailsInputs).forEach((input) => {
+            input.value = '';
+        });
+        setDetailsLoadState('loading');
         document.getElementById('accountDetailsFieldsStep').hidden = false;
         document.getElementById('accountDetailsPasswordStep').hidden = true;
         document.getElementById('backToAccountDetails').hidden = true;
         document.getElementById('continueAccountDetails').hidden = false;
+        document.getElementById('continueAccountDetails').disabled = true;
         document.getElementById('saveAccountDetails').hidden = true;
-        openDialog(detailsDialog, opener);
+        if (!detailsDialog.open) openDialog(detailsDialog, opener);
+        else state.returnFocus = opener || document.activeElement;
+        await loadDetails(user.id);
+    }
+
+    async function loadDetails(userId) {
+        state.detailsController?.abort();
+        const controller = new AbortController();
+        state.detailsController = controller;
+        const requestVersion = ++state.detailsRequestVersion;
+        const requestedUserId = Number(userId);
+        state.detailsUpdatedAt = null;
+        document.getElementById('accountDetailsErrorMessage').textContent = '';
+        setDetailsLoadState('loading');
         try {
-            const url = detailsUrlTemplate.replace('__USER__', encodeURIComponent(user.id));
-            const payload = await request(url);
+            const url = detailsUrlTemplate.replace('__USER__', encodeURIComponent(requestedUserId));
+            const payload = await request(url, { signal: controller.signal });
+            if (requestVersion !== state.detailsRequestVersion || !detailsDialog.open || Number(state.detailsUser?.id) !== requestedUserId) return;
+            const requiredFields = ['name', 'username', 'email', 'updated_at'];
+            if (!payload.details || !requiredFields.every((key) => typeof payload.details[key] === 'string' && payload.details[key].length > 0)
+                || !Object.prototype.hasOwnProperty.call(payload.details, 'phone_number')) {
+                throw new Error('The account details could not be loaded. Please retry.');
+            }
             Object.entries(detailsInputs).forEach(([key, input]) => { input.value = payload.details?.[key] || ''; });
             state.detailsUpdatedAt = payload.details?.updated_at || null;
+            setDetailsLoadState('loaded');
             detailsInputs.name.focus();
+            detailsInputs.name.setSelectionRange(detailsInputs.name.value.length, detailsInputs.name.value.length);
         } catch (loadError) {
-            showDetailsError(loadError.message);
+            if (loadError.name === 'AbortError' || requestVersion !== state.detailsRequestVersion) return;
+            Object.values(detailsInputs).forEach((input) => {
+                input.value = '';
+            });
+            setDetailsLoadState('error');
+            showDetailsError(loadError.message || 'Could not load these account details. Please retry.', true);
         }
     }
 
-    function showDetailsError(message) {
+    function showDetailsError(message, canRetry = false) {
         const node = document.getElementById('accountDetailsError');
-        node.textContent = message;
+        document.getElementById('accountDetailsErrorMessage').textContent = message;
+        document.getElementById('retryAccountDetails').hidden = !canRetry;
         node.hidden = false;
+    }
+
+    function resetDetailsModal() {
+        state.detailsController?.abort();
+        state.detailsController = null;
+        state.detailsRequestVersion += 1;
+        state.detailsUser = null;
+        state.detailsUpdatedAt = null;
+        detailsForm.reset();
+        document.querySelectorAll('[data-details-error]').forEach((node) => { node.hidden = true; node.textContent = ''; });
+        const conflict = document.getElementById('accountDetailsConflict');
+        if (conflict) { conflict.hidden = true; conflict.textContent = ''; }
+        Object.values(detailsInputs).forEach((input) => {
+            input.value = '';
+        });
+        setDetailsLoadState('idle');
+        document.getElementById('accountDetailsErrorMessage').textContent = '';
     }
 
     function showDetailsValidation(errors = {}) {
@@ -468,6 +530,7 @@
 
     async function saveDetails(event) {
         event.preventDefault();
+        if (!state.detailsUpdatedAt || Object.values(detailsInputs).some((input) => input.disabled)) return;
         const errorNode = document.getElementById('accountDetailsError');
         errorNode.hidden = true;
         document.querySelectorAll('[data-details-error]').forEach((node) => { node.hidden = true; node.textContent = ''; });
@@ -555,6 +618,7 @@
 
     function closeCandidateResults() {
         candidateResults.hidden = true;
+        candidateResults.setAttribute('aria-busy', 'false');
         candidateSearch.setAttribute('aria-expanded', 'false');
         candidateSearch.removeAttribute('aria-activedescendant');
     }
@@ -566,9 +630,24 @@
 
     function cancelCandidateSearch() {
         clearTimeout(state.candidateTimer);
+        if (state.candidateLoad) clearTimeout(state.candidateLoad.skeletonTimer);
+        state.candidateLoad = null;
         state.candidateController?.abort();
         state.candidateController = null;
         state.candidateRequestVersion += 1;
+        candidateResults.setAttribute('aria-busy', 'false');
+        candidateLoadingAnnouncement.textContent = '';
+        candidateSearchStatus.setAttribute('aria-live', 'polite');
+    }
+
+    function candidateSkeletonRows() {
+        return Array.from({ length: 3 }, () => {
+            const row = element('div', 'candidate-skeleton-row');
+            row.setAttribute('aria-hidden', 'true');
+            row.append(element('span', 'skeleton skeleton-line candidate-skeleton-email'));
+            row.append(element('span', 'skeleton skeleton-line candidate-skeleton-name'));
+            return row;
+        });
     }
 
     function clearCandidateSelection() {
@@ -592,18 +671,45 @@
         if (term.length < 3) return;
 
         const requestVersion = state.candidateRequestVersion;
-        setCandidateStatus('Searching...');
         state.candidateTimer = setTimeout(async () => {
             const controller = new AbortController();
             state.candidateController = controller;
+            const loadingState = { visible: false, shownAt: 0, skeletonTimer: null };
+            state.candidateLoad = loadingState;
+            candidateResults.setAttribute('aria-busy', 'true');
+            candidateLoadingAnnouncement.textContent = 'Searching...';
+            candidateSearchStatus.setAttribute('aria-live', 'off');
+            setCandidateStatus('Searching...');
+            loadingState.skeletonTimer = setTimeout(() => {
+                if (requestVersion !== state.candidateRequestVersion) return;
+                loadingState.visible = true;
+                loadingState.shownAt = performance.now();
+                candidateResults.replaceChildren(...candidateSkeletonRows());
+                candidateResults.hidden = false;
+                candidateSearch.setAttribute('aria-expanded', 'true');
+            }, 150);
             try {
                 const params = new URLSearchParams({ q: term });
                 const payload = await request(`${candidatesUrl}?${params}`, { signal: controller.signal });
                 if (requestVersion !== state.candidateRequestVersion || candidateSearch.value.trim() !== term) return;
+                clearTimeout(loadingState.skeletonTimer);
+                if (loadingState.visible) await new Promise((resolve) => setTimeout(resolve, Math.max(0, 300 - (performance.now() - loadingState.shownAt))));
+                if (requestVersion !== state.candidateRequestVersion || candidateSearch.value.trim() !== term) return;
+                state.candidateLoad = null;
+                candidateResults.setAttribute('aria-busy', 'false');
+                candidateLoadingAnnouncement.textContent = '';
+                candidateSearchStatus.setAttribute('aria-live', 'polite');
                 showCandidateResults(payload.candidates || []);
             } catch (candidateError) {
                 if (candidateError.name === 'AbortError' || requestVersion !== state.candidateRequestVersion) return;
+                clearTimeout(loadingState.skeletonTimer);
+                if (loadingState.visible) await new Promise((resolve) => setTimeout(resolve, Math.max(0, 300 - (performance.now() - loadingState.shownAt))));
+                if (requestVersion !== state.candidateRequestVersion) return;
+                state.candidateLoad = null;
+                candidateResults.replaceChildren();
                 closeCandidateResults();
+                candidateLoadingAnnouncement.textContent = '';
+                candidateSearchStatus.setAttribute('aria-live', 'polite');
                 setCandidateStatus('Could not search registered customers. Please try again.', true);
             }
         }, 250);
@@ -695,9 +801,16 @@
             detailsInputs.name.focus();
         });
         detailsForm.addEventListener('submit', saveDetails);
+        document.getElementById('retryAccountDetails').addEventListener('click', () => {
+            if (state.detailsUser) loadDetails(state.detailsUser.id);
+        });
         document.querySelectorAll('[data-close-details]').forEach((button) => button.addEventListener('click', () => closeDialog(detailsDialog)));
         detailsDialog.addEventListener('click', (event) => { if (event.target === detailsDialog) closeDialog(detailsDialog); });
-        detailsDialog.addEventListener('close', () => { state.returnFocus?.focus?.(); state.returnFocus = null; });
+        detailsDialog.addEventListener('close', () => {
+            state.returnFocus?.focus?.();
+            state.returnFocus = null;
+            resetDetailsModal();
+        });
     }
     roleSelect.addEventListener('change', updatePermissionVisibility);
     search.addEventListener('input', () => {

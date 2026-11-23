@@ -19,6 +19,8 @@
     <script src="{{ asset('js/config/back-guard.js') . '?v=' . filemtime(public_path('js/config/back-guard.js')) }}" defer></script>
     @stack('styles')
     <link rel="stylesheet" href="{{ asset('css/shared/dashboard-shell.css') . '?v=' . filemtime(public_path('css/shared/dashboard-shell.css')) }}">
+    <link rel="stylesheet" href="{{ asset('css/shared/switch-access.css') . '?v=' . filemtime(public_path('css/shared/switch-access.css')) }}">
+    <script src="{{ asset('js/shared/switch-access.js') . '?v=' . filemtime(public_path('js/shared/switch-access.js')) }}" defer></script>
 </head>
 <body>
     <svg class="dashboard-shell-icons" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" hidden>
@@ -54,6 +56,8 @@
             @endforeach
         </nav>
 
+        @include('partials.switch-access.panel')
+
         <div class="sidebar-profile">
             <a href="{{ route($shell['profile_route']) }}" type="button" class="profile-trigger admin-profile-trigger" @if($shell['area'] !== 'staff') onclick="toggleProfileDropdown()" @endif aria-label="{{ auth()->user()->name ?? 'User' }}, {{ ucfirst($shell['area']) }} profile" title="Profile">
                 <span class="profile-avatar">{{ strtoupper(substr(auth()->user()->name ?? 'A', 0, 1)) }}</span>
@@ -69,6 +73,7 @@
 
     <button type="button" id="adminSidebarBackdrop" class="admin-sidebar-backdrop" data-admin-sidebar-backdrop aria-hidden="true" tabindex="-1" hidden></button>
     <div class="main">
+        @include('partials.switch-access.banner')
         <header class="topbar">
             <h1>@yield('page-title', 'Dashboard')</h1>
             <div class="topbar-actions">

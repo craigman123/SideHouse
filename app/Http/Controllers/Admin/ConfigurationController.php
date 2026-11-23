@@ -10,9 +10,11 @@ use App\Models\Court;
 use App\Models\CourtClosure;
 use App\Models\SpecificDateTimeClosure;
 use App\Support\ActivityLogger;
+use Carbon\CarbonImmutable;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 class ConfigurationController extends Controller
@@ -265,6 +267,12 @@ class ConfigurationController extends Controller
                     ->with('error', 'Slot ' . ($i + 1) . ': end time must be after start time.');
             }
 
+            $slotStart = CarbonImmutable::createFromFormat('!Y-m-d H:i', $slot['date'].' '.$slot['start_time'], 'Asia/Manila');
+            $slotEnd = CarbonImmutable::createFromFormat('!Y-m-d H:i', $slot['date'].' '.$slot['end_time'], 'Asia/Manila');
+            if (app(\App\Services\CourtBlockClosureAvailability::class)->firstClosedOverlap($courtId, $slotStart, $slotEnd)) {
+                return redirect()->route('admin.configuration.index')->with('error', "Slot ".($i + 1)." ({$slot['date']}) overlaps a timed court closure.");
+            }
+
             $closed = CourtClosure::where('date', $slot['date'])
                 ->where(fn ($q) => $q->whereNull('court_id')->orWhere('court_id', $courtId))
                 ->exists();
@@ -298,7 +306,16 @@ class ConfigurationController extends Controller
         }
 
         $booking = DB::transaction(function () use ($validated, $courtId) {
+            Court::query()->whereKey($courtId)->lockForUpdate()->firstOrFail();
             $firstSlot = $validated['slots'][0];
+
+            foreach ($validated['slots'] as $slot) {
+                $slotStart = CarbonImmutable::createFromFormat('!Y-m-d H:i', $slot['date'].' '.$slot['start_time'], 'Asia/Manila');
+                $slotEnd = CarbonImmutable::createFromFormat('!Y-m-d H:i', $slot['date'].' '.$slot['end_time'], 'Asia/Manila');
+                if (app(\App\Services\CourtBlockClosureAvailability::class)->firstClosedOverlap($courtId, $slotStart, $slotEnd)) {
+                    throw ValidationException::withMessages(['slots' => "Slot {$slot['date']} overlaps a timed court closure."]);
+                }
+            }
 
             $booking = Booking::create([
                 'customer_name' => $validated['customer_name'],
@@ -460,6 +477,7 @@ class ConfigurationController extends Controller
             'booked' => $booked,
             'closed' => (bool) $closure,
             'closed_reason' => $closure?->reason,
+            'closed_blocks' => app(\App\Services\CourtBlockClosureAvailability::class)->closedRangesForDate($courtId, $date),
         ]);
     }
 }

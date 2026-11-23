@@ -7,6 +7,7 @@ use App\Models\Court;
 use App\Models\CourtBlock;
 use App\Services\CourtConflictService;
 use App\Services\AdminCalendarOverrideWarnings;
+use App\Services\UserAccessService;
 use App\Support\ActivityLogger;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
@@ -16,8 +17,13 @@ use Illuminate\Validation\Rule;
 
 class CourtBlockController extends Controller
 {
-    public function store(Request $request, CourtConflictService $conflicts): JsonResponse
+    public function store(Request $request, CourtConflictService $conflicts, UserAccessService $access): JsonResponse
     {
+        $requestedType = $request->input('type');
+        if (in_array($requestedType, ['closed', 'maintenance', 'open_play'], true)) {
+            abort_unless($access->allowsCalendarEventType($request->user(), $requestedType), 403);
+        }
+
         $validated = $request->validate([
             'court_id' => ['nullable', 'integer', 'exists:courts,id'],
             'type' => ['required', Rule::in(['closed', 'maintenance', 'open_play'])],
@@ -29,6 +35,7 @@ class CourtBlockController extends Controller
             'max_players' => ['required_if:type,open_play', 'nullable', 'integer', 'min:1'],
             'price_per_player' => ['required_if:type,open_play', 'nullable', 'numeric', 'min:0'],
         ]);
+        abort_unless($access->allowsCalendarEventType($request->user(), $validated['type']), 403);
         $venueNow = CarbonImmutable::now('Asia/Manila');
         if ($validated['block_date'] === $venueNow->toDateString()
             && $validated['start_time'] < $venueNow->format('H:i')) {
@@ -103,9 +110,9 @@ class CourtBlockController extends Controller
         return response()->json(['message' => 'Court block created.', 'block' => $block], 201);
     }
 
-    public function destroy(CourtBlock $block): JsonResponse
+    public function destroy(Request $request, CourtBlock $block, UserAccessService $access): JsonResponse
     {
-        $deleted = DB::transaction(function () use ($block) {
+        $deleted = DB::transaction(function () use ($request, $block, $access) {
             $initial = CourtBlock::query()->whereKey($block->id)->firstOrFail();
 
             if ($initial->court_id === null) {
@@ -115,6 +122,7 @@ class CourtBlockController extends Controller
             }
 
             $locked = CourtBlock::query()->whereKey($block->id)->lockForUpdate()->firstOrFail();
+            abort_unless($access->allowsCalendarEventType($request->user(), $locked->type), 403);
             $details = $locked->only(['id', 'court_id', 'type', 'title', 'block_date', 'start_time', 'end_time']);
             $locked->delete();
 
@@ -131,8 +139,14 @@ class CourtBlockController extends Controller
         return response()->json(['message' => 'Court block deleted.', 'id' => $block->id]);
     }
 
-    public function update(Request $request, CourtBlock $block, AdminCalendarOverrideWarnings $overrideWarnings): JsonResponse
+    public function update(Request $request, CourtBlock $block, AdminCalendarOverrideWarnings $overrideWarnings, UserAccessService $access): JsonResponse
     {
+        abort_unless($access->allowsCalendarEventType($request->user(), $block->type), 403);
+        $requestedType = $request->input('type');
+        if (in_array($requestedType, ['closed', 'maintenance', 'open_play'], true)) {
+            abort_unless($access->allowsCalendarEventType($request->user(), $requestedType), 403);
+        }
+
         $validated = $request->validate([
             'type' => ['sometimes', 'required', Rule::in(['closed', 'maintenance', 'open_play'])],
             'title' => ['sometimes', 'required', 'string', 'max:255'],
@@ -146,8 +160,11 @@ class CourtBlockController extends Controller
             'expected_updated_at' => ['sometimes', 'required', 'date'],
         ]);
 
-        $result = DB::transaction(function () use ($block, $validated, $overrideWarnings) {
+        $result = DB::transaction(function () use ($request, $block, $validated, $overrideWarnings, $access) {
             $locked = CourtBlock::query()->whereKey($block->id)->lockForUpdate()->firstOrFail();
+            abort_unless($access->allowsCalendarEventType($request->user(), $locked->type), 403);
+            $nextType = $validated['type'] ?? $locked->type;
+            abort_unless($access->allowsCalendarEventType($request->user(), $nextType), 403);
             if (isset($validated['expected_updated_at'])
                 && \Carbon\Carbon::parse($validated['expected_updated_at'])->format('U.u') !== $locked->updated_at->format('U.u')) {
                 return ['stale' => $locked->load('court')];

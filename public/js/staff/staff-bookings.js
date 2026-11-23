@@ -15,15 +15,18 @@
         if ('disabled' in control) control.disabled = !allowed;
     });
 
+    document.querySelectorAll('[data-event-permission]').forEach((option) => {
+        const allowed = option.value === 'open_play'
+            ? permissions['calendar_events.open_play'] === true
+            : permissions['calendar_events.manage'] === true;
+        option.hidden = !allowed;
+        option.disabled = !allowed;
+    });
+
     const typeSelect = document.getElementById('courtBlockType');
     if (typeSelect) {
-        typeSelect.querySelectorAll('[data-event-permission]').forEach((option) => {
-            option.hidden = permissions[option.dataset.eventPermission] !== true;
-        });
         const walkInOption = typeSelect.querySelector('option[value="walk_in"]');
         if (walkInOption) walkInOption.hidden = permissions['bookings.create'] !== true;
-        if (permissions['calendar_events.manage'] !== true && permissions['bookings.create'] === true) {
-            typeSelect.value = 'walk_in';
-        }
+        if (permissions['calendar_events.manage'] !== true && permissions['calendar_events.open_play'] === true) typeSelect.value = 'open_play';
     }
 })();

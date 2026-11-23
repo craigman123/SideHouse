@@ -1,0 +1,76 @@
+.skeleton {
+    display: block;
+    background: linear-gradient(
+        100deg,
+        color-mix(in srgb, var(--text-muted), var(--surface-2) 88%) 35%,
+        color-mix(in srgb, var(--text-muted), var(--surface-2) 72%) 50%,
+        color-mix(in srgb, var(--text-muted), var(--surface-2) 88%) 65%
+    );
+    background-size: 220% 100%;
+    animation: shared-skeleton-shimmer 1.2s ease-in-out infinite;
+}
+
+.skeleton[hidden],
+.skeleton-line[hidden],
+.skeleton-input[hidden] { display: none !important; }
+
+.skeleton-line {
+    height: 12px;
+    border-radius: var(--r-pill);
+}
+
+.candidate-skeleton-row {
+    display: grid;
+    align-content: center;
+    gap: var(--s1);
+    min-width: 0;
+    min-height: 52px;
+    padding: var(--s2) var(--s3);
+    border-bottom: 1px solid var(--border);
+}
+
+.candidate-skeleton-row:last-child { border-bottom: 0; }
+.candidate-skeleton-email { width: min(78%, 360px); }
+.candidate-skeleton-name { width: min(42%, 190px); height: 9px; }
+
+.skeleton-input {
+    position: relative;
+    min-width: 0;
+    min-height: 48px;
+}
+
+.skeleton-input input { display: block; }
+.skeleton-input input:disabled { color: transparent; caret-color: transparent; }
+.skeleton-input-bar {
+    position: absolute;
+    top: 50%;
+    left: var(--s3);
+    width: min(58%, 280px);
+    height: 12px;
+    transform: translateY(-50%);
+    pointer-events: none;
+}
+
+.skeleton-input[data-details-skeleton="username"] .skeleton-input-bar { width: min(42%, 190px); }
+.skeleton-input[data-details-skeleton="email"] .skeleton-input-bar { width: min(68%, 320px); }
+.skeleton-input[data-details-skeleton="phone_number"] .skeleton-input-bar { width: min(36%, 150px); }
+
+.account-details-error:not([hidden]) {
+    display: grid;
+    justify-items: start;
+    gap: var(--s2);
+}
+
+.account-details-error p { margin: 0; }
+
+@keyframes shared-skeleton-shimmer {
+    from { background-position: 100% 50%; }
+    to { background-position: -120% 50%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .skeleton {
+        animation: none;
+        background: color-mix(in srgb, var(--text-muted), var(--surface-2) 88%);
+    }
+}
