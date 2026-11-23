@@ -1461,3 +1461,173 @@ html.user-layout-shell.user-book-court-page #timePickerModal .modal-actions .btn
 #timePickerModal .modal-box.modal-box-lg.modal-box-timepicker .time-slot-row-openplay .time-slot-openplay-toggle:disabled .time-slot-openplay-meta {
     color: var(--text-muted);
 }
+
+/* USER EQUIPMENT MODAL - shell parity */
+
+#equipmentModal .modal-box.modal-box-lg.modal-box-scrollable {
+    border: 1px solid var(--border);
+    border-radius: var(--r-lg);
+    background-color: var(--surface);
+    background-image: none;
+    color: var(--text);
+    font-family: var(--font-family);
+}
+
+#equipmentModal .modal-box.modal-box-lg.modal-box-scrollable .equipment-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--s3);
+    margin-bottom: var(--s3);
+    padding-bottom: var(--s3);
+    border-bottom: 1px solid var(--border);
+}
+
+#equipmentModal .modal-box.modal-box-lg.modal-box-scrollable .equipment-header h3 {
+    margin: 0;
+    color: var(--text);
+    font-family: var(--font-family);
+    font-size: var(--font-size-h3);
+    font-weight: var(--font-weight-h3);
+}
+
+#equipmentModal .modal-box.modal-box-lg.modal-box-scrollable .equipment-header .modal-close {
+    border: 1px solid transparent;
+    border-radius: var(--r-pill);
+    background: transparent;
+    color: var(--text);
+}
+
+#equipmentModal .modal-box.modal-box-lg.modal-box-scrollable .equipment-header .modal-close:hover:not(:disabled) {
+    border-color: var(--danger);
+    background: color-mix(in srgb, var(--danger) 12%, var(--surface));
+    color: var(--danger);
+}
+
+#equipmentModal .modal-box.modal-box-lg.modal-box-scrollable .equipment-header .modal-close:focus-visible {
+    outline: 2px solid var(--danger);
+    outline-offset: 2px;
+}
+
+#equipmentModal .modal-box.modal-box-lg.modal-box-scrollable .equipment-header .booking-flow-progress {
+    display: grid;
+    flex: 0 0 100%;
+    width: 100%;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: var(--s1);
+    margin: 0;
+}
+
+#equipmentModal .modal-box.modal-box-lg.modal-box-scrollable .booking-flow-step {
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 0;
+    gap: var(--s1);
+    padding: var(--s1);
+    border: 1px solid var(--border);
+    border-radius: var(--r-pill);
+    background: var(--surface-2);
+    color: var(--text-muted);
+    font-family: var(--font-family);
+    font-size: var(--font-size-small);
+    text-align: center;
+    white-space: nowrap;
+}
+
+#equipmentModal .modal-box.modal-box-lg.modal-box-scrollable .booking-flow-step.active {
+    border-color: var(--brand);
+    background: color-mix(in srgb, var(--brand) 18%, var(--surface));
+    color: var(--text);
+}
+
+#equipmentModal .modal-box.modal-box-lg.modal-box-scrollable .booking-flow-step.complete {
+    border-color: var(--brand);
+    color: var(--text);
+}
+
+#equipmentModal .modal-box.modal-box-lg.modal-box-scrollable .booking-flow-step b {
+    box-sizing: border-box;
+    display: inline-grid;
+    flex: 0 0 1.25em;
+    width: 1.25em;
+    aspect-ratio: 1;
+    place-items: center;
+    border: 1px solid var(--border);
+    border-radius: var(--r-pill);
+    background: var(--surface);
+    color: var(--brand-hover);
+    font-size: var(--font-size-small);
+}
+
+#equipmentModal .modal-box.modal-box-lg.modal-box-scrollable .booking-flow-step.active b,
+#equipmentModal .modal-box.modal-box-lg.modal-box-scrollable .booking-flow-step.complete b {
+    border-color: var(--brand);
+}
+
+#equipmentModal .modal-box.modal-box-lg.modal-box-scrollable .modal-actions {
+    box-sizing: border-box;
+    display: flex;
+    flex: 0 0 auto;
+    flex-wrap: nowrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--s3);
+    position: static;
+    margin: 0;
+    padding: var(--s3) 0;
+    border-top: 1px solid var(--border);
+    background: var(--surface);
+}
+
+#equipmentModal .modal-box.modal-box-lg.modal-box-scrollable .modal-actions .btn {
+    box-sizing: border-box;
+    min-width: 0;
+    min-height: 44px;
+    border-radius: var(--r-pill);
+    font-family: var(--font-family);
+    font-weight: var(--font-weight-button);
+    white-space: nowrap;
+}
+
+#equipmentModal .modal-box.modal-box-lg.modal-box-scrollable .modal-actions .btn-secondary {
+    flex: 0 0 auto;
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--text);
+}
+
+#equipmentModal .modal-box.modal-box-lg.modal-box-scrollable .modal-actions .btn-secondary:hover:not(:disabled) {
+    border-color: var(--danger);
+    background: color-mix(in srgb, var(--danger) 12%, var(--surface));
+    color: var(--danger);
+}
+
+#equipmentModal .modal-box.modal-box-lg.modal-box-scrollable .modal-actions .btn-primary {
+    flex: 1 1 auto;
+    border: 1px solid var(--brand);
+    background: var(--brand);
+    color: var(--text);
+}
+
+#equipmentModal .modal-box.modal-box-lg.modal-box-scrollable .modal-actions .btn-primary:hover:not(:disabled) {
+    border-color: var(--brand-hover);
+    background: var(--brand-hover);
+}
+
+#equipmentModal .modal-box.modal-box-lg.modal-box-scrollable .modal-actions .btn:focus-visible {
+    outline: 2px solid var(--brand-hover);
+    outline-offset: 2px;
+}
+
+@media (max-width: 480px) {
+    #equipmentModal .modal-box.modal-box-lg.modal-box-scrollable .booking-flow-step {
+        font-size: 0;
+    }
+
+    #equipmentModal .modal-box.modal-box-lg.modal-box-scrollable .booking-flow-step b {
+        font-size: var(--font-size-small);
+    }
+}

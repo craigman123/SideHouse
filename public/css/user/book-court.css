@@ -1450,3 +1450,5 @@ html[data-theme="light"] .user-book-court-page .btn-primary { color: var(--on-br
 html[data-theme="light"] .user-book-court-page :is(.booking-summary,.modal-box,.court-modal-details,.payment-btn,.equipment-card,.calendar-day,.time-slot-btn,.duration-btn,.qty-btn,.guest-info-item input):focus-visible {
     outline-color: var(--brand);
 }
+
+
