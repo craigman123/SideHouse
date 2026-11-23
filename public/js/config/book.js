@@ -137,7 +137,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const confirmBtn = document.getElementById('confirmBooking');
     const confirmLabel = confirmBtn.textContent;
     const paymentExitButtons = [
-        document.getElementById('backToEquipment'),
         document.getElementById('backToEquipment2'),
         document.getElementById('courtPaymentModalClose'),
     ];
@@ -156,6 +155,9 @@ document.addEventListener('DOMContentLoaded', () => {
             if (locked) button.setAttribute('aria-disabled', 'true');
             else button.removeAttribute('aria-disabled');
         });
+
+        contactNumberInput.disabled = locked;
+        paymentGrid.querySelector('.payment-btn-qrph')?.classList.toggle('is-busy', locked);
 
         confirmBtn.disabled = locked;
         if (locked) {
@@ -1265,7 +1267,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function updateSummary() {
         // updateSummary
-        summaryDate.textContent = formatDate(activeSessionDate || selectedDate);
+        summaryDate.textContent = '';
         summaryTime.textContent = formatSelectedSlotsSummary();
         summaryPayment.textContent = 'QR Ph';
 
@@ -1323,8 +1325,19 @@ document.addEventListener('DOMContentLoaded', () => {
             quantity,
         }));
 
+        let requestTimedOut = false;
+
+    try {
+        const controller = new AbortController();
+        let res;
+        let data;
+        const timeoutId = window.setTimeout(() => {
+            requestTimedOut = true;
+            controller.abort();
+        }, 30_000);
+
         try {
-            const res = await fetch(storeUrl, {
+            res = await fetch(storeUrl, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -1339,9 +1352,16 @@ document.addEventListener('DOMContentLoaded', () => {
                     contact_number: contactNumberInput.value.trim(),
                     equipment: equipmentPayload,
                 }),
+                signal: controller.signal,
             });
 
-            const data = await res.json().catch(() => ({}));
+            data = await res.json().catch((err) => {
+                if (requestTimedOut) throw err;
+                return {};
+            });
+        } finally {
+            window.clearTimeout(timeoutId);
+        }
 
             if (res.status === 419) {
                 showToast('Your session expired. Reloading the page…', 'error');
@@ -1394,7 +1414,11 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         } catch (err) {
             console.error(err);
-            showToast('Something went wrong. Please try again.', 'error');
+            if (requestTimedOut) {
+                showToast("We couldn't confirm your booking. Check My Bookings before trying again.", 'error');
+            } else {
+                showToast('Something went wrong. Please try again.', 'error');
+            }
         } finally {
             if (!paymentRedirecting) setPaymentSubmissionLocked(false);
         }

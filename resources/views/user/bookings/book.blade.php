@@ -274,10 +274,9 @@
 
                 <div class="booking-summary" id="bookingSummary">
                     <p class="booking-summary-title">Final Review</p>
-                    <p><span id="summaryDate"></span> &middot; <span id="summaryTime"></span></p>
+                    <p><span id="summaryDate"></span><span class="summary-date-time-separator"> &middot; </span><span id="summaryTime"></span></p>
                     <p id="summaryEquipmentRow" hidden>Equipment: <strong id="summaryEquipment"></strong></p>
                     <p>Payment: <strong id="summaryPayment">QR Ph</strong></p>
-                    <p class="booking-summary-total">Total: <strong id="summaryTotal"></strong></p>
                 </div>
                 <aside class="booking-selection-summary user-booking-selection" aria-live="polite">
                     <p class="booking-selection-summary-title">Your selection</p>
@@ -287,6 +286,8 @@
                     <p class="booking-selection-total"><span>Estimated total</span><strong class="selection-total">₱0.00</strong></p>
                 </aside>
             </div>
+
+            <div class="booking-total-bar booking-summary-total">Total: <strong id="summaryTotal"></strong></div>
 
             <div class="modal-actions">
                 <button type="button" class="btn btn-secondary" id="backToEquipment2">Back</button>

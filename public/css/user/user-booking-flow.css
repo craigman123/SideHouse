@@ -2099,3 +2099,35 @@ html.user-layout-shell.user-book-court-page #timePickerModal .modal-actions .btn
     font-size: var(--font-size-h3);
     font-weight: var(--font-weight-h3);
 }
+
+/* USER PAYMENT MODAL - total bar */
+
+#courtPaymentModal .modal-box.modal-box-lg.modal-box-scrollable .booking-total-bar.booking-summary-total {
+    box-sizing: border-box;
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--s3);
+    width: 100%;
+    min-width: 0;
+    margin: 0 !important;
+    padding: var(--s3) 0 !important;
+    border-top: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text-muted);
+    font-family: var(--font-family);
+    white-space: nowrap;
+}
+
+#courtPaymentModal .modal-box.modal-box-lg.modal-box-scrollable .booking-total-bar.booking-summary-total strong {
+    flex: 0 1 auto;
+    min-width: 0;
+    margin-left: auto;
+    color: var(--brand);
+    font-family: var(--font-family);
+    font-size: var(--font-size-h3);
+    font-weight: var(--font-weight-h3);
+    text-align: right;
+    white-space: nowrap;
+}
