@@ -14,6 +14,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const OPEN_HOUR = parseInt(grid.dataset.openHour, 10);
     const RAW_CLOSE_HOUR = parseInt(grid.dataset.closeHour, 10);
     const CLOSE_HOUR = (OPEN_HOUR === 0 && RAW_CLOSE_HOUR === 0) ? 24 : RAW_CLOSE_HOUR;
+    const OVERNIGHT = CLOSE_HOUR <= OPEN_HOUR;
 
     // Peak/night pricing (admin Configuration page) — display-only
     // preview of the surcharge storeBooking() actually applies
