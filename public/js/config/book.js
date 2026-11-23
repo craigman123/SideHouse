@@ -774,6 +774,7 @@ document.addEventListener('DOMContentLoaded', () => {
             toggle.disabled = true;
             const reason = full ? 'This open play is full'
                 : past ? 'This open play has already started'
+                : closed ? 'This open play overlaps a closed time'
                 : 'This open play is unavailable';
             toggle.title = reason;
             row.dataset.tooltip = reason;

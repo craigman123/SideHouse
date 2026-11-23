@@ -307,8 +307,6 @@ document.addEventListener('DOMContentLoaded', () => {
         `).join('');
     }
     // ---------- END DYNAMIC RATES ----------
-
-    const availabirenderOpenPlayBlocklityUrl = grid.dataset.availabilityUrl;
     // ... (the rest of your existing code continues below) ...
 
         function renderStats(data) {
@@ -1616,6 +1614,7 @@ document.addEventListener('DOMContentLoaded', () => {
             toggle.disabled = true;
             const reason = full ? 'This open play is full'
                 : past ? 'This open play has already started'
+                : closed ? 'This open play overlaps a closed time'
                 : 'This open play is unavailable';
             toggle.title = reason;
             row.dataset.tooltip = reason;
@@ -1853,19 +1852,6 @@ document.addEventListener('DOMContentLoaded', () => {
         renderTimeSlots();
         updateTimePickerFee();
         updateSelectionSummary();
-    }
-
-    function onDateSelected(date) {
-        fetch(`/availability?court_id=${courtId}&date=${date}`)
-            .then(response => response.json())
-            .then(data => {
-                const closeMin = data.close_minutes; // e.g., 600
-                const openMin = OPEN_HOUR * 60;      // from page data attributes
-
-                // Clear the grid and re-render using the specific close
-                timeSlotGrid.innerHTML = '';
-                renderTimeSlotBlock(openMin, closeMin, date);
-            });
     }
 
     // Running fee shown under the hour list — collapses the selected
