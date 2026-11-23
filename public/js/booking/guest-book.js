@@ -327,7 +327,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const totalHours = days.reduce((sum, d) => sum + (d.hours || 0), 0);
             const maxBookings = Math.max(...days.map((d) => d.bookings || 0), 1);
             const busiest = days.reduce((a, b) => ((b.hours || 0) > (a.hours || 0) ? b : a), days[0]);
-            const todayStr = localDateStr();
+            const localDateStr = (d = new Date()) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+            const todayStr = () => localDateStr();;
 
             totalHoursEl.textContent = formatHours(totalHours);
             avgHoursEl.textContent = formatHours(totalHours / days.length);
@@ -1363,6 +1364,12 @@ document.addEventListener('DOMContentLoaded', () => {
             && end > timeToMinutes(range.start));
     }
 
+    function closureAt(totalMin) {
+        const end = totalMin + STEP_MINUTES;
+        return timedClosureRanges.find((r) => totalMin < (timeToMinutes(r.end) || 1440)
+            && end > timeToMinutes(r.start));
+    }
+
     function openPlayAt(totalMin, dateStr = selectedDate) {
         const end = totalMin + STEP_MINUTES;
         return (openPlayEventsByDate[dateStr] || openPlayRanges).find((event) => totalMin >= timeToMinutes(event.start)
@@ -1522,17 +1529,18 @@ document.addEventListener('DOMContentLoaded', () => {
             // CSS tooltip (dataset.tooltip) below, so they can never drift
             // out of sync with each other.
             const maintenanceSubject = maintenanceBlocked ? maintenanceSubjectAt(totalMin) : null;
+            const closure = timedClosed ? closureAt(totalMin) : null;
             const unavailableReason = booked
                 ? 'Reserved — already booked by another player'
                 : maintenanceBlocked
-                    ? (!maintenanceSubject
+                    ? (maintenanceSubject
                         ? `Payment temporarily unavailable — ${maintenanceSubject}`
                         : 'Payment system under scheduled maintenance during this time')
                     : timedClosed
-                        ? 'Court closed during this time'
-                    : past
-                        ? 'This time has already passed'
-                        : '';
+                        ? (closure?.type === 'maintenance'
+                            ? 'Court under maintenance during this time'
+                            : 'Court closed during this time')
+                        : past ? 'This time has already passed' : '';
 
             const isSelected = selectedSlots.includes(slotKey(selectedDate, timeStr));
 

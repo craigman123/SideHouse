@@ -10,6 +10,20 @@ use Illuminate\Database\Eloquent\Collection;
 
 class CourtBlockClosureAvailability
 {
+
+    private const BLOCKING_TYPES = ['closed', 'maintenance'];
+
+    // closedBlocksForDate() and firstClosedOverlap(): replace ->where('type', 'closed') with
+    ->whereIn('type', self::BLOCKING_TYPES)
+
+    // closedRangesForDate(): add the type so the page can label it
+    'type' => $block->type,   // in the $specific array
+    'type' => 'closed',       // in the $weekly array
+
+    // firstClosedOverlap(): delete this line from the WeeklyCourtClosure query,
+    // because it compares a block id to a weekly-rule id
+    ->when($ignoreBlockId !== null, fn ($query) => $query->where('id', '!=', $ignoreBlockId))
+
     public function closedRangesForDate(int $courtId, string $date): array
     {
         $dayStart = CarbonImmutable::parse($date, 'Asia/Manila')->startOfDay();

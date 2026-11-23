@@ -474,6 +474,11 @@ document.addEventListener('DOMContentLoaded', () => {
         closeBookingModal();
         openTimePickerModal();
         await changeDateInModal(dateStr);
+
+        if (ranges.failed) {
+            timeSlotGrid.innerHTML = '<p class="loading-text">Couldn\'t load times. Please try again.</p>';
+            return;
+        }
     }
 
     function renderTimePickerDateLabel() {
@@ -593,6 +598,12 @@ document.addEventListener('DOMContentLoaded', () => {
             && slotEnd > timeToMinutes(range.start));
     }
 
+    function closureAt(totalMin) {
+        const end = totalMin + STEP_MINUTES;
+        return timedClosureRanges.find((r) => totalMin < (timeToMinutes(r.end) || 1440)
+            && end > timeToMinutes(r.start));
+    }
+
     function openPlayAt(totalMin, dateStr = selectedDate) {
         const end = totalMin + STEP_MINUTES;
         return (openPlayEventsByDate[dateStr] || openPlayRanges).find((event) => totalMin >= timeToMinutes(event.start)
@@ -689,6 +700,16 @@ document.addEventListener('DOMContentLoaded', () => {
             const full = openPlay && Number(openPlay.joined) >= Number(openPlay.max_players);
             const past = isSlotPastAt(selectedDate, timeStr);
             const unavailable = booked || full || timedClosed || past;
+
+            const closure = timedClosed ? closureAt(totalMin) : null;
+            const unavailableReason = booked
+                ? 'Reserved — already booked by another player'
+                : timedClosed
+                    ? (closure?.type === 'maintenance'
+                        ? 'Court under maintenance during this time'
+                        : 'Court closed during this time')
+                    : past ? 'This time has already passed' : '';
+
             const isSelected = selectedSlots.includes(slotKey(selectedDate, timeStr));
 
             // The row itself is just a container — the time label on the
