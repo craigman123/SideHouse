@@ -18,21 +18,65 @@
     let backNavigationInFlight = false;
     const backGuardState = { page: 'payment-waiting', backGuard: true };
 
-    // Push a state to prevent immediate back navigation
-    window.history.pushState(backGuardState, '', window.location.href);
+    const backModalEl  = document.getElementById('wt-back-nav-modal');
+    const backStayBtn  = document.getElementById('wt-back-nav-stay');
+    const backLeaveBtn = document.getElementById('wt-back-nav-leave');
 
-    // Handle browser back button
-    window.addEventListener('popstate', function(event) {
-        if (event.state?.backGuard) return;
-        if (backNavigationInFlight) {
-            window.history.pushState(backGuardState, '', window.location.href);
-            return;
-        }
+    // Resolves true if the guest chooses to leave, false if they stay
+    // (Stay button, overlay click, or Escape).
+    function showBackNavModal() {
+        backModalEl.classList.remove('hidden');
+
+        return new Promise((resolve) => {
+            function cleanup(result) {
+                backModalEl.classList.add('hidden');
+                backLeaveBtn.removeEventListener('click', onLeave);
+                backStayBtn.removeEventListener('click', onStay);
+                backModalEl.removeEventListener('click', onOverlayClick);
+                document.removeEventListener('keydown', onKeydown);
+                resolve(result);
+            }
+            function onLeave() { cleanup(true); }
+            function onStay() { cleanup(false); }
+            function onOverlayClick(e) { if (e.target === backModalEl) cleanup(false); }
+            function onKeydown(e) { if (e.key === 'Escape') cleanup(false); }
+
+            backLeaveBtn.addEventListener('click', onLeave);
+            backStayBtn.addEventListener('click', onStay);
+            backModalEl.addEventListener('click', onOverlayClick);
+            document.addEventListener('keydown', onKeydown);
+        });
+    }
+
+    // Single entry point for "Back to home" link AND the browser back button
+    async function requestLeave() {
+        if (backNavigationInFlight) return;
         backNavigationInFlight = true;
 
-        // Keep the waiting page in history while the booking status is checked.
+        const leave = await showBackNavModal();
+        if (!leave) {
+            backNavigationInFlight = false;
+            return;
+        }
+        await handleBackNavigation();
+    }
+
+    // Push a state so the browser back button can be intercepted
+    window.history.pushState(backGuardState, '', window.location.href);
+
+    window.addEventListener('popstate', function (event) {
+        if (event.state?.backGuard) return;
+
+        // Keep the waiting page in history either way
         window.history.pushState(backGuardState, '', window.location.href);
-        handleBackNavigation();
+
+        if (backNavigationInFlight) return;
+        requestLeave();
+    });
+
+    document.getElementById('backToHome')?.addEventListener('click', (e) => {
+        e.preventDefault();
+        requestLeave();
     });
 
     async function handleBackNavigation() {
@@ -45,10 +89,6 @@
             const data = await statusResponse.json();
             if (data.status === 'paid') {
                 window.location.replace(`${receiptUrl}?token=${encodeURIComponent(token)}`);
-                return;
-            }
-            if (data.status === 'confirmed' || data.status === 'cancelled') {
-                window.location.replace('/');
                 return;
             }
             if (data.status !== 'pending') {
@@ -72,7 +112,7 @@
         } catch (err) {
             console.error(err);
             backNavigationInFlight = false;
-            showToast('Could not check booking status. Please try Back again.', 'error');
+            showToast('Could not check booking status. Please try again.', 'error');
         }
     }
 
