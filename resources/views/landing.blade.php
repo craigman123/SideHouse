@@ -806,7 +806,7 @@
 
     <div class="toast-container" id="toastContainer"></div>
 
-    <script src="{{ asset('js/booking/guest-book.js') }}" defer></script>
+    <script src="{{ asset('js/booking/guest-book.js') }}?v={{ filemtime(public_path('js/booking/guest-book.js')) }}" defer></script>
     <script src="{{ asset('js/config/stats-vacant.js') }}" defer></script>
     <script src="{{ asset('js/landing/landing-search.js') }}" defer></script>
 </body>
