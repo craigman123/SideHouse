@@ -1262,10 +1262,16 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function selectDate(dateStr, btn) {
+        // Re-opening the same day after "Back" keeps what the guest already
+        // picked. Picking a different day still starts fresh.
+        const keepSelection = dateStr === selectedDate && selectedSlots.length > 0;
+
         selectedDate = dateStr;
-        selectedSlots = [];
-        slotSessions.clear();
-        activeSessionDate = null;
+        if (!keepSelection) {
+            selectedSlots = [];
+            slotSessions.clear();
+            activeSessionDate = null;
+        }
         lastRequestedDate = dateStr;
 
         calendarGrid.querySelectorAll('.calendar-day').forEach((el) => el.classList.remove('selected'));
@@ -1276,10 +1282,11 @@ document.addEventListener('DOMContentLoaded', () => {
         openTimePickerModal();
         renderTimeSlotSkeleton();
 
-        // Guarantee the skeleton is visible for at least a beat — on a
-        // fast connection fetchAvailability can resolve before it's even
-        // perceptible. Racing it against a minimum delay avoids that
-        // without adding lag on slower connections.
+        // Sync the fee line and the "Your selection" box right away, so they
+        // never show stale data while availability is loading.
+        updateTimePickerFee();
+        updateSelectionSummary();
+
         const MIN_SKELETON_MS = 300;
         const [availability] = await Promise.all([
             fetchAvailability(dateStr),
@@ -1301,27 +1308,9 @@ document.addEventListener('DOMContentLoaded', () => {
         maintenanceRanges = availability.maintenanceBlocked;
         renderTimeSlots();
         updateTimePickerFee();
+        updateSelectionSummary();
         if (availability.closed) {
             showToast(availability.closedReason || 'This date just closed for booking.', 'error');
-        }
-    }
-
-    function renderTimeSlotSkeleton() {
-        timeSlotGrid.innerHTML = '';
-
-        // Same slot-count math as renderTimeSlots() below, so the number
-        // of skeleton placeholders matches the real list that replaces it.
-        // Each slot is STEP_MINUTES long — a slot only needs to fit itself
-        // before closing time now, not a whole multi-hour duration.
-        const spanMinutes = OVERNIGHT ? (24 - OPEN_HOUR + CLOSE_HOUR) * 60 : (CLOSE_HOUR - OPEN_HOUR) * 60;
-        const lastStart = spanMinutes - STEP_MINUTES;
-        const slotCount = Math.floor(lastStart / STEP_MINUTES) + 1;
-
-        for (let i = 0; i < slotCount; i++) {
-            const skeleton = document.createElement('div');
-            skeleton.className = 'time-slot-skeleton';
-            skeleton.style.animationDelay = `${(i % 8) * 0.05}s`;
-            timeSlotGrid.appendChild(skeleton);
         }
     }
 

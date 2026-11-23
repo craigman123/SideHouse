@@ -469,10 +469,16 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function selectDate(dateStr) {
+        // Re-opening the same day after "Back" keeps what the user already
+        // picked. Picking a different day still starts fresh.
+        const keepSelection = dateStr === selectedDate && selectedSlots.length > 0;
+
         selectedDate = dateStr;
-        selectedSlots = [];
-        slotSessions.clear();
-        activeSessionDate = null;
+        if (!keepSelection) {
+            selectedSlots = [];
+            slotSessions.clear();
+            activeSessionDate = null;
+        }
 
         closeBookingModal();
         openTimePickerModal();
