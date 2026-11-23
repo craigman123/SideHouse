@@ -1069,3 +1069,174 @@ html.user-layout-shell.user-book-court-page #timePickerModal .modal-actions .btn
         overflow-y: visible;
     }
 }
+
+/* TIME PICKER MODAL - guest parity: part 1 */
+
+/* Frame */
+#timePickerModal .modal-box.modal-box-lg.modal-box-timepicker {
+    border: 1px solid var(--border);
+    border-radius: var(--r-lg);
+    background: var(--surface);
+    background-image: none;
+    color: var(--text);
+    font-family: var(--font-family);
+}
+
+/* Size and safe area */
+#timePickerModal.modal-overlay.open {
+    box-sizing: border-box;
+    align-items: center;
+    justify-content: center;
+    padding:
+        max(var(--s3), env(safe-area-inset-top, 0px))
+        max(var(--s3), env(safe-area-inset-right, 0px))
+        max(var(--s3), env(safe-area-inset-bottom, 0px))
+        max(var(--s3), env(safe-area-inset-left, 0px));
+}
+
+#timePickerModal .modal-box.modal-box-lg.modal-box-timepicker {
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    width: min(560px, calc(100% - var(--s4) - var(--s4)));
+    max-width: 560px;
+    height: auto;
+    max-height: calc(100vh - var(--s3) - var(--s3));
+    max-height: calc(
+        100dvh
+        - max(var(--s3), env(safe-area-inset-top, 0px))
+        - max(var(--s3), env(safe-area-inset-bottom, 0px))
+    );
+    min-height: 0;
+    margin: 0;
+    padding: var(--s4);
+    overflow: hidden;
+}
+
+/* Header */
+#timePickerModal .modal-box.modal-box-lg.modal-box-timepicker .modal-header-timepicker {
+    display: flex;
+    flex: 0 0 auto;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--s3);
+    margin: 0 0 var(--s3);
+}
+
+#timePickerModal .modal-box.modal-box-lg.modal-box-timepicker .modal-back-time {
+    display: inline-flex;
+    align-items: center;
+    justify-content: flex-start;
+    min-height: 44px;
+    margin: 0;
+    padding: var(--s2) var(--s1);
+    border: 1px solid transparent;
+    border-radius: var(--r-pill);
+    background: transparent;
+    color: var(--text);
+    font-family: var(--font-family);
+    font-size: var(--font-size-small);
+    font-weight: var(--font-weight-small);
+}
+
+#timePickerModal .modal-box.modal-box-lg.modal-box-timepicker .modal-close {
+    display: inline-flex;
+    flex: 0 0 44px;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    min-height: 44px;
+    margin: 0;
+    padding: 0;
+    border: 1px solid transparent;
+    border-radius: var(--r-pill);
+    background: transparent;
+    color: var(--text);
+    font-size: var(--font-size-h3);
+}
+
+#timePickerModal .modal-box.modal-box-lg.modal-box-timepicker .modal-back-time:hover,
+#timePickerModal .modal-box.modal-box-lg.modal-box-timepicker .modal-close:hover {
+    border-color: var(--danger);
+    background: color-mix(in srgb, var(--danger) 12%, var(--surface));
+    color: var(--danger);
+}
+
+#timePickerModal .modal-box.modal-box-lg.modal-box-timepicker .modal-back-time:focus-visible,
+#timePickerModal .modal-box.modal-box-lg.modal-box-timepicker .modal-close:focus-visible {
+    outline: 2px solid var(--danger);
+    outline-offset: 2px;
+}
+
+/* Stepper */
+#timePickerModal .modal-box.modal-box-lg.modal-box-timepicker .booking-flow-progress {
+    display: grid;
+    width: 100%;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: var(--s1);
+    margin: 0;
+}
+
+#timePickerModal .modal-box.modal-box-lg.modal-box-timepicker .booking-flow-step {
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 0;
+    min-height: 36px;
+    gap: var(--s1);
+    padding: var(--s1);
+    border: 1px solid var(--border);
+    border-radius: var(--r-pill);
+    background: var(--surface-2);
+    color: var(--text-muted);
+    font-family: var(--font-family);
+    font-size: var(--font-size-small);
+    text-align: center;
+    white-space: nowrap;
+}
+
+#timePickerModal .modal-box.modal-box-lg.modal-box-timepicker .booking-flow-step.active {
+    border-color: var(--brand);
+    background: color-mix(in srgb, var(--brand) 18%, var(--surface));
+    color: var(--text);
+}
+
+#timePickerModal .modal-box.modal-box-lg.modal-box-timepicker .booking-flow-step.complete {
+    border-color: var(--brand);
+    color: var(--text);
+}
+
+#timePickerModal .modal-box.modal-box-lg.modal-box-timepicker .booking-flow-step b {
+    display: inline;
+    flex: 0 0 auto;
+    width: auto;
+    height: auto;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    color: var(--brand-hover);
+    font-size: inherit;
+}
+
+@media (max-width: 560px) {
+    #timePickerModal .modal-box.modal-box-lg.modal-box-timepicker .booking-flow-step {
+        min-height: 44px;
+        flex-direction: column;
+        gap: var(--s1);
+        padding: var(--s1) 0;
+    }
+}
+
+@media (max-width: 400px) {
+    #timePickerModal .modal-box.modal-box-lg.modal-box-timepicker .booking-flow-step {
+        font-size: 0;
+    }
+
+    #timePickerModal .modal-box.modal-box-lg.modal-box-timepicker .booking-flow-step b {
+        font-size: var(--font-size-small);
+    }
+}
