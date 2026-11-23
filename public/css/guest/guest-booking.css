@@ -1497,19 +1497,26 @@ body > .landing-wrapper {
 
 .time-slot-row-openplay {
     align-items: stretch;
-    min-height: 140px;
+    min-height: 0;
 }
-.time-slot-row-openplay .time-slot-row-time {
-    align-self: flex-start;
-    padding-top: 14px;
+.time-slot-openplay-times {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;              /* match the gap between your normal rows */
+}
+.time-slot-openplay-times .time-slot-row-time {
+    display: flex;
+    align-items: center;
+    min-height: 58px;      /* match the height of a normal row */
 }
 .time-slot-openplay-toggle {
     display: flex;
     align-items: center;
     justify-content: center;
     gap: 10px;
-    min-height: 100%;
-    padding: 18px 14px;
+    align-self: stretch;
+    height: auto;
+    padding: 14px;
     text-align: left;
     border-radius: 14px;
     background: linear-gradient(180deg, rgba(0,160,90,.18), rgba(0,160,90,.06));
@@ -1523,5 +1530,5 @@ body > .landing-wrapper {
     flex-direction: column;
     gap: 4px;
 }
-.time-slot-openplay-title { font-size: 1rem; }
-.time-slot-openplay-meta { font-size: .85rem; opacity: .85; }
+.time-slot-openplay-title { display: block; font-size: 1rem; }
+.time-slot-openplay-meta  { display: block; font-size: .85rem; opacity: .85; }

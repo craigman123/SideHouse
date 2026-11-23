@@ -692,8 +692,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // making the calendar think it's still "yesterday" right after local
     // midnight. Build the string from local Date components instead so it
     // matches the browser's actual local calendar day.
-    const localDateStr = (d = new Date()) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-    const todayStr = () => localDateStr();
 
     function finishBookingReset() {
         closePaymentModal();
@@ -1575,9 +1573,14 @@ document.addEventListener('DOMContentLoaded', () => {
         row.className = 'time-slot-row time-slot-row-openplay'
             + (isSelected ? ' selected' : '') + (unavailable ? ' disabled' : '');
 
-        const label = document.createElement('span');
-        label.className = 'time-slot-row-time';
-        label.textContent = `${fmt(evStart)} - ${fmt(evEnd)}`;
+        const times = document.createElement('div');
+        times.className = 'time-slot-openplay-times';
+        for (let t = evStart; t + STEP_MINUTES <= evEnd; t += STEP_MINUTES) {
+            const hourLabel = document.createElement('span');
+            hourLabel.className = 'time-slot-row-time';
+            hourLabel.textContent = formatSlotRange(t);
+            times.appendChild(hourLabel);
+}
 
         const toggle = document.createElement('button');
         toggle.type = 'button';
@@ -1621,7 +1624,7 @@ document.addEventListener('DOMContentLoaded', () => {
             toggle.addEventListener('click', () => toggleOpenPlayEvent(openPlay, sessionDate));
         }
 
-        row.appendChild(label);
+        row.appendChild(times);
         row.appendChild(toggle);
         timeSlotGrid.appendChild(row);
     }
