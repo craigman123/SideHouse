@@ -167,23 +167,30 @@ class AdminCalendarEditTest extends TestCase
         $this->assertSame('09171234567', $booking->fresh()->contact_number);
     }
 
-    public function test_paid_booking_amount_change_requires_acknowledgement(): void
+    public function test_browser_cannot_tamper_with_booking_amount(): void
     {
         $booking = $this->booking(['status' => 'paid']);
 
         $this->patchJson("/admin/bookings/{$booking->id}", ['amount' => 1200])
             ->assertUnprocessable()
-            ->assertJsonPath('old_amount', 1000)
-            ->assertJsonPath('new_amount', 1200);
+            ->assertJsonPath('message', 'Booking amounts must use the calculated price confirmation.');
         $this->assertSame('1000.00', $booking->fresh()->amount);
     }
 
-    public function test_confirmed_booking_amount_change_with_acknowledgement_is_logged(): void
+    public function test_new_calculated_price_requires_current_amount_and_rules_version(): void
     {
+        $settings = BusinessSetting::current();
+        $settings->update([
+            'peak_start_hour' => 17, 'peak_end_hour' => 19,
+            'peak_adjustment_type' => 'percent', 'peak_adjustment_value' => 20,
+        ]);
         $booking = $this->booking(['status' => 'confirmed']);
+        $pricing = app(\App\Services\BookingPricingService::class);
+        $rules = $pricing->clientRules();
 
         $this->patchJson("/admin/bookings/{$booking->id}", [
-            'amount' => 1200, 'acknowledge_price_change' => true,
+            'start_time' => '17:00', 'end_time' => '19:00', 'price_decision' => 'new',
+            'expected_amount' => 1200, 'price_rules_version' => $rules['version'], 'acknowledge_price_change' => true,
         ])->assertOk()->assertJsonPath('booking.amount', 1200);
 
         $this->assertSame('1200.00', $booking->fresh()->amount);
@@ -191,6 +198,76 @@ class AdminCalendarEditTest extends TestCase
             'action' => 'booking.admin_updated',
             'subject_id' => $booking->id,
         ]);
+    }
+
+    public function test_keep_price_leaves_amount_unchanged_when_moving(): void
+    {
+        $settings = BusinessSetting::current();
+        $settings->update(['peak_start_hour' => 17, 'peak_end_hour' => 19, 'peak_adjustment_type' => 'percent', 'peak_adjustment_value' => 20]);
+        $booking = $this->booking();
+        $this->patchJson("/admin/bookings/{$booking->id}", [
+            'start_time' => '17:00', 'end_time' => '19:00', 'price_decision' => 'keep',
+        ])->assertOk()->assertJsonPath('booking.amount', 1000);
+        $this->assertSame('1000.00', $booking->fresh()->amount);
+    }
+
+    public function test_new_price_rejects_stale_expected_amount_without_saving(): void
+    {
+        BusinessSetting::current()->update(['peak_start_hour' => 17, 'peak_end_hour' => 19, 'peak_adjustment_type' => 'percent', 'peak_adjustment_value' => 20]);
+        $booking = $this->booking();
+        $rules = app(\App\Services\BookingPricingService::class)->clientRules();
+        $this->patchJson("/admin/bookings/{$booking->id}", [
+            'start_time' => '17:00', 'end_time' => '19:00', 'price_decision' => 'new',
+            'expected_amount' => 999, 'price_rules_version' => $rules['version'], 'acknowledge_price_change' => true,
+        ])->assertStatus(409)->assertJsonPath('quote.new_amount', 1200);
+        $this->assertSame('09:00', substr((string) $booking->fresh()->start_time, 0, 5));
+        $this->assertSame('1000.00', $booking->fresh()->amount);
+    }
+
+    public function test_new_price_rejects_changed_rules_hash_and_returns_fresh_amount(): void
+    {
+        $settings = BusinessSetting::current();
+        $settings->update(['peak_start_hour' => 17, 'peak_end_hour' => 19, 'peak_adjustment_type' => 'percent', 'peak_adjustment_value' => 20]);
+        $oldRules = app(\App\Services\BookingPricingService::class)->clientRules();
+        $settings->update(['peak_adjustment_value' => 30]);
+        $booking = $this->booking();
+        $this->patchJson("/admin/bookings/{$booking->id}", [
+            'start_time' => '17:00', 'end_time' => '19:00', 'price_decision' => 'new',
+            'expected_amount' => 1300, 'price_rules_version' => $oldRules['version'], 'acknowledge_price_change' => true,
+        ])->assertStatus(409)->assertJsonPath('quote.new_amount', 1300);
+        $this->assertSame('1000.00', $booking->fresh()->amount);
+    }
+
+    public function test_qr_paid_booking_rejects_new_price_decision(): void
+    {
+        $booking = $this->booking(['payment_method' => 'qrph']);
+        $rules = app(\App\Services\BookingPricingService::class)->clientRules();
+        $this->patchJson("/admin/bookings/{$booking->id}", [
+            'start_time' => '10:00', 'end_time' => '12:00', 'price_decision' => 'new',
+            'expected_amount' => 1000, 'price_rules_version' => $rules['version'], 'acknowledge_price_change' => true,
+        ])->assertForbidden()->assertJsonPath('message', 'QR-paid booking amounts cannot be changed.');
+        $this->assertSame('09:00', substr((string) $booking->fresh()->start_time, 0, 5));
+    }
+
+    public function test_staff_with_booking_edit_permission_cannot_choose_a_new_price(): void
+    {
+        $staff = User::create([
+            'username' => 'calendar-edit-staff', 'name' => 'Calendar Edit Staff',
+            'email' => 'calendar-edit-staff@example.test', 'password' => 'password', 'role' => 'staff',
+            'permissions' => ['bookings.view', 'bookings.edit'],
+        ]);
+        $booking = $this->booking();
+        $rules = app(\App\Services\BookingPricingService::class)->clientRules();
+        $this->actingAs($staff)->withSession([
+            'mfa_passed_at' => now()->timestamp,
+            'mfa_passed_user_id' => $staff->user_id,
+            'access_version_user_id' => $staff->user_id,
+            'access_version' => 1,
+        ])->patchJson("/admin/bookings/{$booking->id}", [
+            'start_time' => '17:00', 'end_time' => '19:00', 'price_decision' => 'new',
+            'expected_amount' => 1200, 'price_rules_version' => $rules['version'], 'acknowledge_price_change' => true,
+        ])->assertForbidden()->assertJsonPath('message', 'You do not have permission to change booking prices.');
+        $this->assertSame('1000.00', $booking->fresh()->amount);
     }
 
     public function test_editing_a_block_into_a_booking_conflict_is_rejected(): void

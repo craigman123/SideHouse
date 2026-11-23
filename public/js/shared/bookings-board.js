@@ -6,11 +6,13 @@
     if (!workspace || !dataElement || !board) return;
 
     const data = JSON.parse(dataElement.textContent || '{}');
+    const priceRules = data.pricingRules || {};
+    const priceCalculator = window.SideHouseBookingPriceCalculator;
     const permissions = data.permissions || {};
     const hasPermission = (permission) => permissions[permission] === true;
     const canManageEventType = (type) => hasPermission('calendar_events.manage')
         || (type === 'open_play' && hasPermission('calendar_events.open_play'));
-    const canManageBlock = (block) => Boolean(block && canManageEventType(block.type));
+    const canManageBlock = (block) => Boolean(block && block.source !== 'weekly_closure' && canManageEventType(block.type));
     let bookings  = data.bookings  || [];
     let closures  = data.closures  || [];
     let blocks      = Array.isArray(data.blocks) ? data.blocks : [];
@@ -357,34 +359,36 @@
     const notify = (message, type = 'success') => {
         if (typeof window.showToast === 'function') window.showToast(message, type);
     };
-    const confirmDragPrice = (quote, booking) => new Promise((resolve) => {
+    const confirmDragPrice = (quote, booking, { canChangeAmount = false, qrPaid = false } = {}) => new Promise((resolve) => {
         const wrap = document.createElement('div');
         wrap.className = 'court-price-confirm-backdrop';
+        const showAmounts = Number.isFinite(Number(quote.old_amount)) && Number.isFinite(Number(quote.new_amount));
+        const mayChooseNew = canChangeAmount && !qrPaid && showAmounts;
         wrap.innerHTML = `<section class="court-price-confirm" role="dialog" aria-modal="true" aria-labelledby="courtPriceConfirmTitle">
             <h2 id="courtPriceConfirmTitle">Confirm booking price</h2>
             <p>${escapeHtml(booking.customer || 'Booking')}</p>
             <p>Previous time: <strong>${escapeHtml(quote.old_date)} · ${escapeHtml(quote.old_start)}–${escapeHtml(quote.old_end)}</strong></p>
             <p>New time: <strong>${escapeHtml(quote.date)} · ${escapeHtml(quote.start)}–${escapeHtml(quote.end)}</strong></p>
-            <p>Current amount: <strong>${escapeHtml(formatCurrency(quote.old_amount))}</strong></p>
-            <p>New amount: <strong>${escapeHtml(formatCurrency(quote.new_amount))}</strong></p>
-            <label class="court-price-confirm-choice"><input type="radio" name="drag-price-choice" value="original" checked> Keep original amount</label>
-            <label class="court-price-confirm-choice"><input type="radio" name="drag-price-choice" value="new"> Use new amount</label>
-            <label class="court-price-confirm-ack"><input type="checkbox"> I acknowledge this price change</label>
+            ${showAmounts ? `<p>Current amount: <strong>${escapeHtml(formatCurrency(quote.old_amount))}</strong></p><p>New amount: <strong>${escapeHtml(formatCurrency(quote.new_amount))}</strong></p>` : ''}
+            <label class="court-price-confirm-choice"><input type="radio" name="drag-price-choice" value="keep" checked> Keep original amount</label>
+            ${mayChooseNew ? '<label class="court-price-confirm-choice"><input type="radio" name="drag-price-choice" value="new"> Use new amount</label><label class="court-price-confirm-ack"><input type="checkbox"> I acknowledge this price change</label>' : ''}
+            ${qrPaid ? '<p class="court-price-confirm-note">Paid by QR. The amount can’t change.</p>' : ''}
             <div class="court-price-confirm-actions"><button type="button" data-price-cancel>Cancel</button><button type="button" data-price-confirm disabled>Confirm move</button></div>
         </section>`;
         document.body.append(wrap);
         const ack = wrap.querySelector('.court-price-confirm-ack input');
         const confirm = wrap.querySelector('[data-price-confirm]');
+        const choiceInputs = wrap.querySelectorAll('input[name="drag-price-choice"]');
+        const updateConfirm = () => { confirm.disabled = Boolean(ack && wrap.querySelector('input[name="drag-price-choice"]:checked')?.value === 'new' && !ack.checked); };
         const finish = (value) => { wrap.remove(); document.removeEventListener('keydown', onKey); resolve(value); };
         const onKey = (event) => { if (event.key === 'Escape') { event.preventDefault(); finish(null); } };
-        confirm.addEventListener('click', () => finish({
-            amount: wrap.querySelector('input[name="drag-price-choice"]:checked').value === 'original'
-                ? Number(quote.old_amount) : Number(quote.new_amount),
-        }));
-        ack.addEventListener('change', () => { confirm.disabled = !ack.checked; });
+        confirm.addEventListener('click', () => finish({ decision: wrap.querySelector('input[name="drag-price-choice"]:checked').value }));
+        choiceInputs.forEach((input) => input.addEventListener('change', updateConfirm));
+        ack?.addEventListener('change', updateConfirm);
         wrap.querySelector('[data-price-cancel]').addEventListener('click', () => finish(null));
         wrap.addEventListener('click', (event) => { if (event.target === wrap) finish(null); });
         document.addEventListener('keydown', onKey);
+        updateConfirm();
         confirm.focus();
     });
     const csrfToken = () => document.querySelector('meta[name="csrf-token"]')?.content || '';
@@ -455,31 +459,50 @@
             const url = `/admin/${queue.kind === 'block' ? 'blocks' : 'bookings'}/${encodeURIComponent(queue.id)}`;
             const headers = { Accept: 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': token };
             if (queue.kind === 'booking') {
-                const quoteResponse = await fetch(url, { method: 'PATCH', credentials: 'same-origin', headers,
-                    body: JSON.stringify({ ...sent.payload, expected_updated_at: queue.version, dry_run: true }) });
-                const quoteResult = await quoteResponse.json().catch(() => ({}));
-                if (quoteResponse.status === 409 && quoteResult.booking) {
-                    queue.confirmed = quoteResult.booking;
-                    queue.version = quoteResult.booking.updated_at || queue.version;
-                    queue.inFlight = null;
-                    if (queue.wanted.sequence !== sent.sequence) { void pumpMoveQueue(queue); return; }
-                    if (queue.staleRetrySequence !== sent.sequence) {
-                        queue.staleRetrySequence = sent.sequence;
-                        void pumpMoveQueue(queue);
+                const current = queue.confirmed || moveList(queue.kind).find((item) => String(item.id) === String(queue.id)) || {};
+                const target = { court_id: current.court_id, date: sent.payload.date,
+                    start: sent.payload.start_time, end: sent.payload.end_time };
+                const canChangeAmount = hasPermission('bookings.create');
+                const localAmount = canChangeAmount && priceCalculator
+                    ? priceCalculator.calculateMove(priceRules, current, target) : null;
+                let quote = queue.correctedQuote || (localAmount === null ? null : {
+                    old_amount: Number(current.amount), new_amount: localAmount,
+                    amount_changed: Math.abs(localAmount - Number(current.amount)) >= 0.005,
+                    old_date: current.date, old_start: current.start, old_end: current.end,
+                    date: target.date, start: target.start, end: target.end,
+                    rules_version: priceRules.version, can_change_amount: canChangeAmount,
+                    qr_paid: Boolean(current.qr_paid),
+                });
+                queue.correctedQuote = null;
+                if (!quote) {
+                    const quoteResponse = await fetch(url, { method: 'PATCH', credentials: 'same-origin', headers,
+                        body: JSON.stringify({ ...sent.payload, expected_updated_at: queue.version, dry_run: true }) });
+                    const quoteResult = await quoteResponse.json().catch(() => ({}));
+                    if (quoteResponse.status === 409 && quoteResult.booking) {
+                        queue.confirmed = quoteResult.booking;
+                        queue.version = quoteResult.booking.updated_at || queue.version;
+                        queue.inFlight = null;
+                        if (queue.wanted.sequence !== sent.sequence) { void pumpMoveQueue(queue); return; }
+                        if (queue.staleRetrySequence !== sent.sequence) {
+                            queue.staleRetrySequence = sent.sequence;
+                            void pumpMoveQueue(queue);
+                            return;
+                        }
+                        const staleIndex = moveList(queue.kind).findIndex((item) => String(item.id) === String(queue.id));
+                        if (staleIndex >= 0) moveList(queue.kind)[staleIndex] = { ...queue.confirmed };
+                        finishMoveQueue(queue);
+                        notify(quoteResult.message || 'This booking changed on the server. The latest position was restored.', 'error');
                         return;
                     }
-                    const staleIndex = moveList(queue.kind).findIndex((item) => String(item.id) === String(queue.id));
-                    if (staleIndex >= 0) moveList(queue.kind)[staleIndex] = { ...queue.confirmed };
-                    finishMoveQueue(queue);
-                    notify(quoteResult.message || 'This booking changed on the server. The latest position was restored.', 'error');
-                    return;
+                    if (!quoteResponse.ok) throw new Error(quoteResult.message || 'Could not check the new booking price.');
+                    quote = quoteResult.quote;
+                    if (quote) quote.can_change_amount = Boolean(quote.can_change_amount);
                 }
-                if (!quoteResponse.ok) throw new Error(quoteResult.message || 'Could not check the new booking price.');
-                const quote = quoteResult.quote;
                 if (quote?.amount_changed) {
                     if (queue.wanted.sequence !== sent.sequence) { queue.inFlight = null; void pumpMoveQueue(queue); return; }
-                    const current = moveList(queue.kind).find((item) => String(item.id) === String(queue.id));
-                    const choice = await confirmDragPrice(quote, current || {});
+                    const choice = await confirmDragPrice(quote, current, {
+                        canChangeAmount: Boolean(quote.can_change_amount), qrPaid: Boolean(quote.qr_paid || current.qr_paid),
+                    });
                     if (!choice) {
                         queue.inFlight = null;
                         if (queue.wanted.sequence !== sent.sequence) { void pumpMoveQueue(queue); return; }
@@ -490,9 +513,24 @@
                     }
                     if (moveQueues.get(queue.key) !== queue || !moveItemExists(queue)) { finishMoveQueue(queue, false); return; }
                     if (queue.wanted.sequence !== sent.sequence) { queue.inFlight = null; void pumpMoveQueue(queue); return; }
-                    sent.payload.amount = choice.amount;
-                    sent.payload.acknowledge_price_change = true;
-                } else if (quote) sent.payload.amount = Number(quote.new_amount);
+                    sent.payload.price_decision = choice.decision;
+                    sent.payload.acknowledge_price_change = choice.decision === 'new';
+                    if (choice.decision === 'new') {
+                        sent.payload.expected_amount = Number(quote.new_amount);
+                        sent.payload.price_rules_version = quote.rules_version || priceRules.version;
+                    }
+                } else sent.payload.price_decision = 'keep';
+            }
+            if (queue.kind === 'booking') {
+                const list = moveList(queue.kind);
+                const index = list.findIndex((item) => String(item.id) === String(queue.id));
+                if (index >= 0) {
+                    list[index] = { ...queue.confirmed, date: sent.payload.date, start: sent.payload.start_time,
+                        end: sent.payload.end_time,
+                        slots: movedBookingSlots(sent.payload.date, sent.payload.start_time, sent.payload.end_time), _saving: true };
+                    affectedCalendarDates = queue.changedDates;
+                    renderCalendar();
+                }
             }
             const response = await fetch(url, {
                 method: 'PATCH', credentials: 'same-origin',
@@ -506,6 +544,15 @@
             if (moveQueues.get(queue.key) !== queue || !moveItemExists(queue)) { finishMoveQueue(queue, false); return; }
             const serverItem = queue.kind === 'block' ? (result.block && normalizeBlock(result.block)) : result.booking;
             const latest = queue.wanted.sequence === sent.sequence && samePosition(queue.wanted.position, sent.position);
+            if (response.status === 409 && result.quote && latest) {
+                queue.correctedQuote = { ...result.quote, old_date: queue.confirmed.date, old_start: queue.confirmed.start,
+                    old_end: queue.confirmed.end, date: sent.position.date, start: sent.position.start,
+                    end: sent.position.end, can_change_amount: Boolean(result.quote.can_change_amount),
+                    qr_paid: Boolean(queue.confirmed.qr_paid) };
+                queue.inFlight = null;
+                void pumpMoveQueue(queue);
+                return;
+            }
             if (response.ok) {
                 if (!serverItem || !serverItem.updated_at) throw new Error('Updated item version missing from response.');
                 queue.confirmed = serverItem;
@@ -938,42 +985,38 @@
         refreshEditQuote();
     });
     let editQuoteTimer;
+    let currentEditQuote = null;
+    const editTarget = () => ({ court_id: Number(bookingEditForm.elements.court_id.value), date: bookingEditForm.elements.date.value, start: bookingStartInput.value, end: bookingEndInput.value });
+    const loadEditQuote = async () => {
+        if (!selectedBooking) return null;
+        const target = editTarget();
+        const localAmount = hasPermission('bookings.create') && priceCalculator ? priceCalculator.calculateMove(priceRules, selectedBooking, target) : null;
+        if (localAmount !== null) return { old_amount: Number(selectedBooking.amount), new_amount: localAmount, amount_changed: Math.abs(localAmount - Number(selectedBooking.amount)) >= 0.005, old_date: selectedBooking.date, old_start: selectedBooking.start, old_end: selectedBooking.end, date: target.date, start: target.start, end: target.end, rules_version: priceRules.version, can_change_amount: true, qr_paid: Boolean(selectedBooking.qr_paid) };
+        const token = csrfToken();
+        if (!token) return null;
+        const selectedId = String(selectedBooking.id);
+        const response = await fetch(`/admin/bookings/${encodeURIComponent(selectedId)}`, { method: 'PATCH', credentials: 'same-origin', headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': token }, body: JSON.stringify({ date: target.date, court_id: target.court_id, start_time: target.start, end_time: target.end, ...(Number(durationControl.dataset.adjustMinutes || 0) ? { adjust_minutes: Number(durationControl.dataset.adjustMinutes) } : {}), dry_run: true, expected_updated_at: selectedBooking.updated_at }) });
+        const result = await response.json().catch(() => ({}));
+        if (String(selectedBooking?.id) !== selectedId) return null;
+        if (!response.ok || !result.quote) throw new Error(result.message || 'Could not check the new booking price.');
+        return result.quote;
+    };
     const refreshEditQuote = () => {
         clearTimeout(editQuoteTimer);
         if (!selectedBooking || itemIsPast('booking', selectedBooking)) return;
-        const token = csrfToken();
-        if (!token) return;
+        const target = editTarget();
+        const localAmount = hasPermission('bookings.create') && priceCalculator ? priceCalculator.calculateMove(priceRules, selectedBooking, target) : null;
+        if (localAmount !== null) {
+            currentEditQuote = { old_amount: Number(selectedBooking.amount), new_amount: localAmount, amount_changed: Math.abs(localAmount - Number(selectedBooking.amount)) >= 0.005, old_date: selectedBooking.date, old_start: selectedBooking.start, old_end: selectedBooking.end, date: target.date, start: target.start, end: target.end, rules_version: priceRules.version, can_change_amount: true, qr_paid: Boolean(selectedBooking.qr_paid) };
+            durationPreview.textContent = `New end ${target.end} · ${formatCurrency(localAmount)}`;
+            return;
+        }
         editQuoteTimer = setTimeout(async () => {
-            const selectedId = String(selectedBooking.id);
-            try {
-                const response = await fetch(`/admin/bookings/${encodeURIComponent(selectedId)}`, {
-                    method: 'PATCH', credentials: 'same-origin',
-                    headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': token },
-                    body: JSON.stringify({ date: bookingEditForm.elements.date.value, court_id: Number(bookingEditForm.elements.court_id.value),
-                        adjust_minutes: Number(durationControl.dataset.adjustMinutes || 0),
-                        dry_run: true, expected_updated_at: selectedBooking.updated_at }),
-                });
-                const result = await response.json().catch(() => ({}));
-                if (String(selectedBooking?.id) !== selectedId) return;
-                if (response.ok && result.quote) {
-                    durationPreview.textContent = `New end ${result.quote.end} · ${formatCurrency(result.quote.new_amount)}`;
-                    if (!bookingEditForm.elements.amount.dataset.manuallyChanged && result.quote.amount_changed) {
-                        bookingEditForm.elements.amount.value = Number(result.quote.new_amount).toFixed(2);
-                        updatePriceAcknowledgementVisibility();
-                    }
-                } else if (!response.ok) {
-                    durationWarning.textContent = result.message || 'This duration is outside the available hours.';
-                    durationWarning.hidden = false;
-                }
-            } catch (_) { /* the save still receives server validation */ }
+            try { currentEditQuote = await loadEditQuote(); if (currentEditQuote) durationPreview.textContent = `New end ${currentEditQuote.end} · ${formatCurrency(currentEditQuote.new_amount)}`; }
+            catch (error) { durationWarning.textContent = error.message; durationWarning.hidden = false; }
         }, 250);
     };
-    bookingEditForm.elements.amount.addEventListener('input', () => {
-        bookingEditForm.elements.amount.dataset.manuallyChanged = '1';
-        durationPreview.textContent = `New end ${bookingEndInput.value} · ${formatCurrency(bookingEditForm.elements.amount.value)}`;
-    });
-    [bookingEditForm.elements.date, bookingEditForm.elements.court_id].forEach((field) => field.addEventListener('change', refreshEditQuote));
-    const bookingEditMessage = document.getElementById('courtBookingEditMessage');
+    [bookingEditForm.elements.date, bookingEditForm.elements.court_id, bookingStartInput, bookingEndInput].forEach((field) => field.addEventListener('change', refreshEditQuote));    const bookingEditMessage = document.getElementById('courtBookingEditMessage');
     const calendarDateTimeForms = [blockForm, bookingEditForm, document.getElementById('courtBlockEditForm')];
     const calendarFormDateErrors = new WeakMap();
     const calendarFormTimeErrors = new WeakMap();
@@ -1091,17 +1134,41 @@
         const originalBooking = { ...selectedBooking };
         const originalIndex = bookings.findIndex((booking) => String(booking.id) === String(selectedBooking.id));
         if (payload.court_id !== undefined) payload.court_id = Number(payload.court_id);
-        payload.adjust_minutes = Number(durationControl.dataset.adjustMinutes || 0);
-        if (payload.amount !== undefined) payload.amount = Number(payload.amount);
-        const priceNeedsAcknowledgement = ['paid', 'confirmed'].includes(selectedBooking.status)
-            && payload.amount !== undefined
-            && Math.abs(payload.amount - Number(selectedBooking.amount || 0)) >= 0.005
-            && !payload.acknowledge_price_change;
-        if (payload.amount !== undefined && Math.abs(payload.amount - Number(selectedBooking.amount || 0)) < 0.005) delete payload.amount;
+        if (Number(durationControl.dataset.adjustMinutes || 0)) payload.adjust_minutes = Number(durationControl.dataset.adjustMinutes);
+        const scheduleChanged = String(payload.date) !== String(originalBooking.date)
+            || Number(payload.court_id) !== Number(originalBooking.court_id)
+            || targetStart !== originalBooking.start || targetEnd !== originalBooking.end;
+        delete payload.amount;
+        if (scheduleChanged) {
+            let quote;
+            try { quote = await loadEditQuote(); }
+            catch (error) {
+                bookingEditMessage.textContent = error.message;
+                bookingEditMessage.classList.add('is-error');
+                return;
+            }
+            if (!quote) {
+                bookingEditMessage.textContent = 'The booking price could not be checked. Try again.';
+                bookingEditMessage.classList.add('is-error');
+                return;
+            }
+            if (quote.amount_changed) {
+                const choice = await confirmDragPrice(quote, originalBooking, {
+                    canChangeAmount: Boolean(quote.can_change_amount), qrPaid: Boolean(quote.qr_paid || originalBooking.qr_paid),
+                });
+                if (!choice) return;
+                payload.price_decision = choice.decision;
+                payload.acknowledge_price_change = choice.decision === 'new';
+                if (choice.decision === 'new') {
+                    payload.expected_amount = Number(quote.new_amount);
+                    payload.price_rules_version = quote.rules_version || priceRules.version;
+                }
+            } else payload.price_decision = 'keep';
+        }
         payload.email = payload.email.trim() || null;
         payload.notes = payload.notes.trim() || null;
         payload.acknowledge_price_change = bookingEditForm.elements.acknowledge_price_change.checked;
-        if (!priceNeedsAcknowledgement && originalIndex >= 0) {
+        if (originalIndex >= 0) {
             const optimistic = {
                 ...originalBooking,
                 customer: payload.customer_name,
@@ -1112,7 +1179,6 @@
                 date: payload.date ?? originalBooking.date,
                 start: targetStart,
                 end: targetEnd,
-                ...(payload.amount === undefined ? {} : { amount: payload.amount }),
                 _saving: true,
             };
             if (optimistic.date !== originalBooking.date || optimistic.start !== originalBooking.start || optimistic.end !== originalBooking.end) {
@@ -1130,15 +1196,38 @@
         bookingEditMessage.textContent = '';
         bookingEditMessage.classList.remove('is-error');
         try {
-            const response = await fetch(`/admin/bookings/${encodeURIComponent(selectedBooking.id)}`, {
+            let response = await fetch(`/admin/bookings/${encodeURIComponent(selectedBooking.id)}`, {
                 method: 'PATCH',
                 credentials: 'same-origin',
                 headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': token },
                 body: JSON.stringify(payload),
             });
-            const result = await response.json().catch(() => ({}));
+            let result = await response.json().catch(() => ({}));
+            if (response.status === 409 && result.quote) {
+                const corrected = { ...result.quote, old_date: originalBooking.date, old_start: originalBooking.start,
+                    old_end: originalBooking.end, date: payload.date, start: targetStart, end: targetEnd };
+                const choice = await confirmDragPrice(corrected, originalBooking, {
+                    canChangeAmount: Boolean(corrected.can_change_amount), qrPaid: Boolean(corrected.qr_paid || originalBooking.qr_paid),
+                });
+                if (choice) {
+                    payload.price_decision = choice.decision;
+                    payload.acknowledge_price_change = choice.decision === 'new';
+                    delete payload.expected_amount;
+                    delete payload.price_rules_version;
+                    if (choice.decision === 'new') {
+                        payload.expected_amount = Number(corrected.new_amount);
+                        payload.price_rules_version = corrected.rules_version;
+                    }
+                    response = await fetch(`/admin/bookings/${encodeURIComponent(selectedBooking.id)}`, {
+                        method: 'PATCH', credentials: 'same-origin',
+                        headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': token },
+                        body: JSON.stringify(payload),
+                    });
+                    result = await response.json().catch(() => ({}));
+                }
+            }
             if (!response.ok) {
-                if (!priceNeedsAcknowledgement && originalIndex >= 0) {
+                if (originalIndex >= 0) {
                     bookings[originalIndex] = originalBooking;
                     selectedBooking = originalBooking;
                     affectedCalendarDates = [previousDate, payload.date];
@@ -1146,10 +1235,6 @@
                 }
                 const fieldErrors = Object.values(result.errors || {}).flat();
                 const conflict = result.conflict;
-                if (result.new_amount !== undefined && result.old_amount !== undefined) {
-                    bookingEditForm.elements.amount.value = Number(result.new_amount).toFixed(2);
-                    updatePriceAcknowledgementVisibility();
-                }
                 const conflictMessage = conflict ? ` ${conflict.title || conflict.type}${conflict.start_time ? ` (${conflict.start_time}–${conflict.end_time})` : ''}.` : '';
                 bookingEditMessage.textContent = `${result.message || (response.status === 419 ? 'Your session or security token expired. Refresh the page and try again.' : 'Could not update this booking.')}${conflictMessage}${fieldErrors.length ? ` ${fieldErrors.join(' ')}` : ''}`;
                 bookingEditMessage.classList.add('is-error');
@@ -1173,7 +1258,7 @@
             if (!serverPositionMatchesShown) renderCalendar();
             notify(result.message || 'Booking updated.', 'success');
         } catch (error) {
-            if (!priceNeedsAcknowledgement && originalIndex >= 0) {
+            if (originalIndex >= 0) {
                 bookings[originalIndex] = originalBooking;
                 selectedBooking = originalBooking;
                 affectedCalendarDates = [previousDate, payload.date];
@@ -1821,9 +1906,11 @@
             ? { ...currentDisplayed, ...payload, _saving: true }
             : { ...currentDisplayed, date: payload.date, start: payload.start_time, end: payload.end_time,
                 slots: movedBookingSlots(payload.date, payload.start_time, payload.end_time), _saving: true };
-        list[index] = optimistic;
         affectedCalendarDates = queue.changedDates;
-        renderCalendar();
+        if (drag.kind === 'block') {
+            list[index] = optimistic;
+            renderCalendar();
+        }
         const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
         const settle = drag.grid.querySelector(`[data-calendar-kind="${drag.kind}"][data-calendar-id="${CSS.escape(drag.id)}"]`);
         if (drag.animationFrame) cancelAnimationFrame(drag.animationFrame);

@@ -321,7 +321,7 @@
                         <label>Date<input name="date" type="date" required></label>
                         <label>Start time<input name="start_time" type="time" required></label>
                         <label>End time<input name="end_time" type="time" required></label>
-                        <label>Amount<input name="amount" type="number" min="0" step="0.01" required></label>
+                        <label>Amount<input name="amount" type="number" min="0" step="0.01" readonly></label>
                         <label class="court-booking-price-ack-field" hidden><span><input name="acknowledge_price_change" type="checkbox" value="1"> I acknowledge the booking price change</span></label>
                         <label class="court-block-notes-field">Notes<textarea name="notes" rows="3" maxlength="5000"></textarea></label>
                     </div>
@@ -357,8 +357,10 @@
                 'server_time' => $businessSettings->server_time,
             ],
             'permissions' => $permissions,
+            'pricingRules' => $pricingRules ?? app(\App\Services\BookingPricingService::class)->clientRules(),
         ];
     @endphp
     <script id="courtBoardData" type="application/json">{!! json_encode($courtBoardData, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) !!}</script>
+    <script src="{{ asset('js/shared/booking-price-calculator.js') . '?v=' . filemtime(public_path('js/shared/booking-price-calculator.js')) }}" defer></script>
     <script src="{{ asset('js/shared/bookings-board.js') . '?v=' . filemtime(public_path('js/shared/bookings-board.js')) }}" defer></script>
 @endpush

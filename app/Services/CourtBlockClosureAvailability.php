@@ -31,9 +31,7 @@ class CourtBlockClosureAvailability
         })->filter()->values()->all();
 
         $weekly = $this->weeklyRulesForDate($courtId, $date)->map(function (WeeklyCourtClosure $rule) use ($dayStart, $dayEnd, $date) {
-            $anchorDate = $rule->weekday === (int) CarbonImmutable::parse($date, 'Asia/Manila')->dayOfWeek
-                ? $date
-                : CarbonImmutable::parse($date, 'Asia/Manila')->subDay()->toDateString();
+            $anchorDate = $date;
             [$start, $end] = $this->weeklyInterval($rule, $anchorDate);
             if (! ($start->lessThan($dayEnd) && $end->greaterThan($dayStart))) return null;
             $rangeStart = $start->greaterThan($dayStart) ? $start : $dayStart;
@@ -46,7 +44,7 @@ class CourtBlockClosureAvailability
             ];
         })->filter()->values();
 
-        return $specific->concat($weekly)->all();
+        return collect($specific)->concat($weekly)->all();
     }
 
     public function firstClosedOverlap(int $courtId, DateTimeInterface $start, DateTimeInterface $end, ?int $ignoreBlockId = null): ?object
@@ -96,17 +94,12 @@ class CourtBlockClosureAvailability
     public function weeklyRulesForDate(int $courtId, string $date): Collection
     {
         $current = CarbonImmutable::parse($date, 'Asia/Manila');
-        $previous = $current->subDay();
         $rules = WeeklyCourtClosure::query()->with(['court:id,name', 'creator:user_id,name'])
             ->where('active', true)
-            ->whereIn('weekday', [$current->dayOfWeek, $previous->dayOfWeek])
+            ->where('weekday', $current->dayOfWeek)
             ->where(fn ($query) => $query->whereNull('court_id')->orWhere('court_id', $courtId))
             ->get();
-
-        return $rules->filter(function (WeeklyCourtClosure $rule) use ($current, $previous) {
-            if ($rule->weekday === $current->dayOfWeek) return true;
-            return substr((string) $rule->end_time, 0, 5) <= substr((string) $rule->start_time, 0, 5);
-        })->values();
+        return $rules;
     }
 
     /** @return array{0: CarbonImmutable, 1: CarbonImmutable} */
@@ -114,7 +107,6 @@ class CourtBlockClosureAvailability
     {
         $start = CarbonImmutable::parse($date.' '.$rule->start_time, 'Asia/Manila');
         $end = CarbonImmutable::parse($date.' '.$rule->end_time, 'Asia/Manila');
-        if ($end->lessThanOrEqualTo($start)) $end = $end->addDay();
         return [$start, $end];
     }
 

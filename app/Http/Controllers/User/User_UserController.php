@@ -276,7 +276,7 @@ class User_UserController extends Controller
         $validated = $request->validate([
             'slots'   => ['required', 'array', 'min:1'],
             'slots.*' => ['required', 'date_format:Y-m-d H:i', 'distinct'],
-            'court_id' => ['nullable', 'integer', 'exists:courts,id'],
+            'court_id' => ['required', 'integer', 'exists:courts,id'],
         ]);
 
         $stepMinutes = BookingHours::stepMinutes();
@@ -414,6 +414,11 @@ class User_UserController extends Controller
                 return response()->json([
                     'message' => BookingHours::closedReason($validated['court_id'], $dateStr) ?? ('This court is closed on ' . Carbon::parse($dateStr)->format('M j, Y') . '.'),
                 ], 422);
+            }
+            foreach ($windows as [$windowStart, $windowEnd]) {
+                if (app(\App\Services\CourtBlockClosureAvailability::class)->firstClosedOverlap((int) $validated['court_id'], $windowStart, $windowEnd)) {
+                    return response()->json(['message' => 'This court is closed during one of the selected times. Please choose another time.'], 422);
+                }
             }
         }
 

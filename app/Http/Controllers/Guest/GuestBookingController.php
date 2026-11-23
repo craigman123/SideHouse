@@ -336,7 +336,7 @@ class GuestBookingController extends Controller
         $validated = $request->validate([
             'slots'   => ['required', 'array', 'min:1'],
             'slots.*' => ['required', 'date_format:Y-m-d H:i', 'distinct'],
-            'court_id' => ['nullable', 'integer', 'exists:courts,id'],
+            'court_id' => ['required', 'integer', 'exists:courts,id'],
         ]);
 
         $stepMinutes = BookingHours::stepMinutes();
@@ -485,6 +485,9 @@ class GuestBookingController extends Controller
             }
 
             foreach ($windows as [$start, $end]) {
+                if (app(\App\Services\CourtBlockClosureAvailability::class)->firstClosedOverlap($courtId, $start, $end)) {
+                    throw new \RuntimeException('This court is closed during one of the selected times. Please choose another time.');
+                }
                 if ($end->gt($closeTime)) {
                     throw new \RuntimeException("The court closes at {$closeTime->format('g:i A')} on " . Carbon::parse($dateStr)->format('M j, Y') . ".");
                 }

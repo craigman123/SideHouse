@@ -1,0 +1,21 @@
+{
+  "rules": {
+    "step_minutes": 60,
+    "peak_start_hour": 17,
+    "peak_end_hour": 21,
+    "peak_adjustment_type": "percent",
+    "peak_adjustment_value": 20,
+    "courts": [{ "id": 1, "hourly_rate": 500 }],
+    "open_play": [{ "id": 1, "court_id": 1, "date": "2030-05-20", "start": "16:00", "end": "17:00", "price_per_player": 120 }]
+  },
+  "cases": [
+    { "name": "weekday before peak", "date": "2030-05-15", "start": "16:00", "end": "17:00", "expected": 500 },
+    { "name": "peak starts at 17", "date": "2030-05-15", "start": "17:00", "end": "18:00", "expected": 600 },
+    { "name": "multi-hour across peak start", "date": "2030-05-15", "start": "16:00", "end": "19:00", "expected": 1700 },
+    { "name": "peak ends at 21", "date": "2030-05-18", "start": "20:00", "end": "21:00", "expected": 600 },
+    { "name": "off peak after 21 on weekend", "date": "2030-05-18", "start": "21:00", "end": "23:00", "expected": 1000 },
+    { "name": "multi-hour entirely during peak", "date": "2030-05-19", "start": "18:00", "end": "20:00", "expected": 1200 },
+    { "name": "open play uses price per player", "date": "2030-05-20", "start": "16:00", "end": "17:00", "expected": 120, "client_fallback": true }
+  ],
+  "move_case": { "current_amount": 1100, "old_slot_total": 1000, "equipment_total": 100, "target_slot_total": 1200, "expected_amount": 1300 }
+}

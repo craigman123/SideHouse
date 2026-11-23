@@ -7,7 +7,9 @@ use App\Models\Court;
 use App\Models\CourtBlock;
 use App\Models\CourtClosure;
 use App\Models\SpecificDateTimeClosure;
+use App\Models\WeeklyCourtClosure;
 use App\Models\BusinessSetting;
+use App\Services\UserAccessService;
 use Carbon\CarbonInterface;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
@@ -16,6 +18,8 @@ class AdminBookingsCalendarData
 {
     public function forRange(CarbonInterface $from, CarbonInterface $to): array
     {
+        $canExposePriceRules = auth()->check()
+            && app(UserAccessService::class)->allows(auth()->user(), 'bookings.create');
         $queryFrom = $from->copy()->subDay()->toDateString();
         $from = $from->toDateString();
         $to = $to->toDateString();
@@ -37,15 +41,18 @@ class AdminBookingsCalendarData
                 'end' => substr((string) $booking->end_time, 0, 5),
                 'status' => $booking->status,
                 'source' => $booking->source,
+                'qr_paid' => $booking->payment_method === 'qrph' || $booking->payment_intent_id !== null || $booking->payment_reference_id !== null,
                 'amount' => (float) $booking->amount,
-                'slots' => $booking->slots->map(fn ($slot) => [
+                'slots' => $booking->slots->where('is_active', true)->map(fn ($slot) => [
                     'date' => $slot->date?->toDateString(),
                     'start' => substr((string) $slot->start_time, 0, 5),
                     'end' => substr((string) $slot->end_time, 0, 5),
+                    ...($canExposePriceRules ? ['price' => (float) $slot->price] : []),
                 ])->values(),
                 'equipment' => $booking->equipment->map(fn ($line) => [
                     'name' => $line->equipment?->name ?? 'Equipment',
                     'quantity' => $line->quantity,
+                    ...($canExposePriceRules ? ['price_each' => (float) $line->price_each] : []),
                 ])->values(),
             ])->values();
 
@@ -72,6 +79,29 @@ class AdminBookingsCalendarData
                     ? app(OpenPlayAvailability::class)->joined($block, (int) $block->court_id) : null,
             ])->values();
 
+        $weeklyRules = WeeklyCourtClosure::query()->where('active', true)->whereIn('weekday', [0, 1, 2, 3, 4, 5, 6])->get();
+        $weeklyBlocks = collect();
+        for ($date = CarbonImmutable::parse($queryFrom, 'Asia/Manila'); $date->toDateString() <= $to; $date = $date->addDay()) {
+            foreach ($weeklyRules->where('weekday', $date->dayOfWeek) as $rule) {
+                $weeklyBlocks->push([
+                    'id' => 'weekly-'.$rule->id.'-'.$date->toDateString(),
+                    'source' => 'weekly_closure',
+                    'updated_at' => $rule->updated_at?->format('Y-m-d\\TH:i:s.uP'),
+                    'court_id' => $rule->court_id,
+                    'type' => 'closed',
+                    'title' => 'Weekly closure',
+                    'notes' => $rule->reason,
+                    'block_date' => $date->toDateString(),
+                    'start_time' => substr((string) $rule->start_time, 0, 5),
+                    'end_time' => substr((string) $rule->end_time, 0, 5),
+                    'max_players' => null,
+                    'price_per_player' => null,
+                    'participant_count' => null,
+                ]);
+            }
+        }
+        $blocks = $blocks->concat($weeklyBlocks)->sortBy([['block_date', 'asc'], ['start_time', 'asc']])->values();
+
         $cutoffs = SpecificDateTimeClosure::whereDate('date', '>=', $from)->whereDate('date', '<=', $to)->get()->map(fn ($cutoff) => [
             'date' => $cutoff->date->toDateString(),
             'time_closing' => substr((string) $cutoff->time_closing, 0, 5),
@@ -84,6 +114,7 @@ class AdminBookingsCalendarData
             'closingCutoffs' => $cutoffs,
             'courts' => Court::orderBy('name')->get(['id', 'name', 'hourly_rate']),
             'businessSettings' => $this->businessSettings(),
+            'pricingRules' => $canExposePriceRules ? app(BookingPricingService::class)->clientRules() : [],
         ];
     }
 
@@ -112,6 +143,7 @@ class AdminBookingsCalendarData
         foreach ([
             ['bookings', 'date'], ['court_blocks', 'block_date'],
             ['court_closures', 'date'], ['specific_date_time_closed', 'date'],
+            ['weekly_court_closures', null],
             ['courts', null], ['business_settings', null],
         ] as [$table, $column]) {
             $query = DB::table($table);

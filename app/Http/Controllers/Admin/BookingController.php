@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Booking;
-use App\Models\BusinessSetting;
 use App\Models\Court;
 use App\Models\CourtBlock;
 use App\Models\CourtClosure;
@@ -45,11 +44,12 @@ class BookingController extends Controller
         $courtBoardBlocks = $boardData['blocks'];
         $courtBoardClosingCutoffs = $boardData['closingCutoffs'];
         $courts = $boardData['courts'];
+        $pricingRules = $boardData['pricingRules'];
 
         $businessSettings = (object) $boardData['businessSettings'];
 
         return view('admin.bookings.index', compact(
-            'bookings', 'courts', 'courtBoardBookings', 'courtBoardClosures', 'courtBoardBlocks', 'courtBoardClosingCutoffs', 'businessSettings'
+            'bookings', 'courts', 'courtBoardBookings', 'courtBoardClosures', 'courtBoardBlocks', 'courtBoardClosingCutoffs', 'businessSettings', 'pricingRules'
         ));
     }
 
@@ -99,13 +99,21 @@ class BookingController extends Controller
             'start_time' => ['sometimes', 'required', 'date_format:H:i'],
             'end_time' => ['sometimes', 'required', 'date_format:H:i'],
             'amount' => ['sometimes', 'nullable', 'numeric', 'decimal:0,2', 'min:0', 'max:999999.99'],
+            'price_decision' => ['sometimes', 'required', 'in:keep,new'],
+            'expected_amount' => ['required_if:price_decision,new', 'numeric', 'decimal:0,2', 'min:0'],
+            'price_rules_version' => ['required_if:price_decision,new', 'string', 'size:64'],
             'acknowledge_price_change' => ['sometimes', 'boolean'],
             'dry_run' => ['sometimes', 'boolean'],
             'adjust_minutes' => ['sometimes', 'integer'],
             'expected_updated_at' => ['sometimes', 'required', 'date'],
         ]);
 
-        $result = DB::transaction(function () use ($booking, $validated, $overrideWarnings) {
+        if (($validated['price_decision'] ?? null) === 'new'
+            && ! app(UserAccessService::class)->allows($request->user(), 'bookings.create')) {
+            return response()->json(['message' => 'You do not have permission to change booking prices.'], 403);
+        }
+
+        $result = DB::transaction(function () use ($booking, $validated, $overrideWarnings, $request) {
             $locked = Booking::query()->whereKey($booking->id)->lockForUpdate()->firstOrFail();
             if (isset($validated['expected_updated_at'])
                 && \Carbon\Carbon::parse($validated['expected_updated_at'])->format('U.u') !== $locked->updated_at->format('U.u')) {
@@ -140,7 +148,6 @@ class BookingController extends Controller
             }
             $endTime = $end->format('H:i');
 
-            $settings = BusinessSetting::current();
             $step = BookingHours::stepMinutes();
             $duration = $start->diffInMinutes($end);
             if ($duration < $step) {
@@ -172,69 +179,101 @@ class BookingController extends Controller
             $court = $courts->get($courtId);
             if ($scheduleChanged && ! $court) return ['rejected' => 'The selected court is no longer available.'];
 
+            if ($scheduleChanged && app(\App\Services\CourtBlockClosureAvailability::class)->firstClosedOverlap($courtId, $start, $end)) {
+                return ['rejected' => 'This court is closed during the selected time.'];
+            }
+
             $warnings = $scheduleChanged
                 ? $overrideWarnings->forInterval($courtId, $date, $startTime, $endTime, (int) $locked->id)
                 : [];
             $overlapIds = collect($warnings)->where('code', 'overlaps_booking')->flatMap(fn ($warning) => $warning['item_ids'])->unique()->values()->all();
 
             $oldAmount = (float) $locked->amount;
+            $isQrPaid = $locked->payment_method === 'qrph' || $locked->payment_intent_id !== null || $locked->payment_reference_id !== null;
+            $mayChangeAmount = app(UserAccessService::class)->allows($request->user(), 'bookings.create');
+            $priceDecision = $validated['price_decision'] ?? ($scheduleChanged && $mayChangeAmount && ! $isQrPaid ? 'new' : 'keep');
+            if ($priceDecision === 'new' && ! $scheduleChanged) {
+                return ['rejected' => 'A new calculated amount can only be applied while changing the booking schedule.'];
+            }
+            if (($validated['price_decision'] ?? null) === 'new' && ! ($validated['acknowledge_price_change'] ?? false)) {
+                return ['rejected' => 'Acknowledge the calculated price change before confirming.'];
+            }
+            if (array_key_exists('amount', $validated) && $validated['amount'] !== null
+                && abs((float) $validated['amount'] - $oldAmount) >= 0.005) {
+                return ['rejected' => 'Booking amounts must use the calculated price confirmation.'];
+            }
+            if ($isQrPaid && (($priceDecision === 'new' && $scheduleChanged)
+                || (array_key_exists('amount', $validated) && $validated['amount'] !== null
+                    && abs((float) $validated['amount'] - $oldAmount) >= 0.005))) {
+                return ['forbidden' => 'QR-paid booking amounts cannot be changed.'];
+            }
             $oldSlotTotal = (float) $locked->slots()->where('is_active', true)->sum('price');
             $newSlotTotal = $oldSlotTotal;
             $slotPrices = [];
             $adjustOnly = array_key_exists('adjust_minutes', $validated)
                 && $courtId === $oldCourtId && $date === $locked->date->toDateString();
             if ($scheduleChanged && ! $adjustOnly) {
-                for ($cursor = $start; $cursor->lessThan($end); $cursor = $cursor->addMinutes($step)) {
-                    $slotMinutes = min($step, $cursor->diffInMinutes($end));
-                    $event = app(\App\Services\OpenPlayAvailability::class)->eventForSlot(
-                        $courtId, $cursor->toDateString(), $cursor->format('H:i:s'), $cursor->copy()->addMinutes($slotMinutes)->format('H:i:s')
-                    );
-                    $slotPrices[] = $event ? (float) $event->price_per_player : round(
-                        $settings->applyPeakAdjustment((float) $court->hourly_rate, $cursor->hour) * ($slotMinutes / 60),
-                        2
-                    );
-                }
-                $newSlotTotal = round(array_sum($slotPrices), 2);
+                $pricedInterval = app(\App\Services\BookingPricingService::class)->interval($courtId, $start, $end);
+                $slotPrices = $pricedInterval['slot_prices'];
+                $newSlotTotal = $pricedInterval['total'];
             }
 
             if ($adjustOnly && $oldSlotTotal > 0) {
                 if ($adjustMinutes > 0) {
-                    for ($cursor = $oldEnd; $cursor->lessThan($end); $cursor = $cursor->addMinutes($step)) {
-                        $event = app(\App\Services\OpenPlayAvailability::class)->eventForSlot(
-                            $courtId, $cursor->toDateString(), $cursor->format('H:i:s'), $cursor->copy()->addMinutes($step)->format('H:i:s')
-                        );
-                        $slotPrices[] = $event ? (float) $event->price_per_player
-                            : round($settings->applyPeakAdjustment((float) $court->hourly_rate, $cursor->hour) * ($step / 60), 2);
-                    }
-                    $newSlotTotal = round($oldSlotTotal + array_sum($slotPrices), 2);
+                    $pricedInterval = app(\App\Services\BookingPricingService::class)->interval($courtId, $oldEnd, $end);
+                    $slotPrices = $pricedInterval['slot_prices'];
+                    $newSlotTotal = round($oldSlotTotal + $pricedInterval['total'], 2);
                 } elseif ($adjustMinutes < 0) {
                     $removedTotal = (float) $locked->slots()->where('is_active', true)->where('start_time', '>=', $end->format('H:i:s'))->sum('price');
                     $newSlotTotal = round($oldSlotTotal - $removedTotal, 2);
                 }
             }
-            $newAmount = $scheduleChanged && $oldSlotTotal > 0
-                ? round($oldAmount - $oldSlotTotal + $newSlotTotal, 2)
+            $calculatedAmount = $scheduleChanged && $oldSlotTotal > 0
+                ? \App\Services\BookingPricingService::movedAmount($oldAmount, $oldSlotTotal, $newSlotTotal)
                 : $oldAmount;
-            if (array_key_exists('amount', $validated) && $validated['amount'] !== null) {
-                $newAmount = round((float) $validated['amount'], 2);
-            }
+            $newAmount = $scheduleChanged
+                ? ($priceDecision === 'new' ? $calculatedAmount : $oldAmount)
+                : $calculatedAmount;
             $amountChanged = abs($newAmount - $oldAmount) >= 0.005;
             if ($amountChanged && in_array($locked->status, ['paid', 'confirmed'], true) && $newAmount < $oldAmount) {
                 $warnings[] = ['code' => 'amount_below_paid', 'message' => 'Amount is lower than the amount previously paid', 'item_ids' => []];
             }
+            if (! ($validated['dry_run'] ?? false) && $amountChanged && in_array($locked->status, ['paid', 'confirmed'], true)
+                && ! ($validated['acknowledge_price_change'] ?? false)) {
+                return ['price_ack_required' => ['old_amount' => $oldAmount, 'new_amount' => $newAmount]];
+            }
             if ($scheduleChanged) $warnings = [...$warnings, ...$this->equipmentStockWarnings($locked, $start, $end, $step)];
             if ($validated['dry_run'] ?? false) {
+                $pricingRules = app(\App\Services\BookingPricingService::class)->clientRules();
                 return ['quote' => [
-                    'old_amount' => $oldAmount, 'new_amount' => $newAmount,
-                    'amount_changed' => $amountChanged,
+                    'old_amount' => $oldAmount, 'new_amount' => $calculatedAmount,
+                    'amount_changed' => abs($calculatedAmount - $oldAmount) >= 0.005,
                     'old_date' => $locked->date->toDateString(),
                     'old_start' => substr((string) $locked->start_time, 0, 5),
                     'old_end' => substr((string) $locked->end_time, 0, 5),
                     'date' => $date,
                     'start' => $start->format('H:i'), 'end' => $end->format('H:i'),
                     'court_id' => $courtId,
+                    'rules_version' => $pricingRules['version'],
+                    'qr_paid' => $isQrPaid,
+                    'can_change_amount' => app(UserAccessService::class)->allows($request->user(), 'bookings.create') && ! $isQrPaid,
                     'warnings' => $warnings,
                 ]];
+            }
+
+            if ($scheduleChanged && ($validated['price_decision'] ?? null) === 'new') {
+                $pricingRules = app(\App\Services\BookingPricingService::class)->clientRules();
+                if (abs((float) $validated['expected_amount'] - $calculatedAmount) >= 0.005
+                    || ! hash_equals($pricingRules['version'], (string) $validated['price_rules_version'])) {
+                    return ['price_stale' => [
+                        'old_amount' => $oldAmount, 'new_amount' => $calculatedAmount,
+                        'amount_changed' => abs($calculatedAmount - $oldAmount) >= 0.005,
+                        'date' => $date, 'start' => $start->format('H:i'), 'end' => $end->format('H:i'),
+                        'rules_version' => $pricingRules['version'],
+                        'can_change_amount' => app(UserAccessService::class)->allows($request->user(), 'bookings.create') && ! $isQrPaid,
+                        'qr_paid' => $isQrPaid,
+                    ]];
+                }
             }
 
             foreach (['customer_name', 'contact_number', 'email', 'notes'] as $field) {
@@ -300,6 +339,15 @@ class BookingController extends Controller
             return response()->json(['quote' => $result['quote']]);
         }
 
+        if (isset($result['forbidden'])) return response()->json(['message' => $result['forbidden']], 403);
+        if (isset($result['price_ack_required'])) return response()->json([
+            'message' => 'Acknowledge the price change before saving.', ...$result['price_ack_required'],
+        ], 422);
+        if (isset($result['price_stale'])) return response()->json([
+            'message' => 'Prices changed while you were confirming. Review the updated amount.',
+            'quote' => $result['price_stale'],
+        ], 409);
+
         if (isset($result['stale'])) {
             $stale = $result['stale'];
             return response()->json([
@@ -311,6 +359,7 @@ class BookingController extends Controller
                     'court' => $stale->court?->name, 'date' => $stale->date->toDateString(),
                     'start' => substr((string) $stale->start_time, 0, 5), 'end' => substr((string) $stale->end_time, 0, 5),
                     'status' => $stale->status, 'source' => $stale->source, 'amount' => (float) $stale->amount,
+                    'qr_paid' => $stale->payment_method === 'qrph' || $stale->payment_intent_id !== null || $stale->payment_reference_id !== null,
                     'slots' => $stale->slots->map(fn ($slot) => [
                         'date' => $slot->date->toDateString(), 'start' => substr((string) $slot->start_time, 0, 5),
                         'end' => substr((string) $slot->end_time, 0, 5),
@@ -393,6 +442,7 @@ class BookingController extends Controller
                 'status' => $updated->status,
                 'source' => $updated->source,
                 'amount' => (float) $updated->amount,
+                'qr_paid' => $updated->payment_method === 'qrph' || $updated->payment_intent_id !== null || $updated->payment_reference_id !== null,
                 'slots' => $updated->slots->map(fn ($slot) => [
                     'date' => $slot->date->toDateString(),
                     'start' => substr((string) $slot->start_time, 0, 5),

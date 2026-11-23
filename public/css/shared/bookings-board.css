@@ -886,11 +886,13 @@ html[data-theme="light"] .admin-bookings-page .btn-filter {
 .court-block-modal-message { min-height: 1.4em; margin: var(--s3) 0; color: var(--text-muted); font-size: var(--font-size-small); }
 .court-block-modal-message.is-error { color: var(--danger); }
 .court-block-modal-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--s2); }
-.court-block-modal-actions button { min-height: 44px; padding: var(--s2) var(--s4); border: 1px solid var(--brand); border-radius: var(--r-pill); background: transparent; color: var(--text); font: var(--font-weight-button) var(--font-size-button)/1.2 var(--font-family); cursor: pointer; }
+.court-block-modal-actions button { min-height: 44px; padding: var(--s2) var(--s4); border-radius: var(--r-pill); background: transparent; font: var(--font-weight-button) var(--font-size-button)/1.2 var(--font-family); cursor: pointer; }
 .court-block-modal-actions .court-block-primary { background: var(--brand); }
 .court-block-modal-actions .court-block-primary:hover { background: var(--brand-hover); }
+.court-block-secondary {border-color: transparent; color: var(--text-muted); transition: 150ms ease-in-out; }
+.court-block-secondary:hover { border-color: var(--danger); color: var(--danger); }
 .closure-court-block-primary { background: var(--brand); transition: background 150ms ease; }
-.closure-court-block-primary:hover { background: var(--brand-hover) }
+.closure-court-block-primary:hover { background: var(--brand-hover);  }
 .court-block-modal-actions .court-block-danger { border-color: var(--danger); color: var(--danger); }
 .court-block-modal-actions button:disabled { border-color: var(--border); background: var(--surface-2); color: var(--text-muted); cursor: wait; }
 #courtBlockDetailsNotes { white-space: pre-wrap; color: var(--text-muted); }
@@ -1025,3 +1027,6 @@ html[data-theme="light"] {
     .admin-bookings-page .court-week-grid .court-month-date-header.is-today .court-month-weekday-narrow { color: var(--brand); }
     .admin-bookings-page .court-week-grid .court-month-time-cell { padding-right: 2px; font-size: .6875rem; }
 }
+
+.closure-btn .closure-dots span,
+.specific-closure-form-actions .closure-dots span { background: currentColor; }

@@ -4,269 +4,159 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Court;
-use App\Models\CourtBlock;
-use App\Services\SpecificDateClosureService;
+use App\Models\WeeklyCourtClosure;
 use App\Services\UserAccessService;
+use App\Services\WeeklyCourtClosureService;
 use App\Support\ActivityLogger;
 use App\Support\BookingHours;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
 class SpecificDateClosureController extends Controller
 {
-    public function index(Request $request, UserAccessService $access): JsonResponse
+    public function index(Request $request, UserAccessService $access, WeeklyCourtClosureService $closures): JsonResponse
     {
         $this->authorizeManage($request, $access);
-        return response()->json(['closures' => $this->upcomingClosures()]);
+        $rules = WeeklyCourtClosure::query()->with(['court:id,name', 'creator:user_id,name'])->orderBy('weekday')->orderBy('start_time')->get();
+        $items = $rules->map(function (WeeklyCourtClosure $rule) use ($closures) {
+            $warnings = $closures->upcomingBookingWarnings([(int) $rule->weekday], substr((string) $rule->start_time, 0, 5), substr((string) $rule->end_time, 0, 5), $rule->court_id ? (int) $rule->court_id : null);
+            return $this->serializeRule($rule, $warnings);
+        })->values()->all();
+        return response()->json(['closures' => $items]);
     }
 
     public function operatingHours(Request $request, UserAccessService $access): JsonResponse
     {
         $this->authorizeManage($request, $access);
-        $today = CarbonImmutable::now('Asia/Manila')->toDateString();
-        $validated = $request->validate([
-            'start_date' => ['required', 'date_format:Y-m-d', 'after_or_equal:'.$today],
-            'end_date' => ['required', 'date_format:Y-m-d', 'after_or_equal:start_date'],
-            'court_id' => ['nullable', 'integer', 'exists:courts,id'],
-        ]);
-        $dates = app(SpecificDateClosureService::class)->validateRange($validated['start_date'], $validated['end_date']);
-        $settings = BookingHours::settings();
-        $openMinutes = (int) $settings->open_hour * 60;
-        $days = [];
-
-        foreach ($dates as $date) {
-            $closeMinutes = BookingHours::closeHourForDate($date);
-            $closeOffset = ($closeMinutes - $openMinutes + 1440) % 1440;
-            if ($closeOffset === 0) $closeOffset = 1440;
-            $days[] = [
-                'date' => $date,
-                'close_minutes' => $closeMinutes,
-                'close_offset' => $closeOffset,
-                'closed_weekday' => in_array(CarbonImmutable::parse($date)->dayOfWeek, BookingHours::closedWeekdays(), true),
-                'has_specific_close' => $closeMinutes !== ((int) $settings->close_hour === 0 ? 1440 : (int) $settings->close_hour * 60),
-            ];
-        }
-
+        $validated = $request->validate(['weekdays' => ['nullable', 'array'], 'weekdays.*' => ['integer', 'between:0,6']]);
+        $selected = array_map('intval', $validated['weekdays'] ?? []);
+        $weekdayHours = BookingHours::operatingHoursByWeekday();
         return response()->json([
-            'today' => $today,
-            'venue_now' => CarbonImmutable::now('Asia/Manila')->toIso8601String(),
-            'open_hour' => (int) $settings->open_hour,
-            'open_minutes' => $openMinutes,
-            'step_minutes' => (int) $settings->step_minutes,
-            'overnight' => (int) $settings->close_hour <= (int) $settings->open_hour,
-            'court_id' => $validated['court_id'] ?? null,
-            'days' => $days,
+            'open_minutes' => $weekdayHours[0]['open_minutes'],
+            'close_offset' => $weekdayHours[0]['close_offset'],
+            'step_minutes' => BookingHours::stepMinutes(),
+            'overnight' => BookingHours::isOvernight(),
+            'closed_weekdays' => BookingHours::closedWeekdays(),
+            'weekdays' => array_map(fn ($day) => [...$day, 'selected' => in_array($day['weekday'], $selected, true)], $weekdayHours),
         ]);
     }
 
-    public function store(Request $request, UserAccessService $access, SpecificDateClosureService $closures): JsonResponse
+    public function store(Request $request, UserAccessService $access, WeeklyCourtClosureService $closures): JsonResponse
     {
         $this->authorizeManage($request, $access);
         $validated = $request->validate([
-            'start_date' => ['required', 'date_format:Y-m-d'],
-            'end_date' => ['required', 'date_format:Y-m-d'],
+            'weekdays' => ['required', 'array', 'min:1'],
+            'weekdays.*' => ['required', 'integer', 'between:0,6', 'distinct'],
             'court_id' => ['nullable', 'integer', 'exists:courts,id'],
             'start_time' => ['required', 'date_format:H:i'],
             'end_time' => ['required', 'date_format:H:i'],
             'reason' => ['nullable', 'string', 'max:5000'],
         ]);
-        $dates = $closures->validateRange($validated['start_date'], $validated['end_date']);
-        $courtId = isset($validated['court_id']) && $validated['court_id'] !== '' ? (int) $validated['court_id'] : null;
+        $weekdays = $closures->validateWeekdays($validated['weekdays']);
+        [$start, $end] = $closures->validateHoursForWeekdays($weekdays, $validated['start_time'], $validated['end_time']);
+        $courtId = filled($validated['court_id'] ?? null) ? (int) $validated['court_id'] : null;
         $reason = trim((string) ($validated['reason'] ?? '')) ?: null;
-
-        $result = DB::transaction(function () use ($closures, $validated, $dates, $courtId, $reason) {
-            $courtIds = $closures->lockCourts($courtId);
-            $windows = [];
-            $conflicts = [];
-
-            foreach ($dates as $date) {
-                [$start, $end] = $closures->intervalForDate($date, $validated['start_time'], $validated['end_time']);
-                $windows[$date] = [$start, $end];
-                $conflicts = [...$conflicts, ...$closures->conflicts($courtIds, $start, $end)];
+        $result = DB::transaction(function () use ($closures, $weekdays, $start, $end, $courtId, $validated, $reason, $request) {
+            $closures->lockCourts($courtId);
+            if ($conflict = $closures->overlappingRule($weekdays, $start, $end, $courtId)) {
+                throw ValidationException::withMessages(['weekdays' => 'This overlaps an active weekly closure for '.($conflict->court?->name ?? 'all courts').' on '.CarbonImmutable::parse('2024-01-07')->addDays($conflict->weekday)->format('l').'.']);
             }
-
-            if ($conflicts) {
-                return ['conflicts' => $this->uniqueConflicts($conflicts)];
-            }
-
-            $created = [];
-            foreach ($dates as $date) {
-                $block = CourtBlock::query()->create([
-                    'court_id' => $courtId,
-                    'type' => 'closed',
-                    'title' => 'Closed',
-                    'notes' => $reason,
-                    'block_date' => $date,
-                    'start_time' => $validated['start_time'],
-                    'end_time' => $validated['end_time'],
-                    'created_by' => $requestUserId = auth()->user()->user_id,
+            $records = [];
+            foreach ($weekdays as $weekday) {
+                $rule = WeeklyCourtClosure::query()->create([
+                    'weekday' => $weekday, 'court_id' => $courtId,
+                    'start_time' => $validated['start_time'], 'end_time' => $validated['end_time'],
+                    'reason' => $reason, 'created_by' => $request->user()->user_id, 'active' => true,
                 ]);
-                ActivityLogger::log(
-                    'court_block.specific_closure_created',
-                    sprintf('%s created a specific court closure for %s (%s–%s).', auth()->user()->name, $date, $validated['start_time'], $validated['end_time']),
-                    actor: auth()->user(), subject: $block,
-                    properties: ['court_id' => $courtId, 'court' => $courtId ? Court::find($courtId)?->name : 'All courts', 'date' => $date, 'start_time' => $validated['start_time'], 'end_time' => $validated['end_time'], 'reason' => $reason],
-                );
-                $created[] = (int) $block->id;
+                $records[] = $rule;
             }
-
-            return ['ids' => $created];
+            ActivityLogger::log('weekly_court_closure.created', $request->user()->name.' created a weekly court closure.', actor: $request->user(), subject: $records[0], properties: [
+                'weekdays' => $weekdays, 'court_id' => $courtId, 'court' => $courtId ? Court::find($courtId)?->name : 'All courts',
+                'start_time' => $validated['start_time'], 'end_time' => $validated['end_time'], 'reason' => $reason,
+            ]);
+            return [
+                'records' => $records,
+                'warnings' => $closures->upcomingBookingWarnings($weekdays, $validated['start_time'], $validated['end_time'], $courtId),
+            ];
         });
 
-        if (isset($result['conflicts'])) {
-            return response()->json([
-                'message' => 'This closure overlaps a booking, open play, or an existing closure/maintenance period. Resolve the conflicts first; nothing was changed.',
-                'conflicts' => $result['conflicts'],
-            ], 409);
-        }
-
-        return response()->json([
-            'message' => count($result['ids']) === 1 ? 'Specific date closure added.' : 'Specific date closures added.',
-            'created' => count($result['ids']),
-            'closures' => $this->upcomingClosures(),
-        ], 201);
+        return response()->json(['message' => 'Weekly closure added.', 'created' => count($result['records']), 'warnings' => $result['warnings'], 'closures' => $this->listRules($closures)], 201);
     }
 
-    public function update(Request $request, CourtBlock $closure, UserAccessService $access, SpecificDateClosureService $closures): JsonResponse
+    public function update(Request $request, WeeklyCourtClosure $closure, UserAccessService $access, WeeklyCourtClosureService $closures): JsonResponse
     {
         $this->authorizeManage($request, $access);
-        abort_unless($closure->type === 'closed' && $closure->title === 'Closed', 404);
         $validated = $request->validate([
-            'date' => ['required', 'date_format:Y-m-d'],
+            'weekday' => ['required', 'integer', 'between:0,6'],
             'court_id' => ['nullable', 'integer', 'exists:courts,id'],
-            'start_time' => ['required', 'date_format:H:i'],
-            'end_time' => ['required', 'date_format:H:i'],
+            'start_time' => ['required', 'date_format:H:i'], 'end_time' => ['required', 'date_format:H:i'],
             'reason' => ['nullable', 'string', 'max:5000'],
         ]);
-        $dates = $closures->validateRange($validated['date'], $validated['date']);
-        $nextCourtId = isset($validated['court_id']) && $validated['court_id'] !== '' ? (int) $validated['court_id'] : null;
+        $weekdays = $closures->validateWeekdays([(int) $validated['weekday']]);
+        [$start, $end] = $closures->validateHoursForWeekdays($weekdays, $validated['start_time'], $validated['end_time']);
+        $courtId = filled($validated['court_id'] ?? null) ? (int) $validated['court_id'] : null;
         $reason = trim((string) ($validated['reason'] ?? '')) ?: null;
-
-        $result = DB::transaction(function () use ($request, $closure, $closures, $validated, $dates, $nextCourtId, $reason) {
-            $locked = CourtBlock::query()->whereKey($closure->id)->lockForUpdate()->firstOrFail();
-            $lockAll = $locked->court_id === null || $nextCourtId === null;
-            if ($lockAll) $closures->lockCourts(null);
-            else {
-                $ids = array_values(array_unique([(int) $locked->court_id, $nextCourtId]));
-                sort($ids);
-                Court::query()->whereIn('id', $ids)->orderBy('id')->lockForUpdate()->get(['id']);
+        $updated = DB::transaction(function () use ($request, $closure, $closures, $validated, $weekdays, $start, $end, $courtId, $reason) {
+            $locked = WeeklyCourtClosure::query()->whereKey($closure->id)->lockForUpdate()->firstOrFail();
+            $ids = array_values(array_unique(array_filter([$locked->court_id, $courtId])));
+            sort($ids);
+            if ($locked->court_id === null || $courtId === null) $closures->lockCourts(null);
+            elseif ($ids) Court::query()->whereIn('id', $ids)->orderBy('id')->lockForUpdate()->get(['id']);
+            if ($conflict = $closures->overlappingRule($weekdays, $start, $end, $courtId, (int) $locked->id)) {
+                throw ValidationException::withMessages(['weekday' => 'This overlaps an active weekly closure for '.($conflict->court?->name ?? 'all courts').'.']);
             }
-            $courtIds = $nextCourtId === null
-                ? Court::query()->orderBy('id')->pluck('id')->map(fn ($id) => (int) $id)->all()
-                : [$nextCourtId];
-            if (! $courtIds) throw ValidationException::withMessages(['court_id' => 'No courts are available for this closure.']);
-
-            [$start, $end] = $closures->intervalForDate($dates[0], $validated['start_time'], $validated['end_time']);
-            $conflicts = $closures->conflicts($courtIds, $start, $end, (int) $locked->id);
-            if ($conflicts) return ['conflicts' => $this->uniqueConflicts($conflicts)];
-
-            $before = [
-                'court_id' => $locked->court_id,
-                'date' => $locked->block_date->toDateString(),
-                'start_time' => substr((string) $locked->start_time, 0, 5),
-                'end_time' => substr((string) $locked->end_time, 0, 5),
-                'reason' => $locked->notes,
-            ];
-            $locked->forceFill([
-                'court_id' => $nextCourtId,
-                'title' => 'Closed',
-                'notes' => $reason,
-                'block_date' => $dates[0],
-                'start_time' => $validated['start_time'],
-                'end_time' => $validated['end_time'],
-            ])->save();
-
-            ActivityLogger::log(
-                'court_block.specific_closure_updated',
-                sprintf('%s updated a specific court closure for %s (%s–%s).', auth()->user()->name, $dates[0], $validated['start_time'], $validated['end_time']),
-                actor: auth()->user(), subject: $locked,
-                properties: ['old' => $before, 'new' => ['court_id' => $nextCourtId, 'court' => $nextCourtId ? Court::find($nextCourtId)?->name : 'All courts', 'date' => $dates[0], 'start_time' => $validated['start_time'], 'end_time' => $validated['end_time'], 'reason' => $reason]],
-            );
-
-            return ['id' => (int) $locked->id];
+            $before = $locked->only(['weekday', 'court_id', 'start_time', 'end_time', 'reason', 'active']);
+            $locked->forceFill(['weekday' => $weekdays[0], 'court_id' => $courtId, 'start_time' => $validated['start_time'], 'end_time' => $validated['end_time'], 'reason' => $reason])->save();
+            ActivityLogger::log('weekly_court_closure.updated', $request->user()->name.' updated a weekly court closure.', actor: $request->user(), subject: $locked, properties: [
+                'old' => $before, 'weekdays' => $weekdays, 'court_id' => $courtId, 'court' => $courtId ? Court::find($courtId)?->name : 'All courts',
+                'start_time' => $validated['start_time'], 'end_time' => $validated['end_time'], 'reason' => $reason,
+            ]);
+            return $locked;
         });
-
-        if (isset($result['conflicts'])) {
-            return response()->json([
-                'message' => 'This change overlaps a booking, open play, or an existing closure/maintenance period. Resolve the conflicts first; nothing was changed.',
-                'conflicts' => $result['conflicts'],
-            ], 409);
-        }
-
-        return response()->json(['message' => 'Specific date closure updated.', 'closures' => $this->upcomingClosures()]);
+        $warnings = $closures->upcomingBookingWarnings([(int) $updated->weekday], substr((string) $updated->start_time, 0, 5), substr((string) $updated->end_time, 0, 5), $updated->court_id ? (int) $updated->court_id : null);
+        return response()->json(['message' => 'Weekly closure updated.', 'warnings' => $warnings, 'closures' => $this->listRules($closures)]);
     }
 
-    public function destroy(Request $request, CourtBlock $closure, UserAccessService $access, SpecificDateClosureService $closures): JsonResponse
+    public function destroy(Request $request, WeeklyCourtClosure $closure, UserAccessService $access, WeeklyCourtClosureService $closures): JsonResponse
     {
         $this->authorizeManage($request, $access);
-        abort_unless($closure->type === 'closed' && $closure->title === 'Closed', 404);
-
         DB::transaction(function () use ($request, $closure, $closures) {
-            $locked = CourtBlock::query()->whereKey($closure->id)->lockForUpdate()->firstOrFail();
-            $courtIds = $closures->lockCourts($locked->court_id === null ? null : (int) $locked->court_id);
-            $properties = [
-                'court_id' => $locked->court_id,
-                'court' => $locked->court_id ? Court::find($locked->court_id)?->name : 'All courts',
-                'date' => $locked->block_date->toDateString(),
-                'start_time' => substr((string) $locked->start_time, 0, 5),
-                'end_time' => substr((string) $locked->end_time, 0, 5),
-                'reason' => $locked->notes,
-            ];
-            ActivityLogger::log(
-                'court_block.specific_closure_removed',
-                sprintf('%s removed a specific court closure for %s (%s–%s).', auth()->user()->name, $properties['date'], $properties['start_time'], $properties['end_time']),
-                actor: auth()->user(), subject: $locked, properties: $properties,
-            );
+            $locked = WeeklyCourtClosure::query()->whereKey($closure->id)->lockForUpdate()->firstOrFail();
+            $closures->lockCourts($locked->court_id === null ? null : (int) $locked->court_id);
+            ActivityLogger::log('weekly_court_closure.removed', $request->user()->name.' removed a weekly court closure.', actor: $request->user(), subject: $locked, properties: [
+                'weekday' => (int) $locked->weekday, 'court_id' => $locked->court_id, 'court' => $locked->court?->name ?? 'All courts',
+                'start_time' => substr((string) $locked->start_time, 0, 5), 'end_time' => substr((string) $locked->end_time, 0, 5), 'reason' => $locked->reason,
+            ]);
             $locked->delete();
         });
-
-        return response()->json(['message' => 'Specific date closure removed.', 'closures' => $this->upcomingClosures()]);
+        return response()->json(['message' => 'Weekly closure removed.', 'closures' => $this->listRules($closures)]);
     }
 
     private function authorizeManage(Request $request, UserAccessService $access): void
     {
         if ($request->user() && $access->allows($request->user(), 'calendar_events.manage')) return;
-
-        ActivityLogger::log(
-            'calendar.specific_closure.denied',
-            'An account was denied access to specific court closures.',
-            actor: $request->user(),
-            properties: ['action' => $request->route()?->getName(), 'reason' => 'Only the effective admin or owner role can manage closures.'],
-        );
-        abort(403, 'Only an admin or owner can manage specific date closures.');
+        ActivityLogger::log('calendar.weekly_closure.denied', 'An account was denied access to weekly court closures.', actor: $request->user(), properties: ['action' => $request->route()?->getName()]);
+        abort(403, 'Only an admin or owner can manage weekly closures.');
     }
 
-    private function upcomingClosures(): array
+    private function listRules(WeeklyCourtClosureService $service): array
     {
-        return CourtBlock::query()->with(['court:id,name', 'creator:user_id,name'])
-            ->where('type', 'closed')
-            ->where('title', 'Closed')
-            ->whereDate('block_date', '>=', CarbonImmutable::now('Asia/Manila')->toDateString())
-            ->orderBy('block_date')->orderBy('start_time')->get()
-            ->map(fn (CourtBlock $block) => [
-                'id' => (int) $block->id,
-                'court_id' => $block->court_id,
-                'court' => $block->court?->name ?? 'All courts',
-                'date' => $block->block_date->toDateString(),
-                'start_time' => substr((string) $block->start_time, 0, 5),
-                'end_time' => substr((string) $block->end_time, 0, 5),
-                'reason' => $block->notes ?: ($block->title === 'Closed' ? '' : $block->title),
-                'created_by' => $block->creator?->name ?? 'Unknown',
-            ])->all();
+        return WeeklyCourtClosure::query()->with(['court:id,name', 'creator:user_id,name'])->orderBy('weekday')->orderBy('start_time')->get()
+            ->map(function (WeeklyCourtClosure $rule) use ($service) {
+                return $this->serializeRule($rule, $service->upcomingBookingWarnings([(int) $rule->weekday], substr((string) $rule->start_time, 0, 5), substr((string) $rule->end_time, 0, 5), $rule->court_id ? (int) $rule->court_id : null));
+            })->all();
     }
 
-    private function uniqueConflicts(array $conflicts): array
+    private function serializeRule(WeeklyCourtClosure $rule, array $warnings): array
     {
-        $unique = [];
-        foreach ($conflicts as $conflict) {
-            $key = implode('|', [$conflict['status'], $conflict['court'], $conflict['date'], $conflict['start_time'], $conflict['end_time'], $conflict['customer']]);
-            $unique[$key] = $conflict;
-        }
-
-        return array_values($unique);
+        return ['id' => (int) $rule->id, 'weekday' => (int) $rule->weekday,
+            'weekday_label' => CarbonImmutable::parse('2024-01-07', 'Asia/Manila')->addDays($rule->weekday)->format('D'),
+            'weekdays' => [(int) $rule->weekday], 'court_id' => $rule->court_id, 'court' => $rule->court?->name ?? 'All courts',
+            'start_time' => substr((string) $rule->start_time, 0, 5), 'end_time' => substr((string) $rule->end_time, 0, 5),
+            'reason' => $rule->reason, 'created_by' => $rule->creator?->name ?? 'Unknown', 'active' => (bool) $rule->active,
+            'conflict_count' => count($warnings), 'warnings' => $warnings];
     }
 }

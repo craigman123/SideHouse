@@ -65,6 +65,22 @@ class BookingHours
         return self::settings()->closed_weekdays;
     }
 
+    /** Weekday-indexed hours; JS Date.getDay() and Carbon dayOfWeek both use Sunday = 0. */
+    public static function operatingHoursByWeekday(): array
+    {
+        $open = self::openHour() * 60;
+        $close = self::closeHour() * 60;
+        $closeOffset = $close + (self::isOvernight() ? 1440 : 0);
+        $closed = self::closedWeekdays();
+
+        return array_map(fn (int $weekday) => [
+            'weekday' => $weekday,
+            'closed_all_day' => in_array($weekday, $closed, true),
+            'open_minutes' => $open,
+            'close_offset' => $closeOffset,
+        ], range(0, 6));
+    }
+
     /**
      * True when this date falls on a recurring weekly closure day
      * (e.g. "closed every Sunday"), regardless of any one-off

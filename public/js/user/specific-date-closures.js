@@ -190,6 +190,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     form.addEventListener('submit', (event) => {
         if (selectedDates.size === 0) event.preventDefault();
+        if (widget.classList.contains('is-loading')) return;
     });
 
     updateLabel();
