@@ -1567,6 +1567,38 @@ body > .landing-wrapper {
 #timePickerModal .time-slot-openplay-title { display: block; font-size: 1rem; }
 #timePickerModal .time-slot-openplay-meta  { display: block; font-size: .85rem; opacity: .85; }
 
+/* Vertical "Open play" tab beside the big block */
+#timePickerModal .time-slot-row-openplay,
+#timePickerModal .time-slot-row-openplay {
+    grid-template-columns: minmax(0, 200px) minmax(0, 1fr) auto !important;
+}
+
+#timePickerModal .time-slot-row-openplay::after {
+    content: "OPEN PLAY";
+    grid-column: 3;
+    align-self: stretch;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    writing-mode: vertical-rl;
+    transform: rotate(180deg);          /* reads bottom-to-top; remove for top-to-bottom */
+    padding: var(--s2) 6px;
+    border: 1px solid var(--brand);
+    border-radius: 14px;
+    background: color-mix(in srgb, var(--brand) 14%, var(--surface));
+    color: var(--brand-hover);
+    font-family: var(--font-family);
+    font-size: var(--font-size-small);
+    font-weight: 700;
+    letter-spacing: 0.2em;
+}
+
+@media (max-width: 390px) {
+    #timePickerModal .time-slot-row-openplay {
+        grid-template-columns: minmax(0, 120px) minmax(0, 1fr) auto !important;
+    }
+}
+
 @media (max-width: 390px) {
     #timePickerModal .time-slot-row-openplay {
         grid-template-columns: minmax(0, 200px) minmax(0, 1fr) !important;
