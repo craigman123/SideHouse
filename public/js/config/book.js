@@ -219,6 +219,11 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     const pad = (n) => n.toString().padStart(2, '0');
+
+    const slotKey = (dateStr, timeStr) => `${dateStr} ${timeStr}`;
+    const keyDate = (key) => key.slice(0, 10);
+    const keyTime = (key) => key.slice(11);
+    const keyStamp = (key) => new Date(`${keyDate(key)}T${keyTime(key)}:00`).getTime();
     const todayStr = () => {
         const d = new Date();
         return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
@@ -394,7 +399,7 @@ document.addEventListener('DOMContentLoaded', () => {
         openTimePickerModal();
     });
 
-    continueToPaymentBtn.addEventListener('click', () => {
+    continueToPaymentBtn?.addEventListener('click', () => {
         closeEquipmentModal();
         openPaymentModal();
     });
@@ -677,10 +682,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // session that crosses midnight keeps each hour attached to the day
     // it actually falls on, and the same clock hour on two different days
     // can never be confused for one another.
-    const slotKey = (dateStr, timeStr) => `${dateStr} ${timeStr}`;
-    const keyDate = (key) => key.slice(0, 10);
-    const keyTime = (key) => key.slice(11);
-    const keyStamp = (key) => new Date(`${keyDate(key)}T${keyTime(key)}:00`).getTime();
     const sortSlotKeys = () => selectedSlots.sort((a, b) => keyStamp(a) - keyStamp(b));
 
     // "11PM", "12AM", "1:30AM" — compact 12-hour label.
