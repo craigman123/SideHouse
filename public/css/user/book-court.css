@@ -229,7 +229,7 @@
     flex-shrink: 0;
     align-items: center;
     gap: var(--s3);
-    margin: 0 0 var(--s4);
+    margin: 0;
 }
 
 .user-book-court-page .modal-header h3,
@@ -1129,7 +1129,7 @@
     position: static;
     flex-shrink: 0;
     margin: 0;
-    padding: var(--s4) 0 calc(var(--s3) + env(safe-area-inset-bottom, 0px));
+    padding: 0;
     border-top: 1px solid var(--border);
     background: var(--surface);
 }

@@ -2,7 +2,7 @@
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: var(--s2);
-    margin: var(--s3) 0 var(--s4);
+    margin: 0;
 }
 
 .user-book-court-page .booking-flow-step {
