@@ -1041,14 +1041,14 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function updateTimePickerFee() {
-        if (!timePickerFeeRanges || !timePickerFeeTotal) return;
-
-        if (selectedSlots.length === 0) {
-            timePickerFeeRanges.textContent = 'Select at least one hour';
-            timePickerFeeTotal.textContent = '₱0';
-        } else {
-            timePickerFeeRanges.textContent = formatSelectedSlotsSummary();
-            timePickerFeeTotal.textContent = `₱${selectedSlotsTotal().toLocaleString()}`;
+        if (timePickerFeeRanges && timePickerFeeTotal) {
+            if (selectedSlots.length === 0) {
+                timePickerFeeRanges.textContent = 'Select at least one hour';
+                timePickerFeeTotal.textContent = '₱0';
+            } else {
+                timePickerFeeRanges.textContent = formatSelectedSlotsSummary();
+                timePickerFeeTotal.textContent = `₱${selectedSlotsTotal().toLocaleString()}`;
+            }
         }
         updateSelectionCards();
     }
