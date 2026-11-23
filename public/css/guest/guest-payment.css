@@ -391,3 +391,17 @@ body {
     opacity: 0.6;
     cursor: not-allowed;
 }
+
+.guest-payment-page .modal-box.is-prefilling,
+.guest-payment-page .modal-box.is-confirming {
+    position: relative;
+}
+
+.guest-payment-page .modal-box.is-prefilling::after,
+.guest-payment-page .modal-box.is-confirming::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 10;
+    cursor: not-allowed;
+}

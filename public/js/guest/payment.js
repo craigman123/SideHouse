@@ -32,6 +32,14 @@
     let prefillInFlight = false;
     const backBtn = document.getElementById('backToEquipment2');
 
+    function setConfirmLocked(isLocked) {
+        [guestNameInput, guestContactInput, backBtn, guestEmailChangeBtn]
+            .forEach((el) => { if (el) el.disabled = isLocked; });
+
+        googleSignInBtnEl?.classList.toggle('is-locked', isLocked);
+        box.classList.toggle('is-confirming', isLocked);
+    }
+
     function setPrefillLoading(isLoading) {
         prefillInFlight = isLoading;
 
@@ -346,6 +354,7 @@
         document.querySelector('.guest-email-block')?.classList.remove('guest-email-block-invalid');
 
         confirmInFlight = true;
+        setConfirmLocked(true);     
         confirmBtn.disabled = true;
         confirmBtn.setAttribute('aria-busy', 'true');
         const originalLabel = confirmBtn.textContent;
@@ -396,6 +405,7 @@
                     guestContactInput.classList.toggle('field-invalid', !!data.errors.guest_contact);
 
                     confirmInFlight = false;
+                    setConfirmLocked(false); 
                     confirmBtn.disabled = false;
                     confirmBtn.setAttribute('aria-busy', 'false');
                     confirmBtn.textContent = originalLabel;
@@ -435,6 +445,7 @@
             console.error(err);
             showToast('Something went wrong. Please try again.', 'error');
             confirmInFlight = false;
+            setConfirmLocked(false); 
             confirmBtn.disabled = false;
             confirmBtn.setAttribute('aria-busy', 'false');
             confirmBtn.textContent = originalLabel;
@@ -444,6 +455,7 @@
     window.addEventListener('pageshow', (e) => {
         if (e.persisted) {
             confirmInFlight = false;
+            setConfirmLocked(false); 
             confirmBtn.disabled = false;
             confirmBtn.textContent = 'Confirm Booking';
             confirmBtn.removeAttribute('aria-busy');
