@@ -47,8 +47,8 @@
                 <div class="booking-flow-progress booking-flow-progress-compact" aria-label="Booking progress">
                     <span class="booking-flow-step complete" data-checkout-step="1"><b>1</b>Date &amp; time</span>
                     <span class="booking-flow-step complete" data-checkout-step="2"><b>2</b>Equipment</span>
-                    <span class="booking-flow-step active" data-checkout-step="3"><b>3</b>Details</span>
-                    <span class="booking-flow-step" data-checkout-step="4"><b>4</b>Payment</span>
+                    <span class="booking-flow-step active" data-checkout-step="4"><b>3</b>Details</span>
+                    <span class="booking-flow-step" data-checkout-step="3"><b>4</b>Payment</span>
                 </div>
             </div>
             <div class="modal-scroll-body">
