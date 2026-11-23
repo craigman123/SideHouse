@@ -1484,3 +1484,13 @@ body > .landing-wrapper {
 @media (min-width: 341px) and (max-width: 400px) {
     .landing-wrapper .nav-title-landing { margin-left: 0; max-width: 18vw; }
 }
+
+.time-slot-icon {
+    display: inline-flex;
+    align-items: center;
+    margin-right: 6px;
+}
+.time-slot-icon svg {
+    width: 16px;
+    height: 16px;
+}
