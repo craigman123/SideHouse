@@ -8,16 +8,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const waitingUrlTemplate = grid.dataset.waitingUrlTemplate;
     const userPhone = grid.dataset.userPhone || '';
 
-    const OPEN_HOUR = parseInt(grid.dataset.openHour, 10);
-    const CLOSE_HOUR = parseInt(grid.dataset.closeHour, 10);
-    // Slot *counts* (not hours) — e.g. MIN_DURATION=2 with 30-min steps
-    // means "at least 1 hour selected".
     const MIN_DURATION = parseFloat(grid.dataset.minDuration);
     const MAX_DURATION = parseFloat(grid.dataset.maxDuration);
     const STEP_MINUTES = parseInt(grid.dataset.stepMinutes, 10);
     const OPEN_HOUR = parseInt(grid.dataset.openHour, 10);
     const RAW_CLOSE_HOUR = parseInt(grid.dataset.closeHour, 10);
-    // open 0 / close 0 means "open all day": treat closing as 24:00, not as overnight
     const CLOSE_HOUR = (OPEN_HOUR === 0 && RAW_CLOSE_HOUR === 0) ? 24 : RAW_CLOSE_HOUR;
 
     // Peak/night pricing (admin Configuration page) — display-only
