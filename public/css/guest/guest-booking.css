@@ -1568,7 +1568,7 @@ body > .landing-wrapper {
 #timePickerModal .time-slot-openplay-meta  { display: block; font-size: .85rem; opacity: .85; }
 
 /* Vertical "Open play" tab beside the big block */
-#timePickerModal .time-slot-row-openplay,
+/* ---- Open play: vertical tab on wide screens ---- */
 #timePickerModal .time-slot-row-openplay {
     grid-template-columns: minmax(0, 200px) minmax(0, 1fr) auto !important;
 }
@@ -1581,7 +1581,7 @@ body > .landing-wrapper {
     align-items: center;
     justify-content: center;
     writing-mode: vertical-rl;
-    transform: rotate(180deg);          /* reads bottom-to-top; remove for top-to-bottom */
+    transform: rotate(180deg);
     padding: var(--s2) 6px;
     border: 1px solid var(--brand);
     border-radius: 14px;
@@ -1593,14 +1593,40 @@ body > .landing-wrapper {
     letter-spacing: 0.2em;
 }
 
-@media (max-width: 390px) {
+/* ---- Small screens: horizontal banner above the card ---- */
+@media (max-width: 560px) {
     #timePickerModal .time-slot-row-openplay {
-        grid-template-columns: minmax(0, 120px) minmax(0, 1fr) auto !important;
+        grid-template-columns: minmax(0, 130px) minmax(0, 1fr) !important;
+        grid-template-rows: auto 1fr !important;
     }
-}
 
-@media (max-width: 390px) {
-    #timePickerModal .time-slot-row-openplay {
-        grid-template-columns: minmax(0, 200px) minmax(0, 1fr) !important;
+    #timePickerModal .time-slot-row-openplay > .time-slot-openplay-times {
+        grid-column: 1;
+        grid-row: 1 / span 2;
+    }
+
+    #timePickerModal .time-slot-row-openplay::after {
+        grid-column: 2;
+        grid-row: 1;
+        align-self: start;
+        writing-mode: horizontal-tb;
+        transform: none;
+        padding: 6px var(--s3);
+        letter-spacing: 0.15em;
+    }
+
+    #timePickerModal .time-slot-row-openplay > .time-slot-openplay-toggle {
+        grid-column: 2;
+        grid-row: 2;
+        flex-direction: column;
+        text-align: center;
+        padding: 10px;
+        gap: 6px;
+    }
+
+    #timePickerModal .time-slot-row-openplay .time-slot-openplay-body {
+        min-width: 0;
+        align-items: center;
+        overflow-wrap: anywhere;
     }
 }
