@@ -66,6 +66,10 @@ class AdminBookingsCalendarData
                 'block_date' => $block->block_date?->toDateString(),
                 'start_time' => substr((string) $block->start_time, 0, 5),
                 'end_time' => substr((string) $block->end_time, 0, 5),
+                'max_players' => $block->max_players,
+                'price_per_player' => $block->price_per_player,
+                'participant_count' => $block->type === 'open_play'
+                    ? app(OpenPlayAvailability::class)->joined($block, (int) $block->court_id) : null,
             ])->values();
 
         $cutoffs = SpecificDateTimeClosure::whereDate('date', '>=', $from)->whereDate('date', '<=', $to)->get()->map(fn ($cutoff) => [

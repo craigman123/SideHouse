@@ -26,6 +26,8 @@ class CourtBlockController extends Controller
             'block_date' => ['required', 'date_format:Y-m-d', 'after_or_equal:'.CarbonImmutable::now('Asia/Manila')->toDateString()],
             'start_time' => ['required', 'date_format:H:i'],
             'end_time' => ['required', 'date_format:H:i', 'different:start_time'],
+            'max_players' => ['required_if:type,open_play', 'nullable', 'integer', 'min:1'],
+            'price_per_player' => ['required_if:type,open_play', 'nullable', 'numeric', 'min:0'],
         ]);
         $venueNow = CarbonImmutable::now('Asia/Manila');
         if ($validated['block_date'] === $venueNow->toDateString()
@@ -73,6 +75,8 @@ class CourtBlockController extends Controller
 
             $block = CourtBlock::create([
                 ...$validated,
+                'max_players' => $validated['type'] === 'open_play' ? $validated['max_players'] : null,
+                'price_per_player' => $validated['type'] === 'open_play' ? $validated['price_per_player'] : null,
                 'court_id' => $courtId,
                 'created_by' => auth()->user()->user_id,
             ]);
@@ -137,6 +141,8 @@ class CourtBlockController extends Controller
             'block_date' => ['sometimes', 'required', 'date_format:Y-m-d', 'after_or_equal:'.CarbonImmutable::now('Asia/Manila')->toDateString()],
             'start_time' => ['sometimes', 'required', 'date_format:H:i'],
             'end_time' => ['sometimes', 'required', 'date_format:H:i', 'different:start_time'],
+            'max_players' => ['required_if:type,open_play', 'nullable', 'integer', 'min:1'],
+            'price_per_player' => ['required_if:type,open_play', 'nullable', 'numeric', 'min:0'],
             'expected_updated_at' => ['sometimes', 'required', 'date'],
         ]);
 
@@ -209,6 +215,10 @@ class CourtBlockController extends Controller
                 'block_date' => $date,
                 'start_time' => $startTime,
                 'end_time' => $endTime,
+                'max_players' => ($validated['type'] ?? $locked->type) === 'open_play'
+                    ? ($validated['max_players'] ?? $locked->max_players) : null,
+                'price_per_player' => ($validated['type'] ?? $locked->type) === 'open_play'
+                    ? ($validated['price_per_player'] ?? $locked->price_per_player) : null,
             ])->save();
 
             return ['block' => $locked->load('court'), 'warnings' => $warnings];
@@ -224,6 +234,8 @@ class CourtBlockController extends Controller
                     'notes' => $stale->notes, 'block_date' => $stale->block_date->toDateString(),
                     'start_time' => substr((string) $stale->start_time, 0, 5),
                     'end_time' => substr((string) $stale->end_time, 0, 5),
+                    'max_players' => $stale->max_players,
+                    'price_per_player' => $stale->price_per_player,
                 ],
             ], 409);
         }
@@ -266,6 +278,8 @@ class CourtBlockController extends Controller
                 'block_date' => $updated->block_date->toDateString(),
                 'start_time' => substr((string) $updated->start_time, 0, 5),
                 'end_time' => substr((string) $updated->end_time, 0, 5),
+                'max_players' => $updated->max_players,
+                'price_per_player' => $updated->price_per_player,
             ],
         ]);
     }

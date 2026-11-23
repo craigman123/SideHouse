@@ -36,6 +36,8 @@
     const candidatePicker = document.getElementById('candidatePicker');
     const candidateSearch = document.getElementById('candidateSearch');
     const candidateResults = document.getElementById('candidateResults');
+    const candidateSearchStatus = document.getElementById('candidateSearchStatus');
+    const selectedCandidateUserId = document.getElementById('selectedCandidateUserId');
     const selectedCandidateNode = document.getElementById('selectedCandidate');
     const configNode = document.getElementById('userAccessConfig');
     const detailsDialog = document.getElementById('accountDetailsDialog');
@@ -62,6 +64,7 @@
         candidateIndex: -1,
         candidateTimer: null,
         candidateController: null,
+        candidateRequestVersion: 0,
         listController: null,
         returnFocus: null,
         detailsUser: null,
@@ -108,9 +111,9 @@
     }
 
     function formatDate(value) {
-        if (!value) return '—';
+        if (!value) return 'â€”';
         const date = new Date(value);
-        if (Number.isNaN(date.getTime())) return '—';
+        if (Number.isNaN(date.getTime())) return 'â€”';
         return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(date);
     }
 
@@ -196,7 +199,7 @@
         const nameRow = element('div', 'user-access-name-row');
         nameRow.append(element('strong', 'user-access-person-name', user.name || 'Unnamed account'));
         if (Number(user.id) === Number(window.userAccessCurrentId)) nameRow.append(element('span', 'you-badge', 'You'));
-        cell.append(nameRow, element('span', 'user-access-username', `@${user.username || '—'}`));
+        cell.append(nameRow, element('span', 'user-access-username', `@${user.username || 'â€”'}`));
         return cell;
     }
 
@@ -204,12 +207,12 @@
         const row = document.createElement('tr');
         row.dataset.userId = String(user.id);
         const nameCell = document.createElement('td'); nameCell.append(personCell(user));
-        const emailCell = element('td', 'user-access-email', user.email || '—');
+        const emailCell = element('td', 'user-access-email', user.email || 'â€”');
         const roleCell = document.createElement('td'); roleCell.append(roleBadge(user.role));
         const mfaCell = document.createElement('td'); mfaCell.append(element('span', `mfa-status ${user.mfa_enabled ? 'is-enabled' : 'is-pending'}`, user.mfa_enabled ? 'Enabled' : 'Pending setup'));
         const lastLoginCell = element('td', 'user-access-date', formatDate(user.last_login_at));
         const promotedCell = document.createElement('td');
-        const promoter = user.promoted_by?.name || '—';
+        const promoter = user.promoted_by?.name || 'â€”';
         promotedCell.append(element('span', 'user-access-promoter', promoter));
         if (user.promoted_at) promotedCell.append(element('span', 'user-access-date', formatDate(user.promoted_at)));
         const actionsCell = document.createElement('td'); actionsCell.append(actionMenu(user));
@@ -224,10 +227,10 @@
         header.append(personCell(user), roleBadge(user.role));
         const list = element('dl', 'user-access-card-details');
         const fields = [
-            ['Email', user.email || '—'],
+            ['Email', user.email || 'â€”'],
             ['MFA', user.mfa_enabled ? 'Enabled' : 'Pending setup'],
             ['Last login', formatDate(user.last_login_at)],
-            ['Promoted by', user.promoted_by?.name || '—'],
+            ['Promoted by', user.promoted_by?.name || 'â€”'],
             ['Promoted date', formatDate(user.promoted_at)],
         ];
         fields.forEach(([label, value]) => list.append(element('dt', '', label), element('dd', '', value)));
@@ -340,13 +343,18 @@
     }
 
     function resetAccessDialog() {
+        cancelCandidateSearch();
         state.selectedCandidate = null;
         state.selectedUser = null;
         delete accessDialog.dataset.userId;
         state.mode = 'create';
         candidateSearch.value = '';
+        selectedCandidateUserId.value = '';
         candidateResults.replaceChildren();
         candidateResults.hidden = true;
+        candidateSearch.setAttribute('aria-expanded', 'false');
+        candidateSearch.removeAttribute('aria-activedescendant');
+        setCandidateStatus('');
         selectedCandidateNode.replaceChildren();
         delete selectedCandidateNode.dataset.userId;
         selectedCandidateNode.hidden = true;
@@ -505,7 +513,7 @@
 
     function showCandidateResults(items) {
         state.candidateItems = items;
-        state.candidateIndex = items.length ? 0 : -1;
+        state.candidateIndex = -1;
         candidateResults.replaceChildren();
         candidateResults.hidden = items.length === 0;
         items.forEach((candidate, index) => {
@@ -514,63 +522,99 @@
             option.setAttribute('role', 'option');
             option.id = `candidate-option-${index}`;
             option.dataset.userId = String(candidate.id);
-            option.setAttribute('aria-selected', String(index === state.candidateIndex));
-            option.append(element('strong', '', candidate.name || 'Unnamed account'));
-            option.append(element('span', '', `@${candidate.username || '—'} · ${candidate.email || '—'}`));
+            option.setAttribute('aria-selected', 'false');
+            option.append(element('strong', 'candidate-email', candidate.email || 'Email unavailable'));
+            option.append(element('span', 'candidate-name', candidate.name || 'Unnamed customer'));
             option.addEventListener('click', () => selectCandidate(candidate));
             candidateResults.append(option);
         });
         candidateSearch.setAttribute('aria-expanded', String(items.length > 0));
         candidateSearch.removeAttribute('aria-activedescendant');
-        if (state.candidateIndex >= 0) candidateSearch.setAttribute('aria-activedescendant', `candidate-option-${state.candidateIndex}`);
+        setCandidateStatus(items.length ? '' : 'No registered customer with that email');
     }
 
     function selectCandidate(candidate) {
+        cancelCandidateSearch();
         state.selectedCandidate = candidate;
+        state.candidateItems = [];
+        state.candidateIndex = -1;
+        candidateSearch.value = candidate.email;
+        selectedCandidateUserId.value = String(candidate.id);
         selectedCandidateNode.dataset.userId = String(candidate.id);
-        candidateResults.hidden = true;
-        candidateSearch.setAttribute('aria-expanded', 'false');
-        candidateSearch.removeAttribute('aria-activedescendant');
+        closeCandidateResults();
         selectedCandidateNode.replaceChildren(
-            element('strong', '', candidate.name || 'Unnamed account'),
-            element('span', '', `@${candidate.username || '—'} · ${candidate.email || '—'}`),
+            element('span', 'selected-candidate-check', '✓'),
+            element('strong', 'selected-candidate-email', candidate.email),
+            element('span', 'selected-candidate-name', candidate.name || 'Unnamed customer'),
+            element('span', 'selected-candidate-label', 'Selected'),
         );
         selectedCandidateNode.hidden = false;
+        setCandidateStatus(`${candidate.email} selected.`);
         continueButton.disabled = false;
     }
 
-    async function searchCandidates() {
+    function closeCandidateResults() {
+        candidateResults.hidden = true;
+        candidateSearch.setAttribute('aria-expanded', 'false');
+        candidateSearch.removeAttribute('aria-activedescendant');
+    }
+
+    function setCandidateStatus(message, isError = false) {
+        candidateSearchStatus.textContent = message;
+        candidateSearchStatus.classList.toggle('is-error', isError);
+    }
+
+    function cancelCandidateSearch() {
         clearTimeout(state.candidateTimer);
         state.candidateController?.abort();
+        state.candidateController = null;
+        state.candidateRequestVersion += 1;
+    }
+
+    function clearCandidateSelection() {
+        state.selectedCandidate = null;
+        selectedCandidateUserId.value = '';
+        delete selectedCandidateNode.dataset.userId;
+        selectedCandidateNode.replaceChildren();
+        selectedCandidateNode.hidden = true;
+        continueButton.disabled = state.mode === 'create';
+    }
+
+    function searchCandidates() {
+        cancelCandidateSearch();
+        clearCandidateSelection();
+        state.candidateItems = [];
+        state.candidateIndex = -1;
+        candidateResults.replaceChildren();
+        closeCandidateResults();
+        setCandidateStatus('');
         const term = candidateSearch.value.trim();
-        if (term.length < 3) {
-            candidateResults.replaceChildren(); candidateResults.hidden = true;
-            candidateSearch.setAttribute('aria-expanded', 'false');
-            candidateSearch.removeAttribute('aria-activedescendant');
-            return;
-        }
+        if (term.length < 3) return;
+
+        const requestVersion = state.candidateRequestVersion;
+        setCandidateStatus('Searching...');
         state.candidateTimer = setTimeout(async () => {
             const controller = new AbortController();
             state.candidateController = controller;
             try {
                 const params = new URLSearchParams({ q: term });
                 const payload = await request(`${candidatesUrl}?${params}`, { signal: controller.signal });
-                if (candidateSearch.value.trim() !== term) return;
+                if (requestVersion !== state.candidateRequestVersion || candidateSearch.value.trim() !== term) return;
                 showCandidateResults(payload.candidates || []);
             } catch (candidateError) {
-                if (candidateError.name === 'AbortError') return;
-                setDialogError(candidateError.message);
+                if (candidateError.name === 'AbortError' || requestVersion !== state.candidateRequestVersion) return;
+                closeCandidateResults();
+                setCandidateStatus('Could not search registered customers. Please try again.', true);
             }
         }, 250);
     }
-
     function setDialogError(message) {
         dialogError.textContent = message;
         dialogError.hidden = false;
     }
 
     function enterPasswordStep() {
-        if (state.mode === 'create' && !state.selectedCandidate) return;
+        if (state.mode === 'create' && (!state.selectedCandidate || !selectedCandidateUserId.value)) return;
         detailStep.hidden = true;
         passwordStep.hidden = false;
         continueButton.hidden = true;
@@ -578,7 +622,7 @@
         saveButton.hidden = false;
         saveButton.textContent = state.mode === 'create' ? 'Promote' : 'Save access';
         document.getElementById('accessConfirmationSummary').textContent = state.mode === 'create'
-            ? `${state.selectedCandidate.name} will be promoted to ${roleNames[roleSelect.value]}.`
+            ? `${state.selectedCandidate.email} (${state.selectedCandidate.name}) will be promoted to ${roleNames[roleSelect.value]}.`
             : `Save access changes for ${state.selectedUser.name}?`;
         dialogError.hidden = true;
         passwordInput.focus();
@@ -593,7 +637,7 @@
         let url = createUrl;
         let method = 'POST';
         if (state.mode === 'create') {
-            payload.user_id = state.selectedCandidate.id;
+            payload.user_id = Number(selectedCandidateUserId.value);
         } else {
             const id = encodeURIComponent(state.selectedUser.id);
             url = page.dataset.updateUrlTemplate.replace('__USER__', id);
@@ -663,17 +707,43 @@
     roleFilter.addEventListener('change', () => loadUsers());
     candidateSearch.addEventListener('input', searchCandidates);
     candidateSearch.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape' && !candidateResults.hidden) {
+            event.preventDefault();
+            cancelCandidateSearch();
+            state.candidateItems = [];
+            state.candidateIndex = -1;
+            candidateResults.replaceChildren();
+            closeCandidateResults();
+            setCandidateStatus('');
+            return;
+        }
         if (candidateResults.hidden || !state.candidateItems.length) return;
         if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
             event.preventDefault();
-            const delta = event.key === 'ArrowDown' ? 1 : -1;
-            state.candidateIndex = (state.candidateIndex + delta + state.candidateItems.length) % state.candidateItems.length;
+            if (state.candidateIndex < 0) {
+                state.candidateIndex = event.key === 'ArrowDown' ? 0 : state.candidateItems.length - 1;
+            } else {
+                const delta = event.key === 'ArrowDown' ? 1 : -1;
+                state.candidateIndex = (state.candidateIndex + delta + state.candidateItems.length) % state.candidateItems.length;
+            }
             Array.from(candidateResults.children).forEach((option, index) => option.setAttribute('aria-selected', String(index === state.candidateIndex)));
             candidateSearch.setAttribute('aria-activedescendant', `candidate-option-${state.candidateIndex}`);
+            candidateResults.children[state.candidateIndex]?.scrollIntoView({ block: 'nearest' });
         } else if (event.key === 'Enter') {
-            event.preventDefault();
-            selectCandidate(state.candidateItems[state.candidateIndex]);
+            if (state.candidateIndex >= 0) {
+                event.preventDefault();
+                selectCandidate(state.candidateItems[state.candidateIndex]);
+            }
         }
+    });
+    document.addEventListener('pointerdown', (event) => {
+        if (candidateResults.hidden || candidatePicker.contains(event.target)) return;
+        cancelCandidateSearch();
+        state.candidateItems = [];
+        state.candidateIndex = -1;
+        candidateResults.replaceChildren();
+        closeCandidateResults();
+        setCandidateStatus('');
     });
     document.querySelectorAll('[data-close-dialog]').forEach((button) => {
         button.addEventListener('click', () => closeDialog(button.closest('dialog')));

@@ -4,6 +4,14 @@ html.admin-layout-shell body {
     overflow: hidden;
 }
 
+.dashboard-shell-icons {
+    position: absolute;
+    width: 0;
+    height: 0;
+    overflow: hidden;
+    pointer-events: none;
+}
+
 html.admin-layout-shell body {
     display: flex;
     height: 100vh;
@@ -15,14 +23,14 @@ html.admin-layout-shell body {
 }
 
 html.admin-layout-shell .sidebar {
-    position: fixed;
-    z-index: 30;
-    top: 0;
-    left: 0;
+    position: static;
     display: flex;
     flex-direction: column;
     box-sizing: border-box;
-    width: 240px;
+    width: 272px;
+    min-width: 272px;
+    max-width: 272px;
+    flex: 0 0 272px;
     height: 100vh;
     height: 100dvh;
     padding-top: env(safe-area-inset-top, 0px);
@@ -31,7 +39,7 @@ html.admin-layout-shell .sidebar {
     border-right: 1px solid var(--text-muted);
     background: var(--surface);
     color: var(--text);
-    transition: width 180ms ease;
+    transition: width 180ms ease, flex-basis 180ms ease;
 }
 
 html.admin-layout-shell .sidebar-logo {
@@ -268,7 +276,7 @@ html.admin-layout-shell .main {
     height: 100dvh;
     margin-left: 0;
     overflow: hidden;
-    transition: margin-left 180ms ease;
+    transition: none;
 }
 
 html.admin-layout-shell .topbar {
@@ -346,10 +354,13 @@ html.admin-layout-shell .content {
 
 html.admin-layout-shell.is-admin-sidebar-collapsed .sidebar {
     width: 72px;
+    min-width: 72px;
+    max-width: 72px;
+    flex-basis: 72px;
 }
 
 html.admin-layout-shell.is-admin-sidebar-collapsed .main {
-    margin-left: 72px;
+    margin-left: 0;
 }
 
 html.admin-layout-shell.is-admin-sidebar-collapsed .sidebar-logo {
@@ -448,6 +459,9 @@ html.admin-layout-shell.is-admin-sidebar-collapsed .admin-sidebar-collapse-toggl
         justify-content: flex-start;
         box-sizing: border-box;
         width: min(320px, 85vw);
+        min-width: 0;
+        max-width: none;
+        flex: 0 0 auto;
         height: 100vh;
         height: 100dvh;
         min-height: 0;
@@ -608,6 +622,9 @@ html.admin-layout-shell.is-admin-sidebar-collapsed .admin-sidebar-collapse-toggl
 
     html.admin-layout-shell.is-admin-sidebar-collapsed .sidebar {
         width: 100%;
+        min-width: 0;
+        max-width: none;
+        flex-basis: auto;
     }
 
     html.admin-layout-shell.is-admin-sidebar-collapsed .sidebar-nav {
@@ -702,11 +719,11 @@ html.staff-layout-shell body {
         var(--bg);
 }
 
-html.staff-layout-shell .content > :is(.staff-overview, .customers-page, .profile-page, .admin-activity-logs-page, .admin-bookings-page) {
+html.admin-layout-shell .content > :is(.admin-overview-page, .staff-overview, .customers-page, .profile-page, .admin-activity-logs-page, .admin-bookings-page, .reports-page) {
     width: 100%;
-    max-width: 1200px;
+    max-width: none;
     min-width: 0;
-    margin-inline: auto;
+    margin-inline: 0;
 }
 
 html.staff-layout-shell .admin-bookings-page {
@@ -784,12 +801,6 @@ html.staff-layout-shell .staff-error-panel h2 {
 html.staff-layout-shell .staff-error-panel p {
     margin-bottom: var(--s4);
     color: var(--text-muted);
-}
-
-@media (min-width: 768px) {
-    html.staff-layout-shell .content {
-        padding: var(--s6);
-    }
 }
 
 @media (max-width: 767px) {

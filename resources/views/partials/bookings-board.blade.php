@@ -228,6 +228,12 @@
                         <label>End time
                             <input name="end_time" id="courtBlockEnd" type="time" required>
                         </label>
+                        <label class="open-play-field" hidden>Max players
+                            <input name="max_players" id="courtBlockMaxPlayers" type="number" min="1" step="1">
+                        </label>
+                        <label class="open-play-field" hidden>Price per player (PHP)
+                            <input name="price_per_player" id="courtBlockPricePerPlayer" type="number" min="0" step="0.01">
+                        </label>
                         <label class="walk-in-field" hidden>Amount
                             <input name="amount" id="courtWalkInAmount" type="number" min="0" step="0.01">
                         </label>
@@ -273,6 +279,8 @@
                         <label>Date<input name="block_date" type="date" required></label>
                         <label>Start time<input name="start_time" type="time" required></label>
                         <label>End time<input name="end_time" type="time" required></label>
+                        <label class="open-play-edit-field" hidden>Max players<input name="max_players" type="number" min="1" step="1"></label>
+                        <label class="open-play-edit-field" hidden>Price per player (PHP)<input name="price_per_player" type="number" min="0" step="0.01"></label>
                         <label class="court-block-notes-field">Notes<textarea name="notes" rows="3" maxlength="5000"></textarea></label>
                     </div>
                     <p class="court-block-modal-message" id="courtBlockEditMessage" role="status" aria-live="polite"></p>

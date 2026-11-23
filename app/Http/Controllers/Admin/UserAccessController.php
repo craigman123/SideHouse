@@ -7,6 +7,7 @@ use App\Mail\AdminChangedAccountEmailNotice;
 use App\Models\User;
 use App\Services\UserAccessService;
 use App\Support\ActivityLogger;
+use App\Support\LikePattern;
 use App\Support\Mask;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
@@ -70,14 +71,16 @@ class UserAccessController extends Controller
             return response()->json(['candidates' => []]);
         }
 
-        $query = User::query()->where('role', 'user');
-        $this->applySearch($query, $term);
-        $candidates = $query->orderBy('name')->limit(8)->get(['user_id', 'name', 'username', 'email'])
+        $candidates = User::query()
+            ->where('role', 'user')
+            ->whereRaw("LOWER(email) LIKE ? ESCAPE '!'", [LikePattern::contains($term)])
+            ->orderBy('email')
+            ->limit(8)
+            ->get(['user_id', 'name', 'email'])
             ->map(fn (User $user) => [
                 'id' => (int) $user->user_id,
+                'email' => $user->email,
                 'name' => $user->name,
-                'username' => $user->username,
-                'email' => Mask::email($user->email),
             ]);
 
         return response()->json(['candidates' => $candidates]);

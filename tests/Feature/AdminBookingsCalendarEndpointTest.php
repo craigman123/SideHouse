@@ -49,16 +49,33 @@ class AdminBookingsCalendarEndpointTest extends TestCase
         $block = CourtBlock::create([
             'court_id' => $court->id, 'type' => 'open_play', 'title' => 'Open play', 'block_date' => '2020-05-10',
             'start_time' => '11:00', 'end_time' => '12:00', 'created_by' => $admin->user_id,
+            'max_players' => 8, 'price_per_player' => 125,
         ]);
+        $participant = Booking::create([
+            'customer_name' => 'Open Play Participant', 'contact_number' => '09170000000', 'court_id' => $court->id,
+            'date' => '2020-05-10', 'start_time' => '11:00', 'end_time' => '12:00', 'status' => 'pending',
+            'source' => 'online', 'amount' => 125,
+        ]);
+        $participant->slots()->create([
+            'court_id' => $court->id, 'date' => '2020-05-10', 'start_time' => '11:00',
+            'end_time' => '12:00', 'price' => 125,
+        ]);
+        $this->assertDatabaseHas('booking_slots', ['booking_id' => $participant->id, 'start_time' => '11:00']);
 
         $response = $this->getJson('/admin/bookings/calendar?from=2020-05-10&to=2020-05-10')->assertOk();
         $response->assertJsonStructure([
             'bookings' => [['id', 'updated_at', 'customer', 'contact_number', 'email', 'notes', 'court_id', 'court', 'date', 'start', 'end', 'status', 'source', 'amount', 'slots', 'equipment']],
-            'blocks' => [['id', 'updated_at', 'court_id', 'type', 'title', 'notes', 'block_date', 'start_time', 'end_time']],
+            'blocks' => [['id', 'updated_at', 'court_id', 'type', 'title', 'notes', 'block_date', 'start_time', 'end_time', 'max_players', 'price_per_player', 'participant_count']],
             'closures', 'closingCutoffs', 'courts', 'businessSettings', 'server_time',
-        ])->assertJsonPath('bookings.0.id', $booking->id)->assertJsonPath('blocks.0.id', $block->id);
+        ])->assertJsonPath('bookings.0.id', $booking->id)->assertJsonPath('blocks.0.id', $block->id)
+            ->assertJsonPath('blocks.0.max_players', 8)->assertJsonPath('blocks.0.price_per_player', '125.00')
+            ->assertJsonPath('blocks.0.participant_count', 1);
         $this->assertStringContainsString('+08:00', $response->json('server_time'));
         $this->assertSame(now('Asia/Manila')->toDateString(), $response->json('businessSettings.today'));
+
+        $this->getJson('/guest-book/availability?court_id='.$court->id.'&date=2020-05-10')
+            ->assertOk()->assertJsonPath('open_play.0.max_players', 8)
+            ->assertJsonPath('open_play.0.price_per_player', 125)->assertJsonPath('open_play.0.joined', 1);
     }
 
     public function test_endpoint_rejects_a_101_day_range_and_invalid_dates(): void

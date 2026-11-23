@@ -17,7 +17,6 @@
                 <p class="staff-sync-status" id="staffSyncStatus" role="status" aria-live="polite">Updated just now</p>
             </div>
             <div class="staff-overview-actions">
-                @if ($canCreateWalkIn)<a class="btn-primary" href="{{ route('staff.bookings', ['view' => 'board', 'new' => 'walk-in']) }}">Add walk-in</a>@endif
                 @if ($canViewBookings)<a class="btn-secondary" href="{{ route('staff.bookings') }}">Bookings</a>@endif
                 @if ($canManageEvents)<a class="btn-secondary" href="{{ route('staff.bookings', ['view' => 'board', 'new' => 'event']) }}">Add event</a>@endif
             </div>
@@ -27,6 +26,7 @@
             <div class="card"><p class="label">Today's bookings</p><p class="value" id="staffTodayBookingCount">{{ $overviewData['booking_count'] }}</p></div>
             <div class="card"><p class="label">Courts in use</p><p class="value" id="staffCourtCount">{{ $overviewData['court_count'] }}</p></div>
         </div>
+        <div 
         <div class="staff-overview-grid">
             <section class="panel staff-overview-card"><header class="dashboard-panel-header"><h2>Court status</h2></header><div id="staffCourtStatus" class="dashboard-panel-body staff-overview-list staff-court-status-list"><span class="dashboard-skeleton" aria-hidden="true"></span><span class="dashboard-skeleton" aria-hidden="true"></span></div></section>
             <section class="panel staff-overview-card"><header class="dashboard-panel-header"><h2>Next up</h2></header><div id="staffUpcomingBookings" class="dashboard-panel-body staff-overview-list"><span class="dashboard-skeleton" aria-hidden="true"></span></div></section>

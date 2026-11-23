@@ -14,11 +14,15 @@ class CourtBlock extends Model
         'block_date',
         'start_time',
         'end_time',
+        'max_players',
+        'price_per_player',
         'created_by',
     ];
 
     protected $casts = [
         'block_date' => 'date',
+        'max_players' => 'integer',
+        'price_per_player' => 'decimal:2',
     ];
 
     public function court()

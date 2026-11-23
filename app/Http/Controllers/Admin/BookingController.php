@@ -180,7 +180,10 @@ class BookingController extends Controller
             if ($scheduleChanged && ! $adjustOnly) {
                 for ($cursor = $start; $cursor->lessThan($end); $cursor = $cursor->addMinutes($step)) {
                     $slotMinutes = min($step, $cursor->diffInMinutes($end));
-                    $slotPrices[] = round(
+                    $event = app(\App\Services\OpenPlayAvailability::class)->eventForSlot(
+                        $courtId, $cursor->toDateString(), $cursor->format('H:i:s'), $cursor->copy()->addMinutes($slotMinutes)->format('H:i:s')
+                    );
+                    $slotPrices[] = $event ? (float) $event->price_per_player : round(
                         $settings->applyPeakAdjustment((float) $court->hourly_rate, $cursor->hour) * ($slotMinutes / 60),
                         2
                     );
@@ -191,7 +194,11 @@ class BookingController extends Controller
             if ($adjustOnly && $oldSlotTotal > 0) {
                 if ($adjustMinutes > 0) {
                     for ($cursor = $oldEnd; $cursor->lessThan($end); $cursor = $cursor->addMinutes($step)) {
-                        $slotPrices[] = round($settings->applyPeakAdjustment((float) $court->hourly_rate, $cursor->hour) * ($step / 60), 2);
+                        $event = app(\App\Services\OpenPlayAvailability::class)->eventForSlot(
+                            $courtId, $cursor->toDateString(), $cursor->format('H:i:s'), $cursor->copy()->addMinutes($step)->format('H:i:s')
+                        );
+                        $slotPrices[] = $event ? (float) $event->price_per_player
+                            : round($settings->applyPeakAdjustment((float) $court->hourly_rate, $cursor->hour) * ($step / 60), 2);
                     }
                     $newSlotTotal = round($oldSlotTotal + array_sum($slotPrices), 2);
                 } elseif ($adjustMinutes < 0) {

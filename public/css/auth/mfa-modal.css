@@ -5,6 +5,9 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    box-sizing: border-box;
+    padding: var(--s4);
+    overflow: hidden;
 }
 
 .mfa-modal.hidden {
@@ -257,6 +260,132 @@
     .mfa-modal input[type="text"] {
         letter-spacing: 1px;
     }
+}
+
+/* Shared user-access dialogs and the MFA/logout modal shell. */
+.mfa-modal > .mfa-modal-content {
+    box-sizing: border-box;
+    width: min(420px, 100%);
+    max-height: calc(100vh - 2 * var(--s4));
+    max-height: calc(100dvh - 2 * var(--s4));
+    margin: auto;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.mfa-modal > .mfa-modal-content > .mfa-modal-header {
+    flex: 0 0 auto;
+}
+
+.mfa-modal > .mfa-modal-content > .mfa-modal-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-color: var(--text-muted) var(--surface-2);
+    scrollbar-width: thin;
+}
+
+.mfa-modal > .mfa-modal-content > .mfa-modal-body::-webkit-scrollbar,
+html.admin-layout-shell dialog.access-dialog .access-dialog-body::-webkit-scrollbar {
+    width: var(--s1);
+}
+
+.mfa-modal > .mfa-modal-content > .mfa-modal-body::-webkit-scrollbar-track,
+html.admin-layout-shell dialog.access-dialog .access-dialog-body::-webkit-scrollbar-track {
+    background: var(--surface-2);
+}
+
+.mfa-modal > .mfa-modal-content > .mfa-modal-body::-webkit-scrollbar-thumb,
+html.admin-layout-shell dialog.access-dialog .access-dialog-body::-webkit-scrollbar-thumb {
+    border-radius: var(--r-pill);
+    background: var(--text-muted);
+}
+
+body.auth-page #mfa-modal.mfa-modal > .mfa-modal-content {
+    width: min(460px, 100%);
+    max-height: calc(100vh - 2 * var(--s4));
+    max-height: calc(100dvh - 2 * var(--s4));
+    margin: auto;
+    overflow: hidden;
+}
+
+body.auth-page #mfa-modal.mfa-modal > .mfa-modal-content > .mfa-modal-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+}
+
+html:has(.mfa-modal:not(.hidden)) {
+    overflow: hidden;
+}
+
+html:has(.mfa-modal:not(.hidden)) body {
+    overflow: hidden;
+}
+
+html.admin-layout-shell dialog.access-dialog:not([open]) {
+    display: none;
+}
+
+html.admin-layout-shell dialog.access-dialog[open] {
+    position: fixed;
+    z-index: 10000;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+    width: 100%;
+    max-width: none;
+    height: 100vh;
+    height: 100dvh;
+    max-height: none;
+    margin: 0;
+    padding: var(--s4);
+    overflow: hidden;
+    border: 0;
+    background: transparent;
+    color: var(--text);
+}
+
+html.admin-layout-shell dialog.access-dialog::backdrop {
+    background: color-mix(in srgb, var(--bg), transparent 28%);
+}
+
+html.admin-layout-shell dialog.access-dialog .access-dialog-card {
+    box-sizing: border-box;
+    display: flex;
+    flex: 0 1 auto;
+    flex-direction: column;
+    width: min(640px, 100%);
+    max-height: calc(100vh - 2 * var(--s4));
+    max-height: calc(100dvh - 2 * var(--s4));
+    min-height: 0;
+    margin: auto;
+    overflow: hidden;
+    gap: var(--s4);
+}
+
+html.admin-layout-shell dialog.access-dialog .access-dialog-header,
+html.admin-layout-shell dialog.access-dialog .access-dialog-footer {
+    flex: 0 0 auto;
+}
+
+html.admin-layout-shell dialog.access-dialog .access-dialog-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-color: var(--text-muted) var(--surface-2);
+    scrollbar-width: thin;
+}
+
+html.admin-layout-shell:has(dialog.access-dialog[open]),
+html.admin-layout-shell:has(dialog.access-dialog[open]) body,
+html.admin-layout-shell:has(dialog.access-dialog[open]) .content {
+    overflow: hidden;
 }
 
 .hidden {

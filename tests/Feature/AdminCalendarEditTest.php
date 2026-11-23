@@ -236,8 +236,14 @@ class AdminCalendarEditTest extends TestCase
         $payload = [
             'court_id' => $this->court->id, 'type' => 'open_play', 'title' => 'Night Open Play',
             'block_date' => '2030-05-15', 'start_time' => '23:30', 'end_time' => '01:30',
+            'max_players' => 8, 'price_per_player' => 125,
         ];
-        $this->postJson('/admin/blocks', $payload)->assertCreated();
+        $this->postJson('/admin/blocks', $payload)->assertCreated()
+            ->assertJsonPath('block.max_players', 8)->assertJsonPath('block.price_per_player', '125.00');
+        $this->postJson('/admin/blocks', [...$payload, 'max_players' => 0])
+            ->assertUnprocessable()->assertJsonValidationErrors('max_players');
+        $this->postJson('/admin/blocks', [...$payload, 'price_per_player' => null])
+            ->assertUnprocessable()->assertJsonValidationErrors('price_per_player');
         $this->postJson('/admin/blocks', [...$payload, 'block_date' => '2030-05-14'])
             ->assertUnprocessable()->assertJsonValidationErrors('block_date');
     }

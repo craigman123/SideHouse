@@ -610,6 +610,8 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentCloseMinutes = null;
     let selectedPayment = null;
     let bookedRanges = [];
+    let openPlayRanges = [];
+    const openPlayEventsByDate = {};
     let maintenanceRanges = [];
     let equipmentCatalog = []; // [{id, name, category, price, available}]
     let equipmentSelection = {}; // { [equipmentId]: quantity }
@@ -820,6 +822,8 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         bookedRanges = availability.booked;
+        openPlayRanges = availability.open_play || [];
+        openPlayEventsByDate[dateStr] = openPlayRanges;
         maintenanceRanges = availability.maintenanceBlocked;
         renderTimeSlots();
         updateTimePickerFee();
@@ -1016,6 +1020,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         currentCloseMinutes = availability.close_minutes ?? CLOSE_HOUR * 60;
         bookedRanges = availability.booked;
+        openPlayRanges = availability.open_play || [];
+        openPlayEventsByDate[selectedDate] = openPlayRanges;
         maintenanceRanges = availability.maintenanceBlocked;
         renderTimeSlots();
         updateTimePickerFee();
@@ -1274,6 +1280,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         currentCloseMinutes = availability.close_minutes ?? CLOSE_HOUR * 60;
         bookedRanges = availability.booked;
+        openPlayRanges = availability.open_play || [];
+        openPlayEventsByDate[dateStr] = openPlayRanges;
         maintenanceRanges = availability.maintenanceBlocked;
         renderTimeSlots();
         updateTimePickerFee();
@@ -1302,7 +1310,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function fetchAvailability(dateStr) {
-        if (!availabilityUrl) return { booked: [], closed: false, closedReason: null, maintenanceBlocked: [] };
+        if (!availabilityUrl) return { booked: [], open_play: [], closed: false, closedReason: null, maintenanceBlocked: [] };
         try {
             const url = `${availabilityUrl}?court_id=${selectedCourt.id}&date=${dateStr}`;
             const res = await fetch(url, { headers: { Accept: 'application/json' } });
@@ -1310,6 +1318,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const data = await res.json();
                 return {
                     booked: data.booked || [],
+                    open_play: data.open_play || [],
                     closed: !!data.closed,
                     closedReason: data.closed_reason || null,
                     maintenanceBlocked: data.maintenance_blocked || [],
@@ -1317,7 +1326,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 };
         } catch (err) {
             console.error(err);
-            return { booked: [], closed: false, closedReason: null, maintenanceBlocked: [] };
+            return { booked: [], open_play: [], closed: false, closedReason: null, maintenanceBlocked: [] };
         }
     }
 
@@ -1341,6 +1350,12 @@ document.addEventListener('DOMContentLoaded', () => {
             const rangeEnd = timeToMinutes(r.end) || 1440;
             return totalMin < rangeEnd && slotEnd > rangeStart;
         });
+    }
+
+    function openPlayAt(totalMin, dateStr = selectedDate) {
+        const end = totalMin + STEP_MINUTES;
+        return (openPlayEventsByDate[dateStr] || openPlayRanges).find((event) => totalMin >= timeToMinutes(event.start)
+            && end <= (timeToMinutes(event.end) || 1440));
     }
 
     // Same overlap check as isSlotBookedAt, but against PayMongo
@@ -1376,7 +1391,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // the slot's real clock hour — omit it to get the flat, un-adjusted
     // rate. Mirrors BusinessSetting::applyPeakAdjustment(): the surcharge
     // is applied to the hourly rate first, then scaled to the slot length.
-    function slotPrice(hour) {
+    function slotPrice(hour, dateStr = selectedDate) {
+        const openPlay = openPlayAt(Number(hour || 0) * 60, dateStr);
+        if (openPlay) return Number(openPlay.price_per_player);
         let hourlyRate = Number(selectedCourt.price);
         if (hour !== undefined && isPeakHour(hour)) {
             hourlyRate = PEAK_ADJUSTMENT_TYPE === 'percent'
@@ -1391,7 +1408,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // slot key ("YYYY-MM-DD HH:MM"), instead of assuming every slot
     // costs the same flat amount.
     function selectedSlotsTotal() {
-        return selectedSlots.reduce((sum, key) => sum + slotPrice(Number(keyTime(key).slice(0, 2))), 0);
+        return selectedSlots.reduce((sum, key) => sum + slotPrice(Number(keyTime(key).slice(0, 2)), keyDate(key)), 0);
     }
 
     // Slot rows show the full "3:00 - 4:00 AM" window rather than just the
@@ -1481,10 +1498,12 @@ document.addEventListener('DOMContentLoaded', () => {
             const m = totalMin % 60;
             const timeStr = `${pad(h)}:${pad(m)}`;
 
-            const booked = isSlotBookedAt(totalMin);
+            const openPlay = openPlayAt(totalMin);
+            const booked = isSlotBookedAt(totalMin) && !openPlay;
+            const full = openPlay && Number(openPlay.joined) >= Number(openPlay.max_players);
             const maintenanceBlocked = isSlotMaintenanceBlockedAt(totalMin);
             const past = isSlotPastAt(selectedDate, timeStr);
-            const unavailable = booked || maintenanceBlocked || past;
+            const unavailable = booked || full || maintenanceBlocked || past;
 
             // Single source of truth for *why* a slot is unavailable — used
             // for both the native browser tooltip (title) and the custom
@@ -1521,7 +1540,11 @@ document.addEventListener('DOMContentLoaded', () => {
             check.setAttribute('aria-hidden', 'true');
 
             const priceLabel = document.createElement('span');
-            if (booked) {
+            if (full) {
+                priceLabel.textContent = 'Full';
+            } else if (openPlay) {
+                priceLabel.textContent = `Open play · ${Math.max(0, Number(openPlay.max_players) - Number(openPlay.joined))} of ${openPlay.max_players} spots left · ₱${Number(openPlay.price_per_player).toLocaleString()}`;
+            } else if (booked) {
                 priceLabel.textContent = 'Booked';
             } else if (maintenanceBlocked) {
                 priceLabel.textContent = 'Unavailable';
@@ -2035,6 +2058,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 const refreshedAvailability = await fetchAvailability(selectedDate);
                 currentCloseMinutes = refreshedAvailability.close_minutes ?? CLOSE_HOUR * 60;
                 bookedRanges = refreshedAvailability.booked;
+                openPlayRanges = refreshedAvailability.open_play || [];
+                openPlayEventsByDate[selectedDate] = openPlayRanges;
                 maintenanceRanges = refreshedAvailability.maintenanceBlocked;
                 renderTimeSlots();
                 openTimePickerModal();

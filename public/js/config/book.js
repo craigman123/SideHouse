@@ -193,6 +193,8 @@ document.addEventListener('DOMContentLoaded', () => {
     let activeSessionDate = null;
     const selectedPayment = 'qrph';
     let bookedRanges = [];
+    let openPlayRanges = [];
+    const openPlayEventsByDate = {};
     let equipmentCatalog = [];
     let equipmentSelection = {};
 
@@ -525,7 +527,9 @@ document.addEventListener('DOMContentLoaded', () => {
             new Promise((resolve) => setTimeout(resolve, MIN_SKELETON_MS)),
         ]);
 
-        bookedRanges = ranges;
+        bookedRanges = ranges.booked || [];
+        openPlayRanges = ranges.open_play || [];
+        openPlayEventsByDate[dateStr] = openPlayRanges;
         renderTimeSlots();
         updateTimePickerFee();
     }
@@ -546,16 +550,16 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function fetchAvailability(dateStr) {
-        if (!availabilityUrl || !selectedCourt) return [];
+        if (!availabilityUrl || !selectedCourt) return { booked: [], open_play: [] };
         try {
             const url = `${availabilityUrl}?court_id=${selectedCourt.id}&date=${dateStr}`;
             const res = await fetch(url, { headers: { Accept: 'application/json' } });
             if (!res.ok) throw new Error('Failed to load availability');
             const data = await res.json();
-            return (data.booked || []).map((b) => ({ start: b.start, end: b.end }));
+            return { booked: data.booked || [], open_play: data.open_play || [] };
         } catch (err) {
             console.error(err);
-            return [];
+            return { booked: [], open_play: [] };
         }
     }
 
@@ -581,13 +585,21 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    function openPlayAt(totalMin, dateStr = selectedDate) {
+        const end = totalMin + STEP_MINUTES;
+        return (openPlayEventsByDate[dateStr] || openPlayRanges).find((event) => totalMin >= timeToMinutes(event.start)
+            && end <= (timeToMinutes(event.end) || 1440));
+    }
+
     // `hour` (0-23) is the slot's real clock hour — omit it to get the
     // flat, un-adjusted rate (used where no specific hour applies).
     // Mirrors BusinessSetting::applyPeakAdjustment(): the surcharge is
     // applied to the hourly rate first, then scaled down to the actual
     // slot length.
-    function slotPrice(hour) {
+    function slotPrice(hour, dateStr = selectedDate) {
         if (!selectedCourt) return 0;
+        const openPlay = openPlayAt(Number(hour || 0) * 60, dateStr);
+        if (openPlay) return Number(openPlay.price_per_player);
 
         let hourlyRate = Number(selectedCourt.price);
         if (hour !== undefined && isPeakHour(hour)) {
@@ -603,7 +615,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // slot key ("YYYY-MM-DD HH:MM"), instead of assuming every slot
     // costs the same flat amount.
     function selectedSlotsTotal() {
-        return selectedSlots.reduce((sum, key) => sum + slotPrice(Number(keyTime(key).slice(0, 2))), 0);
+        return selectedSlots.reduce((sum, key) => sum + slotPrice(Number(keyTime(key).slice(0, 2)), keyDate(key)), 0);
     }
 
     // 12-hour "4:00 PM" style label for a bare hour (0-23), used only by
@@ -663,9 +675,11 @@ document.addEventListener('DOMContentLoaded', () => {
             const m = totalMin % 60;
             const timeStr = `${pad(h)}:${pad(m)}`;
 
-            const booked = isSlotBookedAt(totalMin);
+            const openPlay = openPlayAt(totalMin);
+            const booked = isSlotBookedAt(totalMin) && !openPlay;
+            const full = openPlay && Number(openPlay.joined) >= Number(openPlay.max_players);
             const past = isSlotPastAt(selectedDate, timeStr);
-            const unavailable = booked || past;
+            const unavailable = booked || full || past;
             const isSelected = selectedSlots.includes(slotKey(selectedDate, timeStr));
 
             // The row itself is just a container — the time label on the
@@ -688,7 +702,11 @@ document.addEventListener('DOMContentLoaded', () => {
             check.setAttribute('aria-hidden', 'true');
 
             const priceLabel = document.createElement('span');
-            if (booked) {
+            if (full) {
+                priceLabel.textContent = 'Full';
+            } else if (openPlay) {
+                priceLabel.textContent = `Open play · ${Math.max(0, Number(openPlay.max_players) - Number(openPlay.joined))} of ${openPlay.max_players} spots left · ₱${Number(openPlay.price_per_player).toLocaleString()}`;
+            } else if (booked) {
                 priceLabel.textContent = 'Booked';
             } else if (past) {
                 priceLabel.textContent = 'Past';
@@ -1136,7 +1154,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 activeSessionDate = null;
 
                 closePaymentModal();
-                bookedRanges = await fetchAvailability(selectedDate);
+                const availability = await fetchAvailability(selectedDate);
+                bookedRanges = availability.booked || [];
+                openPlayRanges = availability.open_play || [];
+                openPlayEventsByDate[selectedDate] = openPlayRanges;
                 renderTimeSlots();
                 updateTimePickerFee();
                 openTimePickerModal();

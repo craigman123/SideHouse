@@ -78,11 +78,15 @@
                 <button type="button" class="dialog-close" data-close-dialog aria-label="Close dialog">×</button>
             </header>
             <div class="access-dialog-body" id="accessDetailsStep">
-                <section id="candidatePicker">
-                    <label class="field-label" for="candidateSearch">Find a registered customer</label>
-                    <input id="candidateSearch" type="search" autocomplete="off" placeholder="Type at least 3 characters" role="combobox" aria-autocomplete="list" aria-controls="candidateResults" aria-expanded="false">
-                    <div class="candidate-results" id="candidateResults" role="listbox" aria-label="Registered customer results" hidden></div>
-                    <div class="selected-candidate" id="selectedCandidate" hidden></div>
+                <section id="candidatePicker" class="candidate-picker">
+                    <label class="field-label" for="candidateSearch">Customer email</label>
+                    <div class="candidate-input-wrap">
+                        <input id="candidateSearch" type="search" autocomplete="off" placeholder="Type at least 3 characters of the email" role="combobox" aria-autocomplete="list" aria-haspopup="listbox" aria-controls="candidateResults" aria-describedby="candidateSearchStatus" aria-expanded="false">
+                        <input id="selectedCandidateUserId" name="user_id" type="hidden" value="">
+                        <div class="candidate-results" id="candidateResults" role="listbox" aria-label="Registered customer emails" hidden></div>
+                    </div>
+                    <p class="candidate-search-status" id="candidateSearchStatus" role="status" aria-live="polite"></p>
+                    <div class="selected-candidate" id="selectedCandidate" role="status" aria-live="polite" hidden></div>
                 </section>
 
                 <label class="field-label" for="accessRole">Role</label>

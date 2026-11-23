@@ -53,15 +53,23 @@ class WalkInBookingController extends Controller
 
             $settings = BusinessSetting::current();
             $slotPrices = [];
+            $usesOpenPlayPrice = false;
             for ($cursor = $start; $cursor->lessThan($end);) {
                 $slotEnd = $cursor->addMinutes($step);
                 if ($slotEnd->greaterThan($end)) $slotEnd = $end;
                 $slotMinutes = $cursor->diffInMinutes($slotEnd);
                 $rate = $court->hourly_rate;
-                $slotPrices[] = $rate === null ? null : round(
+                $event = app(\App\Services\OpenPlayAvailability::class)->eventForSlot(
+                    (int) $court->id, $cursor->toDateString(), $cursor->format('H:i:s'), $slotEnd->format('H:i:s')
+                );
+                if ($event && app(\App\Services\OpenPlayAvailability::class)->joined($event, (int) $court->id) >= (int) $event->max_players) {
+                    throw ValidationException::withMessages(['start_time' => 'Open play is full for the selected time.']);
+                }
+                $usesOpenPlayPrice = $usesOpenPlayPrice || $event !== null;
+                $slotPrices[] = $event ? (float) $event->price_per_player : ($rate === null ? null : round(
                     $settings->applyPeakAdjustment((float) $rate, $cursor->hour) * ($slotMinutes / 60),
                     2
-                );
+                ));
                 $cursor = $slotEnd;
             }
             $priced = ! in_array(null, $slotPrices, true);
@@ -70,7 +78,7 @@ class WalkInBookingController extends Controller
             }
 
             $total = $priced ? round(array_sum($slotPrices), 2) : (float) $validated['amount'];
-            if (array_key_exists('amount', $validated) && $validated['amount'] !== null) $total = (float) $validated['amount'];
+            if (! $usesOpenPlayPrice && array_key_exists('amount', $validated) && $validated['amount'] !== null) $total = (float) $validated['amount'];
 
             $booking = Booking::create([
                 'user_id' => null,

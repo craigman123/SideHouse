@@ -119,12 +119,17 @@
     let selectedBooking = null;
     let savingBlock = false;
     const walkInFields = [...blockForm.querySelectorAll('.walk-in-field')];
+    const openPlayFields = [...blockForm.querySelectorAll('.open-play-field')];
     const blockTitleLabel = document.getElementById('courtBlockTitle').closest('label');
     const blockNotesLabel = blockForm.querySelector('[data-block-field]');
     const walkInType = document.getElementById('courtBlockType');
     const updateTypeFields = () => {
         const walkIn = walkInType.value === 'walk_in';
+        const openPlay = walkInType.value === 'open_play';
         walkInFields.forEach((field) => { field.hidden = !walkIn; });
+        openPlayFields.forEach((field) => { field.hidden = !openPlay; });
+        blockForm.elements.max_players.required = openPlay;
+        blockForm.elements.price_per_player.required = openPlay;
         blockTitleLabel.hidden = walkIn;
         blockNotesLabel.hidden = walkIn;
         document.getElementById('courtWalkInNotes').closest('label').hidden = !walkIn;
@@ -686,6 +691,11 @@
         form.elements.block_date.value = selectedBlock.block_date;
         form.elements.start_time.value = selectedBlock.start_time;
         form.elements.end_time.value = selectedBlock.end_time;
+        form.elements.max_players.value = selectedBlock.max_players ?? '';
+        form.elements.price_per_player.value = selectedBlock.price_per_player ?? '';
+        form.querySelectorAll('.open-play-edit-field').forEach((field) => { field.hidden = selectedBlock.type !== 'open_play'; });
+        form.elements.max_players.required = selectedBlock.type === 'open_play';
+        form.elements.price_per_player.required = selectedBlock.type === 'open_play';
         const past = itemIsPast('block', selectedBlock);
         form.elements.block_date.disabled = past;
         form.elements.start_time.disabled = past;
@@ -801,6 +811,8 @@
         } else {
             payload.court_id = payload.court_id === 'all' ? null : Number(payload.court_id);
             payload.notes = payload.notes.trim() || null;
+            payload.max_players = payload.type === 'open_play' ? Number(payload.max_players) : null;
+            payload.price_per_player = payload.type === 'open_play' ? Number(payload.price_per_player) : null;
         }
         const token = csrfToken();
         if (!token) {
@@ -1161,6 +1173,12 @@
 
     const blockEditForm = document.getElementById('courtBlockEditForm');
     const blockEditMessage = document.getElementById('courtBlockEditMessage');
+    blockEditForm.elements.type.addEventListener('change', () => {
+        const open = blockEditForm.elements.type.value === 'open_play';
+        blockEditForm.querySelectorAll('.open-play-edit-field').forEach((field) => { field.hidden = !open; });
+        blockEditForm.elements.max_players.required = open;
+        blockEditForm.elements.price_per_player.required = open;
+    });
     blockEditForm.addEventListener('submit', async (event) => {
         event.preventDefault();
         if (!hasPermission('calendar_events.manage')) return;
@@ -1178,6 +1196,8 @@
         const originalIndex = blocks.findIndex((item) => String(item.id) === String(selectedBlock.id));
         payload.court_id = payload.court_id === 'all' ? null : Number(payload.court_id);
         payload.notes = payload.notes.trim() || null;
+        payload.max_players = payload.type === 'open_play' ? Number(payload.max_players) : null;
+        payload.price_per_player = payload.type === 'open_play' ? Number(payload.price_per_player) : null;
         if (originalIndex >= 0) {
             const optimistic = {
                 ...originalBlock, ...payload,
@@ -2388,7 +2408,7 @@
                     event.dataset.calendarId = String(block.id);
                     event.style.cssText = `top:${topPx}px;left:${mode === 'week' ? `calc(${laneLeft(lane)} + 2px)` : laneLeft(lane)};width:${mode === 'week' ? `calc(${laneWidth} - 4px)` : laneWidth};height:${heightPx}px;`;
                     const sessionCount = block.participant_count ?? block.attendee_count ?? block.players_count;
-                    const sessionCapacity = block.capacity ?? block.max_participants ?? block.max_capacity;
+                    const sessionCapacity = block.max_players ?? block.capacity ?? block.max_participants ?? block.max_capacity;
                     const type = block.type === 'closed' ? 'Closed' : block.type === 'maintenance' ? 'Maintenance' : 'Open play';
                     const title = block.title || type;
                     const time = formatTimeRange(block.start_time, block.end_time);
@@ -2400,7 +2420,7 @@
                     if (block.type === 'open_play') {
                         statusLine = cancelled ? 'Cancelled' : fullSession ? 'Full'
                             : sessionCount != null && sessionCapacity != null
-                                ? `${Number(sessionCount)}/${Number(sessionCapacity)} joined`
+                                ? `${Math.max(0, Number(sessionCapacity) - Number(sessionCount))} of ${Number(sessionCapacity)} spots left`
                                 : block.joined_text || '';
                         const perPlayer = block.price_per_player ?? block.price ?? block.amount_per_player;
                         if (perPlayer != null && Number.isFinite(Number(perPlayer))) price = `₱${Number(perPlayer).toLocaleString('en-PH')}/player`;

@@ -47,10 +47,12 @@ class AdminUserAccessTest extends TestCase
     {
         foreach (['owner', 'admin'] as $role) {
             $this->signedIn($this->makeUser($role))->getJson('/admin/users')->assertOk();
+            $this->getJson('/admin/users/candidates?q=customer')->assertOk();
         }
 
         foreach (['staff', 'user'] as $role) {
             $this->signedIn($this->makeUser($role))->getJson('/admin/users')->assertForbidden();
+            $this->getJson('/admin/users/candidates?q=customer')->assertForbidden();
         }
     }
 
@@ -202,12 +204,22 @@ class AdminUserAccessTest extends TestCase
     {
         $admin = $this->makeUser('admin');
         foreach (range(1, 10) as $i) {
-            $this->makeUser('user', null, ['name' => "Searchable Customer {$i}"]);
+            $this->makeUser('user', null, [
+                'name' => "Searchable Customer {$i}",
+                'email' => "searchable-customer-{$i}@example.test",
+            ]);
         }
-        $this->makeUser('staff', null, ['name' => 'Searchable Staff']);
+        $owner = $this->makeUser('owner', null, ['email' => 'searchable-owner@example.test']);
+        $otherAdmin = $this->makeUser('admin', null, ['email' => 'searchable-admin@example.test']);
+        $staff = $this->makeUser('staff', null, ['email' => 'searchable-staff@example.test']);
 
         $this->signedIn($admin)->getJson('/admin/users/candidates?q=ab')->assertOk()->assertJsonCount(0, 'candidates');
-        $this->getJson('/admin/users/candidates?q=searchable')->assertOk()->assertJsonCount(8, 'candidates');
+        $matches = $this->getJson('/admin/users/candidates?q=searchable')
+            ->assertOk()->assertJsonCount(8, 'candidates')->json('candidates');
+        self::assertSame(['id', 'email', 'name'], array_keys($matches[0]));
+        self::assertNotContains($owner->user_id, array_column($matches, 'id'));
+        self::assertNotContains($otherAdmin->user_id, array_column($matches, 'id'));
+        self::assertNotContains($staff->user_id, array_column($matches, 'id'));
 
         for ($request = 0; $request < 19; $request++) {
             $response = $this->getJson('/admin/users/candidates?q=searchable');
@@ -215,7 +227,7 @@ class AdminUserAccessTest extends TestCase
         $response->assertTooManyRequests();
     }
 
-    public function test_other_people_emails_are_masked_in_every_user_access_json_response(): void
+    public function test_candidate_lookup_returns_full_email_and_only_safe_fields(): void
     {
         $admin = $this->makeUser('admin', null, ['email' => 'access-admin@example.test']);
         $target = $this->makeUser('user', null, [
@@ -228,9 +240,14 @@ class AdminUserAccessTest extends TestCase
         $page = $this->get('/admin/user-access')->assertOk();
         self::assertStringNotContainsString($target->email, $page->getContent());
 
-        $candidate = $this->getJson('/admin/users/candidates?q=Private+Person')->assertOk();
-        self::assertStringNotContainsString($target->email, $candidate->getContent());
-        self::assertSame('pri******@example.test', $candidate->json('candidates.0.email'));
+        $candidate = $this->getJson('/admin/users/candidates?q=private.person')->assertOk();
+        self::assertSame([[
+            'id' => $target->user_id,
+            'email' => $target->email,
+            'name' => 'Private Person',
+        ]], $candidate->json('candidates'));
+        self::assertSame(['id', 'email', 'name'], array_keys($candidate->json('candidates.0')));
+        self::assertStringNotContainsString($target->email, $list->getContent());
 
         $promote = $this->postJson('/admin/users', [
             'user_id' => $target->user_id, 'role' => 'staff', 'permissions' => ['bookings.view'], 'password' => 'password',
@@ -249,7 +266,7 @@ class AdminUserAccessTest extends TestCase
         }
     }
 
-    public function test_email_search_requires_an_exact_address_and_is_case_insensitive(): void
+    public function test_candidate_search_matches_email_fragments_case_insensitively_and_ignores_name(): void
     {
         $admin = $this->makeUser('admin', null, ['email' => 'search-admin@example.test']);
         $target = $this->makeUser('staff', ['bookings.view'], [
@@ -268,10 +285,26 @@ class AdminUserAccessTest extends TestCase
         self::assertStringNotContainsString($target->email, $exact->getContent());
 
         $partialCandidate = $this->getJson('/admin/users/candidates?q=candidate.address')->assertOk();
-        self::assertSame([], $partialCandidate->json('candidates'));
+        self::assertSame($candidateTarget->user_id, $partialCandidate->json('candidates.0.id'));
+        self::assertSame($candidateTarget->email, $partialCandidate->json('candidates.0.email'));
+        $nameOnlyCandidate = $this->getJson('/admin/users/candidates?q=Customer+Candidate')->assertOk();
+        self::assertSame([], $nameOnlyCandidate->json('candidates'));
         $candidate = $this->getJson('/admin/users/candidates?q=CANDIDATE.ADDRESS@EXAMPLE.TEST')->assertOk();
         self::assertSame($candidateTarget->user_id, $candidate->json('candidates.0.id'));
-        self::assertStringNotContainsString($candidateTarget->email, $candidate->getContent());
+        self::assertSame($candidateTarget->email, $candidate->json('candidates.0.email'));
+    }
+
+    public function test_customer_email_lookup_treats_like_metacharacters_as_literal_text(): void
+    {
+        $owner = $this->makeUser('owner');
+        $literal = $this->makeUser('user', null, ['email' => 'literal%_\\segment@example.test']);
+        $nearMatch = $this->makeUser('user', null, ['email' => 'literalXY\\segment@example.test']);
+        $this->signedIn($owner);
+
+        $term = 'literal%_\\segment';
+        $response = $this->getJson('/admin/users/candidates?q='.rawurlencode($term))->assertOk();
+        self::assertSame([$literal->user_id], array_column($response->json('candidates'), 'id'));
+        self::assertNotContains($nearMatch->user_id, array_column($response->json('candidates'), 'id'));
     }
 
     public function test_access_version_change_logs_out_an_existing_session(): void

@@ -154,7 +154,7 @@ class StaffAreaTest extends TestCase
 
         $withActions = $this->signInStaff($this->staff(['bookings.view', 'bookings.create', 'calendar_events.manage']))
             ->get('/staff/dashboard')->assertOk();
-        $withActions->assertSee('Add walk-in')->assertSee('Add event');
+        $withActions->assertDontSee('Add walk-in')->assertSee('Bookings')->assertSee('Add event');
 
         $withoutLogs = $this->signInStaff($this->staff(['bookings.view', 'customers.view']))->get('/staff/dashboard')->assertOk();
         $withoutLogs->assertDontSee('Activity Logs');

@@ -310,6 +310,7 @@ class GuestBookingController extends Controller
 
         return response()->json([
             'booked'              => $booked,
+            'open_play'           => app(\App\Services\OpenPlayAvailability::class)->forDate($courtId, $date),
             'closed'              => BookingHours::isClosed($courtId, $date),
             'closed_reason'       => BookingHours::closedReason($courtId, $date),
             'maintenance_blocked' => $maintenanceRanges,
@@ -531,10 +532,14 @@ class GuestBookingController extends Controller
         // BusinessSetting::applyPeakAdjustment()'s docblock) rather than
         // once for the whole booking, since a selection spanning the
         // peak boundary has mixed rates across its own hours.
-        $slotAmountFor = fn (Carbon $start) => round(
-            $settings->applyPeakAdjustment($court->hourly_rate, $start->hour) * ($stepMinutes / 60),
-            2
-        );
+        $slotAmountFor = function (Carbon $start) use ($court, $settings, $stepMinutes) {
+            $event = app(\App\Services\OpenPlayAvailability::class)->eventForSlot(
+                (int) $court->id, $start->toDateString(), $start->format('H:i:s'), $start->copy()->addMinutes($stepMinutes)->format('H:i:s')
+            );
+            return $event ? (float) $event->price_per_player : round(
+                $settings->applyPeakAdjustment($court->hourly_rate, $start->hour) * ($stepMinutes / 60), 2
+            );
+        };
 
         $totalSlotCount = collect($groups)->sum(fn ($windows) => count($windows));
         $courtAmount    = round(
@@ -657,10 +662,14 @@ class GuestBookingController extends Controller
         // Same per-hour peak calculation as paymentPage() — kept as a
         // closure so store() and paymentPage() can never drift apart on
         // what a given slot actually costs.
-        $slotAmountFor = fn (Carbon $start) => round(
-            $settings->applyPeakAdjustment($court->hourly_rate, $start->hour) * ($stepMinutes / 60),
-            2
-        );
+        $slotAmountFor = function (Carbon $start) use ($court, $settings, $stepMinutes) {
+            $event = app(\App\Services\OpenPlayAvailability::class)->eventForSlot(
+                (int) $court->id, $start->toDateString(), $start->format('H:i:s'), $start->copy()->addMinutes($stepMinutes)->format('H:i:s')
+            );
+            return $event ? (float) $event->price_per_player : round(
+                $settings->applyPeakAdjustment($court->hourly_rate, $start->hour) * ($stepMinutes / 60), 2
+            );
+        };
 
         $expiresAt = now()->addMinutes(PaymentWindows::BOOKING_EXPIRY_MINUTES);
 
@@ -695,7 +704,14 @@ class GuestBookingController extends Controller
                             ->where('end_time', '>', $slotStart->format('H:i:s'))
                             ->exists();
 
-                        if ($slotConflict || $legacyConflict) {
+                        $openPlay = app(\App\Services\OpenPlayAvailability::class)->eventForSlot(
+                            (int) $court->id, $dateStr, $slotStart->format('H:i:s'), $slotEnd->format('H:i:s')
+                        );
+                        if ($openPlay) {
+                            if (app(\App\Services\OpenPlayAvailability::class)->joined($openPlay, (int) $court->id) >= (int) $openPlay->max_players) {
+                                throw new \RuntimeException('Open play is full for one of the selected slots. Please choose another time.');
+                            }
+                        } elseif ($slotConflict || $legacyConflict) {
                             throw new \RuntimeException('That slot was just taken. Please pick another time.');
                         }
                     }

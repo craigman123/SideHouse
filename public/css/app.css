@@ -134,8 +134,8 @@ body {
     color: #8b949e;
 }
 
-.content {
-    padding: 24px;
+html:not(.admin-layout-shell) body .content {
+    padding: var(--s5);
 }
 
 /* Auth pages */
@@ -683,8 +683,8 @@ body {
         gap: 6px;
     }
 
-    .content {
-        padding: 16px;
+    html:not(.admin-layout-shell) body .content {
+        padding: var(--s4);
     }
 }
 

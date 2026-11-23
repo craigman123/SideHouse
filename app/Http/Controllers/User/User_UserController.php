@@ -258,7 +258,10 @@ class User_UserController extends Controller
             ];
         }
 
-        return response()->json(['booked' => $booked]);
+        return response()->json([
+            'booked' => $booked,
+            'open_play' => app(\App\Services\OpenPlayAvailability::class)->forDate((int) $validated['court_id'], $validated['date']),
+        ]);
     }
 
     /**
@@ -417,12 +420,15 @@ class User_UserController extends Controller
         // own hours), then the membership discount is applied on top of
         // that already-adjusted rate.
         $settings = BusinessSetting::current();
-        $slotAmountFor = fn (Carbon $start) => round(
-            $settings->applyPeakAdjustment($court->hourly_rate, $start->hour)
-                * ($stepMinutes / 60)
-                * (1 - $discountPercent / 100),
-            2
-        );
+        $slotAmountFor = function (Carbon $start) use ($court, $settings, $stepMinutes, $discountPercent) {
+            $event = app(\App\Services\OpenPlayAvailability::class)->eventForSlot(
+                (int) $court->id, $start->toDateString(), $start->format('H:i:s'), $start->copy()->addMinutes($stepMinutes)->format('H:i:s')
+            );
+            return $event ? (float) $event->price_per_player : round(
+                $settings->applyPeakAdjustment($court->hourly_rate, $start->hour)
+                    * ($stepMinutes / 60) * (1 - $discountPercent / 100), 2
+            );
+        };
         $totalSlotCount = count($slotWindows);
 
         $expiresAt = now()->addMinutes(PaymentWindows::BOOKING_EXPIRY_MINUTES);
@@ -456,7 +462,14 @@ class User_UserController extends Controller
                             ->where('end_time', '>', $slotStart->format('H:i:s'))
                             ->exists();
 
-                        if ($slotConflict || $legacyConflict) {
+                        $openPlay = app(\App\Services\OpenPlayAvailability::class)->eventForSlot(
+                            (int) $court->id, $dateStr, $slotStart->format('H:i:s'), $slotEnd->format('H:i:s')
+                        );
+                        if ($openPlay) {
+                            if (app(\App\Services\OpenPlayAvailability::class)->joined($openPlay, (int) $court->id) >= (int) $openPlay->max_players) {
+                                throw new \RuntimeException('Open play is full for one of the selected slots. Please choose another time.');
+                            }
+                        } elseif ($slotConflict || $legacyConflict) {
                             throw new \RuntimeException('That slot was just taken. Please pick another time.');
                         }
                     }
