@@ -239,21 +239,20 @@
     {{-- Modal 4: contact number + payment method → confirm --}}
     <div class="modal-overlay" id="courtPaymentModal">
         <div class="modal-box modal-box-lg modal-box-scrollable" id="paymentPage">
-            <div class="modal-header">
+            <div class="modal-header payment-header">
                 <h3>Almost Done</h3>
                 <button type="button" class="modal-close" id="courtPaymentModalClose" aria-label="Close">&times;</button>
-            </div>
-
-            <div class="booking-flow-progress booking-flow-progress-compact user-booking-progress" aria-label="Booking progress">
-                <span class="booking-flow-step" data-booking-step="1"><b>1</b>Date &amp; time</span>
-                <span class="booking-flow-step" data-booking-step="2"><b>2</b>Equipment</span>
-                <span class="booking-flow-step active" data-booking-step="3"><b>3</b>Details</span>
-                <span class="booking-flow-step" data-booking-step="4"><b>4</b>Payment</span>
+                <div class="booking-flow-progress booking-flow-progress-compact user-booking-progress" aria-label="Booking progress">
+                    <span class="booking-flow-step" data-booking-step="1"><b>1</b><span class="booking-flow-label">Date &amp; time</span></span>
+                    <span class="booking-flow-step" data-booking-step="2"><b>2</b><span class="booking-flow-label">Equipment</span></span>
+                    <span class="booking-flow-step active" data-booking-step="3"><b>3</b><span class="booking-flow-label">Details</span></span>
+                    <span class="booking-flow-step" data-booking-step="4"><b>4</b><span class="booking-flow-label">Payment</span></span>
+                </div>
             </div>
 
             <div class="modal-scroll-body">
                 <div class="booking-section">
-                    <p class="booking-section-label">Contact Number</p>
+                    <p class="booking-section-label">Contact Details</p>
                     <div class="guest-info-grid">
                         <div class="guest-info-item">
                             <label for="contactNumber">Contact Number</label>
@@ -290,7 +289,7 @@
             </div>
 
             <div class="modal-actions">
-                <button type="button" class="btn btn-secondary" id="backToEquipment2">Back Previous</button>
+                <button type="button" class="btn btn-secondary" id="backToEquipment2">Back</button>
                 <button type="button" class="btn btn-primary" id="confirmBooking">Confirm Booking</button>
             </div>
         </div>

@@ -809,6 +809,7 @@
     align-items: center;
     gap: var(--s2);
     flex: 0 0 auto;
+    justify-content: flex-end;
 }
 
 .user-book-court-page .qty-btn {

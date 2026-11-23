@@ -2,7 +2,7 @@
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: var(--s2);
-    margin: 0;
+    margin: 0 0 var(--s3) 0;
 }
 
 .user-book-court-page .booking-flow-step {
@@ -154,7 +154,7 @@
 .user-book-court-page .modal-actions .btn-secondary,
 .user-book-court-page .modal-close {
     min-height: 44px;
-    border: 1px solid var(--text-muted);
+    border: transparent;
     background: transparent;
     color: var(--text);
     transition: border-color 160ms ease, color 160ms ease, background-color 160ms ease;
@@ -1768,5 +1768,164 @@ html.user-layout-shell.user-book-court-page #timePickerModal .modal-actions .btn
 
     #equipmentModal .modal-box.modal-box-lg.modal-box-scrollable .equipment-qty-stepper {
         margin-left: auto;
+    }
+}
+
+/* USER PAYMENT MODAL - shell parity */
+
+#courtPaymentModal .modal-box.modal-box-lg.modal-box-scrollable {
+    border: 1px solid var(--border);
+    border-radius: var(--r-lg);
+    background-color: var(--surface);
+    background-image: none;
+    color: var(--text);
+    font-family: var(--font-family);
+}
+
+#courtPaymentModal .modal-box.modal-box-lg.modal-box-scrollable .payment-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--s3);
+    margin-bottom: var(--s3);
+    padding-bottom: var(--s3);
+    border-bottom: 1px solid var(--border);
+}
+
+#courtPaymentModal .modal-box.modal-box-lg.modal-box-scrollable .payment-header .modal-close {
+    border: 1px solid transparent;
+    border-radius: var(--r-pill);
+    background: transparent;
+    color: var(--text);
+}
+
+#courtPaymentModal .modal-box.modal-box-lg.modal-box-scrollable .payment-header .modal-close:hover:not(:disabled) {
+    border-color: var(--danger);
+    background: color-mix(in srgb, var(--danger) 12%, var(--surface));
+    color: var(--danger);
+}
+
+#courtPaymentModal .modal-box.modal-box-lg.modal-box-scrollable .payment-header .modal-close:focus-visible {
+    outline: 2px solid var(--danger);
+    outline-offset: 2px;
+}
+
+#courtPaymentModal .modal-box.modal-box-lg.modal-box-scrollable .payment-header .booking-flow-progress {
+    display: grid;
+    flex: 0 0 100%;
+    width: 100%;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: var(--s1);
+    margin: 0;
+}
+
+#courtPaymentModal .modal-box.modal-box-lg.modal-box-scrollable .booking-flow-step {
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 0;
+    gap: var(--s1);
+    padding: var(--s1);
+    border: 1px solid var(--border);
+    border-radius: var(--r-pill);
+    background: var(--surface-2);
+    color: var(--text-muted);
+    font-family: var(--font-family);
+    font-size: var(--font-size-small);
+    text-align: center;
+    white-space: nowrap;
+}
+
+#courtPaymentModal .modal-box.modal-box-lg.modal-box-scrollable .booking-flow-step.active {
+    border-color: var(--brand);
+    background: color-mix(in srgb, var(--brand) 18%, var(--surface));
+    color: var(--text);
+}
+
+#courtPaymentModal .modal-box.modal-box-lg.modal-box-scrollable .booking-flow-step.complete {
+    border-color: var(--brand);
+    color: var(--text);
+}
+
+#courtPaymentModal .modal-box.modal-box-lg.modal-box-scrollable .booking-flow-step b {
+    box-sizing: border-box;
+    display: inline-grid;
+    flex: 0 0 1.25em;
+    width: 1.25em;
+    aspect-ratio: 1;
+    place-items: center;
+    border: 1px solid var(--border);
+    border-radius: var(--r-pill);
+    background: var(--surface);
+    color: var(--brand-hover);
+    font-size: var(--font-size-small);
+}
+
+#courtPaymentModal .modal-box.modal-box-lg.modal-box-scrollable .booking-flow-step.active b,
+#courtPaymentModal .modal-box.modal-box-lg.modal-box-scrollable .booking-flow-step.complete b {
+    border-color: var(--brand);
+}
+
+#courtPaymentModal .modal-box.modal-box-lg.modal-box-scrollable .modal-actions {
+    box-sizing: border-box;
+    display: flex;
+    flex: 0 0 auto;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--s3);
+    position: static;
+    margin: 0;
+    padding: var(--s3) 0;
+    border-top: 1px solid var(--border);
+    background: var(--surface);
+}
+
+#courtPaymentModal .modal-box.modal-box-lg.modal-box-scrollable .modal-actions .btn {
+    box-sizing: border-box;
+    min-width: 0;
+    min-height: 44px;
+    border-radius: var(--r-pill);
+    font-family: var(--font-family);
+    font-weight: var(--font-weight-button);
+    line-height: 1.25;
+    white-space: nowrap;
+}
+
+#courtPaymentModal .modal-box.modal-box-lg.modal-box-scrollable .modal-actions .btn-secondary {
+    flex: 0 0 auto;
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--text);
+}
+
+#courtPaymentModal .modal-box.modal-box-lg.modal-box-scrollable .modal-actions .btn-secondary:hover:not(:disabled) {
+    border-color: var(--danger);
+    background: color-mix(in srgb, var(--danger) 12%, var(--surface));
+    color: var(--danger);
+}
+
+#courtPaymentModal .modal-box.modal-box-lg.modal-box-scrollable .modal-actions .btn-primary {
+    flex: 1 1 auto;
+    border-color: var(--brand);
+    background: var(--brand);
+}
+
+#courtPaymentModal .modal-box.modal-box-lg.modal-box-scrollable .modal-actions .btn-primary:hover:not(:disabled) {
+    border-color: var(--brand-hover);
+    background: var(--brand-hover);
+}
+
+#courtPaymentModal .modal-box.modal-box-lg.modal-box-scrollable .modal-actions .btn:focus-visible {
+    outline: 2px solid var(--brand-hover);
+    outline-offset: 2px;
+}
+
+@media (max-width: 560px) {
+    #courtPaymentModal .modal-box.modal-box-lg.modal-box-scrollable .booking-flow-label {
+        display: none;
     }
 }
