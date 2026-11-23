@@ -15,7 +15,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const MIN_DURATION = parseFloat(grid.dataset.minDuration);
     const MAX_DURATION = parseFloat(grid.dataset.maxDuration);
     const STEP_MINUTES = parseInt(grid.dataset.stepMinutes, 10);
-    const OVERNIGHT = CLOSE_HOUR <= OPEN_HOUR;
+    const OPEN_HOUR = parseInt(grid.dataset.openHour, 10);
+    const RAW_CLOSE_HOUR = parseInt(grid.dataset.closeHour, 10);
+    // open 0 / close 0 means "open all day": treat closing as 24:00, not as overnight
+    const CLOSE_HOUR = (OPEN_HOUR === 0 && RAW_CLOSE_HOUR === 0) ? 24 : RAW_CLOSE_HOUR;
 
     // Peak/night pricing (admin Configuration page) — display-only
     // preview of the surcharge storeBooking() actually applies
@@ -909,7 +912,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // shows the 1-7 AM tail of the session Aug 19 opened at 4 PM).
         // Only real if the business was actually open the day before.
         const tailSessionDate = OVERNIGHT ? addDaysToDateStr(selectedDate, -1) : null;
-        const hasTail = OVERNIGHT && !isDateClosed(tailSessionDate);
+        const hasTail = OVERNIGHT && CLOSE_HOUR * 60 > 0 && !isDateClosed(tailSessionDate);
 
         if (hasTail) {
             renderTimeSlotBlock(0, CLOSE_HOUR * 60, tailSessionDate);
