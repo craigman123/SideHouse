@@ -138,7 +138,8 @@ class BookingHours
         $closure = SpecificDateTimeClosure::whereDate('date', $date)->first();
         if ($closure) {
             $parsed = Carbon::parse($closure->time_closing);
-            return $parsed->hour * 60 + $parsed->minute;
+            $minutes = $parsed->hour * 60 + $parsed->minute;
+            return $minutes === 0 ? 1440 : $minutes;
         }
         // Global close hour – convert to minutes; if it's 0 (midnight), treat it as 24:00 (1440)
         $globalHours = self::closeHour();

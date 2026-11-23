@@ -350,7 +350,7 @@ document.addEventListener('DOMContentLoaded', () => {
             days.forEach((d) => {
                 const hours = d.hours || 0;
                 const bookingsCount = d.bookings || 0;
-                const isToday = d.date === todayStr;
+                const isToday = d.date === todayStr();
 
                 const col = document.createElement('div');
                 col.className = 'stats-bar-col' + (isToday ? ' stats-bar-today' : '');
@@ -818,7 +818,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (lastRequestedDate !== dateStr) return;
 
-        currentCloseMinutes = availability.close_minutes ?? CLOSE_HOUR * 60;
+        if (availability.failed) {
+            timeSlotGrid.innerHTML = '<p class="loading-text">Couldn\'t load times. Please try again.</p>';
+            return;
+        }
+
+        currentCloseMinutes = availability.close_minutes || (CLOSE_HOUR * 60) || 1440;
         if (availability.closed) {
             showToast(availability.closedReason || 'This date just closed for booking.', 'error');
         }
@@ -1021,7 +1026,12 @@ document.addEventListener('DOMContentLoaded', () => {
         ]);
         if (lastRequestedDate !== selectedDate) return;
 
-        currentCloseMinutes = availability.close_minutes ?? CLOSE_HOUR * 60;
+        if (availability.failed) {
+            timeSlotGrid.innerHTML = '<p class="loading-text">Couldn\'t load times. Please try again.</p>';
+            return;
+        }
+
+        currentCloseMinutes = availability.close_minutes || (CLOSE_HOUR * 60) || 1440;
         bookedRanges = availability.booked;
         timedClosureRanges = availability.closedBlocks || [];
         openPlayRanges = availability.open_play || [];
@@ -1282,7 +1292,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (lastRequestedDate !== dateStr) return;
 
-        currentCloseMinutes = availability.close_minutes ?? CLOSE_HOUR * 60;
+        if (availability.failed) {
+            timeSlotGrid.innerHTML = '<p class="loading-text">Couldn\'t load times. Please try again.</p>';
+            return;
+        }
+
+        currentCloseMinutes = availability.close_minutes || (CLOSE_HOUR * 60) || 1440;
         bookedRanges = availability.booked;
         timedClosureRanges = availability.closedBlocks || [];
         openPlayRanges = availability.open_play || [];
@@ -1315,27 +1330,29 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function fetchAvailability(dateStr) {
-        if (!availabilityUrl) return { booked: [], open_play: [], closed: false, closedReason: null, maintenanceBlocked: [], closedBlocks: [] };
+        const empty = { booked: [], open_play: [], closed: false, closedReason: null,
+            maintenanceBlocked: [], closedBlocks: [], close_minutes: null, failed: true };
+        if (!availabilityUrl) return empty;
         try {
             const url = `${availabilityUrl}?court_id=${selectedCourt.id}&date=${dateStr}`;
             const res = await fetch(url, { headers: { Accept: 'application/json' } });
             if (!res.ok) throw new Error('Failed to load availability');
             const data = await res.json();
-                return {
-                    booked: data.booked || [],
-                    open_play: data.open_play || [],
-                    closed: !!data.closed,
-                    closedReason: data.closed_reason || null,
-                    maintenanceBlocked: data.maintenance_blocked || [],
-                    closedBlocks: data.closed_blocks || [],
-                    close_minutes: data.close_minutes ?? null, 
-                };
+            return {
+                booked: data.booked || [],
+                open_play: data.open_play || [],
+                closed: !!data.closed,
+                closedReason: data.closed_reason || null,
+                maintenanceBlocked: data.maintenance_blocked || [],
+                closedBlocks: data.closed_blocks || [],
+                close_minutes: data.close_minutes ?? null,
+                failed: false,
+            };
         } catch (err) {
             console.error(err);
-            return { booked: [], open_play: [], closed: false, closedReason: null, maintenanceBlocked: [], closedBlocks: [] };
+            return empty;
         }
     }
-
     // ---------- Time slots ----------
 
     function timeToMinutes(t) {
@@ -1562,7 +1579,9 @@ document.addEventListener('DOMContentLoaded', () => {
             check.setAttribute('aria-hidden', 'true');
 
             const priceLabel = document.createElement('span');
-            if (full) {
+            if (timedClosed) {
+                priceLabel.textContent = closure?.type === 'maintenance' ? 'Maintenance' : 'Closed';
+            } else if (full) {
                 priceLabel.textContent = 'Full';
             } else if (openPlay) {
                 priceLabel.textContent = `Open play · ${Math.max(0, Number(openPlay.max_players) - Number(openPlay.joined))} of ${openPlay.max_players} spots left · ₱${Number(openPlay.price_per_player).toLocaleString()}`;
@@ -1570,8 +1589,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 priceLabel.textContent = 'Booked';
             } else if (maintenanceBlocked) {
                 priceLabel.textContent = 'Unavailable';
-            } else if (timedClosed) {
-                priceLabel.textContent = 'Closed';
             } else if (past) {
                 priceLabel.textContent = 'Past';
             } else {
@@ -2080,7 +2097,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 closePaymentModal();
                 const refreshedAvailability = await fetchAvailability(selectedDate);
-                currentCloseMinutes = refreshedAvailability.close_minutes ?? CLOSE_HOUR * 60;
+                currentCloseMinutes = refreshedAvailability.close_minutes || (CLOSE_HOUR * 60) || 1440;
                 bookedRanges = refreshedAvailability.booked;
                 timedClosureRanges = refreshedAvailability.closedBlocks || [];
                 openPlayRanges = refreshedAvailability.open_play || [];
