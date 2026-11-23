@@ -793,7 +793,7 @@ body > .landing-wrapper {
 
 #timePickerModal .time-picker-day-switch {
     gap: var(--s3);
-    margin: 0 var(--s1) calc(20px + var(--s3));
+    margin: 0 calc(20px + var(--s1)) var(--s3);
 }
 
 #timePickerModal .time-picker-day-switch h3 {
