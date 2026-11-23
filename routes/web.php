@@ -46,20 +46,25 @@ Route::post('/maintenance/bypass', [MaintenanceController::class, 'bypass'])
     ->name('maintenance.bypass')
     ->middleware('throttle:5,1');
 
-
-Route::middleware('throttle:10,1')->group(function () {
-    Route::post('/guest-book', [GuestBookingController::class, 'store'])->name('guest.book.store');
-    Route::post('/guest-book/payment/qrph', [PaymongoQrPhController::class, 'createQr'])
-        ->name('guest.book.payment.qrph');
-});
+// THROTTLE NOTE: plain "throttle:N,M" shares ONE counter per IP across every
+// route that uses it, so page loads and polling ate the QR route's tiny
+// limit and caused 429s. The third value ("guestbook-store", "qrph-create",
+// ...) is a bucket name that gives each route its own separate counter.
+Route::post('/guest-book', [GuestBookingController::class, 'store'])
+    ->middleware('throttle:30,1,guestbook-store')
+    ->name('guest.book.store');
+Route::post('/guest-book/payment/qrph', [PaymongoQrPhController::class, 'createQr'])
+    ->middleware('throttle:40,1,qrph-create')
+    ->name('guest.book.payment.qrph');
 
 // No CSRF/auth middleware on the webhook route — PayMongo calls this
 // server-to-server, it won't have your session cookie or CSRF token.
 // If your VerifyCsrfToken middleware applies globally, add this route's
 // URI to the $except array there instead of removing middleware here.
+// Own bucket + generous limit so PayMongo retries are never rejected (429).
 Route::post('/guest-book/payment/qrph/webhook', [PaymongoQrPhController::class, 'webhook'])
     ->name('guest.book.payment.qrph.webhook')
-    ->middleware('throttle:60,60');
+    ->middleware('throttle:300,1,paymongo-webhook');
 
 Route::get('/cron/expire-unconfirmed', [BookingCronController::class, 'expireUnconfirmed'])
     ->middleware('cron.auth')
@@ -78,16 +83,16 @@ Route::get('/book/monthly-stats', [GuestBookingController::class, 'monthlyStats'
     ->middleware('throttle:30,1')
     ->name('guest.book.monthly-stats');
 // status/waiting are polled repeatedly by the frontend while a payment is
-// pending, so the limit here is generous — just enough to stop scripted
-// abuse without breaking normal polling.
+// pending, so the limit here is generous — and they get their own buckets
+// so polling can't use up other routes' limits.
 Route::get('/guest/bookings/{booking}/status', [GuestBookingController::class, 'status'])
-    ->middleware('throttle:120,1')
+    ->middleware('throttle:180,1,guest-status')
     ->name('guest.book.status');
 // Full-page "waiting for payment" step — replaces the old modal so a
 // refresh, closed tab, or accidental back/forward doesn't cancel the
 // booking. See GuestBookingController::waiting()'s docblock.
 Route::get('/guest/bookings/{booking}/waiting', [GuestBookingController::class, 'waiting'])
-    ->middleware('throttle:60,1')
+    ->middleware('throttle:60,1,guest-waiting')
     ->name('guest.book.waiting');
 // The HTML receipt page a guest lands on once their payment is confirmed.
 // Same poll_token-or-owner gate as everything else guest-facing — see
