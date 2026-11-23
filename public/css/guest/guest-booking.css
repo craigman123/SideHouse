@@ -714,6 +714,36 @@ body > .landing-wrapper {
     font-family: var(--font-family);
 }
 
+#timePickerModal .time-slot-row-openplay {
+    flex: 0 0 auto;          /* never shrink in the flex list */
+    align-items: stretch;
+    min-height: auto;        /* not 0 */
+}
+
+#timePickerModal .time-slot-openplay-times {
+    display: flex;
+    flex-direction: column;
+    gap: var(--s2);          /* same gap as .time-slot-list rows */
+}
+
+#timePickerModal .time-slot-openplay-times .time-slot-row-time {
+    min-height: 58px;
+}
+
+#timePickerModal .time-slot-openplay-toggle {
+    align-self: stretch;
+    height: auto;
+    padding: 14px;
+    border-radius: 14px;
+    text-align: left;
+    gap: 10px;
+    background: linear-gradient(180deg, rgba(0,160,90,.18), rgba(0,160,90,.06));
+}
+
+#timePickerModal .time-slot-list > * {
+    flex-shrink: 0;
+}
+
 #timePickerModal .modal-header-timepicker,
 #timePickerModal .modal-actions {
     flex: 0 0 auto;
