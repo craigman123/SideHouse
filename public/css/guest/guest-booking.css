@@ -1494,3 +1494,34 @@ body > .landing-wrapper {
     width: 16px;
     height: 16px;
 }
+
+.time-slot-row-openplay {
+    align-items: stretch;
+    min-height: 140px;
+}
+.time-slot-row-openplay .time-slot-row-time {
+    align-self: flex-start;
+    padding-top: 14px;
+}
+.time-slot-openplay-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    min-height: 100%;
+    padding: 18px 14px;
+    text-align: left;
+    border-radius: 14px;
+    background: linear-gradient(180deg, rgba(0,160,90,.18), rgba(0,160,90,.06));
+}
+.time-slot-openplay-toggle .time-slot-icon svg {
+    width: 26px;
+    height: 26px;
+}
+.time-slot-openplay-body {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+.time-slot-openplay-title { font-size: 1rem; }
+.time-slot-openplay-meta { font-size: .85rem; opacity: .85; }

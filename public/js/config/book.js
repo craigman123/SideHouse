@@ -220,7 +220,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     const pad = (n) => n.toString().padStart(2, '0');
-    const todayStr = () => new Date().toISOString().slice(0, 10);
+    const todayStr = () => {
+        const d = new Date();
+        return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+    };
 
     // ---------- Modal open/close ----------
 
@@ -474,11 +477,6 @@ document.addEventListener('DOMContentLoaded', () => {
         closeBookingModal();
         openTimePickerModal();
         await changeDateInModal(dateStr);
-
-        if (ranges.failed) {
-            timeSlotGrid.innerHTML = '<p class="loading-text">Couldn\'t load times. Please try again.</p>';
-            return;
-        }
     }
 
     function renderTimePickerDateLabel() {
@@ -634,7 +632,17 @@ document.addEventListener('DOMContentLoaded', () => {
     // slot key ("YYYY-MM-DD HH:MM"), instead of assuming every slot
     // costs the same flat amount.
     function selectedSlotsTotal() {
-        return selectedSlots.reduce((sum, key) => sum + slotPrice(Number(keyTime(key).slice(0, 2)), keyDate(key)), 0);
+        const seen = new Set();
+        return selectedSlots.reduce((sum, key) => {
+            const hour = Number(keyTime(key).slice(0, 2));
+            const ev = openPlayAt(hour * 60, keyDate(key));
+            if (ev) {
+                const id = `${keyDate(key)} ${ev.start}`;
+                if (seen.has(id)) return sum;
+                seen.add(id);
+            }
+            return sum + slotPrice(hour, keyDate(key));
+        }, 0);
     }
 
     // 12-hour "4:00 PM" style label for a bare hour (0-23), used only by
@@ -685,6 +693,95 @@ document.addEventListener('DOMContentLoaded', () => {
                 : { month: 'long', day: 'numeric' });
     }
 
+    const SLOT_ICONS = {
+            arrowUp: `<svg  xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 24 24" ><path d="M12.88 2.53c-.35-.66-1.42-.66-1.77 0l-8.99 17c-.16.31-.15.68.03.98s.51.48.86.48h18c.35 0 .68-.18.86-.48s.19-.67.03-.98zM12 5.13l3.07 5.81-1.07.81-1.4-1.05a.99.99 0 0 0-1.2 0L10 11.75l-1.07-.81zM4.66 18.99l3.32-6.27 1.42 1.07c.36.27.84.27 1.2 0l1.4-1.05 1.4 1.05c.18.13.39.2.6.2s.42-.07.6-.2l1.42-1.07 3.32 6.27z"></path></svg>`,  // peak
+            padel:   `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg"><g transform="rotate(35 12 12)"><ellipse cx="12" cy="8.5" rx="5.5" ry="7"/><path d="M12 15.5V21.5"/><circle cx="9.7" cy="5.5" r="0.9" fill="currentColor" stroke="none"/><circle cx="14.3" cy="5.5" r="0.9" fill="currentColor" stroke="none"/><circle cx="12" cy="8.5" r="0.9" fill="currentColor" stroke="none"/><circle cx="9.7" cy="11.5" r="0.9" fill="currentColor" stroke="none"/><circle cx="14.3" cy="11.5" r="0.9" fill="currentColor" stroke="none"/></g></svg>`, // open play
+            wrench:  `<svg  xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 24 24" ><path d="M20.71 6.04a.99.99 0 0 0-.9.27l-3.18 3.18-2.12-2.12 3.18-3.18a.98.98 0 0 0 .27-.9c-.07-.33-.29-.6-.6-.73A7.47 7.47 0 0 0 9.2 4.19a7.49 7.49 0 0 0-1.86 7.52L2.3 16.75c-.19.19-.29.44-.29.71s.11.52.29.71l3.54 3.54c.19.19.44.29.71.29s.52-.11.71-.29l5.04-5.04c2.64.82 5.53.12 7.52-1.86a7.47 7.47 0 0 0 1.63-8.16c-.13-.31-.4-.53-.73-.6Zm-2.32 7.34a5.51 5.51 0 0 1-5.98 1.2c-.37-.15-.8-.07-1.09.22l-4.78 4.78-2.12-2.12 4.78-4.78c.29-.29.37-.71.22-1.09a5.47 5.47 0 0 1 1.2-5.98 5.5 5.5 0 0 1 4.41-1.59l-2.65 2.65a.996.996 0 0 0 0 1.41l3.54 3.54c.19.19.44.29.71.29s.52-.11.71-.29l2.65-2.65c.16 1.61-.4 3.23-1.59 4.42Z"></path></svg>`,  // maintenance
+            lock:    `<svg  xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 24 24" ><path d="M6 22h12c1.1 0 2-.9 2-2v-9c0-1.1-.9-2-2-2h-1V7c0-2.76-2.24-5-5-5S7 4.24 7 7v2H6c-1.1 0-2 .9-2 2v9c0 1.1.9 2 2 2M9 7c0-1.65 1.35-3 3-3s3 1.35 3 3v2H9zm-3 4h12v9H6z"></path></svg>`,  // closed
+            book:    `<svg  xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 24 24" ><path d="M8 6h9v2H8z"></path><path d="M20 2H6C4.35 2 3 3.35 3 5v14c0 1.65 1.35 3 3 3h15v-2H6c-.55 0-1-.45-1-1s.45-1 1-1h14c.55 0 1-.45 1-1V3c0-.55-.45-1-1-1m-6 14H6c-.35 0-.69.07-1 .18V5c0-.55.45-1 1-1h13v12z"></path></svg>`,  // bookable
+        };
+
+    function slotIconEl(kind) {
+        if (!kind || !SLOT_ICONS[kind]) return null;
+        const el = document.createElement('span');
+        el.className = 'time-slot-icon';
+        el.setAttribute('aria-hidden', 'true');
+        el.innerHTML = SLOT_ICONS[kind]; // your own static SVG, not user data
+        return el;
+    }
+
+    function renderOpenPlayBlock(openPlay, evStart, evEnd, sessionDate) {
+        const keys = openPlayKeys(openPlay);
+        const isSelected = keys.length > 0 && keys.every((k) => selectedSlots.includes(k));
+        const full = Number(openPlay.joined) >= Number(openPlay.max_players);
+        const past = keys.some((k) => isSlotPastAt(keyDate(k), keyTime(k)));
+        const closed = keys.some((k) => isSlotClosedAt(timeToMinutes(keyTime(k))));
+        const unavailable = full || past || closed;
+        const spotsLeft = Math.max(0, Number(openPlay.max_players) - Number(openPlay.joined));
+
+        const fmt = (min) => {
+            const mm = min % 1440;
+            const h = Math.floor(mm / 60);
+            const m = mm % 60;
+            const period = h >= 12 ? 'PM' : 'AM';
+            return `${h % 12 === 0 ? 12 : h % 12}:${pad(m)}${period}`;
+        };
+
+        const row = document.createElement('div');
+        row.className = 'time-slot-row time-slot-row-openplay'
+            + (isSelected ? ' selected' : '') + (unavailable ? ' disabled' : '');
+
+        const label = document.createElement('span');
+        label.className = 'time-slot-row-time';
+        label.textContent = `${fmt(evStart)} - ${fmt(evEnd)}`;
+
+        const toggle = document.createElement('button');
+        toggle.type = 'button';
+        toggle.className = 'time-slot-row-toggle time-slot-openplay-toggle' + (isSelected ? ' selected' : '');
+
+        const check = document.createElement('span');
+        check.className = 'time-slot-row-check';
+        check.textContent = '✓ ';
+        check.setAttribute('aria-hidden', 'true');
+
+        const body = document.createElement('span');
+        body.className = 'time-slot-openplay-body';
+
+        const title = document.createElement('strong');
+        title.className = 'time-slot-openplay-title';
+        title.textContent = openPlay.title || 'Open play';
+
+        const meta = document.createElement('span');
+        meta.className = 'time-slot-openplay-meta';
+        meta.textContent = full
+            ? 'Full'
+            : `${spotsLeft} of ${openPlay.max_players} spots left · ₱${Number(openPlay.price_per_player).toLocaleString()} per player`;
+
+        body.appendChild(title);
+        body.appendChild(meta);
+
+        const icon = slotIconEl('padel');
+        toggle.appendChild(check);
+        if (icon) toggle.appendChild(icon);
+        toggle.appendChild(body);
+
+        if (unavailable) {
+            toggle.disabled = true;
+            const reason = full ? 'This open play is full'
+                : past ? 'This open play has already started'
+                : 'This open play is unavailable';
+            toggle.title = reason;
+            row.dataset.tooltip = reason;
+        } else {
+            toggle.setAttribute('aria-pressed', String(isSelected));
+            toggle.addEventListener('click', () => toggleOpenPlayEvent(openPlay, sessionDate));
+        }
+
+        row.appendChild(label);
+        row.appendChild(toggle);
+        timeSlotGrid.appendChild(row);
+    }
+
     function renderTimeSlotBlock(startMin, endMin, sessionDate) {
         // Slots stay pickable on every block and every day — the only
         // limit is MAX_DURATION, enforced in toggleSlot().
@@ -695,6 +792,15 @@ document.addEventListener('DOMContentLoaded', () => {
             const timeStr = `${pad(h)}:${pad(m)}`;
 
             const openPlay = openPlayAt(totalMin);
+
+            if (openPlay) {
+                const evStart = timeToMinutes(openPlay.start);
+                const evEnd = timeToMinutes(openPlay.end) || 1440;
+                renderOpenPlayBlock(openPlay, evStart, evEnd, sessionDate);
+                totalMin = evEnd - STEP_MINUTES; // loop adds STEP_MINUTES, skipping the rest of the event
+                continue;
+            }
+
             const booked = isSlotBookedAt(totalMin) && !openPlay;
             const timedClosed = isSlotClosedAt(totalMin);
             const full = openPlay && Number(openPlay.joined) >= Number(openPlay.max_players);
@@ -735,7 +841,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (full) {
                 priceLabel.textContent = 'Full';
             } else if (openPlay) {
-                priceLabel.textContent = `Open play · ${Math.max(0, Number(openPlay.max_players) - Number(openPlay.joined))} of ${openPlay.max_players} spots left · ₱${Number(openPlay.price_per_player).toLocaleString()}`;
+                priceLabel.textContent = `Open play · ${Math.max(0, Number(openPlay.max_players) - Number(openPlay.joined))}/${openPlay.max_players} spots · ₱${Number(openPlay.price_per_player).toLocaleString()}`;
             } else if (booked) {
                 priceLabel.textContent = 'Booked';
             } else if (timedClosed) {
@@ -793,12 +899,62 @@ document.addEventListener('DOMContentLoaded', () => {
         renderTimeSlotBlock(OPEN_HOUR * 60, OVERNIGHT ? 1440 : CLOSE_HOUR * 60, selectedDate);
     }
 
+    function openPlayKeys(event) {
+        const start = timeToMinutes(event.start);
+        const end = timeToMinutes(event.end) || 1440;
+        const keys = [];
+        for (let t = start; t + STEP_MINUTES <= end; t += STEP_MINUTES) {
+            keys.push(slotKey(selectedDate, `${pad(Math.floor(t / 60))}:${pad(t % 60)}`));
+        }
+        return keys;
+    }
+
+    function toggleOpenPlayEvent(event, sessionDate) {
+        const keys = openPlayKeys(event);
+        const allSelected = keys.every((k) => selectedSlots.includes(k));
+
+        if (allSelected) {
+            selectedSlots = selectedSlots.filter((k) => !keys.includes(k));
+            keys.forEach((k) => slotSessions.delete(k));
+        } else {
+            const blocked = keys.some((k) => isSlotPastAt(keyDate(k), keyTime(k)));
+            if (blocked) {
+                showToast('This open play has already started, so it can’t be joined.', 'error');
+                return;
+            }
+
+            const toAdd = keys.filter((k) => !selectedSlots.includes(k));
+            if (selectedSlots.length + toAdd.length > MAX_DURATION) {
+                showToast(`This open play is longer than the ${MAX_DURATION}-hour booking limit.`, 'error');
+                return;
+            }
+
+            toAdd.forEach((k) => {
+                selectedSlots.push(k);
+                slotSessions.set(k, sessionDate);
+            });
+            sortSlotKeys();
+        }
+
+        activeSessionDate = selectedSlots.length === 0
+            ? null
+            : slotSessions.get(selectedSlots[0]) || sessionDate;
+
+        renderTimeSlots();
+        updateTimePickerFee();
+    }
+
     // Toggles one hour on or off. Selected hours don't need to be
     // contiguous, but they do all have to belong to the same session
     // (see activeSessionDate).
     function toggleSlot(timeStr, sessionDate) {
         const key = slotKey(selectedDate, timeStr);
         const idx = selectedSlots.indexOf(key);
+        const openPlayEvent = openPlayAt(timeToMinutes(timeStr));
+        if (openPlayEvent) {
+            toggleOpenPlayEvent(openPlayEvent, sessionDate);
+            return;
+        }
 
         if (idx >= 0) {
             selectedSlots.splice(idx, 1);
