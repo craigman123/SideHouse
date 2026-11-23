@@ -399,12 +399,12 @@ document.addEventListener('DOMContentLoaded', () => {
         openPaymentModal();
     });
 
-    document.getElementById('backToEquipment').addEventListener('click', () => {
+    document.getElementById('backToEquipment')?.addEventListener('click', () => {
         if (paymentSubmissionLocked) return;
         closePaymentModal();
         openEquipmentModal();
     });
-    document.getElementById('backToEquipment2').addEventListener('click', () => {
+    document.getElementById('backToEquipment2')?.addEventListener('click', () => {
         if (paymentSubmissionLocked) return;
         closePaymentModal();
         openEquipmentModal();

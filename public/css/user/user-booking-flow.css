@@ -59,7 +59,7 @@
 .user-book-court-page .user-booking-selection-title,
 .user-book-court-page .user-booking-selection .booking-selection-summary-title {
     margin: 0 0 var(--s2);
-    color: var(--text);
+    color: var(--brand);
     font-size: var(--font-size-small);
     font-weight: var(--font-weight-small);
 }
