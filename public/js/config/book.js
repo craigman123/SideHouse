@@ -857,19 +857,30 @@ document.addEventListener('DOMContentLoaded', () => {
                 priceLabel.textContent = `₱${slotPrice(h).toLocaleString()}`;
             }
 
+            let iconKind = null;
+            if (timedClosed) {
+                iconKind = closure?.type === 'maintenance' ? 'wrench' : 'lock';
+            } else if (!booked && !past) {
+                iconKind = isPeakHour(h) ? 'arrowUp' : 'book';
+            }
+            const icon = slotIconEl(iconKind);
+
             if (!booked && !timedClosed && !past && isPeakHour(h)) {
                 row.classList.add('time-slot-row-peak');
                 row.dataset.tooltip = 'Peak pricing applies to this hour';
             }
 
             toggle.appendChild(check);
-            toggle.appendChild(priceLabel);
+            if (icon) toggle.appendChild(icon);
+                toggle.appendChild(priceLabel);
 
             if (unavailable) {
                 toggle.disabled = true;
                 row.dataset.tooltip = booked
                     ? 'Reserved — already booked by another player'
-                    : 'This time has already passed';
+                    : timedClosed
+                        ? (closure?.type === 'maintenance' ? 'Court under maintenance during this time' : 'Court closed during this time')
+                        : 'This time has already passed';
             } else {
                 toggle.setAttribute('aria-pressed', String(isSelected));
                 toggle.addEventListener('click', () => toggleSlot(timeStr, sessionDate));
