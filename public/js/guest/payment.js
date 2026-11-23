@@ -29,6 +29,26 @@
     const CHECKOUT_DRAFT_KEY = 'sidehouse_guest_checkout_draft';
     const GUEST_EMAIL_STORAGE_KEY = 'sh_guest_email';
 
+    let prefillInFlight = false;
+    const backBtn = document.getElementById('backToEquipment2');
+
+    function setPrefillLoading(isLoading) {
+        prefillInFlight = isLoading;
+
+        const nameLoading = document.getElementById('guestNameLoading');
+        const contactLoading = document.getElementById('guestContactLoading');
+
+        [guestNameInput, guestContactInput, confirmBtn, backBtn, guestEmailChangeBtn]
+            .forEach((el) => { if (el) el.disabled = isLoading; });
+
+        // Google's button renders in an iframe, so block it via CSS instead
+        googleSignInBtnEl?.classList.toggle('is-locked', isLoading);
+        box.classList.toggle('is-prefilling', isLoading);
+
+        if (nameLoading) nameLoading.hidden = !isLoading;
+        if (contactLoading) contactLoading.hidden = !isLoading;
+    }
+
     // The code who saves the guest email to localStorage named sh_guest_email
     function saveGuestEmailToDevice(email) {
         if (!email) return;
@@ -67,16 +87,15 @@
         }
         if (!savedEmail) return;
 
-        const nameLoading = document.getElementById('guestNameLoading');
-        const contactLoading = document.getElementById('guestContactLoading');
+        setPrefillLoading(true);
 
-        guestNameInput.disabled = true;
-        guestContactInput.disabled = true;
-        if (nameLoading) nameLoading.hidden = false;
-        if (contactLoading) contactLoading.hidden = false;
+        // Safety net: never leave the form locked if the request hangs
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 8000);
 
         fetch(`/guest/booking/latest?email=${encodeURIComponent(savedEmail)}`, {
             headers: { Accept: 'application/json' },
+            signal: controller.signal,
         })
             .then((res) => res.json())
             .then((data) => {
@@ -90,10 +109,8 @@
             })
             .catch((err) => console.warn('Prefill lookup failed:', err))
             .finally(() => {
-                guestNameInput.disabled = false;
-                guestContactInput.disabled = false;
-                if (nameLoading) nameLoading.hidden = true;
-                if (contactLoading) contactLoading.hidden = true;
+                clearTimeout(timeout);
+                setPrefillLoading(false);
             });
     }
 
@@ -317,7 +334,7 @@
     }
 
     confirmBtn.addEventListener('click', async () => {
-        if (confirmInFlight) return;
+    if (confirmInFlight || prefillInFlight) return;
         const missing = getMissingGuestRequirements();
         if (missing.length > 0) {
             showToast(`Please provide ${formatList(missing)} to continue.`, 'error');
@@ -421,6 +438,16 @@
             confirmBtn.disabled = false;
             confirmBtn.setAttribute('aria-busy', 'false');
             confirmBtn.textContent = originalLabel;
+        }
+    });
+
+    window.addEventListener('pageshow', (e) => {
+        if (e.persisted) {
+            confirmInFlight = false;
+            confirmBtn.disabled = false;
+            confirmBtn.textContent = 'Confirm Booking';
+            confirmBtn.removeAttribute('aria-busy');
+            setPrefillLoading(false);
         }
     });
 })();

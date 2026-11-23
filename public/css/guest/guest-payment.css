@@ -372,3 +372,22 @@ body {
         padding: var(--s3);
     }
 }
+
+/* The [hidden] attribute loses to any display rule, so force it */
+.field-loading-dots[hidden] { display: none !important; }
+
+.google-signin-btn.is-locked {
+    pointer-events: none;
+    opacity: 0.5;
+}
+
+.guest-payment-page .modal-box.is-prefilling button,
+.guest-payment-page .modal-box.is-prefilling input {
+    cursor: not-allowed;
+}
+
+.guest-payment-page button:disabled,
+.guest-payment-page input:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
