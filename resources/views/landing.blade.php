@@ -194,7 +194,7 @@
             data-peak-adjustment-value="{{ $peakAdjustmentValue }}"
             @if ($courts->isNotEmpty())
                 data-court-id="{{ $courts->first()->id }}"
-                data-court-name="{{ $courts->first()->name }}"
+                data-court-name="{{ $courts->first()?->name }}"
                 data-court-type="{{ $courts->first()->surface_type ?? '—' }}"
                 data-court-length="{{ $courts->first()->length }}"
                 data-court-width="{{ $courts->first()->width }}"
@@ -684,7 +684,7 @@
 
                     <aside class="booking-selection-summary" id="bookingSelectionSummary" aria-live="polite">
                         <p class="booking-selection-summary-title">Your selection</p>
-                        <p><span>Court</span><strong class="selection-court" id="selectionCourt">{{ $courts->first()->name }}</strong></p>
+                        <p><span>Court</span><strong class="selection-court" id="selectionCourt">{{ $courts->first()?->name }}</strong></p>
                         <p><span>Date &amp; time</span><strong class="selection-date-time" id="selectionDateTime">Choose a date and time</strong></p>
                         <p><span>Equipment</span><strong class="selection-equipment" id="selectionEquipment">None selected</strong></p>
                         <p class="booking-selection-total"><span>Estimated total</span><strong class="selection-total" id="selectionTotal">₱0.00</strong></p>
@@ -724,7 +724,7 @@
                 </div>
                 <aside class="booking-selection-summary" id="equipmentBookingSelectionSummary" aria-live="polite">
                     <p class="booking-selection-summary-title">Your selection</p>
-                    <p><span>Court</span><strong class="selection-court">{{ $courts->first()->name }}</strong></p>
+                    <p><span>Court</span><strong class="selection-court">{{ $courts->first()?->name }}</strong></p>
                     <p><span>Date &amp; time</span><strong class="selection-date-time" id="equipmentSelectedTime">No time selected</strong></p>
                     <p><span>Equipment</span><strong class="selection-equipment">None selected</strong></p>
                     <p class="booking-selection-total"><span>Estimated total</span><strong class="selection-total" id="equipmentSelectedTotal">₱0.00</strong></p>

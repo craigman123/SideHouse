@@ -172,6 +172,10 @@ class BookingController extends Controller
                 && $validated['amount'] !== null && abs((float) $validated['amount'] - (float) $locked->amount) >= 0.005))) {
                 return ['rejected' => 'Past bookings cannot have their date, time, court, or amount changed.'];
             }
+            $startMoved = $date !== $locked->date->toDateString() || $startTime !== $oldStart;
+            if ($startMoved && "{$date} {$startTime}" < $venueNow->format('Y-m-d H:i')) {
+                return ['rejected' => 'Bookings cannot be moved to a start time that has already passed.'];
+            }
 
             $courtIds = array_values(array_unique(array_filter([$oldCourtId, $courtId], fn ($id) => $id > 0)));
             sort($courtIds);

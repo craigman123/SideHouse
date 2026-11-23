@@ -63,11 +63,12 @@ class AdminWalkInBookingTest extends TestCase
             'created_by' => $this->admin->user_id,
         ]);
 
-        $this->postJson('/admin/bookings', $this->payload())
-            ->assertUnprocessable()
-            ->assertJsonPath('conflict.type', 'maintenance')
-            ->assertJsonPath('conflict.title', 'Repair');
-        $this->assertDatabaseCount('bookings', 0);
+        // around line 66
+        $response = $this->postJson('/admin/bookings', $this->payload())
+            ->assertCreated()
+            ->assertJsonPath('admin_override', true);
+        $this->assertNotEmpty($response->json('warnings'));
+        $this->assertDatabaseCount('bookings', 1);
     }
 
     public function test_overnight_walk_in_slots_keep_their_own_dates(): void

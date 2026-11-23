@@ -126,6 +126,7 @@ class GuestBookingController extends Controller
     private function buildWeekRows(Carbon $weekStart, BusinessSetting $settings, Carbon $today, ?int $courtId): array
     {
         $days = [];
+        $averageRate = (float) ($courtId ? Court::whereKey($courtId)->value('hourly_rate') : 0);
 
         for ($i = 0; $i < 7; $i++) {
             $date = $weekStart->copy()->addDays($i);
@@ -144,7 +145,6 @@ class GuestBookingController extends Controller
                 ->format('g:i A');
 
             // Rates
-            $averageRate = (float) Court::first()->hourly_rate;
             $peakRate = $settings->hasPeakPricing()
                 ? round($settings->applyPeakAdjustment($averageRate, $settings->peak_start_hour), 2)
                 : null;

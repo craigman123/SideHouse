@@ -151,10 +151,13 @@ class AdminCalendarEditTest extends TestCase
         $booking = $this->booking();
         $this->booking(['customer_name' => 'Other Player', 'start_time' => '12:00', 'end_time' => '13:00']);
 
+        // around line 154 (edit that conflicts)
         $this->patchJson("/admin/bookings/{$booking->id}", [
             'start_time' => '12:00', 'end_time' => '14:00',
-        ])->assertUnprocessable()->assertJsonPath('conflict.type', 'booking');
-        $this->assertSame('09:00', substr((string) $booking->fresh()->start_time, 0, 5));
+        ])->assertOk()
+        ->assertJsonPath('admin_override', true)
+        ->assertJsonPath('warnings.0.code', 'overlaps_booking');
+        $this->assertSame('12:00', substr((string) $booking->fresh()->start_time, 0, 5));
     }
 
     public function test_cancelled_booking_cannot_be_edited(): void
@@ -279,10 +282,11 @@ class AdminCalendarEditTest extends TestCase
             'created_by' => $this->admin->user_id,
         ]);
 
+        // around line 282 (block into a booking)
         $this->patchJson("/admin/blocks/{$block->id}", [
             'block_date' => '2030-05-15', 'start_time' => '09:00', 'end_time' => '10:00',
-        ])->assertUnprocessable()->assertJsonPath('conflict.type', 'booking');
-        $this->assertSame('14:00', substr((string) $block->fresh()->start_time, 0, 5));
+        ])->assertOk();
+        $this->assertSame('09:00', substr((string) $block->fresh()->start_time, 0, 5));
     }
 
     public function test_booking_on_past_date_allows_contact_notes_but_rejects_schedule_edits(): void

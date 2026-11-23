@@ -30,19 +30,21 @@ class CourtBlockClosureAvailability
             ];
         })->filter()->values()->all();
 
-        $weekly = $this->weeklyRulesForDate($courtId, $date)->map(function (WeeklyCourtClosure $rule) use ($dayStart, $dayEnd, $date) {
-            $anchorDate = $date;
-            [$start, $end] = $this->weeklyInterval($rule, $anchorDate);
-            if (! ($start->lessThan($dayEnd) && $end->greaterThan($dayStart))) return null;
-            $rangeStart = $start->greaterThan($dayStart) ? $start : $dayStart;
-            $rangeEnd = $end->lessThan($dayEnd) ? $end : $dayEnd;
-            return [
-                'id' => 'weekly-'.$rule->id.'-'.$anchorDate,
-                'start' => $rangeStart->format('H:i'),
-                'end' => $rangeEnd->format('H:i'),
-                'reason' => 'Weekly closure'.($rule->reason ? ': '.$rule->reason : ''),
-            ];
-        })->filter()->values();
+        $weekly = collect([$date, $dayStart->subDay()->toDateString()])
+        ->flatMap(fn (string $anchorDate) => $this->weeklyRulesForDate($courtId, $anchorDate)
+            ->map(function (WeeklyCourtClosure $rule) use ($anchorDate, $dayStart, $dayEnd) {
+                [$start, $end] = $this->weeklyInterval($rule, $anchorDate);
+                if (! ($start->lessThan($dayEnd) && $end->greaterThan($dayStart))) return null;
+                $rangeStart = $start->greaterThan($dayStart) ? $start : $dayStart;
+                $rangeEnd = $end->lessThan($dayEnd) ? $end : $dayEnd;
+                return [
+                    'id' => 'weekly-'.$rule->id.'-'.$anchorDate,
+                    'start' => $rangeStart->format('H:i'),
+                    'end' => $rangeEnd->format('H:i'),
+                    'reason' => 'Weekly closure'.($rule->reason ? ': '.$rule->reason : ''),
+                ];
+            }))
+        ->filter()->values();
 
         return collect($specific)->concat($weekly)->all();
     }
@@ -107,6 +109,7 @@ class CourtBlockClosureAvailability
     {
         $start = CarbonImmutable::parse($date.' '.$rule->start_time, 'Asia/Manila');
         $end = CarbonImmutable::parse($date.' '.$rule->end_time, 'Asia/Manila');
+        if ($end->lessThanOrEqualTo($start)) $end = $end->addDay();
         return [$start, $end];
     }
 
