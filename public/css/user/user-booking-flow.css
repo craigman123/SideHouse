@@ -1277,7 +1277,6 @@ html.user-layout-shell.user-book-court-page #timePickerModal .modal-actions .btn
 }
 
 #timePickerModal .modal-box.modal-box-lg.modal-box-timepicker .modal-actions .btn-primary {
-    flex: 1 1 auto;
     border: 1px solid var(--brand);
     background: var(--brand);
     color: var(--text);
