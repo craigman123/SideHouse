@@ -1077,9 +1077,10 @@ body > .landing-wrapper {
 #equipmentModal .modal-actions .btn-secondary,
 #timePickerModal .modal-close,
 #equipmentModal .modal-close {
-    border: 1px solid var(--danger);
+    border: transparent;
     background: transparent;
-    color: var(--danger);
+    color: var(--text);
+    transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
 }
 
 #timePickerModal .modal-back:hover,
@@ -1184,7 +1185,7 @@ body > .landing-wrapper {
 #timePickerModal .modal-back {
     min-height: 44px;
     padding: var(--s2) var(--s3);
-    border: 1px solid var(--brand);
+    border: transparent;
     border-radius: var(--r-pill);
     background: transparent;
     color: var(--text);
@@ -1629,4 +1630,11 @@ body > .landing-wrapper {
         align-items: center;
         overflow-wrap: anywhere;
     }
+}
+
+#equipmentModal .modal-back:disabled,
+#equipmentModal .modal-close:disabled,
+#equipmentModal .modal-actions .btn-secondary:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
 }

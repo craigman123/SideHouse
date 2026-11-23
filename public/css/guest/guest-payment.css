@@ -22,6 +22,7 @@ body {
     background-clip: padding-box, border-box;
     color: var(--text);
     font-family: var(--font-family);
+    max-width: 550px;
 }
 
 #paymentPage .modal-header {
@@ -54,9 +55,8 @@ body {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    border: 1px solid var(--danger);
+    color: var(--text);
     border-radius: var(--r-pill);
-    color: var(--danger);
     font-size: var(--font-size-h3);
     line-height: 1;
     text-decoration: none;
@@ -112,7 +112,7 @@ body {
 
 #paymentPage .booking-flow-step b {
     flex: 0 0 auto;
-    color: var(--brand-hover);
+    color: var(--text);
 }
 
 #paymentPage .modal-back {
@@ -315,9 +315,9 @@ body {
 }
 
 #paymentPage .modal-actions .btn-secondary {
-    border: 1px solid var(--danger);
+    border: transparent;
     background: transparent;
-    color: var(--danger);
+    color: var(--text);
 }
 
 #paymentPage .modal-actions .btn:hover:not(:disabled) {

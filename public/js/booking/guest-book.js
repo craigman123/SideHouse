@@ -624,6 +624,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const equipmentSelectedTotal = document.getElementById('equipmentSelectedTotal');
     let continueToEquipmentInFlight = false;
     let continueToGuestInfoInFlight = false;
+    let equipmentLocked = false;
     const continueToGuestInfoLabel = continueToGuestInfoBtn?.textContent || 'Continue';
 
     function updateBookingProgress(step) {
@@ -724,6 +725,20 @@ document.addEventListener('DOMContentLoaded', () => {
         document.body.classList.toggle('nav-hidden-for-modal', anyModalOpen);
     }
 
+    function setEquipmentLocked(locked) {
+        equipmentLocked = locked;
+        equipmentModal.classList.toggle('is-locked', locked);
+
+        ['equipmentModalClose', 'backToBookingFromEquipment', 'backToBookingFromEquipment2'].forEach((id) => {
+            const btn = document.getElementById(id);
+            if (btn) btn.disabled = locked;
+        });
+
+        // Rebuild the steppers so their disabled state matches the lock
+        // (they're created fresh in buildEquipmentCard).
+        if (equipmentCatalog.length > 0) renderEquipment();
+    }
+
     function openEquipmentModal() {
         updateBookingProgress(2);
         equipmentModal.classList.add('open');
@@ -732,6 +747,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function closeEquipmentModal() {
+        if (equipmentLocked) return;
         equipmentModal.classList.remove('open');
         syncNavVisibilityForModals();
     }
@@ -1069,12 +1085,12 @@ document.addEventListener('DOMContentLoaded', () => {
         if (e.target === equipmentModal) closeEquipmentModal();
     });
 
-    document.getElementById('timePickerModalClose').addEventListener('click', closeTimePickerModal);
+    document.getElementById('timePickerModalClose')?.addEventListener('click', closeTimePickerModal);
     timePickerModal.addEventListener('click', (e) => {
         if (e.target === timePickerModal) closeTimePickerModal();
     });
-    document.getElementById('backToCalendar').addEventListener('click', closeTimePickerModal);
-    document.getElementById('backToCalendar2').addEventListener('click', closeTimePickerModal);
+    document.getElementById('backToCalendar')?.addEventListener('click', closeTimePickerModal);
+    document.getElementById('backToCalendar2')?.addEventListener('click', closeTimePickerModal);
 
     document.getElementById('courtPaymentModalClose')?.addEventListener('click', closePaymentModal);
     paymentModal?.addEventListener('click', (e) => {
@@ -1095,10 +1111,10 @@ document.addEventListener('DOMContentLoaded', () => {
         openEquipmentModal();
     });
 
-    document.getElementById('backToBookingFromEquipment').addEventListener('click', () => {
+    document.getElementById('backToBookingFromEquipment')?.addEventListener('click', () => {
         closeEquipmentModal();
     });
-    document.getElementById('backToBookingFromEquipment2').addEventListener('click', () => {
+    document.getElementById('backToBookingFromEquipment2')?.addEventListener('click', () => {
         closeEquipmentModal();
     });
 
@@ -1109,6 +1125,7 @@ document.addEventListener('DOMContentLoaded', () => {
         continueToGuestInfoBtn.setAttribute('aria-busy', 'true');
         const originalLabel = continueToGuestInfoLabel;
         continueToGuestInfoBtn.textContent = 'Checking stock…';
+        setEquipmentLocked(true);
         let shouldUnlockForRetry = false;
 
         try {
@@ -1119,6 +1136,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // activeSessionDate (not selectedDate) — same reasoning as the
             // final booking submit below.
             const params = new URLSearchParams({ date: activeSessionDate || selectedDate });
+            if (selectedCourt?.id) params.append('court_id', selectedCourt.id);
             selectedSlots.forEach((key) => params.append('slots[]', key));
             const res = await fetch(`${equipmentUrl}?${params.toString()}`, { headers: { Accept: 'application/json' } });
             if (!res.ok) throw new Error('Equipment availability check failed');
@@ -1172,6 +1190,7 @@ document.addEventListener('DOMContentLoaded', () => {
             shouldUnlockForRetry = true;
         } finally {
             if (shouldUnlockForRetry) {
+                setEquipmentLocked(false);
                 continueToGuestInfoInFlight = false;
                 continueToGuestInfoBtn.disabled = false;
                 continueToGuestInfoBtn.setAttribute('aria-busy', 'false');
@@ -1182,6 +1201,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     window.addEventListener('pageshow', (event) => {
         if (!event.persisted) return;
+        setEquipmentLocked(false);
         continueToGuestInfoInFlight = false;
         continueToGuestInfoBtn.disabled = false;
         continueToGuestInfoBtn.setAttribute('aria-busy', 'false');
@@ -1887,17 +1907,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
         try {
             const params = new URLSearchParams({ date: activeSessionDate || selectedDate });
+            if (selectedCourt?.id) params.append('court_id', selectedCourt.id);
             selectedSlots.forEach((key) => params.append('slots[]', key));
             const url = `${equipmentUrl}?${params.toString()}`;
 
-            // Same min-delay pattern as the time-slot skeleton — keeps the
-            // skeleton from flashing by too fast to register on quick
-            // connections, without adding lag on slower ones.
             const MIN_SKELETON_MS = 300;
             const [res] = await Promise.all([
                 fetch(url, { headers: { Accept: 'application/json' } }),
                 new Promise((resolve) => setTimeout(resolve, MIN_SKELETON_MS)),
             ]);
+
+            if (!res.ok) {
+                console.error('equipment load failed', res.status, await res.text().catch(() => ''));
+                equipmentGrid.innerHTML = '<p class="loading-text">Couldn\'t load equipment right now.</p>';
+                return;
+            }
 
             const data = await res.json();
             equipmentCatalog = data.equipment || [];
@@ -1979,7 +2003,7 @@ document.addEventListener('DOMContentLoaded', () => {
         decBtn.type = 'button';
         decBtn.className = 'qty-btn';
         decBtn.textContent = '−';
-        decBtn.disabled = qty === 0;
+        decBtn.disabled = equipmentLocked || qty === 0;
 
         const qtyValue = document.createElement('span');
         qtyValue.className = 'qty-value';
@@ -1989,9 +2013,10 @@ document.addEventListener('DOMContentLoaded', () => {
         incBtn.type = 'button';
         incBtn.className = 'qty-btn';
         incBtn.textContent = '+';
-        incBtn.disabled = qty >= item.available;
+        incBtn.disabled = equipmentLocked || qty >= item.available;
 
         decBtn.addEventListener('click', () => {
+            if (equipmentLocked) return;
             const current = equipmentSelection[item.id] || 0;
             if (current <= 0) return;
             const next = current - 1;
@@ -2002,6 +2027,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         incBtn.addEventListener('click', () => {
+            if (equipmentLocked) return;
             const current = equipmentSelection[item.id] || 0;
             if (current >= item.available) return;
             equipmentSelection[item.id] = current + 1;

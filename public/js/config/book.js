@@ -336,17 +336,17 @@ document.addEventListener('DOMContentLoaded', () => {
         if (e.target === bookingModal) closeBookingModal();
     });
 
-    document.getElementById('timePickerModalClose').addEventListener('click', closeTimePickerModal);
+    document.getElementById('timePickerModalClose')?.addEventListener('click', closeTimePickerModal);
     timePickerModal.addEventListener('click', (e) => {
         if (e.target === timePickerModal) closeTimePickerModal();
     });
 
-    document.getElementById('equipmentModalClose').addEventListener('click', closeEquipmentModal);
+    document.getElementById('equipmentModalClose')?.addEventListener('click', closeEquipmentModal);
     equipmentModal.addEventListener('click', (e) => {
         if (e.target === equipmentModal) closeEquipmentModal();
     });
 
-    document.getElementById('courtPaymentModalClose').addEventListener('click', () => {
+    document.getElementById('courtPaymentModalClose')?.addEventListener('click', () => {
         if (!paymentSubmissionLocked) closePaymentModal();
     });
     paymentModal.addEventListener('click', (e) => {
@@ -386,11 +386,11 @@ document.addEventListener('DOMContentLoaded', () => {
         openEquipmentModal();
     });
 
-    document.getElementById('backToBookingFromEquipment').addEventListener('click', () => {
+    document.getElementById('backToBookingFromEquipment')?.addEventListener('click', () => {
         closeEquipmentModal();
         openTimePickerModal();
     });
-    document.getElementById('backToBookingFromEquipment2').addEventListener('click', () => {
+    document.getElementById('backToBookingFromEquipment2')?.addEventListener('click', () => {
         closeEquipmentModal();
         openTimePickerModal();
     });

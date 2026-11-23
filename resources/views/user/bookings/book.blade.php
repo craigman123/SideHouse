@@ -219,8 +219,6 @@
                 <span class="booking-flow-step" data-booking-step="4"><b>4</b>Payment</span>
             </div>
 
-            <button type="button" class="modal-back" id="backToBookingFromEquipment">&larr; Back to date &amp; time</button>
-
             <div class="modal-scroll-body">
                 <div class="booking-section">
                     <p class="booking-section-label">Need a racket or paddle? (optional)</p>
@@ -238,7 +236,7 @@
             </div>
 
             <div class="modal-actions">
-                <button type="button" class="btn btn-secondary" id="backToBookingFromEquipment2">Back</button>
+                <button type="button" class="btn btn-secondary" id="backToBookingFromEquipment2">Back Previous</button>
                 <button type="button" class="btn btn-primary" id="continueToPayment">Continue</button>
             </div>
         </div>
@@ -258,8 +256,6 @@
                 <span class="booking-flow-step active" data-booking-step="3"><b>3</b>Details</span>
                 <span class="booking-flow-step" data-booking-step="4"><b>4</b>Payment</span>
             </div>
-
-            <button type="button" class="modal-back" id="backToEquipment">&larr; Back to equipment</button>
 
             <div class="modal-scroll-body">
                 <div class="booking-section">
@@ -300,7 +296,7 @@
             </div>
 
             <div class="modal-actions">
-                <button type="button" class="btn btn-secondary" id="backToEquipment2">Back</button>
+                <button type="button" class="btn btn-secondary" id="backToEquipment2">Back Previous</button>
                 <button type="button" class="btn btn-primary" id="confirmBooking">Confirm Booking</button>
             </div>
         </div>

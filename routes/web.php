@@ -99,10 +99,10 @@ Route::get('/guest/bookings/{booking}/receipt', [PaymentReceiptController::class
 // request-code sends an email every hit, so it gets the tightest limit
 // in the file; verify-code is guessable (OTP) so it's tight too.
 Route::post('/guest/bookings/search/request-code', [GuestBookingSearchController::class, 'requestCode'])
-    ->middleware('throttle:20,1')
+    ->middleware(app()->environment('local') ? 'throttle:60,1' : 'throttle:5,1')
     ->name('guest.book.search.request-code');
 Route::post('/guest/bookings/search/verify-code', [GuestBookingSearchController::class, 'verifyCode'])
-    ->middleware('throttle:5,1')
+    ->middleware(app()->environment('local') ? 'throttle:60,1' : 'throttle:5,1')
     ->name('guest.book.search.verify-code');
     
 // cancel-all typically triggers a confirmation email, so keep it

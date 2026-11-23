@@ -55,8 +55,9 @@
     font-size: 14px;
     font-weight: 600;
     margin-bottom: 20px;
+    transition: color .3s ease-in-out;
 }
-.wt-back:hover { color: var(--wt-accent); }
+.wt-back:hover { color: var(--danger); }
 
 .wt-hero h1 {
     font-size: 26px;

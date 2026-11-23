@@ -713,8 +713,6 @@
                 </div>
             </div>
 
-            <button type="button" class="modal-back" id="backToBookingFromEquipment">&larr; Back to date &amp; time</button>
-
             <div class="modal-scroll-body">
                 <div class="booking-section">
                     <p class="booking-section-label">Need a racket or paddle? (optional)</p>
@@ -732,7 +730,7 @@
             </div>
 
             <div class="modal-actions">
-                <button type="button" class="btn btn-secondary" id="backToBookingFromEquipment2">Back</button>
+                <button type="button" class="btn btn-secondary" id="backToBookingFromEquipment2">Back Previous</button>
                 <button type="button" class="btn btn-primary" id="continueToGuestInfo">Continue</button>
             </div>
         </div>
@@ -784,9 +782,8 @@
                         </div>
                     </div>
                     
-                    <p style="margin:0; color:#6b7280; font-size:13px; line-height:1.6;">
-                        <strong style = "color:#0f9700;"> Reason:</strong> Booking privacy is needed to ensure the safety of all participants.
-                            And to avoid fraudelent booking attempts.
+                    <p class="search-modal-note">
+                        <strong>Reason:</strong> Booking privacy is needed to ensure the safety of all participants and to avoid fraudulent booking attempts.
                     </p>
 
                     <button type="submit" class="btn-filter booking-search-submit" id="bookingSearchVerifyCode">Verify Code</button>

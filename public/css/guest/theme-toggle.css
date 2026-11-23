@@ -204,8 +204,8 @@ html[data-theme="light"] .guest-landing-page .landing-wrapper .feature-card-excl
 html[data-theme="light"] .guest-landing-page .landing-wrapper .feature-card-fast .feature-icon,
 html[data-theme="light"] .guest-landing-page .landing-wrapper .feature-card-cc .feature-icon,
 html[data-theme="light"] .guest-landing-page .landing-wrapper .feature-card-gear .feature-icon { color: var(--text); }
-.guest-payment-page .landing-wrapper { padding-top: calc(var(--s8) + var(--s4)); }
-#waitingPage.wt-shell { padding-top: calc(24px + 50px + var(--s4)); }
+.guest-payment-page .landing-wrapper { padding-top: 0; }
+#waitingPage.wt-shell { padding-top: 24px; }
 .receipt-body { padding-top: calc(var(--s8) + var(--s4) - 60px); }
 
 @media (max-width: 480px) {

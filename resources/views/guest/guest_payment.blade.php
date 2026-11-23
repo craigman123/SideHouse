@@ -51,7 +51,6 @@
                     <span class="booking-flow-step active" data-checkout-step="4"><b>4</b>Payment</span>
                 </div>
             </div>
-            <button type="button" class="modal-back" id="backToEquipment">&larr; Back to equipment</button>
             <div class="modal-scroll-body">
                 <div class="booking-section">
                     <p class="booking-section-label">Who's booking?</p>

@@ -192,7 +192,6 @@
     syncPaymentQrPanels();
     showSavedEmailBadge();
     prefillFromSavedEmail();
-    prefillFromSavedEmail();
 
     // ---------- Google sign-in ----------
 
@@ -298,8 +297,8 @@
         window.location.href = `${landingUrl}?resume_booking=1`;
     }
 
-    document.getElementById('backToEquipment').addEventListener('click', returnToEquipment);
-    document.getElementById('backToEquipment2').addEventListener('click', returnToEquipment);
+    document.getElementById('backToEquipment')?.addEventListener('click', returnToEquipment);
+    document.getElementById('backToEquipment2')?.addEventListener('click', returnToEquipment);
 
     // ---------- Confirm ----------
 
