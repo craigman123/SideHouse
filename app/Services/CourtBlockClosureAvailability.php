@@ -10,19 +10,7 @@ use Illuminate\Database\Eloquent\Collection;
 
 class CourtBlockClosureAvailability
 {
-
     private const BLOCKING_TYPES = ['closed', 'maintenance'];
-
-    // closedBlocksForDate() and firstClosedOverlap(): replace ->where('type', 'closed') with
-    ->whereIn('type', self::BLOCKING_TYPES)
-
-    // closedRangesForDate(): add the type so the page can label it
-    'type' => $block->type,   // in the $specific array
-    'type' => 'closed',       // in the $weekly array
-
-    // firstClosedOverlap(): delete this line from the WeeklyCourtClosure query,
-    // because it compares a block id to a weekly-rule id
-    ->when($ignoreBlockId !== null, fn ($query) => $query->where('id', '!=', $ignoreBlockId))
 
     public function closedRangesForDate(int $courtId, string $date): array
     {
@@ -38,6 +26,7 @@ class CourtBlockClosureAvailability
 
             return [
                 'id' => (int) $block->id,
+                'type' => $block->type,
                 'start' => $rangeStart->format('H:i'),
                 'end' => $rangeEnd->format('H:i'),
                 'reason' => $block->notes ?: ($block->title ?: 'Court closed'),
@@ -45,20 +34,21 @@ class CourtBlockClosureAvailability
         })->filter()->values()->all();
 
         $weekly = collect([$date, $dayStart->subDay()->toDateString()])
-        ->flatMap(fn (string $anchorDate) => $this->weeklyRulesForDate($courtId, $anchorDate)
-            ->map(function (WeeklyCourtClosure $rule) use ($anchorDate, $dayStart, $dayEnd) {
-                [$start, $end] = $this->weeklyInterval($rule, $anchorDate);
-                if (! ($start->lessThan($dayEnd) && $end->greaterThan($dayStart))) return null;
-                $rangeStart = $start->greaterThan($dayStart) ? $start : $dayStart;
-                $rangeEnd = $end->lessThan($dayEnd) ? $end : $dayEnd;
-                return [
-                    'id' => 'weekly-'.$rule->id.'-'.$anchorDate,
-                    'start' => $rangeStart->format('H:i'),
-                    'end' => $rangeEnd->format('H:i'),
-                    'reason' => 'Weekly closure'.($rule->reason ? ': '.$rule->reason : ''),
-                ];
-            }))
-        ->filter()->values();
+            ->flatMap(fn (string $anchorDate) => $this->weeklyRulesForDate($courtId, $anchorDate)
+                ->map(function (WeeklyCourtClosure $rule) use ($anchorDate, $dayStart, $dayEnd) {
+                    [$start, $end] = $this->weeklyInterval($rule, $anchorDate);
+                    if (! ($start->lessThan($dayEnd) && $end->greaterThan($dayStart))) return null;
+                    $rangeStart = $start->greaterThan($dayStart) ? $start : $dayStart;
+                    $rangeEnd = $end->lessThan($dayEnd) ? $end : $dayEnd;
+                    return [
+                        'id' => 'weekly-'.$rule->id.'-'.$anchorDate,
+                        'type' => 'closed',
+                        'start' => $rangeStart->format('H:i'),
+                        'end' => $rangeEnd->format('H:i'),
+                        'reason' => 'Weekly closure'.($rule->reason ? ': '.$rule->reason : ''),
+                    ];
+                }))
+            ->filter()->values();
 
         return collect($specific)->concat($weekly)->all();
     }
@@ -68,7 +58,7 @@ class CourtBlockClosureAvailability
         $start = CarbonImmutable::instance($start)->setTimezone('Asia/Manila');
         $end = CarbonImmutable::instance($end)->setTimezone('Asia/Manila');
         $blocks = CourtBlock::query()
-            ->where('type', 'closed')
+            ->whereIn('type', self::BLOCKING_TYPES)
             ->where(fn ($query) => $query->whereNull('court_id')->orWhere('court_id', $courtId))
             ->when($ignoreBlockId !== null, fn ($query) => $query->where('id', '!=', $ignoreBlockId))
             ->whereDate('block_date', '>=', $start->startOfDay()->subDay()->toDateString())
@@ -84,7 +74,6 @@ class CourtBlockClosureAvailability
             $weekday = $day->dayOfWeek;
             $rules = WeeklyCourtClosure::query()->where('active', true)->where('weekday', $weekday)
                 ->where(fn ($query) => $query->whereNull('court_id')->orWhere('court_id', $courtId))
-                ->when($ignoreBlockId !== null, fn ($query) => $query->where('id', '!=', $ignoreBlockId))
                 ->get();
             foreach ($rules as $rule) {
                 [$ruleStart, $ruleEnd] = $this->weeklyInterval($rule, $day->toDateString());
@@ -100,7 +89,7 @@ class CourtBlockClosureAvailability
         $previousDate = CarbonImmutable::parse($date, 'Asia/Manila')->subDay()->toDateString();
 
         return CourtBlock::query()
-            ->where('type', 'closed')
+            ->whereIn('type', self::BLOCKING_TYPES)
             ->where(fn ($query) => $query->whereNull('court_id')->orWhere('court_id', $courtId))
             ->whereDate('block_date', '>=', $previousDate)
             ->whereDate('block_date', '<=', $date)
@@ -110,12 +99,11 @@ class CourtBlockClosureAvailability
     public function weeklyRulesForDate(int $courtId, string $date): Collection
     {
         $current = CarbonImmutable::parse($date, 'Asia/Manila');
-        $rules = WeeklyCourtClosure::query()->with(['court:id,name', 'creator:user_id,name'])
+        return WeeklyCourtClosure::query()->with(['court:id,name', 'creator:user_id,name'])
             ->where('active', true)
             ->where('weekday', $current->dayOfWeek)
             ->where(fn ($query) => $query->whereNull('court_id')->orWhere('court_id', $courtId))
             ->get();
-        return $rules;
     }
 
     /** @return array{0: CarbonImmutable, 1: CarbonImmutable} */
