@@ -202,16 +202,15 @@
     {{-- Modal 3: equipment rental (optional) --}}
     <div class="modal-overlay" id="equipmentModal">
         <div class="modal-box modal-box-lg modal-box-scrollable">
-            <div class="modal-header">
+            <div class="modal-header equipment-header">
                 <h3>Rent Equipment</h3>
                 <button type="button" class="modal-close" id="equipmentModalClose" aria-label="Close">&times;</button>
-            </div>
-
-            <div class="booking-flow-progress booking-flow-progress-compact user-booking-progress" aria-label="Booking progress">
-                <span class="booking-flow-step" data-booking-step="1"><b>1</b>Date &amp; time</span>
-                <span class="booking-flow-step active" data-booking-step="2"><b>2</b>Equipment</span>
-                <span class="booking-flow-step" data-booking-step="3"><b>3</b>Details</span>
-                <span class="booking-flow-step" data-booking-step="4"><b>4</b>Payment</span>
+                <div class="booking-flow-progress booking-flow-progress-compact user-booking-progress" aria-label="Booking progress">
+                    <span class="booking-flow-step" data-booking-step="1"><b>1</b>Date &amp; time</span>
+                    <span class="booking-flow-step active" data-booking-step="2"><b>2</b>Equipment</span>
+                    <span class="booking-flow-step" data-booking-step="3"><b>3</b>Details</span>
+                    <span class="booking-flow-step" data-booking-step="4"><b>4</b>Payment</span>
+                </div>
             </div>
 
             <div class="modal-scroll-body">
