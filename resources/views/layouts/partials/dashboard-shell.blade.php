@@ -99,7 +99,7 @@
         <div class="mfa-modal-overlay"></div>
         <div class="mfa-modal-content">
             <div class="mfa-modal-header"><h2>Leave dashboard?</h2></div>
-            <div class="mfa-modal-body"><p>Going back will log you out. Do you want to continue?</p><button id="logout-confirm-no" class="mfa-btn">Stay</button><button id="logout-confirm-yes" class="mfa-modal-ghost-btn">Log out</button></div>
+            <div class="mfa-modal-body"><p>Going back will log you out. Do you want to continue?</p><button id="logout-confirm-no" class="mfa-btn btn-ghost-cancel">Stay</button><button id="logout-confirm-yes" class="mfa-modal-ghost-btn">Log out</button></div>
         </div>
     </div>
     <form id="logout-form" class="dashboard-shell-logout-form" method="POST" action="{{ route('logout') }}">@csrf</form>

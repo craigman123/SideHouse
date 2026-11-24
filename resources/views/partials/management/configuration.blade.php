@@ -324,7 +324,7 @@
                     </div>
 
                     <div class="mb-modal-actions">
-                        <button type="button" class="btn btn-secondary" id="specificClosureEditCancel">Cancel</button>
+                        <button type="button" class="btn btn-secondary btn-ghost-cancel" id="specificClosureEditCancel">Cancel</button>
                         <button type="submit" class="btn btn-primary">Save Changes</button>
                     </div>
                 </form>
@@ -340,7 +340,7 @@
                 </div>
                 <p class="schedule-panel-note" id="specificClosureDeleteText">This will reopen bookings for this date/time.</p>
                 <div class="mb-modal-actions">
-                    <button type="button" class="btn btn-secondary" id="specificClosureDeleteCancel">Cancel</button>
+                    <button type="button" class="btn btn-secondary btn-ghost-cancel" id="specificClosureDeleteCancel">Cancel</button>
                     <button type="button" class="btn btn-danger" id="specificClosureDeleteConfirm">Remove</button>
                 </div>
             </div>
@@ -623,7 +623,7 @@
                 </div>
 
                 <div class="mb-modal-actions">
-                    <button type="button" class="btn btn-secondary" id="closureEditCancel">Cancel</button>
+                    <button type="button" class="btn btn-secondary btn-ghost-cancel" id="closureEditCancel">Cancel</button>
                     <button type="submit" class="btn btn-primary">Save Changes</button>
                 </div>
             </form>
@@ -639,7 +639,7 @@
             </div>
             <p class="schedule-panel-note" id="closureDeleteText">This will reopen the court for this date.</p>
             <div class="mb-modal-actions">
-                <button type="button" class="btn btn-secondary" id="closureDeleteCancel">Cancel</button>
+                <button type="button" class="btn btn-secondary btn-ghost-cancel" id="closureDeleteCancel">Cancel</button>
                 <button type="button" class="btn btn-danger" id="closureDeleteConfirm">Remove</button>
             </div>
         </div>
@@ -670,7 +670,7 @@
     <div class="mb-modal-overlay" id="mbTimeModal">
         <div class="mb-modal-box mb-time-box">
             <div class="mb-modal-header">
-                <button type="button" class="mb-modal-back" id="mbBackToCalendar">&larr; Back to date</button>
+                <button type="button" class="mb-modal-back btn-ghost-cancel" id="mbBackToCalendar">&larr; Back to date</button>
                 <button type="button" class="mb-modal-close" id="mbTimeClose" aria-label="Close">&times;</button>
             </div>
             <h3 id="mbTimeDateLabel" class="mb-time-date-label">Pick Your Hours</h3>
@@ -681,7 +681,7 @@
             </div>
             <div class="mb-time-slot-list" id="mbTimeSlotGrid"></div>
             <div class="mb-modal-actions">
-                <button type="button" class="btn btn-secondary" id="mbTimeCancel">Cancel</button>
+                <button type="button" class="btn btn-secondary btn-ghost-cancel" id="mbTimeCancel">Cancel</button>
                 <button type="button" class="btn btn-primary" id="mbTimeAdd">Add</button>
             </div>
         </div>

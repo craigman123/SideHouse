@@ -106,7 +106,7 @@
                 </div>
             </div>
             <div class="modal-actions">
-                <button type="button" class="btn btn-secondary" id="backToEquipment2">Back</button>
+                <button type="button" class="btn btn-secondary btn-ghost-cancel" id="backToEquipment2">Back</button>
                 <button type="button" class="btn btn-primary" id="confirmBooking">Confirm Booking</button></div>
         </div>
     </div>

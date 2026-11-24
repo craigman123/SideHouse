@@ -648,7 +648,7 @@
     <div class="modal-overlay" id="timePickerModal">
         <div class="modal-box modal-box-lg modal-box-timepicker">
             <div class="modal-header-timepicker">
-                <button type="button" class="modal-back modal-back-time" id="backToCalendar">&larr; Back to date</button>
+                <button type="button" class="modal-back modal-back-time btn-ghost-cancel" id="backToCalendar">&larr; Back to date</button>
                 <button type="button" class="modal-close" id="timePickerModalClose" aria-label="Close">&times;</button>
                 <div class="booking-flow-progress booking-flow-progress-compact" aria-label="Booking progress">
                     <span class="booking-flow-step active" data-booking-step="1"><b>1</b>Date &amp; time</span>
@@ -693,7 +693,7 @@
             </div>
 
             <div class="modal-actions">
-                <button type="button" class="btn btn-secondary" id="backToCalendar2">Back</button>
+                <button type="button" class="btn btn-secondary btn-ghost-cancel" id="backToCalendar2">Back</button>
                 <button type="button" class="btn btn-primary" id="continueToEquipment">Continue</button>
             </div>
         </div>
@@ -730,7 +730,7 @@
             </div>
 
             <div class="modal-actions">
-                <button type="button" class="btn btn-secondary" id="backToBookingFromEquipment2">Back Previous</button>
+                <button type="button" class="btn btn-secondary btn-ghost-cancel" id="backToBookingFromEquipment2">Back Previous</button>
                 <button type="button" class="btn btn-primary" id="continueToGuestInfo">Continue</button>
             </div>
         </div>

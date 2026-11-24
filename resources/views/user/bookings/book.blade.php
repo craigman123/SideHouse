@@ -127,7 +127,7 @@
                 <span class="booking-flow-step" data-booking-step="4"><b>4</b>Payment</span>
             </div>
 
-            <button type="button" class="modal-back" id="backToInfo">&larr; Back to details</button>
+            <button type="button" class="modal-back btn-ghost-cancel" id="backToInfo">&larr; Back to details</button>
 
             <div class="booking-section">
                 <p class="booking-section-label">Pick a date</p>
@@ -145,7 +145,7 @@
             </div>
 
             <div class="modal-actions">
-                <button type="button" class="btn btn-secondary" id="backToInfo2">Back</button>
+                <button type="button" class="btn btn-secondary btn-ghost-cancel" id="backToInfo2">Back</button>
             </div>
         </div>
     </div>
@@ -193,7 +193,7 @@
             </div>
 
             <div class="modal-actions">
-                <button type="button" class="btn btn-secondary" id="backToCalendar2">Back</button>
+                <button type="button" class="btn btn-secondary btn-ghost-cancel" id="backToCalendar2">Back</button>
                 <button type="button" class="btn btn-primary" id="continueToEquipment">Continue</button>
             </div>
         </div>
@@ -230,7 +230,7 @@
             </div>
 
             <div class="modal-actions">
-                <button type="button" class="btn btn-secondary" id="backToBookingFromEquipment2">Back Previous</button>
+                <button type="button" class="btn btn-secondary btn-ghost-cancel" id="backToBookingFromEquipment2">Back Previous</button>
                 <button type="button" class="btn btn-primary" id="continueToPayment">Continue</button>
             </div>
         </div>
@@ -290,7 +290,7 @@
             <div class="booking-total-bar booking-summary-total">Total: <strong id="summaryTotal"></strong></div>
 
             <div class="modal-actions">
-                <button type="button" class="btn btn-secondary" id="backToEquipment2">Back</button>
+                <button type="button" class="btn btn-secondary btn-ghost-cancel" id="backToEquipment2">Back</button>
                 <button type="button" class="btn btn-primary" id="confirmBooking">Confirm Booking</button>
             </div>
         </div>

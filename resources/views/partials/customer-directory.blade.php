@@ -91,9 +91,8 @@
     @if ($creditGiver)
         <div class="modal-overlay" id="sendCreditModal" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="sendCreditModalLabel" hidden>
             <div class="modal-box send-credit-modal-box" role="document">
-                <div class="modal-header">
+                <div class="modal-header credit-modal">
                     <h3 id="sendCreditModalLabel">Send Credit</h3>
-                    <button type="button" class="modal-close" id="sendCreditClose" aria-label="Close Send Credit modal">&times;</button>
                 </div>
                 <form id="sendCreditForm" class="send-credit-form" novalidate>
                     <div class="send-credit-form-view" id="sendCreditFormView">
@@ -122,7 +121,7 @@
 
                         <p class="send-credit-modal-error" id="sendCreditError" role="alert" hidden></p>
                         <div class="send-credit-form-actions">
-                            <button type="button" class="btn-secondary" id="sendCreditCancel">Cancel</button>
+                            <button type="button" class="btn-secondary btn-ghost-cancel" id="sendCreditCancel">Cancel</button>
                             <button type="submit" class="btn-primary send-credit-submit" id="sendCreditSubmit" disabled>Review Send</button>
                         </div>
                     </div>
@@ -134,7 +133,7 @@
                         </div>
                         <p class="send-credit-modal-error" id="sendCreditConfirmError" role="alert" hidden></p>
                         <div class="send-credit-confirm-actions">
-                            <button type="button" class="btn-secondary" id="sendCreditBack">Back</button>
+                            <button type="button" class="btn-secondary btn-ghost-cancel" id="sendCreditBack">Back</button>
                             <button type="button" class="btn-primary" id="sendCreditConfirm">Send Credit</button>
                         </div>
                     </div>

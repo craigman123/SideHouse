@@ -357,6 +357,7 @@ html.admin-layout-shell .send-credit-form label {
     color: var(--text);
     font-size: var(--font-size-small);
     font-weight: var(--font-weight-button);
+    margin-bottom: var(--s2);
 }
 
 html.admin-layout-shell .send-credit-field {

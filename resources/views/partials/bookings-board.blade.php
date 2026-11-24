@@ -255,7 +255,7 @@
                     </div>
                     <p class="court-block-modal-message" id="courtBlockFormMessage" role="status" aria-live="polite"></p>
                     <div class="court-block-modal-actions">
-                        <button type="button" class="court-block-secondary" id="courtBlockCancel">Cancel</button>
+                        <button type="button" class="court-block-secondary btn-ghost-cancel" id="courtBlockCancel">Cancel</button>
                         <button type="submit" class="court-block-primary" id="courtBlockSave">Save event</button>
                     </div>
                 </form>
@@ -291,7 +291,7 @@
                     </div>
                     <p class="court-block-modal-message" id="courtBlockEditMessage" role="status" aria-live="polite"></p>
                     <div class="court-block-modal-actions">
-                        <button type="button" class="court-block-secondary" id="courtBlockEditCancel">Back</button>
+                        <button type="button" class="court-block-secondary btn-ghost-cancel" id="courtBlockEditCancel">Back</button>
                         <button type="submit" class="court-block-primary">Save event</button>
                     </div>
                 </form>
@@ -327,7 +327,7 @@
                     </div>
                     <p class="court-block-modal-message" id="courtBookingEditMessage" role="status" aria-live="polite"></p>
                     <div class="court-block-modal-actions">
-                        <button type="button" class="court-block-secondary" id="courtBookingEditCancel">Back</button>
+                        <button type="button" class="court-block-secondary btn-ghost-cancel" id="courtBookingEditCancel">Back</button>
                         <button type="submit" class="court-block-primary" data-permission="bookings.edit">Save booking</button>
                     </div>
                 </form>

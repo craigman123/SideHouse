@@ -97,7 +97,7 @@
                 </div>
 
                 <div class="profile-actions">
-                    <button type="button" class="btn btn-secondary" id="cancelEditBtn" hidden>Cancel</button>
+                    <button type="button" class="btn btn-secondary btn-ghost-cancel" id="cancelEditBtn" hidden>Cancel</button>
                     <button type="button" class="btn btn-primary" id="editProfileBtn">Edit Profile</button>
                     <button type="submit" class="btn btn-primary" id="saveProfileBtn" hidden>Save Changes</button>
                 </div>
@@ -141,7 +141,7 @@
             <p class="modal-text" id="logoutModalDescription">You'll need to sign in again to access your account.</p>
 
             <div class="modal-actions wt-confirm-actions">
-                <button type="button" class="btn btn-secondary wt-confirm-stay" id="logoutModalCancel">Stay signed in</button>
+                <button type="button" class="btn btn-secondary wt-confirm-stay btn-ghost-cancel" id="logoutModalCancel">Stay signed in</button>
                 <button type="button" class="btn btn-danger wt-confirm-accept" id="logoutConfirmSubmit">Log out</button>
             </div>
         </div>
@@ -173,7 +173,7 @@
                     spellcheck="false"
                 >
                 <div class="modal-actions wt-confirm-actions">
-                    <button type="button" class="btn btn-secondary wt-confirm-stay" id="deleteModalCancel">Keep my account</button>
+                    <button type="button" class="btn btn-secondary wt-confirm-stay btn-ghost-cancel" id="deleteModalCancel">Keep my account</button>
                     <button type="submit" class="btn btn-danger wt-confirm-accept wt-confirm-accept-cancel" id="deleteConfirmSubmit" disabled>Yes, delete account</button>
                 </div>
             </form>

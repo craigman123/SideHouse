@@ -71,6 +71,45 @@ html.admin-layout-shell .btn-secondary:hover {
     background: var(--surface-2);
 }
 
+html.admin-layout-shell :is(.btn-ghost-cancel, .btn-ghost-cancel.btn-secondary) {
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--text-muted);
+    transition: color 150ms ease-out, border-color 150ms ease-out;
+}
+
+html.admin-layout-shell .btn-ghost-cancel:active:not(:disabled),
+html.admin-layout-shell .btn-ghost-cancel:disabled {
+    background: transparent;
+}
+
+html.admin-layout-shell .btn-ghost-cancel:active:not(:disabled) {
+    border-color: var(--danger);
+    color: var(--danger);
+}
+
+html.admin-layout-shell .btn-ghost-cancel:disabled {
+    border-color: transparent;
+    color: var(--text-muted);
+    opacity: .5;
+    cursor: not-allowed;
+}
+
+@media (hover: hover) {
+    html.admin-layout-shell :is(.btn-ghost-cancel, .btn-ghost-cancel.btn-secondary):hover:not(:disabled),
+    html.admin-layout-shell :is(.btn-ghost-cancel, .btn-ghost-cancel.btn-secondary):focus-visible {
+        border-color: var(--danger);
+        background: transparent;
+        color: var(--danger);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    html.admin-layout-shell .btn-ghost-cancel {
+        transition: none;
+    }
+}
+
 html.admin-layout-shell .btn-danger,
 html.admin-layout-shell .btn-delete,
 html.admin-layout-shell .equip-delete-btn {
@@ -281,6 +320,18 @@ html.admin-layout-shell .modal-header {
     margin-bottom: var(--s4);
     padding-bottom: var(--s3);
     border-bottom: 1px solid var(--border);
+    
+
+}
+
+html.admin-layout-shell .credit-modal {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--s3);
+    margin: var(--s4);
+    padding-bottom: var(--s3);
+    border-bottom: 1px solid var(--border);
 }
 
 html.admin-layout-shell .modal-header h3,
@@ -288,6 +339,8 @@ html.admin-layout-shell .equip-modal-title {
     margin: 0;
     color: var(--text);
     font-size: var(--font-size-h3);
+
+
 }
 
 html.admin-layout-shell .modal-close,

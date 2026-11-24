@@ -132,7 +132,7 @@
                 </div>
 
                 <div class="modal-actions">
-                    <button type="button" class="btn btn-secondary" onclick="closeCourtModal()">Cancel</button>
+                    <button type="button" class="btn btn-secondary btn-ghost-cancel" onclick="closeCourtModal()">Cancel</button>
                     <button type="submit" class="btn btn-primary-sm" id="court-form-submit">Save Court</button>
                 </div>
             </form>
@@ -157,7 +157,7 @@
                 @method('DELETE')
 
                 <div class="modal-actions">
-                    <button type="button" class="btn btn-secondary" onclick="closeDeleteModal()">Cancel</button>
+                    <button type="button" class="btn btn-secondary btn-ghost-cancel" onclick="closeDeleteModal()">Cancel</button>
                     <button type="submit" class="btn btn-danger">Delete</button>
                 </div>
             </form>

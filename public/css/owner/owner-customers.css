@@ -104,7 +104,8 @@ html.owner-layout-shell .customers-send-credit-button svg {
     height: 20px;
     flex: 0 0 20px;
     fill: none;
-    stroke: #9b8bb8;
+    stroke: var(--text);
+    margin-right: var(--s1);
     stroke-width: 1.8;
 }
 

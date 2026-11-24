@@ -68,7 +68,7 @@
                 </div>
 
                 <div class="profile-actions">
-                    <button type="button" class="btn btn-secondary" id="cancelEditBtn" hidden>Cancel</button>
+                    <button type="button" class="btn btn-secondary btn-ghost-cancel" id="cancelEditBtn" hidden>Cancel</button>
                     <button type="button" class="btn btn-primary" id="editProfileBtn">Edit Profile</button>
                     <button type="submit" class="btn btn-primary" id="saveProfileBtn" hidden>Save Changes</button>
                 </div>
@@ -98,7 +98,7 @@
             <p class="modal-text">You'll need to sign in again to access the admin dashboard.</p>
 
             <div class="modal-actions">
-                <button type="button" class="btn btn-secondary" id="logoutModalCancel">Cancel</button>
+                <button type="button" class="btn btn-secondary btn-ghost-cancel" id="logoutModalCancel">Cancel</button>
                 <button type="button" class="btn btn-danger" id="logoutConfirmSubmit">Log Out</button>
             </div>
         </div>
@@ -134,7 +134,7 @@
                     spellcheck="false"
                 >
                 <div class="modal-actions">
-                    <button type="button" class="btn btn-secondary" id="deleteModalCancel">Cancel</button>
+                    <button type="button" class="btn btn-secondary btn-ghost-cancel" id="deleteModalCancel">Cancel</button>
                     <button type="submit" class="btn btn-danger" id="deleteConfirmSubmit" disabled>Delete Account</button>
                 </div>
             </form>

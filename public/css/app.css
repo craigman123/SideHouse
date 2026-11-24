@@ -224,6 +224,42 @@ html:not(.admin-layout-shell) body .content {
     background-color: #2ea043;
 }
 
+.btn-ghost-cancel {
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--text-muted);
+    transition: color 150ms ease-out, border-color 150ms ease-out;
+}
+
+.btn-ghost-cancel:active:not(:disabled) {
+    border-color: var(--danger);
+    background: transparent;
+    color: var(--danger);
+}
+
+.btn-ghost-cancel:disabled {
+    border-color: transparent;
+    background: transparent;
+    color: var(--text-muted);
+    opacity: .5;
+    cursor: not-allowed;
+}
+
+@media (hover: hover) {
+    .btn-ghost-cancel:hover:not(:disabled),
+    .btn-ghost-cancel:focus-visible:not(:disabled) {
+        border-color: var(--danger);
+        background: transparent;
+        color: var(--danger);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .btn-ghost-cancel {
+        transition: none;
+    }
+}
+
 .auth-footer {
     text-align: center;
     font-size: 14px;

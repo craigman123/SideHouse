@@ -73,7 +73,7 @@
             </div>
             <p class="modal-text" id="staffLogoutModalDescription">You'll need to sign in again to access the staff dashboard.</p>
             <div class="modal-actions">
-                <button type="button" class="btn-secondary" id="staffLogoutModalCancel">Stay signed in</button>
+                <button type="button" class="btn-secondary btn-ghost-cancel" id="staffLogoutModalCancel">Stay signed in</button>
                 <button type="button" class="btn btn-danger" id="staffLogoutConfirm">Log out</button>
             </div>
         </div>

@@ -373,7 +373,7 @@
             <label class="court-price-confirm-choice"><input type="radio" name="drag-price-choice" value="keep" checked> Keep original amount</label>
             ${mayChooseNew ? '<label class="court-price-confirm-choice"><input type="radio" name="drag-price-choice" value="new"> Use new amount</label><label class="court-price-confirm-ack"><input type="checkbox"> I acknowledge this price change</label>' : ''}
             ${qrPaid ? '<p class="court-price-confirm-note">Paid by QR. The amount can’t change.</p>' : ''}
-            <div class="court-price-confirm-actions"><button type="button" data-price-cancel>Cancel</button><button type="button" data-price-confirm disabled>Confirm move</button></div>
+            <div class="court-price-confirm-actions"><button type="button" class="btn-ghost-cancel" data-price-cancel>Cancel</button><button type="button" data-price-confirm disabled>Confirm move</button></div>
         </section>`;
         document.body.append(wrap);
         const ack = wrap.querySelector('.court-price-confirm-ack input');

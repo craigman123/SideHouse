@@ -48,7 +48,7 @@
 
                 <div class="announcement-form-actions">
                     <button type="submit" class="btn btn-filter" id="sendAnnouncementBtn">Send to All Users</button>
-                    <button type="button" class="btn" id="cancelAnnouncementModal">Cancel</button>
+                    <button type="button" class="btn btn-ghost-cancel" id="cancelAnnouncementModal">Cancel</button>
                 </div>
             </form>
         </div>
@@ -66,7 +66,7 @@
             </p>
 
             <div class="announcement-confirm-actions">
-                <button type="button" class="btn" id="cancelSendConfirm">Cancel</button>
+                <button type="button" class="btn btn-ghost-cancel" id="cancelSendConfirm">Cancel</button>
                 <button type="button" class="btn btn-filter" id="confirmSendBtn">Send to All Users</button>
             </div>
         </div>
@@ -90,7 +90,7 @@
             </p>
 
             <div class="announcement-confirm-actions">
-                <button type="button" class="btn" id="cancelDeleteConfirm">Cancel</button>
+                <button type="button" class="btn btn-ghost-cancel" id="cancelDeleteConfirm">Cancel</button>
                 <button type="button" class="btn btn-danger" id="confirmDeleteBtn">Delete</button>
             </div>
         </div>

@@ -143,7 +143,7 @@
                     </div>
 
                     <div class="feedback-edit-actions">
-                        <button type="button" class="btn-icon btn-cancel-edit">Cancel</button>
+                        <button type="button" class="btn-icon btn-cancel-edit btn-ghost-cancel">Cancel</button>
                         <button type="submit" class="btn btn-primary-sm">Save Changes</button>
                     </div>
                 </form>

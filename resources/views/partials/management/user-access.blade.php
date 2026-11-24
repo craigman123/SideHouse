@@ -117,8 +117,8 @@
             </div>
             <p class="access-dialog-error" id="accessDialogError" role="alert" hidden></p>
             <footer class="access-dialog-footer">
-                <button type="button" class="user-access-secondary" data-close-dialog>Cancel</button>
-                <button type="button" class="user-access-secondary" id="backToAccessDetails" hidden>Back</button>
+                <button type="button" class="user-access-secondary btn-ghost-cancel" data-close-dialog>Cancel</button>
+                <button type="button" class="user-access-secondary btn-ghost-cancel" id="backToAccessDetails" hidden>Back</button>
                 <button type="button" class="user-access-primary" id="continueAccess" disabled>Continue</button>
                 <button type="submit" class="user-access-primary" id="saveAccess" hidden>Promote</button>
             </footer>
@@ -165,8 +165,8 @@
                     <input id="accountDetailsPassword" name="password" type="password" autocomplete="current-password" required>
                 </div>
                 <footer class="access-dialog-footer">
-                    <button type="button" class="user-access-secondary" data-close-details>Cancel</button>
-                    <button type="button" class="user-access-secondary" id="backToAccountDetails" hidden>Back</button>
+                    <button type="button" class="user-access-secondary btn-ghost-cancel" data-close-details>Cancel</button>
+                    <button type="button" class="user-access-secondary btn-ghost-cancel" id="backToAccountDetails" hidden>Back</button>
                     <button type="button" class="user-access-primary" id="continueAccountDetails" disabled>Continue</button>
                     <button type="submit" class="user-access-primary" id="saveAccountDetails" hidden>Save details</button>
                 </footer>
@@ -186,7 +186,7 @@
                 <input id="removeAccessPassword" type="password" autocomplete="current-password" required>
             </div>
             <footer class="access-dialog-footer">
-                <button type="button" class="user-access-secondary" data-close-dialog>Cancel</button>
+                <button type="button" class="user-access-secondary btn-ghost-cancel" data-close-dialog>Cancel</button>
                 <button type="submit" class="user-access-danger" id="confirmRemoveAccess">Remove access</button>
             </footer>
         </form>

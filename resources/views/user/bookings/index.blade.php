@@ -150,7 +150,7 @@
             </div>
             <p class="modal-text" id="modalText">This will free up the slot for other players. This can't be undone.</p>
             <div class="modal-actions">
-                <button type="button" class="btn btn-secondary" id="modalKeep">Keep booking</button>
+                <button type="button" class="btn btn-secondary btn-ghost-cancel" id="modalKeep">Keep booking</button>
                 <button type="button" class="btn btn-danger" id="modalConfirm">Cancel booking</button>
             </div>
         </div>
