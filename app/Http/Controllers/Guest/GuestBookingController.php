@@ -730,6 +730,13 @@ class GuestBookingController extends Controller
                 $validated, $court, $groups, $slotAmountFor,
                 $guestEmail, $expiresAt, $creditUser
             ) {
+                // Lock the court row for the rest of this transaction —
+                // see the original single-date version of this method
+                // for the full race-condition reasoning. Still needed
+                // here for exactly the same reason, just covering every
+                // date group instead of one.
+                Court::where('id', $court->id)->lockForUpdate()->first();
+
                 $checkoutKey = hash('sha256', $validated['idempotency_token']);
                 $existingReference = PaymentReferenceModel::query()
                     ->where('credit_checkout_key', $checkoutKey)
@@ -749,12 +756,6 @@ class GuestBookingController extends Controller
                         ];
                     }
                 }
-                // Lock the court row for the rest of this transaction —
-                // see the original single-date version of this method
-                // for the full race-condition reasoning. Still needed
-                // here for exactly the same reason, just covering every
-                // date group instead of one.
-                Court::where('id', $court->id)->lockForUpdate()->first();
 
                 foreach ($groups as $dateStr => $windows) {
                     foreach ($windows as [$slotStart, $slotEnd]) {
