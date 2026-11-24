@@ -624,6 +624,35 @@ tr.row-removing {
 .user-dashboard-page .btn-hero-cta:hover { background: var(--brand-hover); border-color: var(--brand-hover); transform: translateY(-2px); }
 .user-dashboard-page .btn-hero-cta:focus-visible { outline: 2px solid var(--brand-hover); outline-offset: 3px; }
 
+.is-cancelling-disabled,
+button:disabled,
+a.is-cancelling-disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+.cancel-spinner {
+    display: inline-block;
+    width: 1em;
+    height: 1em;
+    margin-right: var(--s2);
+    border: 2px solid var(--border);
+    border-top-color: currentColor;
+    border-radius: 50%;
+    vertical-align: -0.15em;
+    animation: cancel-spin 0.8s linear infinite;
+}
+
+@keyframes cancel-spin {
+    to { transform: rotate(360deg); }
+}
+
+.modal-overlay.is-cancelling,
+#cancelModal[aria-busy="true"] {
+    cursor: wait;
+}
+
 .user-dashboard-page .hero-court { width: 150px; }
 .user-dashboard-page .court-surface,
 .user-dashboard-page .court-mini-surface { fill: color-mix(in srgb, var(--brand) 12%, var(--surface)); stroke: var(--brand); }

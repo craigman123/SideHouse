@@ -18,9 +18,60 @@ document.addEventListener('DOMContentLoaded', () => {
     const toastContainer  = document.getElementById('toastContainer');
 
     const cancelUrlTemplate = modal.dataset.cancelUrl;
+    let isCancelling = false;
+    const lockedControls = [];
+    let originalConfirmHTML = '';
 
     let pendingRow = null;
     let pendingId  = null;
+
+    function lockPage() {
+        document.querySelectorAll('button, a, input, select, textarea').forEach((control) => {
+            if (control === modalConfirm) return;
+
+            const state = {
+                control,
+                disabled: control.disabled,
+                href: control.getAttribute('href'),
+                tabindex: control.getAttribute('tabindex'),
+                ariaDisabled: control.getAttribute('aria-disabled'),
+            };
+            lockedControls.push(state);
+            control.disabled = true;
+            control.classList.add('is-cancelling-disabled');
+            control.setAttribute('aria-disabled', 'true');
+            control.setAttribute('tabindex', '-1');
+            if (control.tagName === 'A') control.removeAttribute('href');
+        });
+
+        modal.setAttribute('aria-busy', 'true');
+        modalClose?.setAttribute('disabled', '');
+        modalKeep?.setAttribute('disabled', '');
+        modalConfirm.disabled = true;
+        modalConfirm.setAttribute('aria-busy', 'true');
+        modalConfirm.classList.add('is-cancelling-disabled');
+        modalConfirm.innerHTML = '<span class="cancel-spinner" aria-hidden="true"></span><span>Cancelling...</span>';
+    }
+
+    function unlockPage() {
+        lockedControls.splice(0).forEach(({ control, disabled, href, tabindex, ariaDisabled }) => {
+            control.disabled = disabled;
+            control.classList.remove('is-cancelling-disabled');
+            if (tabindex === null) control.removeAttribute('tabindex');
+            else control.setAttribute('tabindex', tabindex);
+            if (ariaDisabled === null) control.removeAttribute('aria-disabled');
+            else control.setAttribute('aria-disabled', ariaDisabled);
+            if (href !== null && control.tagName === 'A') control.setAttribute('href', href);
+        });
+
+        modal.removeAttribute('aria-busy');
+        modalClose?.removeAttribute('disabled');
+        modalKeep?.removeAttribute('disabled');
+        modalConfirm.disabled = false;
+        modalConfirm.removeAttribute('aria-busy');
+        modalConfirm.classList.remove('is-cancelling-disabled');
+        modalConfirm.innerHTML = originalConfirmHTML;
+    }
 
     function getCookie(name) {
         const match = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)'));
@@ -58,7 +109,8 @@ document.addEventListener('DOMContentLoaded', () => {
         modal.classList.add('open');
     }
 
-    function closeModal() {
+    function closeModal(force = false) {
+        if (isCancelling && !force) return;
         modal.classList.remove('open');
         pendingRow = null;
         pendingId  = null;
@@ -67,6 +119,11 @@ document.addEventListener('DOMContentLoaded', () => {
     // Event delegation: catches Cancel buttons anywhere on the page,
     // including ones in paginated/filtered tables re-rendered by the server.
     document.addEventListener('click', (e) => {
+        if (isCancelling) {
+            e.preventDefault();
+            e.stopImmediatePropagation();
+            return;
+        }
         const trigger = e.target.closest('[data-cancel]');
         if (!trigger) return;
 
@@ -77,22 +134,31 @@ document.addEventListener('DOMContentLoaded', () => {
         openModal(row, isPaid);
     });
 
-    modalClose?.addEventListener('click', closeModal);
-    modalKeep?.addEventListener('click', closeModal);
+    modalClose?.addEventListener('click', () => closeModal());
+    modalKeep?.addEventListener('click', () => closeModal());
     modal.addEventListener('click', (e) => {
         if (e.target === modal) closeModal();
     });
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape' && modal.classList.contains('open')) {
+            event.preventDefault();
+            closeModal();
+        }
+    });
 
     modalConfirm?.addEventListener('click', async () => {
-        if (!pendingId || !cancelUrlTemplate) return;
+        if (isCancelling || !pendingId || !cancelUrlTemplate) return;
 
-        modalConfirm.disabled = true;
-        const originalLabel = modalConfirm.textContent;
-        modalConfirm.textContent = 'Cancelling…';
+        isCancelling = true;
+        originalConfirmHTML = modalConfirm.innerHTML;
+        lockPage();
+        const controller = new AbortController();
+        const timeoutId = window.setTimeout(() => controller.abort(), 15000);
 
         try {
             const res = await fetch(cancelUrlTemplate.replace(':id', pendingId), {
                 method: 'POST',
+                signal: controller.signal,
                 headers: {
                     Accept: 'application/json',
                     ...csrfHeaders(),
@@ -103,8 +169,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (!res.ok) {
                 showToast(data.message || 'Could not cancel this booking.', 'error');
-                modalConfirm.disabled = false;
-                modalConfirm.textContent = originalLabel;
                 return;
             }
 
@@ -114,13 +178,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 pendingRow.classList.add('row-removing');
             }
 
-            closeModal();
+            closeModal(true);
             setTimeout(() => window.location.reload(), 700);
         } catch (err) {
             console.error(err);
             showToast('Something went wrong. Please try again.', 'error');
-            modalConfirm.disabled = false;
-            modalConfirm.textContent = originalLabel;
+        } finally {
+            window.clearTimeout(timeoutId);
+            isCancelling = false;
+            unlockPage();
         }
     });
 

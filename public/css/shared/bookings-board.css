@@ -836,6 +836,20 @@ html[data-theme="light"] .admin-bookings-page .btn-filter {
 .calendar-item-compact-heading > svg { width: 14px; height: 14px; flex: 0 0 14px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .calendar-item-compact-heading .calendar-item-title { flex: 1 1 auto; }
 .calendar-item-time { margin-top: auto; }
+.admin-bookings-page .court-month-block.type-open_play .calendar-item-line,
+.admin-bookings-page .court-month-block.type-open_play .calendar-item-title,
+.admin-bookings-page .court-month-block.type-open_play .calendar-item-time,
+.admin-bookings-page .court-month-block.type-open_play .calendar-item-tiny {
+    color: var(--calendar-on-fill);
+}
+.admin-bookings-page .court-month-block.type-open_play .open-play-full-badge {
+    display: inline-block;
+    padding: 0 var(--s1);
+    border-radius: var(--r-pill);
+    background: var(--surface);
+    color: var(--calendar-on-fill);
+    font-weight: 800;
+}
 .calendar-payment-marker.payment-paid, .calendar-payment-marker.payment-confirmed { color: var(--brand-hover); }
 .calendar-payment-marker.payment-pending { color: var(--warning); }
 .calendar-payment-marker.payment-cancelled { color: var(--danger); }

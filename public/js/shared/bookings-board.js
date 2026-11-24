@@ -730,6 +730,13 @@
         const courtLabel = block.court_id === null ? 'All courts' : (court?.name || 'Court');
         document.getElementById('courtBlockDetailsMeta').textContent =
             `${block.type.replace('_', ' ')} · ${courtLabel} · ${formatDate(block.block_date)} · ${block.start_time}–${block.end_time}`;
+        if (block.type === 'open_play') {
+            const joined = Math.max(0, Number(block.participant_count ?? 0));
+            const maxPlayers = Math.max(0, Number(block.max_players ?? 0));
+            const spotsLeft = Math.max(0, maxPlayers - joined);
+            document.getElementById('courtBlockDetailsMeta').textContent +=
+                ` · ${joined} joined · ${joined >= maxPlayers ? 'Full' : `${spotsLeft} of ${maxPlayers} spots left`}`;
+        }
         const notes = document.getElementById('courtBlockDetailsNotes');
         notes.textContent = block.notes || '';
         notes.hidden = !block.notes;
@@ -2222,6 +2229,7 @@
         lock: '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/><path d="M12 14v3"/></svg>',
         padel: '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M7 3c4-2 9 0 11 4s1 9-3 12-9 2-11-2S3 6 7 3Z"/><path d="m8 18-4 4"/><circle cx="8" cy="7" r=".7"/><circle cx="14" cy="6" r=".7"/><circle cx="16" cy="11" r=".7"/><circle cx="10" cy="13" r=".7"/><circle cx="7" cy="10" r=".7"/></svg>',
         wrench: '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M14.5 6.5a5 5 0 0 0-6.6 6.6L3 18l3 3 4.9-4.9a5 5 0 0 0 6.6-6.6L14 13l-3-3 3.5-3.5Z"/></svg>',
+        people: '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>',
     };
     workspace.querySelectorAll('[data-calendar-legend-icon]').forEach((legend) => {
         const name = legend.dataset.calendarLegendIcon;
@@ -2286,7 +2294,7 @@
         button.append(tiny);
         button.title = fullInfo;
         button.setAttribute('aria-label', fullInfo);
-        return { fullText, compactHeading };
+        return { fullText, compactHeading, compact, tiny };
     };
 
     const renderCalendarGrid = (startDate, dayCount, mode, targetGrid, changedDates = null) => {
@@ -2364,8 +2372,16 @@
         // Pre-build booking and block windows per date.
         const windowsByDate = new Map();
         dates.forEach((dateStr) => {
-            const raw = bookings
-                .filter((booking) => booking.status !== 'cancelled')
+        const raw = bookings
+            .filter((booking) => {
+                if (booking.status === 'cancelled') return false;
+                return !blocks.some((block) => block.type === 'open_play'
+                    && blockWindowsForDate(block, dateStr).some((window) =>
+                        (block.court_id == null || booking.court_id == null
+                            || Number(booking.court_id) === Number(block.court_id))
+                        && toMinutes(booking.start) < window.endMinutes
+                        && toMinutes(booking.end) > window.startMinutes));
+            })
                 .flatMap((booking) => eventWindows(booking, dateStr).map((window) => ({ booking, window })))
                 .map(({ booking, window }) => ({
                     kind: 'booking',
@@ -2520,16 +2536,45 @@
                     let statusLine = '';
                     let price = '';
                     if (block.type === 'open_play') {
-                        statusLine = cancelled ? 'Cancelled' : fullSession ? 'Full'
-                            : sessionCount != null && sessionCapacity != null
-                                ? `${Math.max(0, Number(sessionCapacity) - Number(sessionCount))} of ${Number(sessionCapacity)} spots left`
-                                : block.joined_text || '';
+                        const joined = Math.max(0, Number(sessionCount || 0));
+                        const maxPlayers = Math.max(0, Number(sessionCapacity || 0));
+                        const spotsLeft = Math.max(0, maxPlayers - joined);
+                        const joinedText = `${joined} joined`;
+                        statusLine = cancelled ? joinedText
+                            : fullSession ? `${joinedText} · Full`
+                                : maxPlayers > 0
+                                    ? `${joinedText} · ${spotsLeft} of ${maxPlayers} spots left`
+                                    : `${joinedText} · 0 of 0 spots left`;
                         const perPlayer = block.price_per_player ?? block.price ?? block.amount_per_player;
                         if (perPlayer != null && Number.isFinite(Number(perPlayer))) price = `₱${Number(perPlayer).toLocaleString('en-PH')}/player`;
                     }
                     if (cancelled) event.classList.add('is-cancelled');
                     const details = [type, title, formatDate(block.block_date), time, court, statusLine || block.status, price].filter(Boolean).join(' · ');
-                    appendCalendarContent(event, { icon: block.type === 'closed' ? 'lock' : block.type === 'maintenance' ? 'wrench' : 'padel', title, time, lines: [title, time, court, statusLine, price].filter(Boolean), fullInfo: details });
+                    if (block.type === 'open_play') {
+                        const joined = Math.max(0, Number(sessionCount || 0));
+                        const maxPlayers = Math.max(0, Number(sessionCapacity || 0));
+                        const fullText = fullSession ? 'Full' : `${Math.max(0, maxPlayers - joined)} of ${maxPlayers} spots left`;
+                        const compactLabel = mode === 'week' ? `${title} · ${joined}/${maxPlayers}` : `Open Play · ${joined} joined`;
+                        const content = appendCalendarContent(event, {
+                            icon: 'people',
+                            title,
+                            time,
+                            lines: [title, time, `${joined} joined · ${fullText}`, price].filter(Boolean),
+                            fullInfo: details,
+                        });
+                        if (heightPx < 60) {
+                            content.compactHeading.querySelector('.calendar-item-title').textContent = compactLabel;
+                            content.fullText.querySelector('.calendar-item-title').textContent = compactLabel;
+                        }
+                        if (mode === 'month') {
+                            content.compactHeading.querySelector('.calendar-item-title').textContent =
+                                maxPlayers > 0 ? `Open Play · ${joined}/${maxPlayers}` : `Open Play · ${joined} joined`;
+                        }
+                        event.setAttribute('aria-label', details);
+                        event.title = details;
+                    } else {
+                        appendCalendarContent(event, { icon: block.type === 'closed' ? 'lock' : 'wrench', title, time, lines: [title, time, court, statusLine, price].filter(Boolean), fullInfo: details });
+                    }
                     col.append(event);
                     return;
                 }

@@ -272,5 +272,6 @@
 @endsection
 
 @push('scripts')
+    <script src="{{ asset('js/config/cancel-booking.js') }}" defer></script>
     <script src="{{ asset('js/user/user-dashboard.js') }}" defer></script>
 @endpush
