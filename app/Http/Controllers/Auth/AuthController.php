@@ -143,7 +143,7 @@ class AuthController extends Controller
             ], 422);
         }
 
-        $user = User::where('email', $claims['email'])->first();
+        $user = User::whereRaw('LOWER(email) = ?', [$claims['email']])->first();
         $isNewAccount = false;
 
         if ($user === null) {

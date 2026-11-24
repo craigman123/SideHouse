@@ -256,4 +256,17 @@ class OwnerAreaTest extends TestCase
 
         return "$header.$payload.".$b64($sig);
     }
+
+    public function test_google_login_does_not_skip_mfa_for_owner_pages(): void
+    {
+        $secret = (new Google2FA())->generateSecretKey();
+        $owner = $this->user('owner', null, ['mfa_enabled' => true, 'mfa_secret' => $secret]);
+
+        config(['services.google.client_id' => 'owner-area-client']);
+        $token = $this->fakeGoogleToken($owner->email, $owner->name, 'owner-area-client');
+        $this->postJson('/auth/google', ['id_token' => $token])->assertOk();
+
+        $response = $this->get('/owner/dashboard');
+        $this->assertNotSame(200, $response->getStatusCode(), 'Owner dashboard opened without MFA after Google login.');
+    }
 }
