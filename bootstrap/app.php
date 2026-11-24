@@ -40,6 +40,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'staff.redact' => \App\Http\Middleware\RedactStaffFinancialData::class,
             'owner.only' => \App\Http\Middleware\EnsureUserIsOwner::class,
             'owner.page.redirect' => \App\Http\Middleware\RedirectOwnerFromAdminPage::class,
+            'real-admin' => \App\Http\Middleware\EnsureRealAdmin::class,
         ]);
 
         $middleware->trustProxies(

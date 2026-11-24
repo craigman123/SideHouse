@@ -28,6 +28,7 @@ use App\Http\Controllers\User\UserDashboardController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Maintenance\MaintenanceController;
 use App\Http\Controllers\Guest\GuestBookingLookupController;
+use App\Http\Controllers\Admin\MetricsController;
 
 Route::get('/guest/booking/latest', [GuestBookingLookupController::class, 'latest'])
     ->name('guest.booking.latest')
@@ -217,6 +218,10 @@ Route::middleware(['auth', 'admin.mfa', 'throttle:120,1'])->group(function () {
         ->middleware(['can.access:customers.view', 'staff.redact'])
         ->name('admin.customers.data');
 });
+
+Route::middleware(['auth', 'admin.mfa', 'real-admin', 'throttle:30,1'])
+    ->get('/admin/widgets/metrics', [MetricsController::class, 'index'])
+    ->name('admin.widgets.metrics');
 
 // =================================== ADMIN ROUTES =====================================
 // Baseline limit for every admin route below; individual routes that

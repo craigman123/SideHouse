@@ -18,7 +18,33 @@
         </div>
 
         <div class="schedule-panel">
-            <p class="schedule-panel-note">Widgets will appear here.</p>
+            <div class="schedule-panel-header">
+                <h2>Floating panel</h2>
+                <p class="schedule-panel-note">Show live system metrics in a movable panel across dashboard pages.</p>
+            </div>
+            <div class="system-monitor-widgets-controls">
+                <label class="system-monitor-toggle">
+                    <input type="checkbox" id="systemMonitorEnabled">
+                    <span>Floating panel</span>
+                </label>
+                <button type="button" class="btn-secondary" id="systemMonitorResetPosition">Reset position</button>
+            </div>
+            <div class="system-monitor-preview" id="systemMonitorPreview" aria-live="polite">
+                <div class="system-monitor-preview-heading">
+                    <strong>Live preview</strong>
+                    <span id="systemMonitorPreviewUpdated">Waiting for updates</span>
+                </div>
+                <div class="system-monitor-preview-grid">
+                    <div><span>DB connections</span><strong data-preview-stat="active_connections">N/A</strong></div>
+                    <div><span>Queries / min</span><strong data-preview-stat="queries_per_minute">N/A</strong></div>
+                    <div><span>Avg query</span><strong data-preview-stat="average_query_time_ms">N/A</strong></div>
+                    <div><span>PHP memory</span><strong data-preview-stat="php_memory_bytes">N/A</strong></div>
+                    <div><span>Server load</span><strong data-preview-stat="server_load">N/A</strong></div>
+                    <div><span>Avg response</span><strong data-preview-stat="average_response_time_ms">N/A</strong></div>
+                    <div><span>Requests / min</span><strong data-preview-stat="requests_per_minute">N/A</strong></div>
+                    <div><span>Errors / 5 min</span><strong data-preview-stat="error_count_5m">N/A</strong></div>
+                </div>
+            </div>
         </div>
     </div>
 @endsection

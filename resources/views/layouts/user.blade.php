@@ -16,6 +16,7 @@
     <link rel="stylesheet" href="{{ asset('css/user/user-navbar.css') }}">
     <link rel="stylesheet" href="{{ asset('css/user/sidebar-collapse.css') }}">
     <link rel="stylesheet" href="{{ asset('css/shared/switch-access.css') . '?v=' . filemtime(public_path('css/shared/switch-access.css')) }}">
+    <link rel="stylesheet" href="{{ asset('css/shared/dashboard-shell.css') . '?v=' . filemtime(public_path('css/shared/dashboard-shell.css')) }}">
     <link rel="stylesheet" href="{{ asset('css/guest/theme-toggle.css') }}">
     <link rel="icon" type="image/png" href="{{ asset('images/tab_icon.png') }}">
     <script src="{{ asset('js/app.js') }}" defer></script>
@@ -126,6 +127,12 @@
             @yield('content')
         </main>
     </div>
+
+        @php($realAdminView = auth()->user() ? app(\App\Services\UserAccessService::class)->isRealAdmin(auth()->user(), request()) : false)
+        @if ($realAdminView)
+            @include('partials.system-monitor-panel')
+            <script src="{{ asset('js/shared/system-monitor.js') . '?v=' . filemtime(public_path('js/shared/system-monitor.js')) }}" defer></script>
+        @endif
 
     @stack('scripts')
 

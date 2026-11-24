@@ -89,6 +89,12 @@
         <main class="content">@yield('content')</main>
     </div>
 
+    @php($realAdminView = auth()->user() ? app(\App\Services\UserAccessService::class)->isRealAdmin(auth()->user(), request()) : false)
+    @if ($realAdminView)
+        @include('partials.system-monitor-panel')
+        <script src="{{ asset('js/shared/system-monitor.js') . '?v=' . filemtime(public_path('js/shared/system-monitor.js')) }}" defer></script>
+    @endif
+
     <div id="logout-confirm-modal" class="mfa-modal hidden">
         <div class="mfa-modal-overlay"></div>
         <div class="mfa-modal-content">
