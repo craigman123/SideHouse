@@ -157,10 +157,8 @@ class OwnerAreaTest extends TestCase
         $this->postJson('/mfa/verify', ['code' => $otp])->assertOk()->assertJsonPath('redirect', '/owner/dashboard');
 
         config(['services.google.client_id' => 'owner-area-client']);
-        Http::fake(['https://oauth2.googleapis.com/tokeninfo*' => Http::response([
-            'email' => $owner->email, 'email_verified' => 'true', 'aud' => 'owner-area-client', 'name' => $owner->name,
-        ])]);
-        $this->postJson('/auth/google', ['id_token' => 'verified-owner-token'])
+        $token = $this->fakeGoogleToken($owner->email, $owner->name, 'owner-area-client');
+        $this->postJson('/auth/google', ['id_token' => $token])
             ->assertOk()->assertJsonPath('redirect', '/owner/dashboard');
     }
 
@@ -223,5 +221,39 @@ class OwnerAreaTest extends TestCase
         $ownerPage = $this->signIn($owner)->get('/owner/dashboard')->assertOk();
         $ownerPage->assertViewHas('todayBookings', 2);
         $ownerPage->assertViewHas('upcomingBookings', fn ($rows) => $rows->pluck('customer_name')->all() === ['Active Customer', 'Pending Customer']);
+    }
+
+    private function fakeGoogleToken(string $email, string $name, string $clientId): string
+    {
+        $config = ['private_key_bits' => 2048, 'private_key_type' => OPENSSL_KEYTYPE_RSA];
+        foreach ([
+            getenv('OPENSSL_CONF') ?: null,
+            'C:\\xampp\\php\\extras\\openssl\\openssl.cnf',
+            'C:\\xampp\\apache\\conf\\openssl.cnf',
+        ] as $candidate) {
+            if ($candidate && is_file($candidate)) {
+                $config['config'] = $candidate;
+                break;
+            }
+        }
+        $key = openssl_pkey_new($config);
+        $this->assertNotFalse($key, 'openssl_pkey_new failed: '.openssl_error_string());
+        $details = openssl_pkey_get_details($key);
+        $b64 = fn ($v) => rtrim(strtr(base64_encode($v), '+/', '-_'), '=');
+
+        $header = $b64(json_encode(['alg' => 'RS256', 'kid' => 'test-kid', 'typ' => 'JWT']));
+        $payload = $b64(json_encode([
+            'iss' => 'https://accounts.google.com', 'aud' => $clientId,
+            'exp' => now()->addHour()->timestamp, 'email' => $email,
+            'email_verified' => true, 'name' => $name, 'jti' => bin2hex(random_bytes(8)),
+        ]));
+        openssl_sign("$header.$payload", $sig, $key, OPENSSL_ALGO_SHA256);
+
+        Http::fake(['https://www.googleapis.com/oauth2/v3/certs' => Http::response(['keys' => [[
+            'kid' => 'test-kid', 'alg' => 'RS256', 'kty' => 'RSA', 'use' => 'sig',
+            'n' => $b64($details['rsa']['n']), 'e' => $b64($details['rsa']['e']),
+        ]]])]);
+
+        return "$header.$payload.".$b64($sig);
     }
 }

@@ -728,7 +728,7 @@ class GuestBookingController extends Controller
         try {
             $result = DB::transaction(function () use (
                 $validated, $court, $groups, $slotAmountFor,
-                $guestEmail, $expiresAt
+                $guestEmail, $expiresAt, $creditUser
             ) {
                 $checkoutKey = hash('sha256', $validated['idempotency_token']);
                 $existingReference = PaymentReferenceModel::query()

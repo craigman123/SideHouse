@@ -12,10 +12,34 @@ use App\Models\User;
 use App\Services\CreditService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
+use App\Models\BusinessSetting;
+use Carbon\CarbonImmutable;
+use Illuminate\Support\Carbon;
 
 class GuestCreditStage1Test extends TestCase
 {
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        BusinessSetting::query()->firstOrCreate([], [
+            'open_hour' => 8, 'close_hour' => 7, 'step_minutes' => 30,
+            'min_duration_hours' => 1, 'max_duration_hours' => 10, 'closed_weekdays' => [],
+        ]);
+        BusinessSetting::current()->update(['closed_weekdays' => []]);
+
+        $instant = Carbon::parse('2026-11-20 10:00:00', 'Asia/Manila');
+        Carbon::setTestNow($instant);
+        CarbonImmutable::setTestNow($instant);
+    }
+
+    protected function tearDown(): void
+    {
+        Carbon::setTestNow();
+        CarbonImmutable::setTestNow();
+        parent::tearDown();
+    }
 
     public function test_full_credit_checkout_is_paid_and_ledgers_are_written_per_booking(): void
     {
@@ -43,7 +67,10 @@ class GuestCreditStage1Test extends TestCase
         ])->postJson('/guest-book', [
             'court_id' => $court->id,
             'date' => now()->addDay()->toDateString(),
-            'slots' => [now()->addDay()->toDateString().' 10:00'],
+            'slots' => [
+                now()->addDay()->toDateString().' 06:00',
+                now()->addDay()->toDateString().' 06:30',
+            ],
             'payment_method' => 'qrph',
             'guest_name' => 'Credit Guest',
             'guest_contact' => '09171234567',
@@ -102,7 +129,10 @@ class GuestCreditStage1Test extends TestCase
         $payload = [
             'court_id' => $court->id,
             'date' => now()->addDay()->toDateString(),
-            'slots' => [now()->addDay()->toDateString().' 10:00'],
+            'slots' => [
+                now()->addDay()->toDateString().' 06:00',
+                now()->addDay()->toDateString().' 06:30',
+            ],
             'guest_name' => 'Replay Guest',
             'guest_contact' => '09171234567',
             'use_credit' => true,
@@ -120,6 +150,8 @@ class GuestCreditStage1Test extends TestCase
         $this->withSession($session)->postJson('/guest-book', $payload)->assertOk();
         $this->withSession($session)->postJson('/guest-book', $payload)->assertOk();
         $this->assertSame(1, Booking::count());
+        $this->assertSame(50, (int) CreditWallet::where('user_id', $user->user_id)->value('given_balance'));
+        $this->assertSame(1, CreditTransaction::where('reason', 'booking_payment')->count());
     }
 
     public function test_qr_release_restores_original_credit_types_once(): void
