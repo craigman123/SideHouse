@@ -147,10 +147,10 @@ body {
     background: var(--surface-2);
 }
 
-#paymentPage .booking-section-label,
-#paymentPage .booking-summary-title {
-    color: var(--text);
-    font-weight: var(--font-weight-h3);
+#paymentPage .booking-section-label {
+    color: var(--text-muted);
+    font-size: var(--font-size-small);
+    font-weight: var(--font-weight-small);
 }
 
 #paymentPage .guest-info-grid {
@@ -281,13 +281,62 @@ body {
     color: var(--text-muted);
 }
 
-#paymentPage .booking-summary strong,
-#paymentPage .booking-summary-total strong {
-    color: var(--text);
+#paymentPage .booking-summary .booking-summary-title {
+    margin: 0 0 var(--s2);
+    padding: 0;
+    border: 0;
+    color: var(--brand-hover);
+    font-family: var(--font-family);
+    font-size: var(--font-size-small);
+    font-weight: var(--font-weight-small);
 }
 
-#paymentPage .booking-summary-total strong {
-    color: var(--brand-hover);
+#paymentPage .booking-summary > p:not(.booking-summary-title):not(.payment-confidence-note) {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--s2) var(--s3);
+    margin: 0;
+    padding: var(--s2) 0;
+    border-bottom: 1px solid var(--border);
+    color: var(--text-muted);
+    font-family: var(--font-family);
+    font-size: var(--font-size-small);
+    overflow-wrap: anywhere;
+}
+
+#paymentPage .booking-summary strong {
+    max-width: 68%;
+    color: var(--text);
+    text-align: right;
+    overflow-wrap: anywhere;
+}
+
+/* Sticky total bar — promoted out of .booking-summary to match user modal */
+#paymentPage .booking-total-bar.booking-summary-total {
+    box-sizing: border-box;
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--s3);
+    width: 100%;
+    padding: var(--s3) var(--s5);
+    border-top: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text-muted);
+    font-family: var(--font-family);
+    white-space: nowrap;
+}
+
+#paymentPage .booking-total-bar.booking-summary-total strong {
+    color: var(--brand);
+    font-family: var(--font-family);
+    font-size: var(--font-size-h3);
+    font-weight: var(--font-weight-h3);
+    text-align: right;
+    white-space: nowrap;
 }
 
 #paymentPage .payment-confidence-note {
@@ -365,6 +414,11 @@ body {
 
     #paymentPage .modal-scroll-body {
         padding: var(--s3);
+    }
+
+    #paymentPage .booking-total-bar.booking-summary-total {
+        padding-left: var(--s3);
+        padding-right: var(--s3);
     }
 
     #paymentPage .modal-header,
@@ -471,7 +525,7 @@ body {
 }
 
 .credit-icon { width: 1em; height: 1em; vertical-align: -0.15em; margin-right: .2em; }
-.guest-credit-payment-summary strong.is-used { color: #22c55e; }
+.guest-credit-payment-summary strong.is-used { color: var(--brand-hover); }
 
 @keyframes sk-shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
 .sk-block {
@@ -519,7 +573,7 @@ body {
 }
 
 #paymentPage .guest-credit-payment-summary strong.is-used {
-    color: var(--success, #22c55e);
+    color: var(--brand-hover);
 }
 
 /* ---- Skeletons ---- */

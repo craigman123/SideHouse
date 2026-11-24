@@ -1011,7 +1011,7 @@
 .user-book-court-page #paymentPage .booking-section {
     margin: 0 0 var(--s4);
     padding: var(--s4);
-    border: 1px solid var(--text-muted);
+    border: 1px solid var(--border);
     border-radius: var(--r-lg);
     background: var(--surface-2);
 }

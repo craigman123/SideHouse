@@ -27,6 +27,7 @@
             data-store-url="{{ route('book.store') }}"
             data-status-url-template="{{ route('book.status', ['booking' => '__ID__']) }}"
             data-waiting-url-template="{{ route('book.waiting', ['booking' => '__ID__']) }}"
+            data-receipt-url-template="{{ route('book.receipt', ['booking' => '__ID__']) }}"
             data-cancel-url-template="{{ route('user.bookings.cancel', ['booking' => '__ID__']) }}"
             data-open-hour="{{ $openHour }}"
             data-close-hour="{{ $closeHour }}"
@@ -47,6 +48,12 @@
             data-peak-end-hour="{{ $peakEndHour ?? '' }}"
             data-peak-adjustment-type="{{ $peakAdjustmentType ?? '' }}"
             data-peak-adjustment-value="{{ $peakAdjustmentValue ?? '' }}"
+            {{-- Credit balance — given/reserved/total — rendered server-side so
+                 book.js can initialise the credit panel without an extra request.
+                 Absent (empty string) when the user has no wallet or zero balance. --}}
+            data-credit-given="{{ ($creditBalance && $creditBalance['total'] > 0) ? $creditBalance['given'] : '' }}"
+            data-credit-reserved="{{ ($creditBalance && $creditBalance['total'] > 0) ? $creditBalance['reserved'] : '' }}"
+            data-credit-total="{{ ($creditBalance && $creditBalance['total'] > 0) ? $creditBalance['total'] : '' }}"
         >
             @forelse ($courts as $court)
                 <button
@@ -252,7 +259,6 @@
 
             <div class="modal-scroll-body">
                 <div class="booking-section">
-                    <p class="booking-section-label">Contact Details</p>
                     <div class="guest-info-grid">
                         <div class="guest-info-item">
                             <label for="contactNumber">Contact Number</label>
@@ -271,6 +277,38 @@
                         </div>
                     </div>
                 </div>
+
+                {{-- Credit section — only shown when the user has a non-zero balance.
+                     IDs match the guest payment page exactly so book.js can share
+                     the same updateCreditSummary() logic without a second set of
+                     selectors. The section is hidden by default and revealed by
+                     book.js once it reads the credit balance from #courtGrid's
+                     data attributes. --}}
+                @if (!empty($creditBalance) && $creditBalance['total'] > 0)
+                <div class="booking-section user-credit-section" id="userCreditSection">
+                    <p class="booking-section-label">Credits</p>
+                    <div class="guest-credit-payment" id="guestCreditPayment">
+                        <div class="guest-credit-content">
+                            <label class="guest-credit-use">
+                                <input type="checkbox" id="useGuestCredit" checked>
+                                <span>Use my credits</span>
+                            </label>
+                            <div class="guest-credit-balances" aria-live="polite">
+                                <span>Given <strong id="guestGivenBalance">&#8369;{{ number_format($creditBalance['given']) }}</strong></span>
+                                <span>Reserved <strong id="guestReservedBalance">&#8369;{{ number_format($creditBalance['reserved']) }}</strong></span>
+                                <span>Total <strong id="guestCreditTotal">&#8369;{{ number_format($creditBalance['total']) }}</strong></span>
+                            </div>
+                            <div class="guest-credit-payment-summary" aria-live="polite">
+                                <p><span>Booking total</span><strong id="guestCreditCheckoutTotal">—</strong></p>
+                                <p><span>Given used</span><strong id="guestGivenUsed">—</strong></p>
+                                <p><span>Reserved used</span><strong id="guestReservedUsed">—</strong></p>
+                                <p><span>Credit discount</span><strong id="guestCreditDiscount">—</strong></p>
+                                <p><span>Amount to pay by QR</span><strong id="guestCashDue">—</strong></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                @endif
 
                 <div class="booking-summary" id="bookingSummary">
                     <p class="booking-summary-title">Final Review</p>

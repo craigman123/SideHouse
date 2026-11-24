@@ -128,24 +128,27 @@
                                 <span>Total <strong id="guestCreditTotal"></strong></span>
                             </div>
                             <div class="guest-credit-payment-summary" aria-live="polite">
-                                <p><span>Total</span><strong id="guestCreditCheckoutTotal">₱{{ number_format($totalAmount, 0) }}</strong></p>
+                                <p><span>Total</span><strong id="guestCreditCheckoutTotal">—</strong></p>
                                 <p><span>Given used</span><strong id="guestGivenUsed"></strong></p>
                                 <p><span>Reserved used</span><strong id="guestReservedUsed"></strong></p>
-                                <p><span>Amount to pay by QR</span><strong id="guestCashDue">₱{{ number_format($totalAmount, 0) }}</strong></p>
+                                <p><span>Amount to pay by QR</span><strong id="guestCashDue">—</strong></p>
                                 <p><span>Credit discount</span><strong id="guestCreditDiscount"></strong></p>
                             </div>
                         </div>
                     </div>
                 </div>
-                <div class="booking-summary">
+                <div class="booking-summary" id="bookingSummary">
                     <p class="booking-summary-title">Final review</p>
                     @foreach ($dateSummaries as $line)<p>{{ $line }}</p>@endforeach
                     <p>Court rental <strong>PHP {{ number_format($courtAmount, 2) }}</strong></p>
                     @if ($equipmentLines->isNotEmpty())<p>Equipment: <strong>{{ $equipmentLines->map(fn ($line) => "{$line['name']} ×{$line['quantity']}")->implode(', ') }}</strong></p>@endif
                     <p>Payment: <strong id="summaryPayment">QR Ph</strong></p>
-                    <p class="booking-summary-total">Total: <strong id="summaryTotal">₱{{ number_format($totalAmount, 2) }}</strong></p>
                     <p class="payment-confidence-note">Your slot is held for {{ $paymentHoldMinutes }} minutes while you complete the QR Ph payment.</p>
                 </div>
+            </div>
+            <div class="booking-total-bar booking-summary-total">
+                <span>Total</span>
+                <strong id="summaryTotal">₱{{ number_format($totalAmount, 2) }}</strong>
             </div>
             <div class="modal-actions">
                 <button type="button" class="btn btn-secondary btn-ghost-cancel" id="backToEquipment2">Back</button>

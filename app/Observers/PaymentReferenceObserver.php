@@ -44,10 +44,14 @@ class PaymentReferenceObserver
 
     private function sendReceipt(PaymentReference $paymentReference): void
     {
+        // bookings.email is set by both the guest flow (from the Google-
+        // verified email) and the user flow ($user->email stored at booking
+        // time), so this lookup works for both. If it is somehow missing,
+        // log a warning and bail rather than crashing the observer.
         $recipient = $paymentReference->bookings()->value('email');
 
-       if (! $recipient) {
-            \Log::warning('Receipt mail skipped: no booking email', [
+        if (! $recipient) {
+            \Log::warning('Receipt mail skipped: no booking email found', [
                 'payment_reference_id' => $paymentReference->id,
             ]);
             return;

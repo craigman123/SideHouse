@@ -362,6 +362,9 @@ Route::middleware(['auth', 'admin.mfa', 'customer.only', 'throttle:120,1'])->gro
     // Full-page "waiting for payment" step — see
     // User_UserController::waitingForPayment()'s docblock.
     Route::get('/book/bookings/{booking}/waiting', [User_UserController::class, 'waitingForPayment'])->name('book.waiting');
+    // Receipt page for a fully-paid user booking. Ownership-gated —
+    // see User_UserController::receiptForUser()'s docblock.
+    Route::get('/book/bookings/{booking}/receipt', [User_UserController::class, 'receiptForUser'])->name('book.receipt');
     Route::post('/book', [User_UserController::class, 'storeBooking'])
         ->middleware('throttle:20,1')
         ->name('book.store');

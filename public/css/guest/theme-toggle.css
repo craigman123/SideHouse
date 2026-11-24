@@ -207,6 +207,7 @@ html[data-theme="light"] .guest-landing-page .landing-wrapper .feature-card-gear
 .guest-payment-page .landing-wrapper { padding-top: 0; }
 #waitingPage.wt-shell { padding-top: 24px; }
 .receipt-body { 
+    overflow-y: scroll;
     padding-top: calc(var(--s8) + var(--s4) - 60px);
     display: flex;
     justify-content: center;

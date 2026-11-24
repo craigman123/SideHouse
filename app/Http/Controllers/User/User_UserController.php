@@ -79,6 +79,15 @@ class User_UserController extends Controller
         // truth for what a slot costs.
         $settings = BusinessSetting::current();
 
+        // Load the user's credit wallet so the booking page can show
+        // the "Use my credits" section without an extra round-trip.
+        $creditWallet = CreditWallet::where('user_id', auth()->id())->first();
+        $creditBalance = $creditWallet ? [
+            'given'    => (int) $creditWallet->given_balance,
+            'reserved' => (int) $creditWallet->reserved_balance,
+            'total'    => (int) $creditWallet->given_balance + (int) $creditWallet->reserved_balance,
+        ] : null;
+
         return view('user.bookings.book', [
             'userName'            => auth()->user()->name,
             'userPhone'           => auth()->user()->phone_number ?? '',
@@ -94,6 +103,7 @@ class User_UserController extends Controller
             'peakEndHour'         => $settings->hasPeakPricing() ? $settings->peak_end_hour : null,
             'peakAdjustmentType'  => $settings->hasPeakPricing() ? $settings->peak_adjustment_type : null,
             'peakAdjustmentValue' => $settings->hasPeakPricing() ? $settings->peak_adjustment_value : null,
+            'creditBalance'       => $creditBalance,
         ]);
     }
 
@@ -126,12 +136,31 @@ class User_UserController extends Controller
         $result = DB::transaction(function () use ($booking) {
             $locked = Booking::where('id', $booking->id)->lockForUpdate()->first();
 
-            if ((int) $locked->given_used > 0 || (int) $locked->reserved_used > 0) {
-                return ['ok' => false, 'status' => 'credit_paid'];
+            // Block self-service cancel on fully-paid bookings (credit or
+            // cash). A pending booking that used partial credits is still
+            // cancellable — the hold will be released below.
+            if ($locked->status === 'paid') {
+                return ['ok' => false, 'status' => 'paid'];
+            }
+
+            if ($locked->status === 'cancelled') {
+                return ['ok' => false, 'status' => 'cancelled'];
             }
 
             if ($locked->status !== 'pending') {
                 return ['ok' => false, 'status' => $locked->status];
+            }
+
+            // Release any credit hold tied to this booking's
+            // PaymentReference before marking it cancelled. releasePaymentHold()
+            // is a no-op when no hold exists or the hold is already released.
+            if ($locked->payment_reference_id) {
+                $lockedRef = \App\Models\PaymentReference::where('id', $locked->payment_reference_id)
+                    ->lockForUpdate()
+                    ->first();
+                if ($lockedRef) {
+                    app(CreditService::class)->releasePaymentHold($lockedRef);
+                }
             }
 
             $locked->update(['status' => 'cancelled']);
@@ -142,10 +171,9 @@ class User_UserController extends Controller
 
         if (! $result['ok']) {
             $message = match ($result['status']) {
-                'credit_paid' => 'This booking was paid with credit. Credit restoration is not available yet.',
-                'paid' => 'This booking is already paid and confirmed. Cancelling a paid booking requires a refund — please contact us directly.',
+                'paid'      => 'This booking is already paid and confirmed. Cancelling a paid booking requires a refund — please contact us directly.',
                 'cancelled' => 'This booking is already cancelled.',
-                default => 'This booking can no longer be cancelled.',
+                default     => 'This booking can no longer be cancelled.',
             };
 
             return response()->json(['message' => $message], 422);
@@ -330,19 +358,32 @@ class User_UserController extends Controller
 
     /**
      * Creates one Booking per distinct calendar date the user selected,
-     * all sharing a single PaymentReference. See
-     * GuestBookingController::store()'s docblock — this is the same fix,
-     * applied to the signed-in flow.
+     * all sharing a single PaymentReference. Credits are applied when the
+     * user checks "Use my credits" — the server recomputes the split from
+     * the wallet (never trusting browser-sent amounts), holds/debits the
+     * wallet inside the same DB transaction as the booking rows, and
+     * returns status='paid' when credits cover the full total so the JS
+     * can redirect straight to the receipt page.
+     *
+     * See GuestBookingController::store()'s docblock — this is the same
+     * fix, applied to the signed-in flow.
      */
     public function storeBooking(Request $request)
     {
         $validated = $request->validate([
-            'court_id'       => ['required', 'integer', 'exists:courts,id'],
-            'date'           => ['required', 'date', 'after_or_equal:today'],
-            'slots'          => ['required', 'array', 'min:1', 'max:60'],
-            'slots.*'        => ['required', 'date_format:Y-m-d H:i', 'distinct'],
-            'payment_method' => ['nullable', 'in:qrph'],
-            'contact_number' => ['required', 'string', 'max:30', 'regex:/^[0-9+\-\s()]{7,30}$/'],
+            'court_id'          => ['required', 'integer', 'exists:courts,id'],
+            'date'              => ['required', 'date', 'after_or_equal:today'],
+            'slots'             => ['required', 'array', 'min:1', 'max:60'],
+            'slots.*'           => ['required', 'date_format:Y-m-d H:i', 'distinct'],
+            'payment_method'    => ['nullable', 'in:qrph'],
+            'contact_number'    => ['required', 'string', 'max:30', 'regex:/^[0-9+\-\s()]{7,30}$/'],
+            // use_credit: 1/0 from the browser. The server recomputes the
+            // actual split — this is only the user's intent toggle.
+            'use_credit'        => ['nullable', 'boolean'],
+            // idempotency_token: a random key the browser generates once
+            // per checkout session. Used to deduplicate double-submits
+            // the same way the guest flow does.
+            'idempotency_token' => ['required', 'string', 'min:32', 'max:128'],
             'equipment'            => ['array'],
             'equipment.*.id'       => ['required_with:equipment', 'integer', 'exists:equipment,id'],
             'equipment.*.quantity' => ['required_with:equipment', 'integer', 'min:1', 'max:20'],
@@ -469,6 +510,30 @@ class User_UserController extends Controller
                 // conflict check and the insert below).
                 Court::where('id', $court->id)->lockForUpdate()->first();
 
+                // Idempotency: if this checkout key was already committed
+                // (e.g. a double-click or a network retry), return the
+                // original bookings without creating duplicates or debiting
+                // credits again. Same pattern as the guest flow.
+                $checkoutKey = hash('sha256', $validated['idempotency_token']);
+                $existingReference = PaymentReferenceModel::query()
+                    ->where('credit_checkout_key', $checkoutKey)
+                    ->lockForUpdate()
+                    ->first();
+                if ($existingReference) {
+                    $existingBookings = Booking::where('payment_reference_id', $existingReference->id)
+                        ->orderBy('date')
+                        ->lockForUpdate()
+                        ->get();
+                    if ($existingBookings->isNotEmpty()) {
+                        return [
+                            'bookings'         => $existingBookings->all(),
+                            'paymentReference' => $existingReference,
+                            'isPaid'           => $existingReference->isConfirmed(),
+                            'idempotent'       => true,
+                        ];
+                    }
+                }
+
                 foreach ($groups as $dateStr => $windows) {
                     foreach ($windows as [$slotStart, $slotEnd]) {
                         $slotConflict = \App\Models\BookingSlot::whereHas('booking', function ($q) use ($court) {
@@ -531,22 +596,69 @@ class User_UserController extends Controller
                 $equipmentAmount = collect($resolvedEquipment)
                     ->sum(fn ($line) => $line['item']->price * $line['quantity']);
                 $totalAmount = round($courtAmount + $equipmentAmount, 2);
+                $totalPhp = (int) round($totalAmount);
 
-                $isPaid = false;
+                // Server-side credit split — the browser only sends
+                // use_credit (0 or 1). The wallet is locked here so the
+                // balance cannot change between the quote and the debit.
+                // quoteAndSpendForGuestCheckout() does its own lockForUpdate()
+                // internally; that is a no-op when the same row is already
+                // locked in this transaction (PostgreSQL re-entrant lock).
+                $split = [
+                    'given_used'   => 0,
+                    'reserved_used' => 0,
+                    'cash_due'     => $totalPhp,
+                    'cash_paid'    => 0,
+                ];
+                if ((bool) ($validated['use_credit'] ?? false)) {
+                    $split = app(CreditService::class)->quoteAndSpendForGuestCheckout($user, $totalPhp);
+                }
+                $isPaid = $split['cash_due'] === 0;
 
                 $paymentReference = PaymentReferenceModel::create([
-                    'payment_method'    => 'qrph',
-                    'amount'            => $totalAmount,
-                    'confirmed_at'      => $isPaid ? now() : null,
+                    'payment_method'         => 'qrph',
+                    'amount'                 => $split['cash_due'],
+                    'given_used'             => $split['given_used'],
+                    'reserved_used'          => $split['reserved_used'],
+                    'cash_due'               => $split['cash_due'],
+                    'cash_paid'              => 0,
+                    'credit_checkout_key'    => $checkoutKey,
+                    'confirmed_at'           => $isPaid ? now() : null,
+                    'credit_status'          => $isPaid && ($split['given_used'] + $split['reserved_used'] > 0)
+                        ? 'paid'
+                        : (($split['given_used'] + $split['reserved_used'] > 0) ? 'held' : 'none'),
+                    'matched_credit_user_id' => ($split['given_used'] + $split['reserved_used'] > 0)
+                        ? $user->user_id
+                        : null,
                 ]);
 
                 $bookings = [];
                 $isFirstGroup = true;
+                // Running totals for distributing the credit split across
+                // multiple booking rows — same bucketing as the guest flow.
+                $remainingGiven    = (int) $split['given_used'];
+                $remainingReserved = (int) $split['reserved_used'];
+                $remainingCash     = (int) $split['cash_due'];
 
                 foreach ($groups as $dateStr => $windows) {
                     $envelopeStart = $windows[0][0];
                     $envelopeEnd   = $windows[count($windows) - 1][1];
                     $dateAmount    = round(collect($windows)->sum(fn ($window) => $slotAmountFor($window[0])), 2);
+                    $grossBookingAmount = $isFirstGroup
+                        ? round($dateAmount + ($totalAmount - $courtAmount), 2)
+                        : $dateAmount;
+                    $bookingPhp = (int) round($grossBookingAmount);
+
+                    // Allocate credits greedily in given → reserved → cash
+                    // order, same as GuestBookingController::store().
+                    $allocatedGiven    = min($bookingPhp, $remainingGiven);
+                    $remainingGiven   -= $allocatedGiven;
+                    $bookingCashLeft   = $bookingPhp - $allocatedGiven;
+                    $allocatedReserved = min($bookingCashLeft, $remainingReserved);
+                    $remainingReserved -= $allocatedReserved;
+                    $bookingCashLeft  -= $allocatedReserved;
+                    $allocatedCashDue  = min($bookingCashLeft, $remainingCash);
+                    $remainingCash    -= $allocatedCashDue;
 
                     $booking = Booking::create([
                         'user_id'              => auth()->id(),
@@ -559,9 +671,13 @@ class User_UserController extends Controller
                         'date'                 => $dateStr,
                         'start_time'           => $envelopeStart->format('H:i:s'),
                         'end_time'             => $envelopeEnd->format('H:i:s'),
+                        'given_used'           => $allocatedGiven,
+                        'reserved_used'        => $allocatedReserved,
+                        'cash_due'             => $allocatedCashDue,
+                        'cash_paid'            => $isPaid ? 0 : 0,
                         // See GuestBookingController::store() for why
                         // equipment cost lands entirely on the first date.
-                        'amount'               => $isFirstGroup ? round($dateAmount + ($totalAmount - $courtAmount), 2) : $dateAmount,
+                        'amount'               => $grossBookingAmount,
                         'poll_token'           => (function () {
                             do {
                                 $token = Str::random(40);
@@ -597,6 +713,19 @@ class User_UserController extends Controller
                     $isFirstGroup = false;
                 }
 
+                // Debit or hold credits ONCE for the whole PaymentReference,
+                // not once per booking group. debitForCheckout() locks the
+                // wallet row itself, so this is safe inside the transaction.
+                if ($split['given_used'] + $split['reserved_used'] > 0) {
+                    app(CreditService::class)->debitForCheckout(
+                        $user,
+                        $split['given_used'],
+                        $split['reserved_used'],
+                        $paymentReference,
+                        null  // payment-reference-level, not per-booking
+                    );
+                }
+
                 return [
                     'bookings'         => $bookings,
                     'paymentReference' => $paymentReference,
@@ -608,8 +737,11 @@ class User_UserController extends Controller
         }
 
         [$bookings, $isPaid] = [$result['bookings'], $result['isPaid']];
+        $idempotent = (bool) ($result['idempotent'] ?? false);
 
+        // Log each booking only on the first (non-idempotent) submit.
         foreach ($bookings as $booking) {
+            if ($idempotent) break;
             ActivityLogger::log(
                 'booking.created',
                 $user->name . " booked {$court->name} on " . Carbon::parse($booking->date)->format('M j, Y') . ' from ' . Carbon::parse($booking->start_time)->format('g:i A') . ' to ' . Carbon::parse($booking->end_time)->format('g:i A') . '.',
@@ -622,25 +754,32 @@ class User_UserController extends Controller
                     'amount'           => $booking->amount,
                     'payment_method'   => 'qrph',
                     'discount_percent' => $discountPercent,
+                    'given_used'       => $result['paymentReference']->given_used,
+                    'reserved_used'    => $result['paymentReference']->reserved_used,
+                    'cash_due'         => $result['paymentReference']->cash_due,
                 ],
             );
         }
 
         return response()->json([
-            'message'    => $isPaid
-                ? 'Booking confirmed! We matched it to a payment that already came in.'
+            'message'       => $isPaid
+                ? 'Payment complete with credit.'
                 : 'Booking submitted! Waiting for payment confirmation.',
-            'bookings'   => collect($bookings)->map(fn ($b) => [
+            'bookings'      => collect($bookings)->map(fn ($b) => [
                 'booking_id' => $b->id,
                 'date'       => $b->date->toDateString(),
+                'poll_token' => $b->poll_token,
                 'amount'     => $b->amount,
             ]),
-            // Backwards-compatible top-level fields mirroring the FIRST
-            // booking, for any older frontend code that hasn't been
-            // updated yet to read the `bookings` array above.
-            'booking_id' => $bookings[0]->id,
-            'expires_at' => $bookings[0]->expires_at?->toIso8601String(),
-            'amount'     => $result['paymentReference']->amount,
+            'booking_id'    => $bookings[0]->id,
+            'poll_token'    => $bookings[0]->poll_token,
+            'expires_at'    => $bookings[0]->expires_at?->toIso8601String(),
+            'amount'        => $result['paymentReference']->amount,
+            'given_used'    => $result['paymentReference']->given_used,
+            'reserved_used' => $result['paymentReference']->reserved_used,
+            'cash_due'      => $result['paymentReference']->cash_due,
+            'status'        => $isPaid ? 'paid' : 'pending',
+            'idempotent'    => $idempotent,
         ]);
     }
 
@@ -691,6 +830,37 @@ class User_UserController extends Controller
         return redirect()
             ->route('user.profile')
             ->with('success', 'Profile updated.');
+    }
+
+    /**
+     * Receipt page for a fully-paid booking made by the signed-in user.
+     * Ownership-gated (user_id match) so a guessed booking ID alone
+     * cannot pull up someone else's receipt. If the payment is not yet
+     * confirmed, we bounce back to the waiting page — same pattern as
+     * PaymentReceiptController::show() for guests.
+     */
+    public function receiptForUser(Booking $booking)
+    {
+        abort_unless($booking->user_id === auth()->id(), 403);
+
+        $paymentReference = $booking->paymentReference;
+
+        if (! $paymentReference || ! $paymentReference->isConfirmed()) {
+            return redirect()
+                ->route('book.waiting', ['booking' => $booking])
+                ->with('status', "Your payment hasn't been confirmed yet.");
+        }
+
+        $bookings = $paymentReference->bookings()
+            ->with('court')
+            ->orderBy('date')
+            ->orderBy('start_time')
+            ->get();
+
+        return view('user.bookings.receipt', [
+            'paymentReference' => $paymentReference,
+            'bookings'         => $bookings,
+        ]);
     }
 
     /**

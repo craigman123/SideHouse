@@ -6,7 +6,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const equipmentUrl = grid.dataset.equipmentUrl;
     const storeUrl = grid.dataset.storeUrl;
     const waitingUrlTemplate = grid.dataset.waitingUrlTemplate;
+    const receiptUrlTemplate = grid.dataset.receiptUrlTemplate || '';
     const userPhone = grid.dataset.userPhone || '';
+
+    // Credit balance injected server-side — empty string when the user
+    // has no wallet or zero balance, so the credit panel stays hidden.
+    const CREDIT_GIVEN    = grid.dataset.creditGiven    !== '' ? Number(grid.dataset.creditGiven)    : null;
+    const CREDIT_RESERVED = grid.dataset.creditReserved !== '' ? Number(grid.dataset.creditReserved) : null;
+    const CREDIT_TOTAL    = grid.dataset.creditTotal    !== '' ? Number(grid.dataset.creditTotal)    : null;
+    const HAS_CREDITS = CREDIT_TOTAL !== null && CREDIT_TOTAL > 0;
 
     const MIN_DURATION = parseFloat(grid.dataset.minDuration);
     const MAX_DURATION = parseFloat(grid.dataset.maxDuration);
@@ -143,6 +151,150 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let paymentSubmissionLocked = false;
     let paymentRedirecting = false;
+
+    // Idempotency token — generated once per checkout session, reset when
+    // the user starts a new booking. Mirrors GuestBookingController's
+    // createCheckoutKey() pattern so a double-click or a network retry
+    // cannot create a duplicate booking or charge credits twice.
+    let checkoutIdempotencyToken = null;
+
+    function getOrCreateIdempotencyToken() {
+        if (checkoutIdempotencyToken) return checkoutIdempotencyToken;
+        if (window.crypto?.getRandomValues) {
+            const bytes = new Uint8Array(24);
+            window.crypto.getRandomValues(bytes);
+            checkoutIdempotencyToken = Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
+        } else {
+            checkoutIdempotencyToken = Date.now().toString(36) + '-' + Math.random().toString(36).slice(2);
+        }
+        return checkoutIdempotencyToken;
+    }
+
+    // ---------- Credit UI ----------
+
+    // Elements — IDs match the guest payment page exactly so CSS and the
+    // same updateCreditSummary() logic covers both flows without a second
+    // set of selectors. Present only when the user has a non-zero wallet.
+    const useCreditEl    = document.getElementById('useGuestCredit');
+    const creditSectionEl = document.getElementById('userCreditSection');
+
+    // Minimum QR Ph charge — mirrors config/credit.php qr_minimum_php.
+    // The server enforces the real value; this is display-only sync.
+    const CREDIT_MIN_CASH = 1;
+
+    // Inline SVG icons for given/reserved credits — same artwork as guest
+    // payment.js CREDIT_ICONS so the two pages look identical. Using
+    // currentColor means the icon follows whatever CSS color is set on the
+    // parent element (brand green, muted, etc.) without hardcoded fills.
+    const CREDIT_ICONS = {
+        given: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16.5 8.5 A6.5 6.5 0 1 0 16.5 15.5"/><path d="M11 12 H18"/><path d="M11 2.5 V5.5"/><path d="M11 18.5 V21.5"/></svg>',
+        reserved: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 6 L18 12 L12 18 L6 12 Z"/><path d="M3.5 12 H20.5"/><path d="M12 2 V6"/><path d="M12 18 V22"/></svg>',
+    };
+
+    /**
+     * Renders an amount into el with a leading credit-type icon.
+     * Mirrors setCredit() from guest payment.js — same class name,
+     * same injection technique so the CSS rules are shared.
+     * @param {HTMLElement|null} el   - Target element.
+     * @param {'given'|'reserved'} kind - Which icon to use.
+     * @param {number} amount         - Peso amount (non-negative integer).
+     * @param {boolean} [minus=false] - Prefix a minus sign.
+     */
+    function setCredit(el, kind, amount, minus = false) {
+        if (!el) return;
+        const n = Math.max(0, Number(amount) || 0);
+        el.replaceChildren();
+        if (minus && n > 0) el.append('-');
+        const icon = document.createElement('span');
+        icon.className = 'credit-icon';
+        icon.innerHTML = CREDIT_ICONS[kind === 'reserved' ? 'reserved' : 'given'];
+        el.append(icon, `₱${n.toLocaleString()}`);
+        if (n > 0) el.classList.add('is-used');
+        else el.classList.remove('is-used');
+    }
+
+    /**
+     * Recomputes the credit split client-side and updates every element in
+     * the credit breakdown panel. Mirrors quoteAndSpendForGuestCheckout()
+     * on the server exactly (given first, reserved second, minimum-cash
+     * top-up). The server recomputes authoritatively on submit — this is
+     * display-only so the user sees what they will owe before confirming.
+     */
+    function updateCreditSummary() {
+        if (!HAS_CREDITS) return;
+
+        const total = Math.round(selectedSlotsTotal() + equipmentTotal());
+        const useCredit = useCreditEl?.checked !== false;
+
+        let givenUsed    = useCredit ? Math.min(CREDIT_GIVEN,    total)                : 0;
+        let remaining    = useCredit ? total - givenUsed                               : total;
+        let reservedUsed = useCredit ? Math.min(CREDIT_RESERVED, remaining)             : 0;
+        remaining       -= reservedUsed;
+
+        // Minimum-cash top-up: never leave a QR payment below 1 peso.
+        if (useCredit && remaining > 0 && remaining < CREDIT_MIN_CASH) {
+            const needed       = CREDIT_MIN_CASH - remaining;
+            const fromReserved = Math.min(CREDIT_RESERVED - reservedUsed, needed);
+            reservedUsed += fromReserved;
+            remaining    -= fromReserved;
+            if (remaining > 0) {
+                const fromGiven = Math.min(CREDIT_GIVEN - givenUsed, remaining);
+                givenUsed += fromGiven;
+                remaining -= fromGiven;
+            }
+        }
+
+        const cashDue = Math.max(0, useCredit ? total - givenUsed - reservedUsed : total);
+
+        // Balance chips — set plain amounts (no icons, same as guest chips)
+        const givenBalEl    = document.getElementById('guestGivenBalance');
+        const reservedBalEl = document.getElementById('guestReservedBalance');
+        const totalBalEl    = document.getElementById('guestCreditTotal');
+        if (givenBalEl)    givenBalEl.textContent    = `₱${Number(CREDIT_GIVEN).toLocaleString()}`;
+        if (reservedBalEl) reservedBalEl.textContent = `₱${Number(CREDIT_RESERVED).toLocaleString()}`;
+        if (totalBalEl)    totalBalEl.textContent    = `₱${Number(CREDIT_TOTAL).toLocaleString()}`;
+
+        // Split breakdown — given/reserved rows get credit icons + is-used class
+        const checkoutTotalEl = document.getElementById('guestCreditCheckoutTotal');
+        const givenUsedEl     = document.getElementById('guestGivenUsed');
+        const reservedUsedEl  = document.getElementById('guestReservedUsed');
+        const discountEl      = document.getElementById('guestCreditDiscount');
+        const cashDueEl       = document.getElementById('guestCashDue');
+
+        if (checkoutTotalEl) checkoutTotalEl.textContent = `₱${total.toLocaleString()}`;
+
+        if (givenUsedEl) {
+            if (useCredit && givenUsed > 0) setCredit(givenUsedEl, 'given', givenUsed, true);
+            else { givenUsedEl.replaceChildren('—'); givenUsedEl.classList.remove('is-used'); }
+        }
+        if (reservedUsedEl) {
+            if (useCredit && reservedUsed > 0) setCredit(reservedUsedEl, 'reserved', reservedUsed, true);
+            else { reservedUsedEl.replaceChildren('—'); reservedUsedEl.classList.remove('is-used'); }
+        }
+
+        const totalUsed = givenUsed + reservedUsed;
+        if (discountEl) {
+            if (useCredit && totalUsed > 0) {
+                // Discount row: show a simple minus-amount (no specific credit type icon)
+                discountEl.textContent = `-₱${totalUsed.toLocaleString()}`;
+                discountEl.classList.add('is-used');
+            } else {
+                discountEl.textContent = '—';
+                discountEl.classList.remove('is-used');
+            }
+        }
+        if (cashDueEl) cashDueEl.textContent = `₱${cashDue.toLocaleString()}`;
+
+        // Final review total — shows what is actually left to pay
+        if (summaryTotal) {
+            summaryTotal.textContent = useCredit
+                ? `₱${cashDue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                : `₱${total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        }
+    }
+
+    // Re-run the breakdown whenever the checkbox flips.
+    useCreditEl?.addEventListener('change', updateCreditSummary);
 
     function setPaymentSubmissionLocked(locked) {
         paymentSubmissionLocked = locked;
@@ -297,6 +449,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         updateSummary();
+        updateCreditSummary(); // refreshes the credit panel and summaryTotal
         updateBookingProgress(3);
         paymentModal.classList.add('open');
     }
@@ -313,6 +466,9 @@ document.addEventListener('DOMContentLoaded', () => {
         bookedRanges = [];
         equipmentSelection = {};
         calendarCursor = new Date();
+        // A new booking session gets a fresh idempotency token so the old
+        // checkout key cannot accidentally deduplicate a genuinely new booking.
+        checkoutIdempotencyToken = null;
     }
 
     // ---------- Court grid ----------
@@ -1282,6 +1438,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const total = selectedSlotsTotal() + equipmentTotal();
         summaryTotal.textContent = `₱${total.toLocaleString()}`;
         updateSelectionCards();
+        // Credit panel: recalculate after the base total is known so the
+        // summary and breakdown stay in sync.
+        updateCreditSummary();
     }
 
     function getMissingBookingRequirements() {
@@ -1351,6 +1510,14 @@ document.addEventListener('DOMContentLoaded', () => {
                     payment_method: 'qrph',
                     contact_number: contactNumberInput.value.trim(),
                     equipment: equipmentPayload,
+                    // Server recomputes the actual split from the wallet —
+                    // the browser only sends the user's intent toggle.
+                    use_credit: HAS_CREDITS && useCreditEl?.checked ? 1 : 0,
+                    // One token per checkout session. The server hashes it
+                    // as credit_checkout_key so a double-click or network
+                    // retry returns the existing booking without debiting
+                    // credits a second time.
+                    idempotency_token: getOrCreateIdempotencyToken(),
                 }),
                 signal: controller.signal,
             });
@@ -1400,7 +1567,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
             closePaymentModal();
 
-            if (data.booking && data.booking.status === 'paid') {
+            if (data.status === 'paid') {
+                // Credits covered the full total — go straight to the
+                // receipt page. The PaymentReference is already confirmed
+                // server-side, so the observer has fired the receipt email.
+                const receiptPath = safeRedirectPath(
+                    receiptUrlTemplate.replace('__ID__', data.booking_id)
+                );
+                paymentRedirecting = true;
+                window.location.href = receiptPath || safeRedirectPath(
+                    waitingUrlTemplate.replace('__ID__', data.booking_id)
+                );
+            } else if (data.booking && data.booking.status === 'paid') {
                 showToast('Payment already matched — you\'re all set!', 'success');
                 finishBookingReset();
             } else {
