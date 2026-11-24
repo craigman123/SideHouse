@@ -27,6 +27,17 @@
     const BIZ_CLOSED_WEEKDAYS = Array.isArray(bizSettings.closed_weekdays) ? bizSettings.closed_weekdays : [];
     const dateInput = document.getElementById('courtBoardDate');
     let venueToday = String(bizSettings.today || dateInput.value || '');
+    const dateKey = (date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+    const parseLocalDate = (value) => {
+        const match = String(value || '').match(/^(\d{4})-(\d{2})-(\d{2})/);
+        if (!match) return new Date(Number.NaN);
+        const [, year, month, day] = match;
+        return new Date(year, month - 1, day);
+    };
+    const normalizeDateKey = (value) => {
+        const date = parseLocalDate(value);
+        return Number.isFinite(date.getTime()) ? dateKey(date) : '';
+    };
     let venueTimeBase = Date.parse(bizSettings.server_time || '');
     let venuePerfBase = performance.now();
     const updateVenueClock = (today, isoTime) => {
@@ -41,12 +52,12 @@
             bizSettings.server_time = isoTime;
         }
         if (venueToday !== previousDate) {
-            const minimumBoardDate = new Date(venueToday + 'T00:00:00');
+            const minimumBoardDate = parseLocalDate(venueToday);
             minimumBoardDate.setDate(minimumBoardDate.getDate() - 1);
-            dateInput.min = formatDateInputValue(minimumBoardDate);
-            const maximumBoardDate = new Date(venueToday + 'T00:00:00');
+            dateInput.min = dateKey(minimumBoardDate);
+            const maximumBoardDate = parseLocalDate(venueToday);
             maximumBoardDate.setMonth(maximumBoardDate.getMonth() + 6);
-            dateInput.max = formatDateInputValue(maximumBoardDate);
+            dateInput.max = dateKey(maximumBoardDate);
             workspace.querySelectorAll('.court-block-modal input[type="date"]').forEach((input) => { input.min = venueToday; });
             if (typeof validateCalendarForm === 'function') calendarDateTimeForms?.forEach((form) => validateCalendarForm(form));
         }
@@ -95,17 +106,17 @@
     const monthGrid = document.getElementById('courtMonthGrid');
     const calendarGrids = [monthGrid, weekGrid].filter(Boolean);
     let activeCalendarGrid = monthGrid;
-    const formatDateInputValue = (date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+    const formatDateInputValue = dateKey;
     const escapeHtml = (value) => { const el = document.createElement('span'); el.textContent = String(value ?? ''); return el.innerHTML; };
     const formatCurrency = (value) => `₱${Number(value || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     const startOfWeek = (dateValue) => {
-        const date = new Date(`${dateValue}T00:00:00`);
+        const date = parseLocalDate(dateValue);
         date.setDate(date.getDate() - date.getDay());
         return formatDateInputValue(date);
     };
     const isoDateIsValid = (value) => {
         if (!/^\d{4}-\d{2}-\d{2}$/.test(String(value || ''))) return false;
-        const parsed = new Date(`${value}T00:00:00`);
+        const parsed = parseLocalDate(value);
         return Number.isFinite(parsed.getTime()) && formatDateInputValue(parsed) === value;
     };
     const requestedDate = new URLSearchParams(window.location.search).get('date');
@@ -188,7 +199,7 @@
     const normalizeTime = (time) => String(time || '').slice(0, 5);
     const normalizeBlock = (block) => ({
         ...block,
-        block_date: String(block.block_date || '').slice(0, 10),
+        block_date: normalizeDateKey(block.block_date),
         start_time: normalizeTime(block.start_time),
         end_time: normalizeTime(block.end_time),
     });
@@ -610,7 +621,7 @@
         return `${String(Math.floor(wrapped / 60)).padStart(2, '0')}:${String(wrapped % 60).padStart(2, '0')}`;
     };
     const addDays = (dateValue, count) => {
-        const date = new Date(`${dateValue}T00:00:00`);
+        const date = parseLocalDate(dateValue);
         date.setDate(date.getDate() + count);
         return toDateValue(date);
     };
@@ -1009,7 +1020,7 @@
         durationWarning.hidden = true;
         if (minutes > 0) {
             const proposedEnd = toMinutes(selectedBooking.start) + duration;
-            const dateOffset = (slotDate) => Math.round((new Date(`${slotDate}T00:00:00`) - new Date(`${bookingEditForm.elements.date.value}T00:00:00`)) / 86400000) * 1440;
+            const dateOffset = (slotDate) => Math.round((parseLocalDate(slotDate) - parseLocalDate(bookingEditForm.elements.date.value)) / 86400000) * 1440;
             const hasOverlap = bookings.some((other) => String(other.id) !== String(selectedBooking.id)
                 && Number(other.court_id) === Number(bookingEditForm.elements.court_id.value)
                 && (other.slots || []).some((slot) => {
@@ -1457,7 +1468,7 @@
         }
     });
 
-    const formatDate = (date) => new Date(`${date}T00:00:00`).toLocaleDateString('en-US', {
+    const formatDate = (date) => parseLocalDate(date).toLocaleDateString('en-US', {
         weekday: 'long', month: 'long', day: 'numeric', year: 'numeric',
     });
 
@@ -1469,9 +1480,9 @@
     };
 
     const eventWindows = (booking, date) => {
-        const slotsForDay = (booking.slots || []).filter((slot) => slot.date === date);
+        const slotsForDay = (booking.slots || []).filter((slot) => normalizeDateKey(slot.date) === date);
         if (slotsForDay.length) return slotsForDay;
-        if (booking.date === date) {
+        if (normalizeDateKey(booking.date) === date) {
             const endMinutes = toMinutes(booking.end);
             const startMinutes = toMinutes(booking.start);
             return endMinutes <= startMinutes
@@ -1479,7 +1490,7 @@
                 : [{ start: booking.start, end: booking.end }];
         }
         const bookingEnd = toMinutes(booking.end);
-        if (bookingEnd > 0 && bookingEnd <= toMinutes(booking.start) && addDays(booking.date, 1) === date) {
+        if (bookingEnd > 0 && bookingEnd <= toMinutes(booking.start) && addDays(normalizeDateKey(booking.date), 1) === date) {
             return [{ start: '00:00', end: booking.end }];
         }
         return [];
@@ -1506,7 +1517,7 @@
             weekInput.value = choice;
             weekStart = startOfWeek(choice);
         } else if (view === 'month' && previousView === 'week') {
-            const wednesday = new Date(`${weekStart}T00:00:00`);
+            const wednesday = parseLocalDate(weekStart);
             wednesday.setDate(wednesday.getDate() + 3);
             monthInput.value = toMonthValue(wednesday);
         }
@@ -1645,7 +1656,7 @@
     };
 
     const rangeHasConflict = (date, startMinutes, endMinutes, ignoreBookingId = null, courtId = null, ignoreBlockId = null) => {
-        const weekday = new Date(`${date}T00:00:00`).getDay();
+        const weekday = parseLocalDate(date).getDay();
         if (BIZ_CLOSED_WEEKDAYS.includes(weekday)
             || closures.some((closure) => closure.date === date)) return true;
 
@@ -2245,8 +2256,8 @@
 
     // ── Month view: dates across the top, time down the left ────────────────
     const fullWeekRangeLabel = (startValue, endValue) => {
-        const start = new Date(`${startValue}T00:00:00`);
-        const end = new Date(`${endValue}T00:00:00`);
+        const start = parseLocalDate(startValue);
+        const end = parseLocalDate(endValue);
         const monthDay = (date) => date.toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
         if (start.getFullYear() === end.getFullYear() && start.getMonth() === end.getMonth()) {
             return `${monthDay(start)} - ${end.getDate()}, ${end.getFullYear()}`;
@@ -2255,8 +2266,8 @@
         return `${monthDay(start)}, ${start.getFullYear()} - ${monthDay(end)}, ${end.getFullYear()}`;
     };
     const shortWeekRangeLabel = (startValue, endValue) => {
-        const start = new Date(`${startValue}T00:00:00`);
-        const end = new Date(`${endValue}T00:00:00`);
+        const start = parseLocalDate(startValue);
+        const end = parseLocalDate(endValue);
         const startText = start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
         const endText = end.getMonth() === start.getMonth()
             ? String(end.getDate())
@@ -2338,7 +2349,7 @@
 
     const renderCalendarGrid = (startDate, dayCount, mode, targetGrid, changedDates = null) => {
         if (!startDate || !dayCount || !targetGrid) return;
-        const baseDate = new Date(`${startDate}T00:00:00`);
+        const baseDate = parseLocalDate(startDate);
         const { rowPlan, hourTop, dividerTop, gridH } = buildDayRowPlan();
         const todayValue = venueToday;
 
@@ -2374,7 +2385,7 @@
         header.append(corner);
 
         dates.forEach((dateStr, colIndex) => {
-            const d = new Date(`${dateStr}T00:00:00`);
+            const d = parseLocalDate(dateStr);
             const dayNum = d.getDate();
             const weekday = d.toLocaleDateString('en-US', { weekday: 'short' });
             const weekdayNarrow = new Intl.DateTimeFormat('en-PH', { weekday: 'narrow' }).format(d);
@@ -2483,7 +2494,7 @@
         dates.forEach((dateStr, colIndex) => {
             const colClosures = closures.filter((c) => c.date === dateStr);
             // Also treat recurring closed weekdays (from BusinessSetting) as closures.
-            const weekday = new Date(`${dateStr}T00:00:00`).getDay(); // 0=Sun…6=Sat
+            const weekday = parseLocalDate(dateStr).getDay(); // 0=Sun…6=Sat
             const isWeekdayClosed = BIZ_CLOSED_WEEKDAYS.includes(weekday);
             const colWindows = windowsByDate.get(dateStr) || [];
             const isToday = dateStr === todayValue;
@@ -3046,7 +3057,7 @@
     });
     weekInput.addEventListener('change', () => selectWeekDate(weekInput.value));
 
-    if (isoDateIsValid(requestedDate)) monthInput.value = toMonthValue(new Date(`${requestedDate}T00:00:00`));
+    if (isoDateIsValid(requestedDate)) monthInput.value = toMonthValue(parseLocalDate(requestedDate));
     changeView(initialView, false);
 
     const requestedNewItem = new URLSearchParams(window.location.search).get('new');
@@ -3080,7 +3091,7 @@
             const [year, month] = monthInput.value.split('-').map(Number);
             const cursor = new Date(year, month - 1, 1);
             if (button.dataset.monthNav === 'today') {
-                const today = new Date(venueToday + 'T00:00:00');
+                const today = parseLocalDate(venueToday);
                 today.setDate(1);
                 cursor.setTime(today.getTime());
             }
@@ -3099,14 +3110,14 @@
             selectWeekDate(venueToday);
             return;
         }
-        const nextStart = new Date(`${weekStart}T00:00:00`);
+        const nextStart = parseLocalDate(weekStart);
         nextStart.setDate(nextStart.getDate() + (button.dataset.weekNav === 'next' ? 7 : -7));
         selectWeekDate(weekDateForStart(toDateValue(nextStart)));
     }));
     workspace.querySelectorAll('[data-board-date]').forEach((button) => {
         button.addEventListener('click', () => {
-            const value = new Date(`${dateInput.value}T00:00:00`);
-            if (button.dataset.boardDate === 'today') value.setTime(new Date(venueToday + 'T00:00:00').getTime());
+            const value = parseLocalDate(dateInput.value);
+            if (button.dataset.boardDate === 'today') value.setTime(parseLocalDate(venueToday).getTime());
             if (button.dataset.boardDate === 'previous') value.setDate(value.getDate() - 1);
             if (button.dataset.boardDate === 'next') value.setDate(value.getDate() + 1);
             dateInput.value = toDateValue(value);
@@ -3117,7 +3128,7 @@
     blockModal.addEventListener('transitionend', schedulePoll);
 
     const initialToday = venueToday;
-    const initialEnd = new Date(`${initialToday}T00:00:00`);
+    const initialEnd = parseLocalDate(initialToday);
     initialEnd.setMonth(initialEnd.getMonth() + 6);
     rangeCache.push({ from: addDays(initialToday, -1), to: toDateValue(initialEnd) });
     if (initialView === 'week') void loadVisibleRangeThenRender(currentVisibleRange(), weekSummary, renderWeek);
