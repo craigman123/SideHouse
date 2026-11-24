@@ -39,6 +39,16 @@
                 <div class="nav-left">
                     <img src="{{ asset('images/tab_icon.png') }}" alt="Side House" class="nav-logo" loading="lazy">
                     <strong class="nav-title-landing">Side House Paddlers</strong>
+                    @if (! empty($guestCredit))
+                        <button type="button" class="landing-credit-total" id="landingCreditToggle" aria-expanded="false" aria-controls="landingCreditPopover">
+                            ₱{{ number_format($guestCredit['total'], 0) }} credit
+                        </button>
+                        <div class="landing-credit-popover" id="landingCreditPopover" hidden>
+                            <p><span>Given</span><strong>₱{{ number_format($guestCredit['given'], 0) }}</strong></p>
+                            <p><span>Reserved</span><strong>₱{{ number_format($guestCredit['reserved'], 0) }}</strong></p>
+                            <button type="button" id="landingCreditSwitch">Not you? Switch email</button>
+                        </div>
+                    @endif
                 </div>
 
                 <div class="nav-center">

@@ -2230,7 +2230,6 @@ document.addEventListener('DOMContentLoaded', () => {
         formData.append('payment_method', selectedPayment);
         formData.append('guest_name', guestNameInput.value.trim());
         formData.append('guest_contact', guestContactInput.value.trim());
-        formData.append('google_id_token', googleIdToken);
         const submittedRefInput = getActiveRefInput();
         if (submittedRefInput && submittedRefInput.value.trim()) {
             formData.append('payment_reference', submittedRefInput.value.trim());

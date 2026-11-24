@@ -35,12 +35,17 @@
         <div class="modal-box modal-box-lg modal-box-scrollable" id="paymentPage" style="margin: auto; z-index: 2;"
             data-court-id="{{ $courtId }}"
             data-date="{{ $date }}"
+            data-total-amount="{{ (int) round($totalAmount) }}"
             data-slots='@json($slots)'
             data-equipment='@json($equipmentLines->map(fn ($line) => ["id" => $line["id"], "quantity" => $line["quantity"]])->values())'
             data-store-url="{{ $storeUrl }}"
             data-waiting-url-template="{{ $waitingUrlTemplate }}"
             data-landing-url="{{ $landingUrl }}"
-            data-google-client-id="{{ $googleClientId }}">
+            data-google-client-id="{{ $googleClientId }}"
+            data-credit-nonce-url="{{ route('guest.credit.nonce') }}"
+            data-credit-verify-url="{{ route('guest.credit.verify') }}"
+            data-credit-state-url="{{ route('guest.credit.state') }}"
+            data-credit-switch-url="{{ route('guest.credit.switch') }}">
             <div class="modal-header payment-header">
                 <h3>Almost Done</h3>
                 <a href="{{ $landingUrl }}" class="payment-page-exit" aria-label="Exit booking">&times;</a>
@@ -93,6 +98,23 @@
                     <p class="booking-section-label">Payment method</p>
                     <div class="payment-grid" id="paymentGrid">
                         <div class="payment-btn payment-btn-qrph selected"><span class="payment-btn-title">QR Ph</span><span class="payment-btn-sub">Your secure QR code is generated after confirmation. No reference number is needed.</span></div>
+                    </div>
+                    <div class="guest-credit-payment" id="guestCreditPayment" hidden>
+                        <label class="guest-credit-use">
+                            <input type="checkbox" id="useGuestCredit" checked>
+                            <span>Use my credit</span>
+                        </label>
+                        <div class="guest-credit-balances" aria-live="polite">
+                            <span>Given <strong id="guestGivenBalance">₱0</strong></span>
+                            <span>Reserved <strong id="guestReservedBalance">₱0</strong></span>
+                            <span>Total <strong id="guestCreditTotal">₱0</strong></span>
+                        </div>
+                        <div class="guest-credit-payment-summary" aria-live="polite">
+                            <p><span>Total</span><strong id="guestCreditCheckoutTotal">₱{{ number_format($totalAmount, 0) }}</strong></p>
+                            <p><span>Given used</span><strong id="guestGivenUsed">₱0</strong></p>
+                            <p><span>Reserved used</span><strong id="guestReservedUsed">₱0</strong></p>
+                            <p><span>Amount to pay by QR</span><strong id="guestCashDue">₱{{ number_format($totalAmount, 0) }}</strong></p>
+                        </div>
                     </div>
                 </div>
                 <div class="booking-summary">

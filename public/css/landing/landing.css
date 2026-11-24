@@ -31,6 +31,69 @@ body {
     width: auto;
 }
 
+.nav-left {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: var(--s2);
+}
+
+.landing-credit-total {
+    min-height: 44px;
+    padding: var(--s2) var(--s3);
+    border: 1px solid var(--border);
+    border-radius: var(--r-pill);
+    background: var(--surface);
+    color: var(--text);
+    font: var(--font-weight-button) var(--font-size-small)/1 var(--font-family);
+    cursor: pointer;
+}
+
+.landing-credit-popover {
+    position: absolute;
+    z-index: 20;
+    top: calc(100% + var(--s2));
+    left: 72px;
+    width: 220px;
+    padding: var(--s3);
+    border: 1px solid var(--border);
+    border-radius: var(--r-md);
+    background: var(--surface);
+    box-shadow: var(--shadow-card);
+}
+
+.landing-credit-popover p {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--s3);
+    margin: 0 0 var(--s2);
+}
+
+.landing-credit-popover button {
+    width: 100%;
+    min-height: 44px;
+    border: 1px solid transparent;
+    border-radius: var(--r-pill);
+    background: transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+}
+
+.landing-credit-popover button:hover,
+.landing-credit-popover button:focus-visible {
+    color: var(--danger);
+}
+
+@media (max-width: 640px) {
+    .nav-left {
+        flex-wrap: wrap;
+    }
+    .landing-credit-popover {
+        left: 0;
+        width: min(220px, calc(100vw - 2rem));
+    }
+}
+
 .nav-links {
     display: flex;
     gap: 12px;

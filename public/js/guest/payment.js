@@ -9,6 +9,10 @@
     const waitingUrlTemplate = box.dataset.waitingUrlTemplate;
     const landingUrl = box.dataset.landingUrl;
     const googleClientId = box.dataset.googleClientId;
+    const creditNonceUrl = box.dataset.creditNonceUrl;
+    const creditVerifyUrl = box.dataset.creditVerifyUrl;
+    const creditStateUrl = box.dataset.creditStateUrl;
+    const creditSwitchUrl = box.dataset.creditSwitchUrl;
 
     const guestNameInput = document.getElementById('guestName');
     const guestContactInput = document.getElementById('guestContact');
@@ -25,11 +29,13 @@
     const selectedPayment = 'qrph';
     let googleIdToken = null;
     let googleEmail = null;
+    let guestIdentityVerified = false;
     let confirmInFlight = false;
     const CHECKOUT_DRAFT_KEY = 'sidehouse_guest_checkout_draft';
-    const GUEST_EMAIL_STORAGE_KEY = 'sh_guest_email';
 
     let prefillInFlight = false;
+    let guestCredit = null;
+    let guestCreditCheckoutKey = null;
     const backBtn = document.getElementById('backToEquipment2');
 
     function setConfirmLocked(isLocked) {
@@ -57,65 +63,81 @@
         if (contactLoading) contactLoading.hidden = !isLoading;
     }
 
-    // The code who saves the guest email to localStorage named sh_guest_email
-    function saveGuestEmailToDevice(email) {
-        if (!email) return;
-        try {
-            localStorage.setItem(GUEST_EMAIL_STORAGE_KEY, email);
-        } catch (err) {
-            console.warn('Could not save guest email locally:', err);
+    function createCheckoutKey() {
+        if (guestCreditCheckoutKey) return guestCreditCheckoutKey;
+        if (window.crypto?.getRandomValues) {
+            const bytes = new Uint8Array(24);
+            window.crypto.getRandomValues(bytes);
+            guestCreditCheckoutKey = Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('');
+        } else {
+            guestCreditCheckoutKey = Date.now().toString(36) + '-' + Math.random().toString(36).slice(2);
         }
+        return guestCreditCheckoutKey;
     }
 
-    // Prefill guest info from saved email in localStorage if present
-    // Shows immediately on load — no network wait, since the email is
-    // already known from localStorage.
-    function showSavedEmailBadge() {
-        let savedEmail;
-        try {
-            savedEmail = localStorage.getItem(GUEST_EMAIL_STORAGE_KEY);
-        } catch (err) {
-            return;
-        }
-        if (!savedEmail) return;
-
-        const savedInput = document.getElementById('guestEmailSaved');
-        if (!savedInput) return;
-        savedInput.value = savedEmail;
-        savedInput.hidden = false;
+    function updateCreditDisplay(credit) {
+        if (!credit) return;
+        guestCredit = credit;
+        const container = document.getElementById('guestCreditPayment');
+        if (container) container.hidden = false;
+        document.getElementById('guestGivenBalance').textContent = `₱${Number(credit.given || 0).toLocaleString()}`;
+        document.getElementById('guestReservedBalance').textContent = `₱${Number(credit.reserved || 0).toLocaleString()}`;
+        document.getElementById('guestCreditTotal').textContent = `₱${Number(credit.total || 0).toLocaleString()}`;
+        updateCreditSummary();
     }
 
-    // Still async — name/phone genuinely need the server lookup.
-    function prefillFromSavedEmail() {
-        let savedEmail;
-        try {
-            savedEmail = localStorage.getItem(GUEST_EMAIL_STORAGE_KEY);
-        } catch (err) {
-            return;
+    function updateCreditSummary() {
+        if (!guestCredit) return;
+        const total = Number(box.dataset.totalAmount || document.querySelector('.booking-summary-total strong')?.textContent?.replace(/\D/g, '') || 0);
+        const useCredit = document.getElementById('useGuestCredit')?.checked !== false;
+        let remaining = useCredit ? total : 0;
+        let givenUsed = useCredit ? Math.min(Number(guestCredit.given || 0), remaining) : 0;
+        remaining -= givenUsed;
+        let reservedUsed = useCredit ? Math.min(Number(guestCredit.reserved || 0), remaining) : 0;
+        remaining -= reservedUsed;
+        const minimumCash = 1;
+        if (remaining > 0 && remaining < minimumCash) {
+            const needed = minimumCash - remaining;
+            const availableReserved = Number(guestCredit.reserved || 0) - reservedUsed;
+            const fromReserved = Math.min(availableReserved, needed);
+            reservedUsed += fromReserved;
+            remaining -= fromReserved;
+            if (remaining > 0) {
+                const availableGiven = Number(guestCredit.given || 0) - givenUsed;
+                const fromGiven = Math.min(availableGiven, remaining);
+                givenUsed += fromGiven;
+                remaining -= fromGiven;
+            }
         }
-        if (!savedEmail) return;
+        document.getElementById('guestGivenUsed').textContent = `₱${givenUsed.toLocaleString()}`;
+        document.getElementById('guestReservedUsed').textContent = `₱${reservedUsed.toLocaleString()}`;
+        document.getElementById('guestCashDue').textContent = `₱${Math.max(0, remaining).toLocaleString()}`;
+    }
 
+    document.getElementById('useGuestCredit')?.addEventListener('change', updateCreditSummary);
+
+    async function restoreVerifiedGuestState() {
         setPrefillLoading(true);
-
-        // Safety net: never leave the form locked if the request hangs
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), 8000);
-
-        fetch(`/guest/booking/latest?email=${encodeURIComponent(savedEmail)}`, {
+        fetch(creditStateUrl, {
             headers: { Accept: 'application/json' },
             signal: controller.signal,
+            credentials: 'same-origin',
         })
             .then((res) => res.json())
             .then((data) => {
-                if (!data.found) return;
-                if (data.name && !guestNameInput.value.trim()) {
-                    guestNameInput.value = data.name;
+                if (!data.verified) return;
+                if (data.prefill?.name && !guestNameInput.value.trim()) {
+                    guestNameInput.value = data.prefill.name;
                 }
-                if (data.phone && !guestContactInput.value.trim()) {
-                    guestContactInput.value = data.phone;
+                if (data.prefill?.phone && !guestContactInput.value.trim()) {
+                    guestContactInput.value = data.prefill.phone;
                 }
+                googleEmail = data.email;
+                showSignedInState(data.email);
             })
-            .catch((err) => console.warn('Prefill lookup failed:', err))
+            .catch((err) => console.warn('Verified guest state failed:', err))
             .finally(() => {
                 clearTimeout(timeout);
                 setPrefillLoading(false);
@@ -215,24 +237,32 @@
     }
 
     syncPaymentQrPanels();
-    showSavedEmailBadge();
-    prefillFromSavedEmail();
+    restoreVerifiedGuestState();
 
     // ---------- Google sign-in ----------
 
     function showSignedInState(email) {
+        guestIdentityVerified = true;
         guestEmailLabel.hidden = true;
         googleSignInBtnEl.hidden = true;
         guestEmailConfirmed.hidden = false;
         guestEmailConfirmedAddress.textContent = email;
     }
 
-    function clearGoogleSignIn() {
+    async function clearGoogleSignIn() {
         googleIdToken = null;
         googleEmail = null;
+        guestIdentityVerified = false;
         guestEmailLabel.hidden = false;
         googleSignInBtnEl.hidden = false;
         guestEmailConfirmed.hidden = true;
+        try {
+            await fetch(creditSwitchUrl, {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: { Accept: 'application/json', ...csrfHeaders() },
+            });
+        } catch (_) {}
         if (window.google && window.google.accounts && window.google.accounts.id) {
             window.google.accounts.id.disableAutoSelect();
         }
@@ -253,16 +283,41 @@
         }
     }
 
-    function handleGoogleCredential(response) {
-        const payload = decodeJwtPayload(response.credential);
-        if (!payload || !payload.email) {
+    let googleNonce = null;
+
+    async function handleGoogleCredential(response) {
+        try {
+            const res = await fetch(creditVerifyUrl, {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: {
+                    Accept: 'application/json',
+                    'Content-Type': 'application/json',
+                    ...csrfHeaders(),
+                },
+                body: JSON.stringify({ id_token: response.credential }),
+            });
+            const data = await res.json();
+            if (!res.ok) {
+                showToast(data.message || "Couldn't verify that Google account. Please try again.", 'error');
+                return;
+            }
+            if (!data.verified) {
+                showToast('Google sign-in is verified, but no registered account or unique credit match was found.', 'success');
+                googleIdToken = null;
+                googleEmail = null;
+                return;
+            }
+            googleIdToken = response.credential;
+            googleEmail = data.email;
+            showSignedInState(data.email);
+            if (data.prefill?.name && !guestNameInput.value.trim()) guestNameInput.value = data.prefill.name;
+            if (data.prefill?.phone && !guestContactInput.value.trim()) guestContactInput.value = data.prefill.phone;
+            updateCreditDisplay(data.credit);
+            document.querySelector('.guest-email-block')?.classList.remove('guest-email-block-invalid');
+        } catch (_) {
             showToast("Couldn't verify that Google account. Please try again.", 'error');
-            return;
         }
-        googleIdToken = response.credential;
-        googleEmail = payload.email;
-        showSignedInState(payload.email);
-        document.querySelector('.guest-email-block')?.classList.remove('guest-email-block-invalid');
     }
 
     guestEmailChangeBtn.addEventListener('click', clearGoogleSignIn);
@@ -270,19 +325,27 @@
     (function initGoogleSignIn() {
         if (!googleClientId || !googleSignInBtnEl) return;
 
-        function render() {
-            let savedEmail = null;
-            try {
-                savedEmail = localStorage.getItem(GUEST_EMAIL_STORAGE_KEY);
-            } catch (err) {
-                // ignore — just means no hint
+        async function render() {
+            if (!googleNonce) {
+                try {
+                    const nonceResponse = await fetch(creditNonceUrl, {
+                        method: 'POST',
+                        credentials: 'same-origin',
+                        headers: { Accept: 'application/json', ...csrfHeaders() },
+                    });
+                    const nonceData = await nonceResponse.json();
+                    googleNonce = nonceData.nonce;
+                } catch (_) {
+                    googleNonce = null;
+                }
             }
+            if (!googleNonce) return;
 
             window.google.accounts.id.initialize({
                 client_id: googleClientId,
                 callback: handleGoogleCredential,
                 auto_select: false,
-                ...(savedEmail ? { login_hint: savedEmail } : {}),
+                nonce: googleNonce,
             });
             window.google.accounts.id.renderButton(googleSignInBtnEl, {
                 type: 'standard',
@@ -337,7 +400,7 @@
         const missing = [];
         if (!guestNameInput.value.trim()) missing.push('your name');
         if (!guestContactInput.value.trim()) missing.push('a contact number');
-        if (!googleIdToken) missing.push('an email address (sign in with Google)');
+        if (!guestIdentityVerified) missing.push('an email address (sign in with Google)');
         return missing;
     }
 
@@ -348,7 +411,7 @@
             showToast(`Please provide ${formatList(missing)} to continue.`, 'error');
             guestNameInput.classList.toggle('field-invalid', !guestNameInput.value.trim());
             guestContactInput.classList.toggle('field-invalid', !guestContactInput.value.trim());
-            document.querySelector('.guest-email-block')?.classList.toggle('guest-email-block-invalid', !googleIdToken);
+            document.querySelector('.guest-email-block')?.classList.toggle('guest-email-block-invalid', !guestIdentityVerified);
             return;
         }
         document.querySelector('.guest-email-block')?.classList.remove('guest-email-block-invalid');
@@ -369,7 +432,8 @@
         formData.append('payment_method', 'qrph');
         formData.append('guest_name', guestNameInput.value.trim());
         formData.append('guest_contact', guestContactInput.value.trim());
-        formData.append('google_id_token', googleIdToken);
+        formData.append('use_credit', document.getElementById('useGuestCredit')?.checked ? '1' : '0');
+        formData.append('idempotency_token', createCheckoutKey());
         equipmentPayload.forEach((item, i) => {
             formData.append(`equipment[${i}][id]`, item.id);
             formData.append(`equipment[${i}][quantity]`, item.quantity);
@@ -423,9 +487,7 @@
                 return;
             }
 
-            saveGuestEmailToDevice(googleEmail);
-
-            if (data.booking && data.booking.status === 'paid') {
+            if (data.status === 'paid') {
                 clearCheckoutDraft();
                 const params = new URLSearchParams({
                     booking_success: 'Payment already matched — you\'re all set!',

@@ -11,6 +11,13 @@ use App\Models\Court;
 use App\Models\CourtClosure;
 use App\Models\Equipment;
 use App\Models\PaymentReference as PaymentReferenceModel;
+use App\Models\CreditWallet;
+use App\Models\CreditTransaction;
+use App\Models\CreditPaymentHold;
+use App\Enums\CreditType;
+use App\Enums\CreditDirection;
+use App\Enums\CreditReason;
+use App\Services\CreditService;
 use App\Models\SpecificDateTimeClosure;
 use App\Support\ActivityLogger;
 use App\Support\BookingHours;
@@ -28,7 +35,7 @@ class GuestBookingController extends Controller
     // User_UserController should switch to the same BookingHours calls
     // rather than keeping its own separate copy of these values.
 
-    public function landing()
+    public function landing(Request $request)
     {
         $courts = Court::where('status', 'active')->orderBy('name')->get();
 
@@ -61,6 +68,23 @@ class GuestBookingController extends Controller
         $settings = BusinessSetting::current();
         $weeklySchedule = $this->buildWeeklyScheduleDays($settings, $primaryCourtId);
 
+        $guestCredit = null;
+        $verified = $request->session()->get('guest_credit_verified');
+        if (is_array($verified) && ! empty($verified['verified_at']) && ! empty($verified['email'])) {
+            $hours = max(1, (int) config('credit.guest_verified_hours', 12));
+            if ((int) $verified['verified_at'] + $hours * 3600 >= now()->timestamp
+                && ! empty($verified['user_id'])
+                && ($verified['matched'] ?? true) !== false) {
+                $walletUser = \App\Models\User::query()->whereKey($verified['user_id'])->first();
+                if ($walletUser) {
+                    $wallet = \App\Models\CreditWallet::query()->where('user_id', $walletUser->user_id)->first();
+                    $given = (int) ($wallet->given_balance ?? 0);
+                    $reserved = (int) ($wallet->reserved_balance ?? 0);
+                    $guestCredit = ['given' => $given, 'reserved' => $reserved, 'total' => $given + $reserved];
+                }
+            }
+        }
+
         return view('landing', [
             'courts'              => $courts,
             'openHour'            => BookingHours::openHour(),
@@ -76,6 +100,7 @@ class GuestBookingController extends Controller
             'peakEndHour'         => $settings->hasPeakPricing() ? $settings->peak_end_hour : null,
             'peakAdjustmentType'  => $settings->hasPeakPricing() ? $settings->peak_adjustment_type : null,
             'peakAdjustmentValue' => $settings->hasPeakPricing() ? $settings->peak_adjustment_value : null,
+            'guestCredit'         => $guestCredit,
         ]);
     }
 
@@ -649,19 +674,30 @@ class GuestBookingController extends Controller
             // this needs to accept PH mobile numbers in several common
             // formats without being a full phone-format validator.
             'guest_contact'  => ['required', 'string', 'max:30', 'regex:/^[0-9+\-\s()]{7,30}$/'],
-            // Raw JWT from Google Identity Services — verified against
-            // Google's tokeninfo endpoint below, never trusted as-is.
-            'google_id_token' => ['required', 'string'],
+            'use_credit' => ['nullable', 'boolean'],
+            'idempotency_token' => ['required', 'string', 'min:32', 'max:128'],
             'equipment'            => ['array'],
             'equipment.*.id'       => ['required_with:equipment', 'integer', 'exists:equipment,id'],
             'equipment.*.quantity' => ['required_with:equipment', 'integer', 'min:1', 'max:20'],
         ]);
 
-        $guestEmail = $this->verifyGoogleIdToken($validated['google_id_token']);
+        $verified = $request->session()->get('guest_credit_verified');
+        $guestEmail = null;
+        $creditUser = null;
+        if (is_array($verified) && ! empty($verified['verified_at']) && ! empty($verified['email'])) {
+            $hours = max(1, (int) config('credit.guest_verified_hours', 12));
+            if ((int) $verified['verified_at'] + $hours * 3600 >= now()->timestamp) {
+                $guestEmail = mb_strtolower(trim((string) $verified['email']));
+                if (! empty($verified['user_id']) && ($verified['matched'] ?? true) !== false) {
+                    $creditUser = \App\Models\User::query()
+                        ->whereKey($verified['user_id'])
+                        ->whereRaw('LOWER(email) = LOWER(?)', [$guestEmail])
+                        ->first();
+                }
+            }
+        }
         if ($guestEmail === null) {
-            return response()->json([
-                'message' => "We couldn't verify that Google sign-in. Please sign in again.",
-            ], 422);
+            return response()->json(['message' => 'Sign in with Google to verify your email before booking.'], 422);
         }
 
         $court = Court::findOrFail($validated['court_id']);
@@ -694,6 +730,25 @@ class GuestBookingController extends Controller
                 $validated, $court, $groups, $slotAmountFor,
                 $guestEmail, $expiresAt
             ) {
+                $checkoutKey = hash('sha256', $validated['idempotency_token']);
+                $existingReference = PaymentReferenceModel::query()
+                    ->where('credit_checkout_key', $checkoutKey)
+                    ->lockForUpdate()
+                    ->first();
+                if ($existingReference) {
+                    $existingBookings = Booking::where('payment_reference_id', $existingReference->id)
+                        ->orderBy('date')
+                        ->lockForUpdate()
+                        ->get();
+                    if ($existingBookings->isNotEmpty()) {
+                        return [
+                            'bookings' => $existingBookings,
+                            'paymentReference' => $existingReference,
+                            'isPaid' => $existingReference->isConfirmed(),
+                            'idempotent' => true,
+                        ];
+                    }
+                }
                 // Lock the court row for the rest of this transaction —
                 // see the original single-date version of this method
                 // for the full race-condition reasoning. Still needed
@@ -768,24 +823,74 @@ class GuestBookingController extends Controller
                 $equipmentAmount = collect($resolvedEquipment)
                     ->sum(fn ($line) => $line['item']->price * $line['quantity']);
                 $totalAmount = round($courtAmount + $equipmentAmount, 2);
+                $totalPhp = (int) round($totalAmount);
 
-                $isPaid = false;
+                $split = [
+                    'given_used' => 0,
+                    'reserved_used' => 0,
+                    'cash_due' => $totalPhp,
+                    'cash_paid' => 0,
+                ];
+                if ($creditUser && (bool) ($validated['use_credit'] ?? true)) {
+                    $split = app(CreditService::class)->quoteAndSpendForGuestCheckout($creditUser, $totalPhp);
+                }
+                $isPaid = $split['cash_due'] === 0;
 
                 // One shared payment for the whole checkout, however many
                 // dates it covers.
                 $paymentReference = PaymentReferenceModel::create([
                     'payment_method'    => 'qrph',
-                    'amount'            => $totalAmount,
+                    'amount'            => $split['cash_due'],
+                    'given_used'        => $split['given_used'],
+                    'reserved_used'     => $split['reserved_used'],
+                    'cash_due'          => $split['cash_due'],
+                    'cash_paid'         => $isPaid ? 0 : 0,
+                    'credit_checkout_key' => hash('sha256', $validated['idempotency_token']),
                     'confirmed_at'      => $isPaid ? now() : null,
+                    'credit_status'     => $isPaid && ($split['given_used'] + $split['reserved_used'] > 0)
+                        ? 'paid'
+                        : (($split['given_used'] + $split['reserved_used'] > 0) ? 'held' : 'none'),
                 ]);
+
+                if ($creditUser && ($split['given_used'] > 0 || $split['reserved_used'] > 0)) {
+                    app(CreditService::class)->debitForCheckout(
+                        $creditUser,
+                        $split['given_used'],
+                        $split['reserved_used'],
+                        $paymentReference
+                    );
+                    if ($isPaid) {
+                        $hold = CreditPaymentHold::where('payment_reference_id', $paymentReference->id)->first();
+                        if ($hold) $hold->update(['status' => 'paid']);
+                        $paymentReference->update(['credit_status' => 'paid']);
+                    }
+                }
 
                 $bookings = [];
                 $isFirstGroup = true;
+                $remainingGiven = (int) $split['given_used'];
+                $remainingReserved = (int) $split['reserved_used'];
+                $remainingCash = (int) $split['cash_due'];
 
                 foreach ($groups as $dateStr => $windows) {
                     $envelopeStart = $windows[0][0];
                     $envelopeEnd   = $windows[count($windows) - 1][1];
                     $dateAmount    = round(collect($windows)->sum(fn ($window) => $slotAmountFor($window[0])), 2);
+                    $grossBookingAmount = $isFirstGroup
+                        ? round($dateAmount + ($totalAmount - $courtAmount), 2)
+                        : $dateAmount;
+                    $bookingPhp = (int) round($grossBookingAmount);
+                    $allocatedGiven = 0;
+                    $allocatedReserved = 0;
+                    $allocatedCashDue = 0;
+                    $allocatedGiven = min($bookingPhp, $remainingGiven);
+                    $remainingGiven -= $allocatedGiven;
+                    $bookingCashRemaining = $bookingPhp - $allocatedGiven;
+                    $allocatedReserved = min($bookingCashRemaining, $remainingReserved);
+                    $remainingReserved -= $allocatedReserved;
+                    $bookingCashRemaining -= $allocatedReserved;
+                    $allocatedCashDue = min($bookingCashRemaining, $remainingCash);
+                    $remainingCash -= $allocatedCashDue;
 
                     $booking = Booking::create([
                         'user_id'              => null,
@@ -798,6 +903,10 @@ class GuestBookingController extends Controller
                         'date'                 => $dateStr,
                         'start_time'           => $envelopeStart->format('H:i:s'),
                         'end_time'             => $envelopeEnd->format('H:i:s'),
+                        'given_used'           => $allocatedGiven,
+                        'reserved_used'        => $allocatedReserved,
+                        'cash_due'             => $allocatedCashDue,
+                        'cash_paid'            => $isPaid ? 0 : 0,
                         // Equipment cost is billed entirely on the
                         // earliest date's booking (see below) rather than
                         // split across dates — keeps "amount" additions
@@ -852,12 +961,14 @@ class GuestBookingController extends Controller
         }
 
         [$bookings, $isPaid] = [$result['bookings'], $result['isPaid']];
+        $idempotent = (bool) ($result['idempotent'] ?? false);
 
         // Logged after the transaction commits, not inside it — a
         // checkout that gets rolled back (slot conflict, stock conflict,
         // etc.) should never leave a log entry behind. One log line per
         // date booked.
         foreach ($bookings as $booking) {
+            if ($idempotent) break;
             ActivityLogger::log(
                 'booking.created',
                 sprintf(
@@ -880,7 +991,9 @@ class GuestBookingController extends Controller
         }
 
         return response()->json([
-            'message'    => 'Booking submitted! Generate your QR Ph code to complete payment.',
+            'message'    => $isPaid
+                ? 'Payment complete with credit.'
+                : 'Booking submitted! Generate your QR Ph code to complete payment.',
             'bookings'   => collect($bookings)->map(fn ($b) => [
                 'booking_id' => $b->id,
                 'date'       => $b->date->toDateString(),
@@ -891,6 +1004,11 @@ class GuestBookingController extends Controller
             'poll_token' => $bookings[0]->poll_token,
             'expires_at' => $bookings[0]->expires_at?->toIso8601String(),
             'amount'     => $result['paymentReference']->amount,
+            'given_used' => $result['paymentReference']->given_used,
+            'reserved_used' => $result['paymentReference']->reserved_used,
+            'cash_due' => $result['paymentReference']->cash_due,
+            'status' => $isPaid ? 'paid' : 'pending',
+            'idempotent' => $idempotent,
         ]);
     }
 
@@ -999,9 +1117,12 @@ class GuestBookingController extends Controller
             // concurrent createQr() call to wait until this cancellation
             // commits or rolls back, instead of interleaving and handing out
             // a QR for a booking we're about to cancel.
-            PaymentReferenceModel::where('id', $booking->payment_reference_id)
+            $lockedPaymentReference = PaymentReferenceModel::where('id', $booking->payment_reference_id)
                 ->lockForUpdate()
                 ->first();
+            if ($lockedPaymentReference) {
+                app(\App\Services\CreditService::class)->releasePaymentHold($lockedPaymentReference);
+            }
 
             $siblings = Booking::where('payment_reference_id', $booking->payment_reference_id)
                 ->where('status', 'pending')

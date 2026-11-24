@@ -5,6 +5,29 @@
  */
 
 document.addEventListener('DOMContentLoaded', function() {
+    const landingCreditToggle = document.getElementById('landingCreditToggle');
+    const landingCreditPopover = document.getElementById('landingCreditPopover');
+    const landingCreditSwitch = document.getElementById('landingCreditSwitch');
+    if (landingCreditToggle && landingCreditPopover) {
+        landingCreditToggle.addEventListener('click', function () {
+            const open = landingCreditPopover.hidden;
+            landingCreditPopover.hidden = !open;
+            landingCreditToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+        });
+        landingCreditSwitch?.addEventListener('click', async function () {
+            try {
+                await fetch('/guest/credit/switch', {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: {
+                        Accept: 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
+                    },
+                });
+            } catch (_) {}
+            window.location.reload();
+        });
+    }
 
     // ----- Mobile Navigation Toggle (Smooth) -----
     const navToggle = document.getElementById('navToggle');

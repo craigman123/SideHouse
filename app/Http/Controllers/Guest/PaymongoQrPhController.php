@@ -485,6 +485,21 @@ class PaymongoQrPhController extends Controller
 
                 if ($updatedCount > 0 && !$paymentReference->isConfirmed()) {
                     $paymentReference->update(['confirmed_at' => now()]);
+                    $paymentReference->update([
+                        'cash_paid' => (int) $paymentReference->cash_due,
+                        'credit_status' => ($paymentReference->given_used + $paymentReference->reserved_used) > 0
+                            ? 'paid'
+                            : 'none',
+                    ]);
+                    \App\Models\CreditPaymentHold::query()
+                        ->where('payment_reference_id', $paymentReference->id)
+                        ->where('status', 'held')
+                        ->update(['status' => 'paid', 'released_at' => null]);
+                    Booking::where('payment_reference_id', $paymentReference->id)
+                        ->where('status', 'paid')
+                        ->update([
+                            'cash_paid' => DB::raw('cash_due'),
+                        ]);
                 }
 
                 return 'success';
@@ -581,6 +596,7 @@ class PaymongoQrPhController extends Controller
      */
     private function releaseClaim(PaymentReference $paymentReference, string $claimToken): void
     {
+        app(\App\Services\CreditService::class)->releasePaymentHold($paymentReference);
         PaymentReference::where('id', $paymentReference->id)
             ->where('payment_intent_id', $claimToken)
             ->update(['payment_intent_id' => null]);
@@ -604,6 +620,8 @@ class PaymongoQrPhController extends Controller
             if (! $paymentReference) {
                 return;
             }
+
+            app(\App\Services\CreditService::class)->releasePaymentHold($paymentReference);
 
             $siblings = Booking::where('payment_reference_id', $paymentReference->id)
                 ->where('status', 'pending')

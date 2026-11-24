@@ -30,10 +30,24 @@ use App\Http\Controllers\Maintenance\MaintenanceController;
 use App\Http\Controllers\Guest\GuestBookingLookupController;
 use App\Http\Controllers\Admin\MetricsController;
 use App\Http\Controllers\Admin\CustomerCreditController;
+use App\Http\Controllers\Guest\GuestCreditController;
 
 Route::get('/guest/booking/latest', [GuestBookingLookupController::class, 'latest'])
     ->name('guest.booking.latest')
     ->middleware('throttle:20,1');
+
+Route::post('/guest/credit/nonce', [GuestCreditController::class, 'nonce'])
+    ->middleware('throttle:30,1,guest-credit-nonce')
+    ->name('guest.credit.nonce');
+Route::post('/guest/credit/verify', [GuestCreditController::class, 'verify'])
+    ->middleware('throttle:10,1,guest-credit-verify')
+    ->name('guest.credit.verify');
+Route::get('/guest/credit/state', [GuestCreditController::class, 'state'])
+    ->middleware('throttle:30,1,guest-credit-state')
+    ->name('guest.credit.state');
+Route::post('/guest/credit/switch', [GuestCreditController::class, 'switch'])
+    ->middleware('throttle:10,1,guest-credit-switch')
+    ->name('guest.credit.switch');
 
 Route::match(['get', 'post'], '/test-error/{code}', function ($code) {
     abort((int) $code);

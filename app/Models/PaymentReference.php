@@ -33,6 +33,14 @@ class PaymentReference extends Model
         'payment_intent_id',
         'qr_image_url',
         'qr_code_expires_at',
+        'given_used',
+        'reserved_used',
+        'cash_due',
+        'cash_paid',
+        'credit_status',
+        'credit_held_at',
+        'credit_released_at',
+        'credit_checkout_key',
     ];
 
     protected $casts = [

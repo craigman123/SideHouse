@@ -4,7 +4,10 @@ namespace App\Console\Commands;
 
 use App\Models\Booking;
 use App\Models\BookingSlot;
+use App\Models\PaymentReference;
+use App\Services\CreditService;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\DB;
 
 class ExpireUnconfirmedQrPhBookings extends Command
 {
@@ -14,11 +17,6 @@ class ExpireUnconfirmedQrPhBookings extends Command
 
     public function handle(): int
     {
-        // Capture the IDs before the bulk update, so the same set of
-        // bookings can be used afterward to also deactivate their
-        // booking_slots rows — a plain bulk update() has no per-row hook
-        // to do that inline, and query builder updates don't fire model
-        // events either way.
         $expiredIds = Booking::query()
             ->where('payment_method', 'qrph')
             ->where('status', 'pending')
@@ -32,14 +30,31 @@ class ExpireUnconfirmedQrPhBookings extends Command
             return self::SUCCESS;
         }
 
-        $count = Booking::whereIn('id', $expiredIds)->update(['status' => 'cancelled']);
+        $count = 0;
+        $referenceIds = Booking::query()
+            ->whereIn('id', $expiredIds)
+            ->whereNotNull('payment_reference_id')
+            ->pluck('payment_reference_id')
+            ->unique();
 
-        // Same reasoning as the other cancellation paths — a cancelled
-        // booking's slots must be marked inactive so the DB-level
-        // uniqueness constraint (booking_slots_court_date_start_unique)
-        // frees the slot for someone else to book, instead of staying
-        // permanently blocked by a stale active row.
-        BookingSlot::whereIn('booking_id', $expiredIds)->update(['is_active' => false]);
+        foreach ($referenceIds as $referenceId) {
+            DB::transaction(function () use ($referenceId, &$count) {
+                $reference = PaymentReference::whereKey($referenceId)->lockForUpdate()->first();
+                if (! $reference) return;
+
+                app(CreditService::class)->releasePaymentHold($reference);
+
+                $bookings = Booking::where('payment_reference_id', $referenceId)
+                    ->where('status', 'pending')
+                    ->lockForUpdate()
+                    ->get();
+                foreach ($bookings as $booking) {
+                    $booking->update(['status' => 'cancelled']);
+                    $booking->slots()->update(['is_active' => false]);
+                    $count++;
+                }
+            });
+        }
 
         $this->info("Cancelled {$count} expired QR Ph booking(s).");
 
