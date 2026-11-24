@@ -20,6 +20,8 @@ class CreditTransaction extends Model
         'created_by',
         'balance_after',
         'created_at',
+        'payment_reference_id',
+        'late_payment_key',
     ];
 
     protected function casts(): array

@@ -123,6 +123,10 @@ class User_UserController extends Controller
         $result = DB::transaction(function () use ($booking) {
             $locked = Booking::where('id', $booking->id)->lockForUpdate()->first();
 
+            if ((int) $locked->given_used > 0 || (int) $locked->reserved_used > 0) {
+                return ['ok' => false, 'status' => 'credit_paid'];
+            }
+
             if ($locked->status !== 'pending') {
                 return ['ok' => false, 'status' => $locked->status];
             }
@@ -135,6 +139,7 @@ class User_UserController extends Controller
 
         if (! $result['ok']) {
             $message = match ($result['status']) {
+                'credit_paid' => 'This booking was paid with credit. Credit restoration is not available yet.',
                 'paid' => 'This booking is already paid and confirmed. Cancelling a paid booking requires a refund — please contact us directly.',
                 'cancelled' => 'This booking is already cancelled.',
                 default => 'This booking can no longer be cancelled.',

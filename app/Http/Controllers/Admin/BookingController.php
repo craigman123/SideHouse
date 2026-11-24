@@ -115,6 +115,9 @@ class BookingController extends Controller
 
         $result = DB::transaction(function () use ($booking, $validated, $overrideWarnings, $request) {
             $locked = Booking::query()->whereKey($booking->id)->lockForUpdate()->firstOrFail();
+            if ((int) $locked->given_used > 0 || (int) $locked->reserved_used > 0) {
+                return ['credit_cancellation_blocked' => 'This booking was paid with credit. Credit restoration is not available yet.'];
+            }
             if (isset($validated['expected_updated_at'])
                 && \Carbon\Carbon::parse($validated['expected_updated_at'])->format('U.u') !== $locked->updated_at->format('U.u')) {
                 return ['stale' => $locked->load(['court', 'slots', 'equipment.equipment'])];
@@ -339,6 +342,9 @@ class BookingController extends Controller
             ];
         });
 
+        if (isset($result['credit_cancellation_blocked'])) {
+            return response()->json(['message' => $result['credit_cancellation_blocked']], 422);
+        }
         if (isset($result['quote'])) {
             return response()->json(['quote' => $result['quote']]);
         }

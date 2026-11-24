@@ -41,6 +41,8 @@ class PaymentReference extends Model
         'credit_held_at',
         'credit_released_at',
         'credit_checkout_key',
+        'matched_credit_user_id',
+        'late_payment_processed_at',
     ];
 
     protected $casts = [

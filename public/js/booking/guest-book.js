@@ -896,37 +896,95 @@ document.addEventListener('DOMContentLoaded', () => {
         if (guestEmailLabel) guestEmailLabel.hidden = false;
     }
 
-    function clearGoogleSignIn() {
+    async function clearGoogleSignIn() {
         googleIdToken = null;
         googleEmail = '';
         showSignedOutState();
+        try {
+            await fetch('/guest/credit/switch', {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: { Accept: 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '' },
+            });
+        } catch (_) {}
         if (window.google && window.google.accounts && window.google.accounts.id) {
             window.google.accounts.id.disableAutoSelect();
         }
     }
 
-    function handleGoogleCredential(response) {
-        const payload = decodeJwtPayload(response.credential);
-        if (!payload || !payload.email) {
+    let googleNonce = null;
+    async function handleGoogleCredential(response) {
+        try {
+            const res = await fetch('/guest/credit/verify', {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: {
+                    Accept: 'application/json',
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
+                },
+                body: JSON.stringify({ id_token: response.credential }),
+            });
+            const data = await res.json();
+            if (!res.ok) {
+                showToast(data.message || "Couldn't verify that Google account. Please try again.", 'error');
+                return;
+            }
+            if (!data.verified) {
+                showToast('No registered account or unique credit match was found.', 'success');
+                googleIdToken = null;
+                googleEmail = '';
+                showSignedOutState();
+                return;
+            }
+            googleIdToken = response.credential;
+            googleEmail = data.email;
+            showSignedInState(data.email);
+            if (data.prefill?.name && !guestNameInput.value.trim()) guestNameInput.value = data.prefill.name;
+            if (data.prefill?.phone && !guestContactInput.value.trim()) guestContactInput.value = data.prefill.phone;
+            const emailBlock = document.querySelector('.guest-email-block');
+            if (emailBlock) emailBlock.classList.remove('guest-email-block-invalid');
+        } catch (_) {
             showToast("Couldn't verify that Google account. Please try again.", 'error');
-            return;
         }
-        googleIdToken = response.credential;
-        googleEmail = payload.email;
-        showSignedInState(payload.email);
-        const emailBlock = document.querySelector('.guest-email-block');
-        if (emailBlock) emailBlock.classList.remove('guest-email-block-invalid');
     }
+
+    fetch('/guest/credit/state', { credentials: 'same-origin', headers: { Accept: 'application/json' } })
+        .then((res) => res.json())
+        .then((data) => {
+            if (!data.verified) return;
+            googleIdToken = 'server-session-verified';
+            googleEmail = data.email;
+            showSignedInState(data.email);
+            if (data.prefill?.name && !guestNameInput.value.trim()) guestNameInput.value = data.prefill.name;
+            if (data.prefill?.phone && !guestContactInput.value.trim()) guestContactInput.value = data.prefill.phone;
+        })
+        .catch(() => {});
 
     (function initGoogleSignIn() {
         const clientId = grid.dataset.googleClientId;
         if (!clientId || !googleSignInBtnEl) return;
 
-        function render() {
+        async function render() {
+            if (!googleNonce) {
+                try {
+                    const nonceResponse = await fetch('/guest/credit/nonce', {
+                        method: 'POST',
+                        credentials: 'same-origin',
+                        headers: { Accept: 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '' },
+                    });
+                    const nonceData = await nonceResponse.json();
+                    googleNonce = nonceData.nonce;
+                } catch (_) {
+                    googleNonce = null;
+                }
+            }
+            if (!googleNonce) return;
             window.google.accounts.id.initialize({
                 client_id: clientId,
                 callback: handleGoogleCredential,
                 auto_select: false,
+                nonce: googleNonce,
             });
             window.google.accounts.id.renderButton(googleSignInBtnEl, {
                 type: 'standard',
@@ -2230,6 +2288,10 @@ document.addEventListener('DOMContentLoaded', () => {
         formData.append('payment_method', selectedPayment);
         formData.append('guest_name', guestNameInput.value.trim());
         formData.append('guest_contact', guestContactInput.value.trim());
+        if (!window.__sidehouseCreditCheckoutKey) {
+            window.__sidehouseCreditCheckoutKey = (window.crypto?.randomUUID ? window.crypto.randomUUID() : Date.now().toString(36) + '-' + Math.random().toString(36).slice(2));
+        }
+        formData.append('idempotency_token', window.__sidehouseCreditCheckoutKey);
         const submittedRefInput = getActiveRefInput();
         if (submittedRefInput && submittedRefInput.value.trim()) {
             formData.append('payment_reference', submittedRefInput.value.trim());

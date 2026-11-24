@@ -850,21 +850,8 @@ class GuestBookingController extends Controller
                     'credit_status'     => $isPaid && ($split['given_used'] + $split['reserved_used'] > 0)
                         ? 'paid'
                         : (($split['given_used'] + $split['reserved_used'] > 0) ? 'held' : 'none'),
+                    'matched_credit_user_id' => $creditUser?->user_id,
                 ]);
-
-                if ($creditUser && ($split['given_used'] > 0 || $split['reserved_used'] > 0)) {
-                    app(CreditService::class)->debitForCheckout(
-                        $creditUser,
-                        $split['given_used'],
-                        $split['reserved_used'],
-                        $paymentReference
-                    );
-                    if ($isPaid) {
-                        $hold = CreditPaymentHold::where('payment_reference_id', $paymentReference->id)->first();
-                        if ($hold) $hold->update(['status' => 'paid']);
-                        $paymentReference->update(['credit_status' => 'paid']);
-                    }
-                }
 
                 $bookings = [];
                 $isFirstGroup = true;
@@ -944,6 +931,16 @@ class GuestBookingController extends Controller
                                 'price_each'   => $line['item']->price,
                             ]);
                         }
+                    }
+
+                    if ($creditUser && ($allocatedGiven > 0 || $allocatedReserved > 0)) {
+                        app(CreditService::class)->debitForCheckout(
+                            $creditUser,
+                            $allocatedGiven,
+                            $allocatedReserved,
+                            $paymentReference,
+                            $booking->id
+                        );
                     }
 
                     $bookings[] = $booking;

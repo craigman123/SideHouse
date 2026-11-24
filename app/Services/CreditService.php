@@ -26,14 +26,16 @@ class CreditService
             throw new InvalidArgumentException('Credit usage cannot be negative.');
         }
         if ($givenUsed === 0 && $reservedUsed === 0) {
-            return CreditPaymentHold::create([
-                'payment_reference_id' => $paymentReference->id,
-                'user_id' => $user->user_id,
-                'given_held' => 0,
-                'reserved_held' => 0,
-                'status' => 'held',
-                'held_at' => now(),
-            ]);
+            return CreditPaymentHold::query()->firstOrCreate(
+                ['payment_reference_id' => $paymentReference->id],
+                [
+                    'user_id' => $user->user_id,
+                    'given_held' => 0,
+                    'reserved_held' => 0,
+                    'status' => 'held',
+                    'held_at' => now(),
+                ]
+            );
         }
 
         $wallet = CreditWallet::query()
@@ -79,14 +81,19 @@ class CreditService
 
         $wallet->save();
 
-        $hold = CreditPaymentHold::create([
-            'payment_reference_id' => $paymentReference->id,
-            'user_id' => $user->user_id,
-            'given_held' => $givenUsed,
-            'reserved_held' => $reservedUsed,
-            'status' => 'held',
-            'held_at' => now(),
-        ]);
+        $hold = CreditPaymentHold::query()->firstOrCreate(
+            ['payment_reference_id' => $paymentReference->id],
+            [
+                'user_id' => $user->user_id,
+                'given_held' => 0,
+                'reserved_held' => 0,
+                'status' => 'held',
+                'held_at' => now(),
+            ]
+        );
+        $hold->given_held = (int) $hold->given_held + $givenUsed;
+        $hold->reserved_held = (int) $hold->reserved_held + $reservedUsed;
+        $hold->save();
 
         $paymentReference->update([
             'given_used' => $givenUsed,

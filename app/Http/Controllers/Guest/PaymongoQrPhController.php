@@ -466,6 +466,61 @@ class PaymongoQrPhController extends Controller
                     ->get();
 
                 if ($bookings->isEmpty()) {
+                    if ((int) $paymentReference->cash_due > 0
+                        && $paymentReference->credit_status === 'released'
+                        && $paymentReference->late_payment_processed_at === null) {
+                        $cashPhp = (int) $paymentReference->cash_due;
+                        if ($paymentReference->matched_credit_user_id) {
+                            $wallet = \App\Models\CreditWallet::query()
+                                ->where('user_id', $paymentReference->matched_credit_user_id)
+                                ->lockForUpdate()
+                                ->firstOrCreate([
+                                    'user_id' => $paymentReference->matched_credit_user_id,
+                                ], [
+                                    'given_balance' => 0,
+                                    'reserved_balance' => 0,
+                                ]);
+                            $wallet->reserved_balance += $cashPhp;
+                            $wallet->save();
+                            \App\Models\CreditTransaction::create([
+                                'user_id' => $paymentReference->matched_credit_user_id,
+                                'type' => \App\Enums\CreditType::Reserved->value,
+                                'direction' => \App\Enums\CreditDirection::Credit->value,
+                                'amount' => $cashPhp,
+                                'reason' => 'late_cash_reserved',
+                                'note' => null,
+                                'booking_id' => null,
+                                'created_by' => $paymentReference->matched_credit_user_id,
+                                'balance_after' => (int) $wallet->reserved_balance,
+                                'created_at' => now(),
+                                'payment_reference_id' => $paymentReference->id,
+                                'late_payment_key' => 'late-payment:'.$paymentReference->id,
+                            ]);
+                        } else {
+                            \App\Models\ManualCreditRefund::firstOrCreate(
+                                ['payment_reference_id' => $paymentReference->id],
+                                ['cash_amount' => $cashPhp]
+                            );
+                        }
+                        $paymentReference->update([
+                            'late_payment_processed_at' => now(),
+                            'cash_paid' => $cashPhp,
+                            'credit_status' => 'late_reserved',
+                        ]);
+                        \App\Support\ActivityLogger::log(
+                            'payment.late_after_release',
+                            $paymentReference->matched_credit_user_id
+                                ? "Late QR cash of ₱{$cashPhp} was converted to Reserved Credit."
+                                : "Late QR cash of ₱{$cashPhp} needs manual refund handling.",
+                            actor: null,
+                            subject: $paymentReference,
+                            properties: [
+                                'payment_reference_id' => $paymentReference->id,
+                                'cash_amount' => $cashPhp,
+                                'matched_user_id' => $paymentReference->matched_credit_user_id,
+                            ]
+                        );
+                    }
                     return 'no_pending';
                 }
 
