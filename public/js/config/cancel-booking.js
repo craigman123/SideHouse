@@ -1,22 +1,26 @@
-// cancel-booking.js — wires up the "Cancel booking" confirmation modal.
+// cancel-booking.js – wires up the "Cancel booking" confirmation modal.
 // Works on any page that has a #cancelModal (with a data-cancel-url
 // template containing ':id') and one or more [data-cancel] buttons sitting
 // inside an element carrying data-booking-id / data-booking.
+//
+// When the trigger button carries data-paid="1" (paid/confirmed bookings)
+// the modal shows a refund note explaining credits will be returned.
 
 document.addEventListener('DOMContentLoaded', () => {
     const modal = document.getElementById('cancelModal');
     if (!modal) return; // this page doesn't have the cancel flow
 
-    const modalText = document.getElementById('modalText');
-    const modalClose = document.getElementById('modalClose');
-    const modalKeep = document.getElementById('modalKeep');
-    const modalConfirm = document.getElementById('modalConfirm');
-    const toastContainer = document.getElementById('toastContainer');
+    const modalText       = document.getElementById('modalText');
+    const modalRefundNote = document.getElementById('modalRefundNote');
+    const modalClose      = document.getElementById('modalClose');
+    const modalKeep       = document.getElementById('modalKeep');
+    const modalConfirm    = document.getElementById('modalConfirm');
+    const toastContainer  = document.getElementById('toastContainer');
 
     const cancelUrlTemplate = modal.dataset.cancelUrl;
 
     let pendingRow = null;
-    let pendingId = null;
+    let pendingId  = null;
 
     function getCookie(name) {
         const match = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)'));
@@ -36,12 +40,20 @@ document.addEventListener('DOMContentLoaded', () => {
         return {};
     }
 
-    function openModal(row) {
+    function openModal(row, isPaid) {
         pendingRow = row;
-        pendingId = row.dataset.bookingId;
+        pendingId  = row.dataset.bookingId;
 
         const label = row.dataset.booking || 'this booking';
-        modalText.textContent = `Cancel ${label}? This will free up the slot for other players. This can't be undone.`;
+        if (isPaid) {
+            modalText.textContent = `Cancel ${label}? This will free up the slot for other players and issue a credit refund. This can't be undone.`;
+        } else {
+            modalText.textContent = `Cancel ${label}? This will free up the slot for other players. This can't be undone.`;
+        }
+
+        if (modalRefundNote) {
+            modalRefundNote.hidden = !isPaid;
+        }
 
         modal.classList.add('open');
     }
@@ -49,7 +61,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function closeModal() {
         modal.classList.remove('open');
         pendingRow = null;
-        pendingId = null;
+        pendingId  = null;
     }
 
     // Event delegation: catches Cancel buttons anywhere on the page,
@@ -61,7 +73,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const row = trigger.closest('[data-booking-id]');
         if (!row) return;
 
-        openModal(row);
+        const isPaid = trigger.dataset.paid === '1';
+        openModal(row, isPaid);
     });
 
     modalClose?.addEventListener('click', closeModal);

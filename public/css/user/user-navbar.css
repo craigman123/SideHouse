@@ -683,3 +683,87 @@ svg {
         scroll-padding-top: var(--s9);
     }
 }
+
+/* ============================================================
+   Topbar credit balance badge
+   Sits next to the theme toggle and notification bell.
+   Uses tokens.css variables — no hardcoded colors.
+   ============================================================ */
+
+.user-credit-badge {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: var(--s1);
+    min-height: 44px;
+    padding: 0 var(--s2);
+    border: 1px solid var(--border);
+    border-radius: var(--r-pill);
+    background: transparent;
+    color: var(--brand-hover);
+    font-family: var(--font-family);
+    font-size: var(--font-size-small);
+    font-weight: var(--font-weight-button);
+    text-decoration: none;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+}
+
+.user-credit-badge:hover,
+.user-credit-badge:focus-visible {
+    background: color-mix(in srgb, var(--brand) 12%, var(--surface));
+    border-color: var(--brand);
+}
+
+.user-credit-badge:focus-visible {
+    outline: 2px solid var(--brand-hover);
+    outline-offset: 2px;
+}
+
+.user-credit-badge-amount {
+    color: var(--brand-hover);
+}
+
+/* Tooltip — hidden by default, shown on hover/focus */
+.user-credit-badge-tooltip {
+    display: none;
+    flex-direction: column;
+    gap: var(--s1);
+    position: absolute;
+    top: calc(100% + var(--s1));
+    right: 0;
+    min-width: 160px;
+    padding: var(--s2) var(--s3);
+    border: 1px solid var(--border);
+    border-radius: var(--r-md);
+    background: var(--surface);
+    color: var(--text-muted);
+    font-size: var(--font-size-small);
+    font-weight: normal;
+    z-index: 100;
+    pointer-events: none;
+}
+
+.user-credit-badge:hover .user-credit-badge-tooltip,
+.user-credit-badge:focus-visible .user-credit-badge-tooltip {
+    display: flex;
+}
+
+.user-credit-badge-row {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--s3);
+    color: var(--text-muted);
+}
+
+.user-credit-badge-row strong {
+    color: var(--brand-hover);
+    font-weight: var(--font-weight-button);
+}
+
+/* Mobile: keep the badge compact — show icon only below 480 px */
+@media (max-width: 480px) {
+    .user-credit-badge-amount { display: none; }
+    .user-credit-badge { padding: 0 var(--s1); }
+}

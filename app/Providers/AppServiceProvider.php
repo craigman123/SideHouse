@@ -11,6 +11,8 @@ use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\View;
+use App\Models\CreditWallet;
 use Symfony\Component\Mailer\Bridge\Brevo\Transport\BrevoTransportFactory;
 use Symfony\Component\Mailer\Transport\Dsn;
 use Illuminate\Auth\Events\Login;
@@ -67,5 +69,26 @@ class AppServiceProvider extends ServiceProvider
         Event::listen(function (Logout $event) {
             session()->forget(['mfa_passed_at', 'mfa_passed_user_id', 'mfa_temp_secret', 'mfa_temp_secret_user_id']);
         });
+
+        // Share the authenticated user's credit wallet balance with the
+        // user layout (topbar badge) AND every user/* child view that uses
+        // $layoutCreditBalance directly (e.g. user-dashboard). The closure
+        // is extracted so both composers share one definition. Always
+        // returns a full array — never null — so the view never throws
+        // "undefined variable $layoutCreditBalance".
+        $creditComposer = function ($view) {
+            $wallet = null;
+            if (auth()->check()) {
+                $wallet = CreditWallet::where('user_id', auth()->id())->first();
+            }
+            $view->with('layoutCreditBalance', [
+                'given'    => $wallet ? (int) $wallet->given_balance    : 0,
+                'reserved' => $wallet ? (int) $wallet->reserved_balance : 0,
+                'total'    => $wallet ? (int) $wallet->given_balance + (int) $wallet->reserved_balance : 0,
+            ]);
+        };
+
+        View::composer('layouts.user', $creditComposer);
+        View::composer('user.*', $creditComposer);
     }
 }

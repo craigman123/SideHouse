@@ -113,6 +113,32 @@
             <h1>@yield('page-title', 'Dashboard')</h1>
             <div class="date">
                 @include('partials.guest.theme-toggle', ['placement' => 'toolbar'])
+                {{-- Credit balance badge — links to the booking page --}}
+                <a href="{{ route('book.index') }}"
+                   class="user-credit-badge"
+                   aria-label="Your credits: ₱{{ number_format($layoutCreditBalance['total']) }} total">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+                         stroke="currentColor" stroke-width="2"
+                         stroke-linecap="round" stroke-linejoin="round"
+                         aria-hidden="true">
+                        <path d="M16.5 8.5 A6.5 6.5 0 1 0 16.5 15.5"/>
+                        <path d="M11 12 H18"/>
+                        <path d="M11 2.5 V5.5"/>
+                        <path d="M11 18.5 V21.5"/>
+                    </svg>
+                    <span class="user-credit-badge-amount">₱{{ number_format($layoutCreditBalance['total']) }}</span>
+                    {{-- Tooltip showing the given / reserved split --}}
+                    <span class="user-credit-badge-tooltip" aria-hidden="true">
+                        <span class="user-credit-badge-row">
+                            <span>Given</span>
+                            <strong>₱{{ number_format($layoutCreditBalance['given']) }}</strong>
+                        </span>
+                        <span class="user-credit-badge-row">
+                            <span>Reserved</span>
+                            <strong>₱{{ number_format($layoutCreditBalance['reserved']) }}</strong>
+                        </span>
+                    </span>
+                </a>
                  <a href="notifications" class="user-notification-bell" data-unread-url="{{ route('user.notifications.unread-count') }}" style="position: relative;" aria-label="Notifications">
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 24 24" >
                         <path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"></path>

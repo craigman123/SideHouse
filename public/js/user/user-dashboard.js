@@ -162,63 +162,111 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   /* ---------- Cancel booking modal ---------- */
-  const modal = document.getElementById('cancelModal');
-  const modalText = document.getElementById('modalText');
-  const modalClose = document.getElementById('modalClose');
-  const modalKeep = document.getElementById('modalKeep');
-  const modalConfirm = document.getElementById('modalConfirm');
+  const modal           = document.getElementById('cancelModal');
+  const modalText       = document.getElementById('modalText');
+  const modalRefundNote = document.getElementById('modalRefundNote');
+  const modalClose      = document.getElementById('modalClose');
+  const modalKeep       = document.getElementById('modalKeep');
+  const modalConfirm    = document.getElementById('modalConfirm');
+  const toastContainer  = document.getElementById('toastContainer');
 
-  let rowPendingCancel = null;
+  const cancelUrlTemplate = modal ? modal.dataset.cancelUrl : null;
 
-  function openModal(row) {
-    rowPendingCancel = row;
+  let pendingRow = null;
+  let pendingId  = null;
+
+  function getCookie(name) {
+    const match = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)'));
+    return match ? decodeURIComponent(match[1]) : null;
+  }
+
+  function csrfHeaders() {
+    const metaToken = document.querySelector('meta[name="csrf-token"]')?.content;
+    if (metaToken) return { 'X-CSRF-TOKEN': metaToken };
+    const cookieToken = getCookie('XSRF-TOKEN');
+    if (cookieToken) return { 'X-XSRF-TOKEN': cookieToken };
+    return {};
+  }
+
+  function openCancelModal(row, isPaid) {
+    pendingRow = row;
+    pendingId  = row.dataset.bookingId;
     const label = row.dataset.booking || 'this booking';
-    modalText.textContent = `Cancel ${label}? This will free up the slot for other players. This can't be undone.`;
+    if (isPaid) {
+      modalText.textContent = `Cancel ${label}? This will free up the slot and issue a credit refund. This can't be undone.`;
+    } else {
+      modalText.textContent = `Cancel ${label}? This will free up the slot for other players. This can't be undone.`;
+    }
+    if (modalRefundNote) modalRefundNote.hidden = !isPaid;
     modal.classList.add('open');
   }
 
-  function closeModal() {
+  function closeCancelModal() {
     modal.classList.remove('open');
-    rowPendingCancel = null;
+    pendingRow = null;
+    pendingId  = null;
   }
 
-  document.querySelectorAll('[data-cancel]').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      const row = btn.closest('tr');
-      openModal(row);
-    });
+  // Event delegation — catches buttons in the table AND the hero card.
+  document.addEventListener('click', (e) => {
+    const trigger = e.target.closest('[data-cancel]');
+    if (!trigger || !modal) return;
+    const row = trigger.closest('[data-booking-id]');
+    if (!row) return;
+    openCancelModal(row, trigger.dataset.paid === '1');
   });
 
-  if (modalClose) modalClose.addEventListener('click', closeModal);
-  if (modalKeep) modalKeep.addEventListener('click', closeModal);
+  if (modalClose) modalClose.addEventListener('click', closeCancelModal);
+  if (modalKeep)  modalKeep.addEventListener('click', closeCancelModal);
   if (modal) {
-    modal.addEventListener('click', (e) => {
-      if (e.target === modal) closeModal();
-    });
+    modal.addEventListener('click', (e) => { if (e.target === modal) closeCancelModal(); });
   }
 
   if (modalConfirm) {
-    modalConfirm.addEventListener('click', () => {
-      if (rowPendingCancel) {
-        const row = rowPendingCancel;
-        row.classList.add('row-removing');
-        setTimeout(() => row.remove(), 250);
-        showToast('Booking cancelled.', 'success');
+    modalConfirm.addEventListener('click', async () => {
+      if (!pendingId || !cancelUrlTemplate) return;
+
+      modalConfirm.disabled = true;
+      const origLabel = modalConfirm.textContent;
+      modalConfirm.textContent = 'Cancelling…';
+
+      try {
+        const res  = await fetch(cancelUrlTemplate.replace(':id', pendingId), {
+          method: 'POST',
+          headers: { Accept: 'application/json', ...csrfHeaders() },
+        });
+        const data = await res.json().catch(() => ({}));
+
+        if (!res.ok) {
+          showToast(data.message || 'Could not cancel this booking.', 'error');
+          modalConfirm.disabled = false;
+          modalConfirm.textContent = origLabel;
+          return;
+        }
+
+        showToast(data.message || 'Booking cancelled.', 'success');
+        closeCancelModal();
+        // Reload after a short delay so the toast is visible and the
+        // header credit badge / Credits card refresh from the server.
+        setTimeout(() => window.location.reload(), 900);
+      } catch (err) {
+        console.error(err);
+        showToast('Something went wrong. Please try again.', 'error');
+        modalConfirm.disabled = false;
+        modalConfirm.textContent = origLabel;
       }
-      closeModal();
     });
   }
 
   /* ---------- Toasts ---------- */
-  const toastContainer = document.getElementById('toastContainer');
-
   function showToast(message, type = 'success') {
     if (!toastContainer) return;
 
     const toast = document.createElement('div');
     toast.className = `toast toast-${type}`;
-    toast.innerHTML = `<span class="toast-message">${message}</span>
+    toast.innerHTML = `<span class="toast-message"></span>
       <button type="button" class="toast-close" aria-label="Dismiss">&times;</button>`;
+    toast.querySelector('.toast-message').textContent = message;
 
     toastContainer.appendChild(toast);
 
@@ -226,7 +274,6 @@ document.addEventListener('DOMContentLoaded', () => {
       toast.classList.add('toast-out');
       setTimeout(() => toast.remove(), 300);
     };
-
     toast.querySelector('.toast-close').addEventListener('click', dismiss);
     setTimeout(dismiss, 4000);
   }

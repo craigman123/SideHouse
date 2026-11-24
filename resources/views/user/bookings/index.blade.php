@@ -52,7 +52,9 @@
                 <tbody>
                     @forelse ($bookings as $booking)
                         @php
-                            $isCancellable = $booking->status === 'pending'
+                            // A booking is cancellable if it is pending or paid,
+                            // and the booking date is today or in the future.
+                            $isCancellable = in_array($booking->status, ['pending', 'paid'])
                                 && $booking->date->copy()->startOfDay()->gte(today());
                             $isExpired = $booking->status === 'pending'
                                 && $booking->expires_at
@@ -96,6 +98,9 @@
                                     @if ($isCancellable)
                                     <button type="button" class="btn-icon btn-delete" data-cancel>Cancel</button>
                                     @endif
+                                @elseif ($booking->status === 'paid' && $isCancellable)
+                                    <a class="booking-action booking-pay-action" href="{{ route('book.receipt', ['booking' => $booking->id]) }}">View receipt</a>
+                                    <button type="button" class="btn-icon btn-delete" data-cancel data-paid="1">Cancel &amp; Refund</button>
                                 @elseif ($isExpired)
                                     <a class="booking-action booking-retry-action" href="{{ route('book.index', ['openBooking' => 1, 'court_id' => $booking->court_id]) }}">Book again</a>
                                 @elseif ($booking->status === 'cancelled')
@@ -145,10 +150,13 @@
     <div class="modal-overlay" id="cancelModal" data-cancel-url="{{ route('user.bookings.cancel', ':id') }}">
         <div class="modal-box modal-box-sm">
             <div class="modal-header">
-                <h3>Cancel this booking?</h3>
+                <h3 id="cancelModalTitle">Cancel this booking?</h3>
                 <button type="button" class="modal-close" id="modalClose" aria-label="Close">&times;</button>
             </div>
             <p class="modal-text" id="modalText">This will free up the slot for other players. This can't be undone.</p>
+            <p class="modal-text modal-text-refund" id="modalRefundNote" hidden>
+                Your payment will be returned as reserved credits in your wallet.
+            </p>
             <div class="modal-actions">
                 <button type="button" class="btn btn-secondary btn-ghost-cancel" id="modalKeep">Keep booking</button>
                 <button type="button" class="btn btn-danger" id="modalConfirm">Cancel booking</button>

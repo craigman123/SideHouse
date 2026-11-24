@@ -183,3 +183,51 @@ table tr:hover td {
         transition-duration: .01ms !important;
     }
 }
+
+/* ============================================================
+   Credits card — additional styles for the .card-credits variant
+   in the dashboard stat row. Base .card styles come from above.
+   Uses tokens.css variables — no hardcoded colors.
+   ============================================================ */
+
+.card-credits .value {
+    margin-bottom: var(--s2);
+}
+
+.card-credits-breakdown {
+    display: flex;
+    flex-direction: column;
+    gap: var(--s1);
+    margin-bottom: var(--s3);
+    font-size: var(--font-size-small);
+    color: var(--text-muted);
+}
+
+.card-credits-breakdown span {
+    display: flex;
+    align-items: center;
+    gap: var(--s1);
+}
+
+.card-credits-breakdown svg {
+    flex-shrink: 0;
+    color: var(--brand-hover);
+}
+
+.card-credits-breakdown strong {
+    margin-left: auto;
+    color: var(--brand-hover);
+    font-weight: var(--font-weight-button);
+}
+
+.card-credits-link {
+    display: inline-block;
+    font-size: var(--font-size-small);
+    font-weight: var(--font-weight-button);
+    color: var(--brand-hover);
+    text-decoration: none;
+}
+
+.card-credits-link:hover {
+    text-decoration: underline;
+}

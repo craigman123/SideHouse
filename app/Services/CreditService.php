@@ -203,6 +203,68 @@ class CreditService
             'credit_total_available' => $total,
         ];
     }
+    /**
+     * Refund a cancelled paid booking as reserved credits.
+     *
+     * Called only for bookings whose status was 'paid' (confirmed_at is set
+     * and cash_paid > 0, or credits fully covered the cost). The refund is
+     * always reserved credit — the user can spend it on the next booking.
+     *
+     * Refund amount = booking.given_used + booking.reserved_used + booking.cash_paid
+     * (i.e. everything the user actually spent on that specific booking row).
+     *
+     * This must be called INSIDE an existing DB transaction with the booking
+     * and wallet already locked. It does NOT open its own transaction.
+     *
+     * @param  User    $user     The booking owner.
+     * @param  int     $amount   Total pesos to credit back (must be > 0).
+     * @param  int     $bookingId  The cancelled booking's id (for the ledger).
+     * @return CreditTransaction  The credit ledger row that was written.
+     */
+    public function refundForCancellation(User $user, int $amount, int $bookingId): CreditTransaction
+    {
+        if ($amount <= 0) {
+            throw new InvalidArgumentException('Refund amount must be greater than zero.');
+        }
+
+        // Lock and upsert the wallet so the method works even when the user
+        // has never had a wallet (edge case: fully-free booking via promo,
+        // then cancelled — wallet may not exist yet).
+        $wallet = CreditWallet::query()
+            ->where('user_id', $user->user_id)
+            ->lockForUpdate()
+            ->first();
+
+        if (! $wallet) {
+            $wallet = CreditWallet::create([
+                'user_id'          => $user->user_id,
+                'given_balance'    => 0,
+                'reserved_balance' => 0,
+            ]);
+            // Re-fetch with a lock so the row is properly held.
+            $wallet = CreditWallet::query()
+                ->where('user_id', $user->user_id)
+                ->lockForUpdate()
+                ->firstOrFail();
+        }
+
+        $wallet->reserved_balance = (int) $wallet->reserved_balance + $amount;
+        $wallet->save();
+
+        return CreditTransaction::create([
+            'user_id'      => $user->user_id,
+            'type'         => CreditType::Reserved->value,
+            'direction'    => CreditDirection::Credit->value,
+            'amount'       => $amount,
+            'reason'       => CreditReason::BookingCancellation->value,
+            'note'         => null,
+            'booking_id'   => $bookingId,
+            'created_by'   => $user->user_id,
+            'balance_after' => (int) $wallet->reserved_balance,
+            'created_at'   => now(),
+        ]);
+    }
+
     public function giveGivenCredit(
         User $recipient,
         int $amount,

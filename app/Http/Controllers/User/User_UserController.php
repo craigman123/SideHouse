@@ -133,68 +133,116 @@ class User_UserController extends Controller
     {
         abort_unless($booking->user_id === auth()->id(), 403);
 
-        $result = DB::transaction(function () use ($booking) {
+        $user = auth()->user();
+
+        $result = DB::transaction(function () use ($booking, $user) {
             $locked = Booking::where('id', $booking->id)->lockForUpdate()->first();
 
-            // Block self-service cancel on fully-paid bookings (credit or
-            // cash). A pending booking that used partial credits is still
-            // cancellable — the hold will be released below.
-            if ($locked->status === 'paid') {
-                return ['ok' => false, 'status' => 'paid'];
-            }
-
+            // Idempotency: already cancelled → 422, never refund twice.
             if ($locked->status === 'cancelled') {
                 return ['ok' => false, 'status' => 'cancelled'];
             }
 
-            if ($locked->status !== 'pending') {
+            // Past bookings cannot be self-cancelled.
+            if ($locked->date < today()) {
+                return ['ok' => false, 'status' => 'past'];
+            }
+
+            // Only pending and paid bookings are cancellable. Any other
+            // status (expired, etc.) is rejected.
+            if (! in_array($locked->status, ['pending', 'paid'], true)) {
                 return ['ok' => false, 'status' => $locked->status];
             }
 
-            // Release any credit hold tied to this booking's
-            // PaymentReference before marking it cancelled. releasePaymentHold()
-            // is a no-op when no hold exists or the hold is already released.
-            if ($locked->payment_reference_id) {
-                $lockedRef = \App\Models\PaymentReference::where('id', $locked->payment_reference_id)
-                    ->lockForUpdate()
-                    ->first();
-                if ($lockedRef) {
-                    app(CreditService::class)->releasePaymentHold($lockedRef);
+            $refundAmount = 0;
+
+            if ($locked->status === 'pending') {
+                // Pending: release the credit hold (given → given, reserved →
+                // reserved) if one exists, as before. No new refund is issued
+                // because the user was never charged cash.
+                if ($locked->payment_reference_id) {
+                    $lockedRef = \App\Models\PaymentReference::where('id', $locked->payment_reference_id)
+                        ->lockForUpdate()
+                        ->first();
+                    if ($lockedRef) {
+                        app(CreditService::class)->releasePaymentHold($lockedRef);
+                    }
+                }
+            } else {
+                // Paid: refund everything the user actually paid for this
+                // specific booking row as reserved credits.
+                // Formula: given_used + reserved_used + cash_paid
+                // (cash_paid is set by PaymentReferenceObserver when the QR
+                // webhook confirms; for a fully-credit booking it is 0).
+                $refundAmount = (int) $locked->given_used
+                              + (int) $locked->reserved_used
+                              + (int) $locked->cash_paid;
+
+                if ($refundAmount > 0) {
+                    app(CreditService::class)->refundForCancellation(
+                        $user,
+                        $refundAmount,
+                        $locked->id
+                    );
+                }
+
+                // If every booking under this PaymentReference is now
+                // cancelled, mark the reference cancelled too.
+                if ($locked->payment_reference_id) {
+                    $lockedRef = \App\Models\PaymentReference::where('id', $locked->payment_reference_id)
+                        ->lockForUpdate()
+                        ->first();
+
+                    if ($lockedRef) {
+                        $siblingStatuses = Booking::where('payment_reference_id', $lockedRef->id)
+                            ->where('id', '!=', $locked->id)
+                            ->pluck('status');
+
+                        $allCancelled = $siblingStatuses->every(fn ($s) => $s === 'cancelled');
+                        if ($allCancelled) {
+                            $lockedRef->update(['status' => 'cancelled']);
+                        }
+                    }
                 }
             }
 
             $locked->update(['status' => 'cancelled']);
+            // Free the booked slots so the court is available again.
             $locked->slots()->update(['is_active' => false]);
 
-            return ['ok' => true, 'booking' => $locked];
+            return ['ok' => true, 'booking' => $locked, 'refundAmount' => $refundAmount];
         });
 
         if (! $result['ok']) {
             $message = match ($result['status']) {
-                'paid'      => 'This booking is already paid and confirmed. Cancelling a paid booking requires a refund — please contact us directly.',
                 'cancelled' => 'This booking is already cancelled.',
+                'past'      => 'Past bookings cannot be cancelled.',
                 default     => 'This booking can no longer be cancelled.',
             };
 
             return response()->json(['message' => $message], 422);
         }
 
-        $booking = $result['booking'];
+        $booking      = $result['booking'];
+        $refundAmount = $result['refundAmount'];
 
         ActivityLogger::log(
             'booking.cancelled',
-            auth()->user()->name . " cancelled a booking for Court {$booking->court_id} on " . Carbon::parse($booking->date)->format('M j, Y') . ".",
+            $user->name . " cancelled a booking for Court {$booking->court_id} on " . Carbon::parse($booking->date)->format('M j, Y') . ".",
             subject: $booking,
             properties: [
-                'court_id'   => $booking->court_id,
-                'date'       => (string) $booking->date,
-                'start_time' => $booking->start_time,
+                'court_id'     => $booking->court_id,
+                'date'         => (string) $booking->date,
+                'start_time'   => $booking->start_time,
+                'refund_amount' => $refundAmount,
             ],
         );
 
-        return response()->json([
-            'message' => 'Booking cancelled.',
-        ]);
+        $message = $refundAmount > 0
+            ? 'Booking cancelled. ₱' . number_format($refundAmount) . ' added to your reserved credits.'
+            : 'Booking cancelled.';
+
+        return response()->json(['message' => $message]);
     }
 
     /**

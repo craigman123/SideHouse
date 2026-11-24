@@ -11,15 +11,20 @@
 
 @section('content')
 
-    <section class="hero-next-game">
+    <section class="hero-next-game"
+        @if ($nextBooking)
+            data-booking-id="{{ $nextBooking->id }}"
+            data-booking="Court {{ $nextBooking->court_id }} &middot; {{ \Carbon\Carbon::parse($nextBooking->date)->format('D j M') }}, {{ \Carbon\Carbon::parse($nextBooking->start_time)->format('g:i A') }}"
+        @endif
+    >
         <div class="hero-info">
             <span class="hero-eyebrow">Your next game</span>
             @if ($nextBooking)
-                <h2>Court {{ $nextBooking->court_id }} &middot; {{ ucfirst($nextBooking->status) }}</h2>
+                <h2>Court {{ $nextBooking->court_id }} &middot; {{ $nextBooking->status === 'paid' ? 'Confirmed' : ucfirst($nextBooking->status) }}</h2>
                 <p class="hero-meta">
                     {{ \Carbon\Carbon::parse($nextBooking->date)->format('l, j F') }} &middot;
                     {{ \Carbon\Carbon::parse($nextBooking->start_time)->format('g:i A') }} &ndash;
-                    {{ \Carbon\Carbon::parse($nextBooking->end_time)->format('g:i A') }}
+                    {{ \Carbon\Carbon::parse($nextBooking->date)->format('l, j F') !== \Carbon\Carbon::parse($nextBooking->end_time)->format('l, j F') ? \Carbon\Carbon::parse($nextBooking->end_time)->format('g:i A, D j M') : \Carbon\Carbon::parse($nextBooking->end_time)->format('g:i A') }}
                 </p>
             @else
                 <h2>No upcoming games yet</h2>
@@ -128,6 +133,22 @@
             <p class="value bookings">
                 {{ $recentBookings->groupBy('court_id')->sortByDesc(fn($g) => $g->count())->keys()->first() ? 'Court ' . $recentBookings->groupBy('court_id')->sortByDesc(fn($g) => $g->count())->keys()->first() : '—' }}
             </p>
+        </div>
+        {{-- Credits card — balance comes from the View composer via $layoutCreditBalance --}}
+        <div class="card card-credits">
+            <p class="label">My Credits</p>
+            <p class="value income">₱{{ number_format($layoutCreditBalance['total'] ?? 0) }}</p>
+            <div class="card-credits-breakdown">
+                <span>
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16.5 8.5 A6.5 6.5 0 1 0 16.5 15.5"/><path d="M11 12 H18"/><path d="M11 2.5 V5.5"/><path d="M11 18.5 V21.5"/></svg>
+                    Given <strong>₱{{ number_format($layoutCreditBalance['given'] ?? 0) }}</strong>
+                </span>
+                <span>
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 6 L18 12 L12 18 L6 12 Z"/><path d="M3.5 12 H20.5"/><path d="M12 2 V6"/><path d="M12 18 V22"/></svg>
+                    Reserved <strong>₱{{ number_format($layoutCreditBalance['reserved'] ?? 0) }}</strong>
+                </span>
+            </div>
+            <a href="{{ route('book.index') }}" class="card-credits-link">Use credits →</a>
         </div>
     </div>
 
