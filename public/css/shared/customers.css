@@ -18,8 +18,10 @@ html.admin-layout-shell .customers-header {
 
 html.admin-layout-shell .customers-toolbar {
     display: flex;
+    width: min(100%, 900px);
     min-width: 0;
     align-items: center;
+    justify-content: flex-end;
     gap: var(--s3);
 }
 
@@ -81,8 +83,9 @@ html.admin-layout-shell .customers-subtitle {
 }
 
 html.admin-layout-shell .customers-search-wrap {
-    flex: 1 1 280px;
-    min-width: min(100%, 240px);
+    flex: 1 1 240px;
+    min-width: 180px;
+    max-width: 360px;
 }
 
 html.admin-layout-shell .customers-search-input {
@@ -92,7 +95,19 @@ html.admin-layout-shell .customers-search-input {
 
 html.admin-layout-shell .customers-send-credit-button {
     flex: 0 0 auto;
+    width: auto;
     margin: 0;
+    padding-inline: var(--s4);
+}
+
+html.admin-layout-shell .customers-send-credit-button svg {
+    width: 20px;
+    height: 20px;
+    flex: 0 0 20px;
+    fill: none;
+    stroke: var(--text);
+    stroke-width: 1.8;
+    margin-right: 5px;
 }
 
 html.admin-layout-shell .customers-table-wrap {
@@ -309,20 +324,28 @@ html.admin-layout-shell #sendCreditModal:not([hidden]) {
 }
 
 html.admin-layout-shell .send-credit-modal-box {
-    max-width: 560px;
+    width: min(520px, calc(100vw - 2rem));
+    max-width: 520px;
+    max-height: calc(100dvh - 2rem);
+    overflow: hidden;
+    padding: var(--s3);
 }
 
 html.admin-layout-shell .send-credit-form {
     display: flex;
+    min-height: 0;
+    max-height: calc(100dvh - 2rem - 64px);
     flex-direction: column;
-    gap: var(--s4);
+    gap: 0;
+    overflow-y: auto;
 }
 
 html.admin-layout-shell .send-credit-form-view,
 html.admin-layout-shell .send-credit-confirm-view {
     display: flex;
     flex-direction: column;
-    gap: var(--s3);
+    gap: var(--s2);
+    padding: var(--s4);
 }
 
 html.admin-layout-shell .send-credit-form-view[hidden],
@@ -336,25 +359,46 @@ html.admin-layout-shell .send-credit-form label {
     font-weight: var(--font-weight-button);
 }
 
-html.admin-layout-shell .send-credit-form label span {
-    color: var(--text-muted);
-    font-weight: var(--font-weight-body);
+html.admin-layout-shell .send-credit-field {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: var(--s1);
 }
 
-html.admin-layout-shell .send-credit-form textarea {
-    min-height: 96px;
-    resize: vertical;
+html.admin-layout-shell .send-credit-field input {
+    width: 100%;
+    min-height: 44px;
 }
 
 html.admin-layout-shell .send-credit-lookup {
+    height: 20px;
     min-height: 20px;
-    margin: calc(-1 * var(--s2)) 0 0;
+    margin: 0;
+    overflow: hidden;
     color: var(--text-muted);
     font-size: var(--font-size-small);
+    line-height: 20px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+html.admin-layout-shell .send-credit-field-error {
+    height: 18px;
+    min-height: 18px;
+    margin: 0;
+    color: var(--danger);
+    font-size: var(--font-size-small);
+    line-height: 18px;
 }
 
 html.admin-layout-shell .send-credit-lookup-success {
     color: var(--brand-hover);
+    padding: var(--s2);
+    margin: var(--s2) 0;
+    border: 1px solid var(--brand);
+    height: auto;
+    border-radius: 50px;
 }
 
 html.admin-layout-shell .send-credit-lookup-error,
@@ -363,30 +407,39 @@ html.admin-layout-shell .send-credit-modal-error {
 }
 
 html.admin-layout-shell .given-credit-preview {
-    display: grid;
-    justify-items: center;
-    gap: var(--s2);
-    padding: var(--s3);
+    display: flex;
+    min-height: 52px;
+    align-items: center;
+    gap: var(--s3);
+    padding: var(--s2) var(--s3);
     border: 1px solid var(--border);
     border-radius: var(--r-md);
     background: var(--surface-2);
 }
 
-html.admin-layout-shell .given-credit-preview img {
-    display: block;
-    width: 100%;
-    max-width: 320px;
-    height: auto;
-    border-radius: var(--r-sm);
+html.admin-layout-shell .given-credit-symbol {
+    width: 40px;
+    height: 40px;
+    flex: 0 0 40px;
 }
 
 html.admin-layout-shell .given-credit-preview strong {
     color: var(--text);
-    font-size: var(--font-size-h3);
+    font-size: var(--font-size-body);
 }
 
 html.admin-layout-shell .send-credit-submit {
-    width: 100%;
+    margin: 0;
+}
+
+html.admin-layout-shell .send-credit-form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--s3);
+    margin-top: var(--s2);
+}
+
+html.admin-layout-shell .send-credit-form-actions button {
     margin: 0;
 }
 
@@ -395,7 +448,19 @@ html.admin-layout-shell .send-credit-confirm-actions button:disabled {
     border-color: var(--border);
     background: var(--surface-2);
     color: var(--text-muted);
+    opacity: 1;
     cursor: not-allowed;
+}
+
+html.admin-layout-shell .send-credit-submit:not(:disabled) {
+    border-color: var(--brand);
+    background: var(--brand);
+    color: var(--text);
+}
+
+html.admin-layout-shell .send-credit-submit:not(:disabled):hover {
+    border-color: var(--brand-hover);
+    background: var(--brand-hover);
 }
 
 html.admin-layout-shell .send-credit-confirm-copy {
@@ -431,6 +496,7 @@ html.admin-layout-shell .send-credit-confirm-actions {
         width: 100%;
         flex-direction: column;
         align-items: stretch;
+        justify-content: flex-start;
     }
 
     html.admin-layout-shell .customers-type-filter { width: 100%; box-sizing: border-box; }
@@ -450,6 +516,19 @@ html.admin-layout-shell .send-credit-confirm-actions {
     }
 
     html.admin-layout-shell .send-credit-confirm-actions button {
+        width: 100%;
+    }
+
+    html.admin-layout-shell .send-credit-modal-box {
+        width: calc(100vw - 2rem);
+        max-height: calc(100dvh - 2rem);
+    }
+
+    html.admin-layout-shell .send-credit-form-actions {
+        flex-direction: column-reverse;
+    }
+
+    html.admin-layout-shell .send-credit-form-actions button {
         width: 100%;
     }
 
@@ -520,4 +599,22 @@ html.staff-layout-shell .customers-search-wrap {
     html.staff-layout-shell .customers-search-wrap {
         flex: 1 1 100%;
     }
+}
+
+.send-credit-preview {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    border: 1px solid rgba(155, 139, 184, 0.35);
+    border-radius: 12px;
+    color: #9b8bb8;
+}
+.send-credit-preview-icon {
+    flex: 0 0 40px;
+    width: 40px;
+    height: 40px;
+}
+.send-credit-preview strong {
+    font-size: 1rem;
 }

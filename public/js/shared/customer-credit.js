@@ -10,13 +10,14 @@ document.addEventListener('DOMContentLoaded', function () {
     const confirmView = document.getElementById('sendCreditConfirmView');
     const emailInput = document.getElementById('sendCreditEmail');
     const amountInput = document.getElementById('sendCreditAmount');
-    const noteInput = document.getElementById('sendCreditNote');
     const lookupMessage = document.getElementById('sendCreditLookup');
     const submitButton = document.getElementById('sendCreditSubmit');
+    const cancelButton = document.getElementById('sendCreditCancel');
     const backButton = document.getElementById('sendCreditBack');
     const confirmButton = document.getElementById('sendCreditConfirm');
     const confirmation = document.getElementById('sendCreditConfirmation');
     const previewAmount = document.getElementById('sendCreditPreviewAmount');
+    const amountError = document.getElementById('sendCreditAmountError');
     const formError = document.getElementById('sendCreditError');
     const confirmError = document.getElementById('sendCreditConfirmError');
     const idempotencyInput = document.getElementById('sendCreditIdempotency');
@@ -28,7 +29,13 @@ document.addEventListener('DOMContentLoaded', function () {
     let lookupTimer = null;
     let lookupRequest = 0;
     let sending = false;
+    let previouslyFocused = null;
     const idempotencyStorageKey = 'side-house:send-credit:idempotency';
+    const creditMax = Math.max(1, Number.parseInt(page.dataset.creditMax, 10) || 10000);
+
+    function setPreview(text) {
+        if (previewAmount) previewAmount.textContent = text;
+    }
 
     function randomToken() {
         if (window.crypto?.getRandomValues) {
@@ -55,11 +62,14 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function setModalOpen(open) {
+        if (open) previouslyFocused = document.activeElement;
         modal.hidden = !open;
         modal.setAttribute('aria-hidden', open ? 'false' : 'true');
         document.body.style.overflow = open ? 'hidden' : '';
         if (open) {
             window.setTimeout(() => emailInput.focus(), 0);
+        } else if (previouslyFocused instanceof HTMLElement) {
+            previouslyFocused.focus();
         }
     }
 
@@ -80,6 +90,8 @@ document.addEventListener('DOMContentLoaded', function () {
         recipient = null;
         lookupMessage.textContent = '';
         lookupMessage.className = 'send-credit-lookup';
+        amountError.textContent = '';
+        amountInput.removeAttribute('aria-invalid');
         submitButton.disabled = true;
         previewAmount.textContent = '₱0 Given Credit';
         formView.hidden = false;
@@ -89,14 +101,43 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function updatePreview() {
-        const amount = Math.max(0, Number.parseInt(amountInput.value, 10) || 0);
-        previewAmount.textContent = `₱${amount.toLocaleString()} Given Credit`;
+        const amount = validateAmount();
+        previewAmount.textContent = amount.valid
+            ? `₱${amount.value.toLocaleString()} Given Credit`
+            : '₱0 Given Credit';
         updateSubmitState();
     }
 
+    function validateAmount() {
+        const digits = amountInput.value.replace(/\D/g, '');
+        if (amountInput.value !== digits) amountInput.value = digits;
+
+        if (digits === '') {
+            amountError.textContent = '';
+            amountInput.removeAttribute('aria-invalid');
+            return { valid: false, value: 0 };
+        }
+
+        const value = Number.parseInt(digits, 10);
+        if (!Number.isInteger(value) || value < 1) {
+            amountError.textContent = 'Enter at least ₱1.';
+            amountInput.setAttribute('aria-invalid', 'true');
+            return { valid: false, value: 0 };
+        }
+        if (value > creditMax) {
+            amountError.textContent = `Enter no more than ₱${creditMax.toLocaleString()}.`;
+            amountInput.setAttribute('aria-invalid', 'true');
+            return { valid: false, value: 0 };
+        }
+
+        amountError.textContent = '';
+        amountInput.removeAttribute('aria-invalid');
+        return { valid: true, value };
+    }
+
     function updateSubmitState() {
-        const amount = Number.parseInt(amountInput.value, 10);
-        submitButton.disabled = !recipient || !Number.isInteger(amount) || amount < 1 || amount > 10000;
+        const amount = validateAmount();
+        submitButton.disabled = !recipient || !amount.valid;
     }
 
     async function lookupRecipient() {
@@ -150,12 +191,12 @@ document.addEventListener('DOMContentLoaded', function () {
     function openConfirmation() {
         if (!recipient) return;
         clearError();
-        const amount = Number.parseInt(amountInput.value, 10);
-        if (!Number.isInteger(amount) || amount < 1 || amount > 10000) {
-            showError(formError, 'Enter an amount between ₱1 and ₱10,000.');
+        const amount = validateAmount();
+        if (!amount.valid) {
+            showError(formError, `Enter an amount between ₱1 and ₱${creditMax.toLocaleString()}.`);
             return;
         }
-        confirmation.textContent = `Send ₱${amount.toLocaleString()} Given Credit to ${recipient.name} (${recipient.email})?`;
+        confirmation.textContent = `Send ₱${amount.value.toLocaleString()} Given Credit to ${recipient.name} (${recipient.email})? Given Credit cannot be refunded to cash.`;
         formView.hidden = true;
         confirmView.hidden = false;
         confirmButton.focus();
@@ -179,8 +220,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 },
                 body: JSON.stringify({
                     email: emailInput.value.trim(),
-                    amount: Number.parseInt(amountInput.value, 10),
-                    note: noteInput.value.trim(),
+                    amount: validateAmount().value,
                     idempotency_token: idempotencyInput.value
                 })
             });
@@ -212,11 +252,32 @@ document.addEventListener('DOMContentLoaded', function () {
         setModalOpen(true);
     });
     closeButton?.addEventListener('click', () => setModalOpen(false));
+    cancelButton?.addEventListener('click', () => setModalOpen(false));
     modal?.addEventListener('click', (event) => {
         if (event.target === modal) setModalOpen(false);
     });
     document.addEventListener('keydown', (event) => {
-        if (event.key === 'Escape' && modal && !modal.hidden) setModalOpen(false);
+        if (!modal || modal.hidden) return;
+        if (event.key === 'Escape') {
+            setModalOpen(false);
+            event.preventDefault();
+            return;
+        }
+        if (event.key === 'Tab') {
+            const focusable = Array.from(modal.querySelectorAll(
+                'button:not([disabled]), input:not([disabled]), [href], [tabindex]:not([tabindex="-1"])'
+            )).filter((element) => !element.hidden && element.offsetParent !== null);
+            if (!focusable.length) return;
+            const first = focusable[0];
+            const last = focusable[focusable.length - 1];
+            if (event.shiftKey && document.activeElement === first) {
+                last.focus();
+                event.preventDefault();
+            } else if (!event.shiftKey && document.activeElement === last) {
+                first.focus();
+                event.preventDefault();
+            }
+        }
     });
 
     emailInput?.addEventListener('input', function () {

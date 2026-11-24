@@ -60,7 +60,6 @@ class CustomerCreditController extends Controller
             $actor->user_id,
             $recipient->user_id,
             (int) $validated['amount'],
-            trim((string) ($validated['note'] ?? '')),
             $validated['idempotency_token'],
         ]));
 
@@ -89,7 +88,7 @@ class CustomerCreditController extends Controller
                 $recipient,
                 (int) $validated['amount'],
                 $actor,
-                trim((string) ($validated['note'] ?? '')) ?: null
+                null
             );
         } catch (InvalidArgumentException $exception) {
             Cache::forget($key);
@@ -116,7 +115,6 @@ class CustomerCreditController extends Controller
                 'recipient_email' => $recipient->email,
                 'amount' => $transaction->amount,
                 'credit_type' => 'given',
-                'note' => $transaction->note,
                 'transaction_id' => $transaction->id,
             ]
         );

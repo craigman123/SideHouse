@@ -499,7 +499,7 @@ html.admin-layout-shell.is-admin-sidebar-collapsed .admin-sidebar-collapse-toggl
     flex-basis: 44px;
 }
 
-@media (max-width: 800px) {
+@media (max-width: 950px) {
     html.admin-layout-shell,
     html.admin-layout-shell body {
         height: auto;
