@@ -651,7 +651,6 @@ class PaymongoQrPhController extends Controller
      */
     private function releaseClaim(PaymentReference $paymentReference, string $claimToken): void
     {
-        app(\App\Services\CreditService::class)->releasePaymentHold($paymentReference);
         PaymentReference::where('id', $paymentReference->id)
             ->where('payment_intent_id', $claimToken)
             ->update(['payment_intent_id' => null]);

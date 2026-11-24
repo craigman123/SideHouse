@@ -225,7 +225,7 @@ class GuestCreditStage1Test extends TestCase
         $cancel->assertOk();
 
         dump(\App\Models\CreditPaymentHold::first()?->status, \App\Models\CreditTransaction::pluck('reason')->all());
-        
+
         $this->assertSame('paid', Booking::first()->status);
         $this->assertSame(0, (int) CreditWallet::where('user_id', $user->user_id)->value('given_balance'));
         $this->assertSame(0, CreditTransaction::where('reason', 'booking_cancellation')->count());
@@ -257,5 +257,42 @@ class GuestCreditStage1Test extends TestCase
             'password' => 'password',
             'role' => 'user',
         ]);
+    }
+
+    public function test_paymongo_failure_does_not_refund_credit_on_a_pending_booking(): void
+    {
+        config(['services.paymongo.secret' => 'sk_test_dummy']);
+        \Illuminate\Support\Facades\Http::fake(['api.paymongo.com/*' => \Illuminate\Support\Facades\Http::response([], 500)]);
+
+        $user = $this->createUser();
+        CreditWallet::create(['user_id' => $user->user_id, 'given_balance' => 30, 'reserved_balance' => 0]);
+        $court = Court::create([
+            'name' => 'Qr Court', 'width' => 10, 'length' => 20,
+            'hourly_rate' => 100, 'status' => 'active',
+        ]);
+        $day = now()->addDay()->toDateString();
+
+        $res = $this->withSession([
+            'guest_credit_verified' => [
+                'user_id' => $user->user_id, 'email' => $user->email,
+                'verified_at' => now()->timestamp, 'matched' => true,
+            ],
+        ])->postJson('/guest-book', [
+            'court_id' => $court->id, 'date' => $day,
+            'slots' => [$day.' 06:00', $day.' 06:30'],
+            'guest_name' => 'Qr Guest', 'guest_contact' => '09171234567',
+            'use_credit' => true, 'idempotency_token' => str_repeat('d', 32),
+        ])->assertOk();
+
+        $this->assertSame('pending', $res->json('status'));
+
+        $this->postJson('/guest-book/payment/qrph', [
+            'booking_id' => $res->json('booking_id'),
+            'token' => $res->json('poll_token'),
+        ])->assertStatus(502);
+
+        $this->assertSame('pending', Booking::first()->status);
+        $this->assertSame(0, (int) CreditWallet::where('user_id', $user->user_id)->value('given_balance'));
+        $this->assertSame(0, CreditTransaction::where('reason', 'booking_cancellation')->count());
     }
 }
