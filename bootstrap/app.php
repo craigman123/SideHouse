@@ -41,6 +41,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'owner.only' => \App\Http\Middleware\EnsureUserIsOwner::class,
             'owner.page.redirect' => \App\Http\Middleware\RedirectOwnerFromAdminPage::class,
             'real-admin' => \App\Http\Middleware\EnsureRealAdmin::class,
+            'credit.giver' => \App\Http\Middleware\EnsureCreditGiver::class,
         ]);
 
         $middleware->trustProxies(

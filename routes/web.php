@@ -29,6 +29,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Maintenance\MaintenanceController;
 use App\Http\Controllers\Guest\GuestBookingLookupController;
 use App\Http\Controllers\Admin\MetricsController;
+use App\Http\Controllers\Admin\CustomerCreditController;
 
 Route::get('/guest/booking/latest', [GuestBookingLookupController::class, 'latest'])
     ->name('guest.booking.latest')
@@ -244,6 +245,15 @@ Route::middleware(['auth', 'admin.mfa', 'admin.or.owner', 'throttle:120,1'])->gr
 Route::middleware(['auth', 'admin.mfa', 'admin.or.owner', 'throttle:120,1'])
     ->get('/reports/data', [ReportController::class, 'data'])
     ->name('admin.reports.data');
+
+Route::middleware(['auth', 'admin.mfa', 'credit.giver', 'throttle:120,1'])->group(function () {
+    Route::get('/customers/credits/lookup', [CustomerCreditController::class, 'lookup'])
+        ->middleware('throttle:20,1')
+        ->name('admin.customer-credits.lookup');
+    Route::post('/customers/credits', [CustomerCreditController::class, 'store'])
+        ->middleware('throttle:10,1')
+        ->name('admin.customer-credits.store');
+});
 
 Route::middleware(['auth', 'admin', 'admin.mfa', 'throttle:120,1'])->group(function () {
     Route::get('/dashboard', [Admin_DashboardController::class, 'index'])->middleware('owner.page.redirect')->name('admin.dashboard');

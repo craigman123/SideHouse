@@ -14,4 +14,5 @@
 
 @push('scripts')
     <script src="{{ asset('js/shared/customers.js') . '?v=' . filemtime(public_path('js/shared/customers.js')) }}" defer></script>
+    <script src="{{ asset('js/shared/customer-credit.js') . '?v=' . filemtime(public_path('js/shared/customer-credit.js')) }}" defer></script>
 @endpush

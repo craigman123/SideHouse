@@ -1,4 +1,12 @@
-<div class="customers-page is-loading" id="customersPage" data-customers-url="{{ route('admin.customers.data') }}" data-show-financials="{{ $showFinancials ? 'true' : 'false' }}">
+@php
+    $creditGiver = false;
+    if (auth()->check()) {
+        $access = app(\App\Services\UserAccessService::class);
+        $realRole = $access->realRole(auth()->user());
+        $creditGiver = in_array($realRole, ['admin', 'owner'], true);
+    }
+@endphp
+<div class="customers-page is-loading" id="customersPage" data-customers-url="{{ route('admin.customers.data') }}" data-credit-lookup-url="{{ route('admin.customer-credits.lookup') }}" data-credit-store-url="{{ route('admin.customer-credits.store') }}" data-credit-giver="{{ $creditGiver ? 'true' : 'false' }}" data-show-financials="{{ $showFinancials ? 'true' : 'false' }}">
 
         <div class="customers-header">
             <div>
@@ -25,6 +33,9 @@
                         autocomplete="off"
                     />
                 </div>
+                @if ($creditGiver)
+                    <button type="button" class="btn-primary customers-send-credit-button" id="sendCreditOpen">Send Credit</button>
+                @endif
             </div>
         </div>
 
@@ -69,3 +80,48 @@
             </div>
         </div>
     </div>
+
+    @if ($creditGiver)
+        <div class="modal-overlay" id="sendCreditModal" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="sendCreditModalLabel" hidden>
+            <div class="modal-box send-credit-modal-box" role="document">
+                <div class="modal-header">
+                    <h3 id="sendCreditModalLabel">Send Given Credit</h3>
+                    <button type="button" class="modal-close" id="sendCreditClose" aria-label="Close">&times;</button>
+                </div>
+                <form id="sendCreditForm" class="send-credit-form" novalidate>
+                    <div class="send-credit-form-view" id="sendCreditFormView">
+                        <input type="hidden" id="sendCreditIdempotency" name="idempotency_token">
+                        <label for="sendCreditEmail">Recipient email</label>
+                        <input type="email" id="sendCreditEmail" name="email" maxlength="255" required autocomplete="email" placeholder="recipient@example.com">
+                        <p class="send-credit-lookup" id="sendCreditLookup" aria-live="polite"></p>
+
+                        <label for="sendCreditAmount">Amount in pesos</label>
+                        <input type="number" id="sendCreditAmount" name="amount" min="1" max="10000" step="1" required inputmode="numeric" placeholder="100">
+
+                        <label for="sendCreditNote">Note <span>(optional)</span></label>
+                        <textarea id="sendCreditNote" name="note" maxlength="255" rows="3" placeholder="Reason or short note"></textarea>
+
+                        <div class="given-credit-preview">
+                            <img src="{{ asset('images/credits/given-credit-symbol.svg') }}" alt="Given Credit" width="480" height="240">
+                            <strong id="sendCreditPreviewAmount">₱0 Given Credit</strong>
+                        </div>
+
+                        <p class="send-credit-modal-error" id="sendCreditError" role="alert" hidden></p>
+                        <button type="submit" class="btn-primary send-credit-submit" id="sendCreditSubmit" disabled>Review Send</button>
+                    </div>
+
+                    <div class="send-credit-confirm-view" id="sendCreditConfirmView" hidden>
+                        <div class="send-credit-confirm-copy">
+                            <strong id="sendCreditConfirmation"></strong>
+                            <p>Given Credit is not refundable to real money.</p>
+                        </div>
+                        <p class="send-credit-modal-error" id="sendCreditConfirmError" role="alert" hidden></p>
+                        <div class="send-credit-confirm-actions">
+                            <button type="button" class="btn-secondary" id="sendCreditBack">Back</button>
+                            <button type="button" class="btn-primary" id="sendCreditConfirm">Send Credit</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    @endif
