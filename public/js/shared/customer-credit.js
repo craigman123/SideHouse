@@ -196,7 +196,7 @@ document.addEventListener('DOMContentLoaded', function () {
             showError(formError, `Enter an amount between ₱1 and ₱${creditMax.toLocaleString()}.`);
             return;
         }
-        confirmation.textContent = `Send ₱${amount.value.toLocaleString()} Given Credit to ${recipient.name} (${recipient.email})? Given Credit cannot be refunded to cash.`;
+        confirmation.textContent = `Send ₱${amount.value.toLocaleString()} Given Credit to ${recipient.name} (${recipient.email})? <br> Given Credit cannot be refunded to cash.`;
         formView.hidden = true;
         confirmView.hidden = false;
         confirmButton.focus();

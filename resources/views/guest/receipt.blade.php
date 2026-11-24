@@ -44,7 +44,7 @@
                 </tr>
                 <tr>
                     <td>Payment method</td>
-                    <td>{{ strtoupper($paymentReference->payment_method) }}</td>
+                    <td>{{ (float) $paymentReference->amount <= 0 ? 'CREDITS' : strtoupper($paymentReference->payment_method) }}</td>
                 </tr>
                 @if ($paymentReference->gcash_reference_number)
                     <tr>
@@ -84,8 +84,13 @@
         </table>
 
         <div class="total">
-            <span class="label">Total paid</span>
-            <span class="amount">&#8369;{{ number_format($paymentReference->amount, 2) }}</span>
+            @if ((float) $paymentReference->amount <= 0)
+                <span class="label">Payment</span>
+                <span class="amount">Credit covered</span>
+            @else
+                <span class="label">Total paid</span>
+                <span class="amount">&#8369;{{ number_format($paymentReference->amount, 2) }}</span>
+            @endif
         </div>
 
         <div class="footer">

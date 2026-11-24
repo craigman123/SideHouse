@@ -267,6 +267,7 @@ class OwnerAreaTest extends TestCase
         $this->postJson('/auth/google', ['id_token' => $token])->assertOk();
 
         $response = $this->get('/owner/dashboard');
-        $this->assertNotSame(200, $response->getStatusCode(), 'Owner dashboard opened without MFA after Google login.');
+        $this->assertContains($response->getStatusCode(), [302, 403], 'Unexpected status: '.$response->getStatusCode());
+        $this->assertNotSame(200, $response->getStatusCode());
     }
 }

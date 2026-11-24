@@ -421,7 +421,7 @@ body {
     grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
-#paymentPage .guest-credit-balances span {
+#paymentPage .guest-credit-balances > span {
     display: flex;
     min-width: 0;
     justify-content: space-between;
@@ -468,4 +468,114 @@ body {
     inset: 0;
     z-index: 10;
     cursor: not-allowed;
+}
+
+.credit-icon { width: 1em; height: 1em; vertical-align: -0.15em; margin-right: .2em; }
+.guest-credit-payment-summary strong.is-used { color: #22c55e; }
+
+@keyframes sk-shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+.sk-block {
+    display: block; border-radius: 8px;
+    background: linear-gradient(90deg, rgba(255,255,255,.06) 25%, rgba(255,255,255,.16) 50%, rgba(255,255,255,.06) 75%);
+    background-size: 200% 100%; animation: sk-shimmer 1.4s linear infinite;
+}
+.sk-line { height: 16px; margin: 12px 0; }
+.sk-w40 { width: 40%; }
+.sk-row { display: flex; gap: 8px; margin: 12px 0; }
+.sk-pill { flex: 1; height: 38px; }
+.sk-avatar { width: 40px; height: 40px; border-radius: 50%; flex: none; }
+
+.google-signin-skeleton { display: flex; align-items: center; gap: 12px; height: 44px; }
+.google-signin-skeleton .sk-line { flex: 1; margin: 0; }
+.google-signin-skeleton small { opacity: .7; white-space: nowrap; }
+.google-signin-btn.is-hidden-while-signing { display: none; }
+
+.guest-credit-skeleton { display: none; }
+.guest-credit-payment.is-loading .guest-credit-skeleton { display: block; }
+.guest-credit-payment.is-loading .guest-credit-content { display: none; }
+
+.is-signing-in .payment-page-exit { pointer-events: none; opacity: .4; }
+.is-signing-in .modal-actions .btn,
+.is-signing-in input { cursor: not-allowed; }
+
+/* ---- Credit icons + used amounts ---- */
+.credit-icon {
+    display: inline-flex;
+    width: 1em;
+    height: 1em;
+    margin-right: 0.2em;
+    vertical-align: -0.15em;
+}
+.credit-icon svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+
+#paymentPage .guest-credit-payment strong {
+    display: inline-flex;
+    align-items: center;
+    white-space: nowrap;
+}
+
+#paymentPage .guest-credit-payment-summary strong.is-used {
+    color: var(--success, #22c55e);
+}
+
+/* ---- Skeletons ---- */
+@keyframes sk-shimmer {
+    0%   { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
+.sk-block {
+    display: block;
+    border-radius: var(--r-sm);
+    background: linear-gradient(90deg,
+        color-mix(in srgb, var(--text) 6%, transparent) 25%,
+        color-mix(in srgb, var(--text) 16%, transparent) 50%,
+        color-mix(in srgb, var(--text) 6%, transparent) 75%);
+    background-size: 200% 100%;
+    animation: sk-shimmer 1.4s linear infinite;
+}
+.sk-line   { height: 16px; margin: var(--s2) 0; }
+.sk-w40    { width: 40%; }
+.sk-row    { display: flex; gap: var(--s2); margin: var(--s2) 0; }
+.sk-pill   { flex: 1; height: 38px; }
+.sk-avatar { width: 40px; height: 40px; border-radius: 50%; flex: none; }
+
+/* Google sign-in skeleton */
+#paymentPage .google-signin-skeleton {
+    display: flex;
+    align-items: center;
+    gap: var(--s3);
+    min-height: 44px;
+}
+#paymentPage .google-signin-skeleton[hidden] { display: none !important; }
+#paymentPage .google-signin-skeleton .sk-line { flex: 1; margin: 0; }
+#paymentPage .google-signin-skeleton small {
+    color: var(--text-muted);
+    white-space: nowrap;
+}
+#paymentPage .google-signin-btn.is-hidden-while-signing { display: none; }
+
+/* Credit box: hidden attribute must win over display:grid */
+#paymentPage .guest-credit-payment[hidden] { display: none !important; }
+
+#paymentPage .guest-credit-content {
+    display: grid;
+    gap: var(--s3);
+}
+#paymentPage .guest-credit-skeleton { display: none; }
+#paymentPage .guest-credit-payment.is-loading .guest-credit-skeleton { display: block; }
+#paymentPage .guest-credit-payment.is-loading .guest-credit-content { display: none; }
+
+/* Lock the whole card while signing in (same overlay as prefill/confirm) */
+.guest-payment-page .modal-box.is-signing-in { position: relative; }
+.guest-payment-page .modal-box.is-signing-in::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 10;
+    cursor: wait;
 }

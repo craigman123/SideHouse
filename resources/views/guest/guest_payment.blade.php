@@ -45,7 +45,10 @@
             data-credit-nonce-url="{{ route('guest.credit.nonce') }}"
             data-credit-verify-url="{{ route('guest.credit.verify') }}"
             data-credit-state-url="{{ route('guest.credit.state') }}"
-            data-credit-switch-url="{{ route('guest.credit.switch') }}">
+            data-credit-switch-url="{{ route('guest.credit.switch') }}"
+            data-given-icon="{{ asset('images/credits/given-credit-symbol.svg') }}"
+            data-reserved-icon="{{ asset('images/credits/reserved-credit-symbol.svg') }}"
+            data-receipt-url-template="{{ route('guest.book.receipt', ['booking' => '__ID__'], false) }}">
             <div class="modal-header payment-header">
                 <h3>Almost Done</h3>
                 <a href="{{ $landingUrl }}" class="payment-page-exit" aria-label="Exit booking">&times;</a>
@@ -88,6 +91,11 @@
                         <label class="guest-email-label" id="guestEmailLabel" for="guestEmailSaved" hidden>Email Address</label>
                         <input type="email" id="guestEmailSaved" class="guest-email-saved-input" readonly hidden>
                         <div id="googleSignInBtn" class="google-signin-btn"></div>
+                        <div class="google-signin-skeleton" id="googleSignInSkeleton" hidden>
+                            <span class="sk-block sk-avatar"></span>
+                            <span class="sk-block sk-line"></span>
+                            <small>Signing you in…</small>
+                        </div>
                         <div class="guest-email-confirmed" id="guestEmailConfirmed" hidden>
                             <span>Signed in as <strong id="guestEmailConfirmedAddress"></strong></span>
                             <button class="btn btn-link btn-change-email" type="button" id="guestEmailChange">X</button>
@@ -100,20 +108,32 @@
                         <div class="payment-btn payment-btn-qrph selected"><span class="payment-btn-title">QR Ph</span><span class="payment-btn-sub">Your secure QR code is generated after confirmation. No reference number is needed.</span></div>
                     </div>
                     <div class="guest-credit-payment" id="guestCreditPayment" hidden>
-                        <label class="guest-credit-use">
-                            <input type="checkbox" id="useGuestCredit" checked>
-                            <span>Use my credit</span>
-                        </label>
-                        <div class="guest-credit-balances" aria-live="polite">
-                            <span>Given <strong id="guestGivenBalance">₱0</strong></span>
-                            <span>Reserved <strong id="guestReservedBalance">₱0</strong></span>
-                            <span>Total <strong id="guestCreditTotal">₱0</strong></span>
+                        <div class="guest-credit-skeleton" aria-hidden="true">
+                            <span class="sk-block sk-line sk-w40"></span>
+                            <div class="sk-row"><span class="sk-block sk-pill"></span><span class="sk-block sk-pill"></span><span class="sk-block sk-pill"></span></div>
+                            <span class="sk-block sk-line"></span>
+                            <span class="sk-block sk-line"></span>
+                            <span class="sk-block sk-line"></span>
+                            <span class="sk-block sk-line"></span>
+                            <span class="sk-block sk-line"></span>
                         </div>
-                        <div class="guest-credit-payment-summary" aria-live="polite">
-                            <p><span>Total</span><strong id="guestCreditCheckoutTotal">₱{{ number_format($totalAmount, 0) }}</strong></p>
-                            <p><span>Given used</span><strong id="guestGivenUsed">₱0</strong></p>
-                            <p><span>Reserved used</span><strong id="guestReservedUsed">₱0</strong></p>
-                            <p><span>Amount to pay by QR</span><strong id="guestCashDue">₱{{ number_format($totalAmount, 0) }}</strong></p>
+                        <div class="guest-credit-content">
+                            <label class="guest-credit-use">
+                                <input type="checkbox" id="useGuestCredit" checked>
+                                <span>Use my credit</span>
+                            </label>
+                            <div class="guest-credit-balances" aria-live="polite">
+                                <span>Given <strong id="guestGivenBalance"></strong></span>
+                                <span>Reserved <strong id="guestReservedBalance"></strong></span>
+                                <span>Total <strong id="guestCreditTotal"></strong></span>
+                            </div>
+                            <div class="guest-credit-payment-summary" aria-live="polite">
+                                <p><span>Total</span><strong id="guestCreditCheckoutTotal">₱{{ number_format($totalAmount, 0) }}</strong></p>
+                                <p><span>Given used</span><strong id="guestGivenUsed"></strong></p>
+                                <p><span>Reserved used</span><strong id="guestReservedUsed"></strong></p>
+                                <p><span>Amount to pay by QR</span><strong id="guestCashDue">₱{{ number_format($totalAmount, 0) }}</strong></p>
+                                <p><span>Credit discount</span><strong id="guestCreditDiscount"></strong></p>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -123,7 +143,7 @@
                     <p>Court rental <strong>PHP {{ number_format($courtAmount, 2) }}</strong></p>
                     @if ($equipmentLines->isNotEmpty())<p>Equipment: <strong>{{ $equipmentLines->map(fn ($line) => "{$line['name']} ×{$line['quantity']}")->implode(', ') }}</strong></p>@endif
                     <p>Payment: <strong id="summaryPayment">QR Ph</strong></p>
-                    <p class="booking-summary-total">Total: <strong>₱{{ number_format($totalAmount, 2) }}</strong></p>
+                    <p class="booking-summary-total">Total: <strong id="summaryTotal">₱{{ number_format($totalAmount, 2) }}</strong></p>
                     <p class="payment-confidence-note">Your slot is held for {{ $paymentHoldMinutes }} minutes while you complete the QR Ph payment.</p>
                 </div>
             </div>

@@ -10,7 +10,7 @@ html.admin-layout-shell .customers-page {
 
 html.admin-layout-shell .customers-header {
     display: flex;
-    align-items: flex-end;
+    align-items: center;
     justify-content: space-between;
     flex-wrap: wrap;
     gap: var(--s4);
@@ -18,7 +18,6 @@ html.admin-layout-shell .customers-header {
 
 html.admin-layout-shell .customers-toolbar {
     display: flex;
-    width: min(100%, 900px);
     min-width: 0;
     align-items: center;
     justify-content: flex-end;
@@ -399,7 +398,7 @@ html.admin-layout-shell .send-credit-lookup-success {
     margin: var(--s2) 0;
     border: 1px solid var(--brand);
     height: auto;
-    border-radius: 50px;
+    border-radius: var(--s3);
 }
 
 html.admin-layout-shell .send-credit-lookup-error,

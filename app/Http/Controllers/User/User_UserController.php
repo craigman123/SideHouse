@@ -4,12 +4,15 @@ namespace App\Http\Controllers\User;
 
 use App\Http\Controllers\Controller;
 use App\Models\Booking;
+use App\Models\BookingSlot;
 use App\Models\BusinessSetting;
 use App\Models\Court;
 use App\Models\CourtClosure;
+use App\Models\CreditWallet;
 use App\Models\Equipment;
 use App\Models\Membership;
 use App\Models\PaymentReference as PaymentReferenceModel;
+use App\Services\CreditService;
 use App\Support\ActivityLogger;
 use App\Support\BookingHours;
 use App\Support\PaymentWindows;

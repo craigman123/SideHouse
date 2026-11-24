@@ -1459,14 +1459,18 @@ body > .landing-wrapper {
     }
 }
 
+@media (max-width: 680px) {
+    .landing-wrapper .nav-title-landing {
+        display: none;
+    }
+
+}
+
 @media (max-width: 640px) {
     .landing-wrapper .landing-nav-wrap { gap: var(--s1); }
     .landing-wrapper .landing-nav { gap: var(--s1); padding-right: var(--s2); padding-left: var(--s2); }
     .landing-wrapper .nav-left { flex: 0 1 auto; min-width: 0; overflow: hidden; }
     .landing-wrapper .nav-logo { flex: 0 0 auto; }
-    .landing-wrapper .nav-title-landing {
-        display: none;
-    }
     .landing-wrapper .nav-center { flex: 1 1 0; min-width: 0; gap: var(--s1); }
     .landing-wrapper .guest-session-save { display: none; }
     .landing-wrapper .nav-search-show { display: inline-flex; flex: 0 0 44px; width: 44px; height: 44px; }

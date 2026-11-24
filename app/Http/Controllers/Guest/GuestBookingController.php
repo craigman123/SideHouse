@@ -988,6 +988,19 @@ class GuestBookingController extends Controller
 
         }
 
+        if ($isPaid && ! $idempotent) {
+            try {
+                \Illuminate\Support\Facades\Mail::to($guestEmail)->send(
+                    new \App\Mail\GuestBookingReceipt($bookings, $result['paymentReference'], $court->name)
+                );
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning('Guest booking receipt email failed', [
+                    'payment_reference_id' => $result['paymentReference']->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
         return response()->json([
             'message'    => $isPaid
                 ? 'Payment complete with credit.'
@@ -1118,9 +1131,6 @@ class GuestBookingController extends Controller
             $lockedPaymentReference = PaymentReferenceModel::where('id', $booking->payment_reference_id)
                 ->lockForUpdate()
                 ->first();
-            if ($lockedPaymentReference) {
-                app(\App\Services\CreditService::class)->releasePaymentHold($lockedPaymentReference);
-            }
 
             $siblings = Booking::where('payment_reference_id', $booking->payment_reference_id)
                 ->where('status', 'pending')->lockForUpdate()->get();

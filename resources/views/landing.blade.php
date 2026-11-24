@@ -35,20 +35,28 @@
 
         {{-- Updated navigation with search bar --}}
         <div class="landing-nav-wrap">
+
+        @if (! empty($guestCredit))
+            <div class="landing-credit-wrap">
+                <button type="button" class="landing-credit-total" id="landingCreditToggle" aria-expanded="false" aria-controls="landingCreditPopover">
+                    {{ number_format($guestCredit['total'], 0) }} TC
+                </button>
+                <div class="landing-credit-popover" id="landingCreditPopover" hidden>
+                    <div class="credit-format-symbol">
+                        <p><span>Given</span><strong><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16.5 8.5 A6.5 6.5 0 1 0 16.5 15.5"/><path d="M11 12 H18"/><path d="M11 2.5 V5.5"/><path d="M11 18.5 V21.5"/></svg>{{ number_format($guestCredit['given'], 0) }}</strong></p>
+                    </div>
+                    <div class="credit-format-symbol">
+                        <p><span>Reserved</span><strong><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 6 L18 12 L12 18 L6 12 Z"/><path d="M3.5 12 H20.5"/><path d="M12 2 V6"/><path d="M12 18 V22"/></svg>{{ number_format($guestCredit['reserved'], 0) }}</strong></p>
+                    </div>
+                    <button type="button" id="landingCreditSwitch">Not you? Switch email</button>
+                 </div>
+            </div>
+        @endif
             <nav class="landing-nav">
+
                 <div class="nav-left">
                     <img src="{{ asset('images/tab_icon.png') }}" alt="Side House" class="nav-logo" loading="lazy">
                     <strong class="nav-title-landing">Side House Paddlers</strong>
-                    @if (! empty($guestCredit))
-                        <button type="button" class="landing-credit-total" id="landingCreditToggle" aria-expanded="false" aria-controls="landingCreditPopover">
-                            ₱{{ number_format($guestCredit['total'], 0) }} credit
-                        </button>
-                        <div class="landing-credit-popover" id="landingCreditPopover" hidden>
-                            <p><span>Given</span><strong>₱{{ number_format($guestCredit['given'], 0) }}</strong></p>
-                            <p><span>Reserved</span><strong>₱{{ number_format($guestCredit['reserved'], 0) }}</strong></p>
-                            <button type="button" id="landingCreditSwitch">Not you? Switch email</button>
-                        </div>
-                    @endif
                 </div>
 
                 <div class="nav-center">
@@ -109,6 +117,7 @@
     <!-- Mobile Menu -->
     <div class="nav-mobile-menu" id="navMobileMenu">
         <div class="nav-mobile-panel">
+            <div id="mobileCreditSlot"></div>
             <div class="nav-links">
                 <a href="#" class="nav-link active">Home</a>
                     <a href="#bookNow" class="nav-link">Book a Court</a>
@@ -816,5 +825,28 @@
     <script src="{{ asset('js/booking/guest-book.js') }}?v={{ filemtime(public_path('js/booking/guest-book.js')) }}" defer></script>
     <script src="{{ asset('js/config/stats-vacant.js') }}" defer></script>
     <script src="{{ asset('js/landing/landing-search.js') }}" defer></script>
+    <script> 
+        (function initCreditPlacement() {
+            const wrap = document.querySelector('.landing-credit-wrap');
+            const slot = document.getElementById('mobileCreditSlot');
+            const navWrap = wrap?.parentElement;
+            if (!wrap || !slot || !navWrap) return;
+
+            const mq = window.matchMedia('(max-width: 1420px)');
+
+            function place() {
+                const popover = wrap.querySelector('.landing-credit-popover');
+                const toggle = wrap.querySelector('.landing-credit-total');
+                if (popover) popover.hidden = true;
+                if (toggle) toggle.setAttribute('aria-expanded', 'false');
+
+                if (mq.matches) slot.appendChild(wrap);
+                else navWrap.insertBefore(wrap, navWrap.firstChild);
+            }
+
+            mq.addEventListener('change', place);
+            place();
+        })();
+    </script>
 </body>
 </html>

@@ -1,6 +1,7 @@
 (function () {
 
     const box = document.getElementById('paymentPage');
+    const receiptUrlTemplate = box.dataset.receiptUrlTemplate;
     const courtId = box.dataset.courtId;
     const date = box.dataset.date;
     const slots = JSON.parse(box.dataset.slots || '[]');
@@ -37,6 +38,56 @@
     let guestCredit = null;
     let guestCreditCheckoutKey = null;
     const backBtn = document.getElementById('backToEquipment2');
+
+    const givenIcon = box.dataset.givenIcon;
+    const reservedIcon = box.dataset.reservedIcon;
+    const googleSkeletonEl = document.getElementById('googleSignInSkeleton');
+    const creditBoxEl = document.getElementById('guestCreditPayment');
+    const useCreditEl = document.getElementById('useGuestCredit');
+    const summaryTotalEl = document.getElementById('summaryTotal');
+    const originalSummaryTotal = summaryTotalEl ? summaryTotalEl.textContent : '';
+    let signingIn = false;
+
+    const CREDIT_ICONS = {
+    given: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16.5 8.5 A6.5 6.5 0 1 0 16.5 15.5"/><path d="M11 12 H18"/><path d="M11 2.5 V5.5"/><path d="M11 18.5 V21.5"/></svg>',
+    reserved: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 6 L18 12 L12 18 L6 12 Z"/><path d="M3.5 12 H20.5"/><path d="M12 2 V6"/><path d="M12 18 V22"/></svg>',
+    };
+
+    function setCredit(el, kind, amount, minus = false) {
+        if (!el) return;
+        const n = Math.max(0, Number(amount) || 0);
+        el.replaceChildren();
+        if (minus && n > 0) el.append('-');
+
+        const icon = document.createElement('span');
+        icon.className = 'credit-icon';
+        icon.innerHTML = CREDIT_ICONS[kind === 'reserved' ? 'reserved' : 'given']; // static markup, no user data
+        el.append(icon, n.toLocaleString());
+
+        el.classList.toggle('is-used', minus && n > 0);
+    }
+
+    function setSigningIn(on) {
+        signingIn = on;
+
+        [guestNameInput, guestContactInput, confirmBtn, backBtn, guestEmailChangeBtn, useCreditEl]
+            .forEach((el) => { if (el) el.disabled = on; });
+
+        box.classList.toggle('is-signing-in', on);
+        googleSignInBtnEl?.classList.toggle('is-locked', on);
+        googleSignInBtnEl?.classList.toggle('is-hidden-while-signing', on);
+        if (googleSkeletonEl) googleSkeletonEl.hidden = !on;
+
+        if (creditBoxEl) {
+            creditBoxEl.classList.toggle('is-loading', on);
+            if (on) creditBoxEl.hidden = false;
+            else if (!guestCredit) creditBoxEl.hidden = true;
+        }
+    }
+
+    document.querySelector('.payment-page-exit')?.addEventListener('click', (e) => {
+        if (signingIn) e.preventDefault();
+});
 
     function setConfirmLocked(isLocked) {
         [guestNameInput, guestContactInput, backBtn, guestEmailChangeBtn]
@@ -78,18 +129,17 @@
     function updateCreditDisplay(credit) {
         if (!credit) return;
         guestCredit = credit;
-        const container = document.getElementById('guestCreditPayment');
-        if (container) container.hidden = false;
-        document.getElementById('guestGivenBalance').textContent = `₱${Number(credit.given || 0).toLocaleString()}`;
-        document.getElementById('guestReservedBalance').textContent = `₱${Number(credit.reserved || 0).toLocaleString()}`;
-        document.getElementById('guestCreditTotal').textContent = `₱${Number(credit.total || 0).toLocaleString()}`;
+        if (creditBoxEl) creditBoxEl.hidden = false;
+        setCredit(document.getElementById('guestGivenBalance'), 'given', credit.given);
+        setCredit(document.getElementById('guestReservedBalance'), 'reserved', credit.reserved);
+        setCredit(document.getElementById('guestCreditTotal'), 'given', credit.total);
         updateCreditSummary();
     }
 
     function updateCreditSummary() {
         if (!guestCredit) return;
-        const total = Number(box.dataset.totalAmount || document.querySelector('.booking-summary-total strong')?.textContent?.replace(/\D/g, '') || 0);
-        const useCredit = document.getElementById('useGuestCredit')?.checked !== false;
+        const total = Number(box.dataset.totalAmount || 0);
+        const useCredit = useCreditEl?.checked !== false;
         let remaining = useCredit ? total : 0;
         let givenUsed = useCredit ? Math.min(Number(guestCredit.given || 0), remaining) : 0;
         remaining -= givenUsed;
@@ -98,21 +148,29 @@
         const minimumCash = 1;
         if (remaining > 0 && remaining < minimumCash) {
             const needed = minimumCash - remaining;
-            const availableReserved = Number(guestCredit.reserved || 0) - reservedUsed;
-            const fromReserved = Math.min(availableReserved, needed);
+            const fromReserved = Math.min(Number(guestCredit.reserved || 0) - reservedUsed, needed);
             reservedUsed += fromReserved;
             remaining -= fromReserved;
             if (remaining > 0) {
-                const availableGiven = Number(guestCredit.given || 0) - givenUsed;
-                const fromGiven = Math.min(availableGiven, remaining);
+                const fromGiven = Math.min(Number(guestCredit.given || 0) - givenUsed, remaining);
                 givenUsed += fromGiven;
                 remaining -= fromGiven;
             }
         }
-        document.getElementById('guestGivenUsed').textContent = `₱${givenUsed.toLocaleString()}`;
-        document.getElementById('guestReservedUsed').textContent = `₱${reservedUsed.toLocaleString()}`;
-        document.getElementById('guestCashDue').textContent = `₱${Math.max(0, remaining).toLocaleString()}`;
-    }
+        const cashDue = Math.max(0, useCredit ? total - givenUsed - reservedUsed : total);
+
+        setCredit(document.getElementById('guestGivenUsed'), 'given', givenUsed, true);
+        setCredit(document.getElementById('guestReservedUsed'), 'reserved', reservedUsed, true);
+        setCredit(document.getElementById('guestCreditDiscount'), 'given', givenUsed + reservedUsed, true);
+        document.getElementById('guestCashDue').textContent = `₱${cashDue.toLocaleString()}`;
+
+        // Final review total follows what is actually left to pay
+        if (summaryTotalEl) {
+            summaryTotalEl.textContent = useCredit
+                ? `₱${cashDue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                : originalSummaryTotal;
+        }
+}
 
     document.getElementById('useGuestCredit')?.addEventListener('change', updateCreditSummary);
 
@@ -136,6 +194,7 @@
                 }
                 googleEmail = data.email;
                 showSignedInState(data.email);
+                if (data.credit) updateCreditDisplay(data.credit);
             })
             .catch((err) => console.warn('Verified guest state failed:', err))
             .finally(() => {
@@ -143,6 +202,34 @@
                 setPrefillLoading(false);
             });
     }
+
+    const GUEST_FIELDS_KEY = 'sidehouse_guest_checkout_fields';
+
+    function saveGuestFields() {
+        try {
+            localStorage.setItem(GUEST_FIELDS_KEY, JSON.stringify({
+                name: guestNameInput.value.trim(),
+                contact: guestContactInput.value.trim(),
+            }));
+        } catch (_) {}
+    }
+
+    function restoreGuestFields() {
+        try {
+            const saved = JSON.parse(localStorage.getItem(GUEST_FIELDS_KEY) || 'null');
+            if (!saved) return;
+            if (saved.name && !guestNameInput.value.trim()) guestNameInput.value = saved.name;
+            if (saved.contact && !guestContactInput.value.trim()) guestContactInput.value = saved.contact;
+        } catch (_) {}
+    }
+
+    function clearGuestFields() {
+        try { localStorage.removeItem(GUEST_FIELDS_KEY); } catch (_) {}
+    }
+
+    guestNameInput.addEventListener('input', saveGuestFields);
+    guestContactInput.addEventListener('input', saveGuestFields);
+    restoreGuestFields();
 
     // Keep only non-sensitive booking choices. This lets the waiting page
     // return an unpaid checkout to the equipment step without relying on
@@ -256,6 +343,17 @@
         guestEmailLabel.hidden = false;
         googleSignInBtnEl.hidden = false;
         guestEmailConfirmed.hidden = true;
+
+        // Reset the credit UI so nothing stale is left on screen
+        guestCredit = null;
+        if (creditBoxEl) creditBoxEl.hidden = true;
+        if (summaryTotalEl) summaryTotalEl.textContent = originalSummaryTotal;
+
+        // Signing out means a different person may book, so wipe their details
+        guestNameInput.value = '';
+        guestContactInput.value = '';
+        clearGuestFields();
+
         try {
             await fetch(creditSwitchUrl, {
                 method: 'POST',
@@ -286,6 +384,8 @@
     let googleNonce = null;
 
     async function handleGoogleCredential(response) {
+    if (signingIn) return;
+        setSigningIn(true);
         try {
             const res = await fetch(creditVerifyUrl, {
                 method: 'POST',
@@ -317,6 +417,8 @@
             document.querySelector('.guest-email-block')?.classList.remove('guest-email-block-invalid');
         } catch (_) {
             showToast("Couldn't verify that Google account. Please try again.", 'error');
+        } finally {
+            setSigningIn(false);
         }
     }
 
@@ -487,12 +589,16 @@
                 return;
             }
 
+            saveGuestFields();
+
             if (data.status === 'paid') {
                 clearCheckoutDraft();
-                const params = new URLSearchParams({
-                    booking_success: 'Payment already matched — you\'re all set!',
-                });
-                window.location.href = `${landingUrl}?${params.toString()}`;
+                const receiptUrl = safeRedirectPath(
+                    receiptUrlTemplate.replace('__ID__', data.booking_id)
+                        + `?token=${encodeURIComponent(data.poll_token)}`,
+                    landingUrl
+                );
+                window.location.replace(receiptUrl);
                 return;
             }
 

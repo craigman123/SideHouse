@@ -21,6 +21,8 @@ class PaymentReferenceObserver
      * PaymentReference being created already-confirmed, e.g. a manual/
      * counter payment recorded straight into the paid state.
      */
+
+    public bool $afterCommit = true;
     public function created(PaymentReference $paymentReference): void
     {
         if ($paymentReference->confirmed_at !== null) {
@@ -44,7 +46,10 @@ class PaymentReferenceObserver
     {
         $recipient = $paymentReference->bookings()->value('email');
 
-        if (! $recipient) {
+       if (! $recipient) {
+            \Log::warning('Receipt mail skipped: no booking email', [
+                'payment_reference_id' => $paymentReference->id,
+            ]);
             return;
         }
 

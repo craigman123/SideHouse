@@ -206,7 +206,13 @@ html[data-theme="light"] .guest-landing-page .landing-wrapper .feature-card-cc .
 html[data-theme="light"] .guest-landing-page .landing-wrapper .feature-card-gear .feature-icon { color: var(--text); }
 .guest-payment-page .landing-wrapper { padding-top: 0; }
 #waitingPage.wt-shell { padding-top: 24px; }
-.receipt-body { padding-top: calc(var(--s8) + var(--s4) - 60px); }
+.receipt-body { 
+    padding-top: calc(var(--s8) + var(--s4) - 60px);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+ }
 
 @media (max-width: 480px) {
     .guest-theme-toggle--landing,

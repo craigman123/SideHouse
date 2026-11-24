@@ -70,7 +70,7 @@
                                             <tr>
                                                 <td style="padding:5px 0; font-size:13px; color:#8b949e;">Payment method</td>
                                                 <td align="right" style="padding:5px 0; font-size:13px; color:#f0f6fc; font-weight:700;">
-                                                    {{ strtoupper($paymentReference->payment_method) }}
+                                                    {{ (float) $paymentReference->amount <= 0 ? 'CREDITS' : strtoupper($paymentReference->payment_method) }}
                                                 </td>
                                             </tr>
                                             @if ($paymentReference->gcash_reference_number)
@@ -134,11 +134,12 @@
                         <td style="padding:20px 28px;">
                             <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:rgba(63,185,80,0.12); border:1px solid #238636; border-radius:12px;">
                                 <tr>
-                                    <td style="padding:16px 18px; font-size:13px; color:#8b949e;">
-                                        Total paid
-                                    </td>
                                     <td align="right" style="padding:16px 18px; font-size:22px; font-weight:800; color:#3fb950;">
-                                        &#8369;{{ number_format($paymentReference->amount, 2) }}
+                                        @if ((float) $paymentReference->amount <= 0)
+                                            Credit covered
+                                        @else
+                                            &#8369;{{ number_format($paymentReference->amount, 2) }}
+                                        @endif
                                     </td>
                                 </tr>
                             </table>
