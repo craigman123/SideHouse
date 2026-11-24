@@ -187,6 +187,50 @@ class GuestCreditStage1Test extends TestCase
         $this->assertSame(60, (int) $wallet->fresh()->reserved_balance);
     }
 
+    public function test_cancel_all_cannot_refund_credit_on_a_paid_booking(): void
+    {
+        $user = $this->createUser();
+        CreditWallet::create([
+            'user_id' => $user->user_id,
+            'given_balance' => 100,
+            'reserved_balance' => 0,
+        ]);
+        $court = Court::create([
+            'name' => 'Cancel Court', 'width' => 10, 'length' => 20,
+            'hourly_rate' => 100, 'status' => 'active',
+        ]);
+        $day = now()->addDay()->toDateString();
+
+        $res = $this->withSession([
+            'guest_credit_verified' => [
+                'user_id' => $user->user_id,
+                'email' => $user->email,
+                'verified_at' => now()->timestamp,
+                'matched' => true,
+            ],
+        ])->postJson('/guest-book', [
+            'court_id' => $court->id,
+            'date' => $day,
+            'slots' => [$day.' 06:00', $day.' 06:30'],
+            'guest_name' => 'Cancel Guest',
+            'guest_contact' => '09171234567',
+            'use_credit' => true,
+            'idempotency_token' => str_repeat('c', 32),
+        ])->assertOk();
+
+        $cancel = $this->postJson(
+            '/guest/bookings/'.$res->json('booking_id').'/cancel-all?token='.$res->json('poll_token')
+        );
+        dump($cancel->status(), $cancel->getContent());
+        $cancel->assertOk();
+
+        dump(\App\Models\CreditPaymentHold::first()?->status, \App\Models\CreditTransaction::pluck('reason')->all());
+        
+        $this->assertSame('paid', Booking::first()->status);
+        $this->assertSame(0, (int) CreditWallet::where('user_id', $user->user_id)->value('given_balance'));
+        $this->assertSame(0, CreditTransaction::where('reason', 'booking_cancellation')->count());
+    }
+
     public function test_credit_balances_never_go_negative_or_accept_floats(): void
     {
         $user = $this->createUser();

@@ -1122,9 +1122,11 @@ class GuestBookingController extends Controller
             }
 
             $siblings = Booking::where('payment_reference_id', $booking->payment_reference_id)
-                ->where('status', 'pending')
-                ->lockForUpdate()
-                ->get();
+                ->where('status', 'pending')->lockForUpdate()->get();
+
+            if ($siblings->isNotEmpty() && $lockedPaymentReference) {
+                app(\App\Services\CreditService::class)->releasePaymentHold($lockedPaymentReference);
+            }
 
             foreach ($siblings as $sibling) {
                 $sibling->update(['status' => 'cancelled']);

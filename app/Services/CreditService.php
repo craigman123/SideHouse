@@ -32,7 +32,7 @@ class CreditService
                     'user_id' => $user->user_id,
                     'given_held' => 0,
                     'reserved_held' => 0,
-                    'status' => 'held',
+                    'status' => $paymentReference->confirmed_at ? 'paid' : 'held',
                     'held_at' => now(),
                 ]
             );
@@ -87,7 +87,7 @@ class CreditService
                 'user_id' => $user->user_id,
                 'given_held' => 0,
                 'reserved_held' => 0,
-                'status' => 'held',
+                'status' => $paymentReference->confirmed_at ? 'paid' : 'held',
                 'held_at' => now(),
             ]
         );
@@ -95,12 +95,9 @@ class CreditService
         $hold->reserved_held = (int) $hold->reserved_held + $reservedUsed;
         $hold->save();
 
-        $paymentReference->update([
-            'given_used' => $givenUsed,
-            'reserved_used' => $reservedUsed,
-            'credit_status' => $givenUsed + $reservedUsed > 0 ? 'held' : 'none',
-            'credit_held_at' => $givenUsed + $reservedUsed > 0 ? now() : null,
-        ]);
+        if ($givenUsed + $reservedUsed > 0 && $paymentReference->credit_held_at === null) {
+            $paymentReference->update(['credit_held_at' => now()]);
+        }
 
         return $hold;
     }
