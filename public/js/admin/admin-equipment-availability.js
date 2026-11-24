@@ -253,7 +253,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const editBtn = el('button', 'equip-edit-btn', 'Edit');
         editBtn.type = 'button';
         editBtn.dataset.id = item.id;
-        const deleteBtn = el('button', 'equip-delete-btn', 'Delete');
+        const deleteBtn = el('button', 'equip-delete-btn btn-ghost-danger', 'Delete');
         deleteBtn.type = 'button';
         deleteBtn.dataset.id = item.id;
         actionsTd.appendChild(editBtn);

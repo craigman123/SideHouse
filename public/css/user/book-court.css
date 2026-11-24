@@ -1253,6 +1253,20 @@
     color: var(--text);
 }
 
+.user-book-court-page .toast-close.btn-ghost-danger {
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--text);
+    transition: color 0.3s, border-color 0.3s;
+}
+
+.user-book-court-page .toast-close.btn-ghost-danger:hover:not(:disabled),
+.user-book-court-page .toast-close.btn-ghost-danger:focus-visible:not(:disabled) {
+    border-color: var(--danger);
+    background: transparent;
+    color: var(--danger);
+}
+
 @media (min-width: 768px) {
     .user-book-court-page .court-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));

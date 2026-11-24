@@ -81,7 +81,7 @@
         <form class="access-dialog-card" id="accessForm" novalidate>
             <header class="access-dialog-header">
                 <div><p class="user-access-eyebrow">Account permissions</p><h2 id="accessDialogTitle">Add staff</h2></div>
-                <button type="button" class="dialog-close" data-close-dialog aria-label="Close dialog">×</button>
+                <button type="button" class="dialog-close btn-ghost-danger" data-close-dialog aria-label="Close dialog">×</button>
             </header>
             <div class="access-dialog-body" id="accessDetailsStep">
                 <section id="candidatePicker" class="candidate-picker">
@@ -117,8 +117,8 @@
             </div>
             <p class="access-dialog-error" id="accessDialogError" role="alert" hidden></p>
             <footer class="access-dialog-footer">
-                <button type="button" class="user-access-secondary btn-ghost-cancel" data-close-dialog>Cancel</button>
-                <button type="button" class="user-access-secondary btn-ghost-cancel" id="backToAccessDetails" hidden>Back</button>
+                <button type="button" class="user-access-secondary btn-ghost-danger" data-close-dialog>Cancel</button>
+                <button type="button" class="user-access-secondary btn-ghost-danger" id="backToAccessDetails" hidden>Back</button>
                 <button type="button" class="user-access-primary" id="continueAccess" disabled>Continue</button>
                 <button type="submit" class="user-access-primary" id="saveAccess" hidden>Promote</button>
             </footer>
@@ -130,7 +130,7 @@
             <form class="access-dialog-card" id="accountDetailsForm" data-load-state="idle" novalidate>
                 <header class="access-dialog-header">
                     <div><p class="user-access-eyebrow">Account details</p><h2 id="accountDetailsTitle">Edit details</h2></div>
-                    <button type="button" class="dialog-close" data-close-details aria-label="Close dialog">×</button>
+                    <button type="button" class="dialog-close btn-ghost-danger" data-close-details aria-label="Close dialog">×</button>
                 </header>
                 <div class="account-details-error" id="accountDetailsError" role="alert" hidden>
                     <p id="accountDetailsErrorMessage"></p>
@@ -165,8 +165,8 @@
                     <input id="accountDetailsPassword" name="password" type="password" autocomplete="current-password" required>
                 </div>
                 <footer class="access-dialog-footer">
-                    <button type="button" class="user-access-secondary btn-ghost-cancel" data-close-details>Cancel</button>
-                    <button type="button" class="user-access-secondary btn-ghost-cancel" id="backToAccountDetails" hidden>Back</button>
+                    <button type="button" class="user-access-secondary btn-ghost-danger" data-close-details>Cancel</button>
+                    <button type="button" class="user-access-secondary btn-ghost-danger" id="backToAccountDetails" hidden>Back</button>
                     <button type="button" class="user-access-primary" id="continueAccountDetails" disabled>Continue</button>
                     <button type="submit" class="user-access-primary" id="saveAccountDetails" hidden>Save details</button>
                 </footer>
@@ -178,7 +178,7 @@
         <form class="access-dialog-card" id="removeAccessForm" novalidate>
             <header class="access-dialog-header">
                 <div><p class="user-access-eyebrow">Confirm change</p><h2 id="removeDialogTitle">Remove elevated access?</h2></div>
-                <button type="button" class="dialog-close" data-close-dialog aria-label="Close dialog">×</button>
+                <button type="button" class="dialog-close btn-ghost-danger" data-close-dialog aria-label="Close dialog">×</button>
             </header>
             <div class="access-dialog-body">
                 <p id="removeAccessDescription">This person will remain a customer and keep their account.</p>
@@ -186,7 +186,7 @@
                 <input id="removeAccessPassword" type="password" autocomplete="current-password" required>
             </div>
             <footer class="access-dialog-footer">
-                <button type="button" class="user-access-secondary btn-ghost-cancel" data-close-dialog>Cancel</button>
+                <button type="button" class="user-access-secondary btn-ghost-danger" data-close-dialog>Cancel</button>
                 <button type="submit" class="user-access-danger" id="confirmRemoveAccess">Remove access</button>
             </footer>
         </form>

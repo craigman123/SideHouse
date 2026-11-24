@@ -107,7 +107,7 @@
              modals for consistency. --}}
         <div class="modal-overlay" id="equipEditModal">
             <div class="equip-modal">
-                <button type="button" class="equip-modal-close" id="equipEditClose" aria-label="Close">&times;</button>
+                <button type="button" class="equip-modal-close btn-ghost-danger" id="equipEditClose" aria-label="Close">&times;</button>
                 <h3 class="equip-modal-title">Edit Equipment</h3>
 
                 <form id="equipEditForm" class="equip-add-form">
@@ -154,7 +154,7 @@
 
         <div class="modal-overlay" id="equipDeleteModal">
             <div class="equip-modal">
-                <button type="button" class="equip-modal-close" id="equipDeleteClose">&times;</button>
+                <button type="button" class="equip-modal-close btn-ghost-danger" id="equipDeleteClose">&times;</button>
                 <h3 class="equip-modal-title">Delete Equipment</h3>
                 <p>Delete "<strong id="equipDeleteName"></strong>"? This can't be undone.</p>
                 <p class="equip-field-error" id="equipDeleteError" hidden></p>

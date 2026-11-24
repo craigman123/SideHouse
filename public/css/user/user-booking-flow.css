@@ -404,6 +404,20 @@ html[data-theme="light"] .user-booking-waiting-page .wt-confirm-stay:hover:not(:
     color: var(--bg);
 }
 
+.user-booking-waiting-page .wt-confirm-accept-cancel.btn-ghost-danger {
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--text);
+    transition: color 0.3s, border-color 0.3s;
+}
+
+.user-booking-waiting-page .wt-confirm-accept-cancel.btn-ghost-danger:hover:not(:disabled),
+.user-booking-waiting-page .wt-confirm-accept-cancel.btn-ghost-danger:focus-visible:not(:disabled) {
+    border-color: var(--danger);
+    background: transparent;
+    color: var(--danger);
+}
+
 .user-booking-waiting-page .wt-confirm-actions button:focus,
 .user-booking-waiting-page .wt-confirm-actions button:focus-visible {
     outline: 2px solid var(--text);
@@ -2288,4 +2302,62 @@ html.user-layout-shell.user-book-court-page #timePickerModal .modal-actions .btn
     display: inline-flex;
     align-items: center;
     white-space: nowrap;
+}
+
+#courtPaymentModal .modal-box.modal-box-lg.modal-box-scrollable .payment-header .modal-close.btn-ghost-danger {
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--text);
+    transition: color 0.3s, border-color 0.3s;
+}
+
+#courtPaymentModal .modal-box.modal-box-lg.modal-box-scrollable .payment-header .modal-close.btn-ghost-danger:hover:not(:disabled),
+#courtPaymentModal .modal-box.modal-box-lg.modal-box-scrollable .payment-header .modal-close.btn-ghost-danger:focus-visible:not(:disabled) {
+    border-color: var(--danger);
+    background: transparent;
+    color: var(--danger);
+}
+
+#timePickerModal .modal-box.modal-box-lg.modal-box-timepicker :is(.modal-back, .modal-actions .btn-secondary, .modal-close).btn-ghost-danger,
+#equipmentModal .modal-box.modal-box-lg.modal-box-scrollable :is(.modal-back, .modal-actions .btn-secondary, .modal-close).btn-ghost-danger,
+#courtPaymentModal .modal-box.modal-box-lg.modal-box-scrollable .modal-actions .btn-ghost-danger,
+.user-book-court-page .modal-back.btn-ghost-danger,
+.user-book-court-page .modal-actions .btn-ghost-danger,
+.user-book-court-page .modal-close.btn-ghost-danger,
+.user-booking-waiting-page .wt-back.btn-ghost-danger,
+.user-booking-waiting-page .wt-btn-cancel.btn-ghost-danger {
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--text);
+    transition: color 0.3s, border-color 0.3s;
+}
+
+#timePickerModal .modal-box.modal-box-lg.modal-box-timepicker :is(.modal-back, .modal-actions .btn-secondary, .modal-close).btn-ghost-danger:hover:not(:disabled),
+#timePickerModal .modal-box.modal-box-lg.modal-box-timepicker :is(.modal-back, .modal-actions .btn-secondary, .modal-close).btn-ghost-danger:focus-visible:not(:disabled),
+#equipmentModal .modal-box.modal-box-lg.modal-box-scrollable :is(.modal-back, .modal-actions .btn-secondary, .modal-close).btn-ghost-danger:hover:not(:disabled),
+#equipmentModal .modal-box.modal-box-lg.modal-box-scrollable :is(.modal-back, .modal-actions .btn-secondary, .modal-close).btn-ghost-danger:focus-visible:not(:disabled),
+#courtPaymentModal .modal-box.modal-box-lg.modal-box-scrollable .modal-actions .btn-ghost-danger:hover:not(:disabled),
+#courtPaymentModal .modal-box.modal-box-lg.modal-box-scrollable .modal-actions .btn-ghost-danger:focus-visible:not(:disabled),
+.user-book-court-page .modal-back.btn-ghost-danger:hover:not(:disabled),
+.user-book-court-page .modal-back.btn-ghost-danger:focus-visible:not(:disabled),
+.user-book-court-page .modal-actions .btn-ghost-danger:hover:not(:disabled),
+.user-book-court-page .modal-actions .btn-ghost-danger:focus-visible:not(:disabled),
+.user-book-court-page .modal-close.btn-ghost-danger:hover:not(:disabled),
+.user-book-court-page .modal-close.btn-ghost-danger:focus-visible:not(:disabled),
+.user-booking-waiting-page .wt-back.btn-ghost-danger:hover:not(:disabled),
+.user-booking-waiting-page .wt-back.btn-ghost-danger:focus-visible:not(:disabled),
+.user-booking-waiting-page .wt-btn-cancel.btn-ghost-danger:hover:not(:disabled),
+.user-booking-waiting-page .wt-btn-cancel.btn-ghost-danger:focus-visible:not(:disabled) {
+    border-color: var(--danger);
+    background: transparent;
+    color: var(--danger);
+}
+
+.user-book-court-page .btn-ghost-danger:disabled,
+.user-booking-waiting-page .btn-ghost-danger:disabled {
+    border-color: transparent;
+    background: transparent;
+    color: var(--text);
+    opacity: .5;
+    cursor: not-allowed;
 }

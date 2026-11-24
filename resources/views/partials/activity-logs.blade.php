@@ -11,7 +11,7 @@
             </div>
             <div class="filter-actions">
                 <button type="submit" class="btn-filter">Filter</button>
-                <a href="{{ route($filterRoute) }}" class="btn-clear" data-activity-clear>Clear</a>
+                <a href="{{ route($filterRoute) }}" class="btn-clear btn-ghost-danger" data-activity-clear>Clear</a>
             </div>
         </form>
     </div>

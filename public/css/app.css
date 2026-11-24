@@ -231,6 +231,40 @@ html:not(.admin-layout-shell) body .content {
     transition: color 150ms ease-out, border-color 150ms ease-out;
 }
 
+.btn-ghost-danger {
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--text);
+    transition: color 0.3s, border-color 0.3s;
+}
+
+.btn-ghost-danger:hover:not(:disabled),
+.btn-ghost-danger:focus-visible:not(:disabled) {
+    border-color: var(--danger);
+    background: transparent;
+    color: var(--danger);
+}
+
+.btn-ghost-danger:disabled {
+    border-color: transparent;
+    background: transparent;
+    color: var(--text);
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.btn-ghost-danger :is(svg, i) {
+    color: currentColor;
+}
+
+.btn-danger:not(.btn-ghost-danger),
+.user-access-danger:not(.btn-ghost-danger),
+.court-block-danger:not(.btn-ghost-danger),
+.tc-btn-danger:not(.btn-ghost-danger),
+.closure-btn--danger:not(.btn-ghost-danger) {
+    transition: color 0.3s, border-color 0.3s, background-color 0.3s;
+}
+
 .btn-ghost-cancel:active:not(:disabled) {
     border-color: var(--danger);
     background: transparent;
@@ -501,6 +535,20 @@ html:not(.admin-layout-shell) body .content {
 
 .toast-close:hover {
     color: #f0f6fc;
+}
+
+.toast-close.btn-ghost-danger {
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--text);
+    transition: color 0.3s, border-color 0.3s;
+}
+
+.toast-close.btn-ghost-danger:hover:not(:disabled),
+.toast-close.btn-ghost-danger:focus-visible:not(:disabled) {
+    border-color: var(--danger);
+    background: transparent;
+    color: var(--danger);
 }
 
 @keyframes toastIn {

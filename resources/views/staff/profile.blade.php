@@ -59,7 +59,7 @@
             <form method="POST" action="{{ route('logout') }}" id="staffLogoutForm">
                 @csrf
                 <div class="profile-actions">
-                    <button class="btn btn-danger" type="button" id="staffLogoutButton">Log out</button>
+                    <button class="btn btn-danger btn-ghost-danger" type="button" id="staffLogoutButton">Log out</button>
                 </div>
             </form>
         </section>
@@ -69,12 +69,12 @@
         <div class="modal-box modal-box-sm">
             <div class="modal-header">
                 <h3 id="staffLogoutModalTitle">Log out?</h3>
-                <button type="button" class="modal-close" id="staffLogoutModalClose" aria-label="Close">&times;</button>
+                <button type="button" class="modal-close btn-ghost-danger" id="staffLogoutModalClose" aria-label="Close">&times;</button>
             </div>
             <p class="modal-text" id="staffLogoutModalDescription">You'll need to sign in again to access the staff dashboard.</p>
             <div class="modal-actions">
                 <button type="button" class="btn-secondary btn-ghost-cancel" id="staffLogoutModalCancel">Stay signed in</button>
-                <button type="button" class="btn btn-danger" id="staffLogoutConfirm">Log out</button>
+                <button type="button" class="btn btn-danger btn-ghost-danger" id="staffLogoutConfirm">Log out</button>
             </div>
         </div>
     </div>

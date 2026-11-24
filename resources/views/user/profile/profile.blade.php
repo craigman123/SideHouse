@@ -49,7 +49,7 @@
 
                 <form method="POST" action="{{ route('logout') }}" class="logout-form" id="logoutForm">
                     @csrf
-                    <button type="button" class="btn btn-danger" id="logoutBtn">Log Out</button>
+                    <button type="button" class="btn btn-danger btn-ghost-danger" id="logoutBtn">Log Out</button>
                 </form>
             </div>
 
@@ -97,7 +97,7 @@
                 </div>
 
                 <div class="profile-actions">
-                    <button type="button" class="btn btn-secondary btn-ghost-cancel" id="cancelEditBtn" hidden>Cancel</button>
+                    <button type="button" class="btn btn-secondary btn-ghost-danger" id="cancelEditBtn" hidden>Cancel</button>
                     <button type="button" class="btn btn-primary" id="editProfileBtn">Edit Profile</button>
                     <button type="submit" class="btn btn-primary" id="saveProfileBtn" hidden>Save Changes</button>
                 </div>
@@ -126,7 +126,7 @@
                     <p class="danger-zone-label">Delete Account</p>
                     <p class="danger-zone-sub">Permanently delete your account. This can't be undone.</p>
                 </div>
-                <button type="button" class="btn btn-danger" id="deleteAccountBtn">Delete Account</button>
+                <button type="button" class="btn btn-danger btn-ghost-danger" id="deleteAccountBtn">Delete Account</button>
             </div>
         </div>
     </div>
@@ -135,14 +135,14 @@
         <div class="modal-box modal-box-sm wt-confirm-card">
             <div class="modal-header">
                 <h3 id="logoutModalTitle">Log out?</h3>
-                <button type="button" class="modal-close" id="logoutModalClose" aria-label="Close">&times;</button>
+                <button type="button" class="modal-close btn-ghost-danger" id="logoutModalClose" aria-label="Close">&times;</button>
             </div>
 
             <p class="modal-text" id="logoutModalDescription">You'll need to sign in again to access your account.</p>
 
             <div class="modal-actions wt-confirm-actions">
                 <button type="button" class="btn btn-secondary wt-confirm-stay btn-ghost-cancel" id="logoutModalCancel">Stay signed in</button>
-                <button type="button" class="btn btn-danger wt-confirm-accept" id="logoutConfirmSubmit">Log out</button>
+                <button type="button" class="btn btn-danger wt-confirm-accept btn-ghost-danger" id="logoutConfirmSubmit">Log out</button>
             </div>
         </div>
     </div>
@@ -151,7 +151,7 @@
         <div class="modal-box modal-box-sm wt-confirm-card">
             <div class="modal-header">
                 <h3 id="deleteModalTitle">Delete your account?</h3>
-                <button type="button" class="modal-close" id="deleteModalClose" aria-label="Close">&times;</button>
+                <button type="button" class="modal-close btn-ghost-danger" id="deleteModalClose" aria-label="Close">&times;</button>
             </div>
 
             <p class="modal-text" id="deleteModalDescription">This permanently deletes your account and cannot be undone.</p>

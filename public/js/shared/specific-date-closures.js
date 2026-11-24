@@ -32,7 +32,7 @@ const toast = (text, type = 'success') => {
     label.textContent = text;
     const close = document.createElement('button');
     close.type = 'button';
-    close.className = 'closure-toast-close';
+    close.className = 'closure-toast-close btn-ghost-danger';
     close.setAttribute('aria-label', 'Dismiss');
     close.textContent = '×';
     item.append(label, close);
@@ -58,7 +58,7 @@ const confirmRemove = (rule) => new Promise((resolve) => {
     const actions = document.createElement('div');
     actions.className = 'closure-dialog-actions';
     const cancel = document.createElement('button');
-    cancel.type = 'button'; cancel.className = 'closure-btn btn-ghost-cancel'; cancel.textContent = 'Cancel';
+    cancel.type = 'button'; cancel.className = 'closure-btn btn-ghost-danger'; cancel.textContent = 'Cancel';
     const ok = document.createElement('button');
     ok.type = 'button'; ok.className = 'closure-btn closure-btn--danger'; ok.textContent = 'Remove closure';
     actions.append(cancel, ok);
@@ -133,7 +133,7 @@ const confirmRemove = (rule) => new Promise((resolve) => {
         formActions.before(editBanner);
         const cancelEdit = document.createElement('button');
         cancelEdit.type = 'button';
-        cancelEdit.className = 'closure-btn btn-ghost-cancel';
+        cancelEdit.className = 'closure-btn btn-ghost-danger';
         cancelEdit.textContent = 'Cancel edit';
         cancelEdit.hidden = true;
         formActions.prepend(cancelEdit);
@@ -386,7 +386,7 @@ const confirmRemove = (rule) => new Promise((resolve) => {
                 edit.setAttribute('aria-label', `Edit weekly closure ${rule.weekday_label}, ${timeRange}`);
                 edit.addEventListener('click', () => enterEdit(rule));
                 const remove = document.createElement('button');
-                remove.type = 'button'; remove.className = 'closure-btn closure-btn--danger'; remove.textContent = 'Remove';
+                remove.type = 'button'; remove.className = 'closure-btn closure-btn--danger btn-ghost-danger'; remove.textContent = 'Remove';
                 remove.setAttribute('aria-label', `Remove weekly closure ${rule.weekday_label}, ${timeRange}`);
                 remove.addEventListener('click', async () => {
                     if (!(await confirmRemove(rule))) return;

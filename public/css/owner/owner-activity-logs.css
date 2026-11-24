@@ -90,6 +90,20 @@ html.owner-layout-shell .admin-activity-logs-page .btn-clear:hover {
     color: var(--brand-hover);
 }
 
+html.owner-layout-shell .admin-activity-logs-page .btn-clear.btn-ghost-danger {
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--text);
+    transition: color 0.3s, border-color 0.3s;
+}
+
+html.owner-layout-shell .admin-activity-logs-page .btn-clear.btn-ghost-danger:hover:not(:disabled),
+html.owner-layout-shell .admin-activity-logs-page .btn-clear.btn-ghost-danger:focus-visible:not(:disabled) {
+    border-color: var(--danger);
+    background: transparent;
+    color: var(--danger);
+}
+
 html.owner-layout-shell .admin-activity-logs-page .activity-table-panel h2 {
     display: flex;
     align-items: center;

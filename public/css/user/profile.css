@@ -155,12 +155,18 @@ html.user-profile-page:not([data-theme="light"]) .wt-confirm-overlay {
 .user-profile-page .wt-confirm-card .modal-header h3 { margin: 0; color: var(--text); font-size: var(--font-size-h3); }
 .user-profile-page .wt-confirm-card .modal-text { margin: 0 0 var(--s3); color: var(--text-muted); line-height: var(--line-height-body); }
 .user-profile-page .wt-confirm-card .modal-close { box-sizing: border-box; min-width: 44px; min-height: 44px; border: 1px solid var(--text-muted); border-radius: var(--r-pill); background: transparent; color: var(--text); font-size: var(--font-size-h3); cursor: pointer; }
+.user-profile-page .wt-confirm-card .modal-close.btn-ghost-danger { border-color: transparent; color: var(--text); transition: color 0.3s, border-color 0.3s; }
+.user-profile-page .wt-confirm-card .modal-close.btn-ghost-danger:hover:not(:disabled),
+.user-profile-page .wt-confirm-card .modal-close.btn-ghost-danger:focus-visible:not(:disabled) { border-color: var(--danger); background: transparent; color: var(--danger); }
 .user-profile-page .wt-confirm-actions { display: flex; justify-content: flex-end; gap: var(--s3); margin-top: var(--s4); }
 .user-profile-page .wt-confirm-actions .wt-confirm-stay { font-size: 0.92em; border-color: var(--brand); background: var(--brand); color: var(--bg); }
 .user-profile-page .wt-confirm-actions .wt-confirm-stay:hover:not(:disabled) { border-color: var(--brand-hover); background: var(--brand-hover); color: var(--bg); }
 .user-profile-page .wt-confirm-actions .wt-confirm-accept { border-color: var(--danger); background: transparent; color: var(--danger); }
+.user-profile-page .wt-confirm-actions .wt-confirm-accept.btn-ghost-danger { border-color: transparent; background: transparent; color: var(--text); transition: color 0.3s, border-color 0.3s; }
 .user-profile-page .wt-confirm-actions .wt-confirm-accept:hover:not(:disabled),
 .user-profile-page .wt-confirm-actions .wt-confirm-accept:focus-visible { background: var(--danger); color: var(--bg); }
+.user-profile-page .wt-confirm-actions .wt-confirm-accept.btn-ghost-danger:hover:not(:disabled),
+.user-profile-page .wt-confirm-actions .wt-confirm-accept.btn-ghost-danger:focus-visible { border-color: var(--danger); background: transparent; color: var(--danger); }
 .user-profile-page .wt-confirm-actions .wt-confirm-accept-cancel:disabled { border-color: var(--border); background: var(--surface-2); color: var(--text-muted); }
 .user-profile-page :is(button, a, input):focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
 .user-profile-page .toast-container { position: fixed; z-index: 9999; top: var(--s4); right: var(--s4); display: flex; flex-direction: column; gap: var(--s3); color: var(--text); }
@@ -173,9 +179,39 @@ html.user-profile-page:not([data-theme="light"]) .wt-confirm-overlay {
 
 html[data-theme="light"] .user-profile-page .btn-primary,
 html[data-theme="light"] .user-profile-page .wt-confirm-actions .wt-confirm-stay { color: var(--on-brand); }
-html[data-theme="light"] .user-profile-page .btn-danger:hover:not(:disabled),
+html[data-theme="light"] .user-profile-page .btn-danger:not(.btn-ghost-danger):hover:not(:disabled),
 html[data-theme="light"] .user-profile-page .wt-confirm-actions .wt-confirm-accept:hover:not(:disabled),
 html[data-theme="light"] .user-profile-page .wt-confirm-actions .wt-confirm-accept:focus-visible { color: var(--on-brand); }
+
+.user-profile-page .btn-ghost-danger,
+.user-profile-page .toast-close.btn-ghost-danger {
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--text);
+    transition: color 0.3s, border-color 0.3s;
+}
+
+.user-profile-page .btn-ghost-danger:hover:not(:disabled),
+.user-profile-page .btn-ghost-danger:focus-visible:not(:disabled),
+.user-profile-page .toast-close.btn-ghost-danger:hover:not(:disabled),
+.user-profile-page .toast-close.btn-ghost-danger:focus-visible:not(:disabled) {
+    border-color: var(--danger);
+    background: transparent;
+    color: var(--danger);
+}
+
+.user-profile-page .btn-ghost-danger:disabled {
+    border-color: transparent;
+    background: transparent;
+    color: var(--text);
+    opacity: .5;
+    cursor: not-allowed;
+}
+
+.user-profile-page .btn-danger:not(.btn-ghost-danger),
+.user-profile-page .wt-confirm-actions .wt-confirm-accept:not(.btn-ghost-danger) {
+    transition: color 0.3s, border-color 0.3s, background-color 0.3s;
+}
 
 @media (min-width: 768px) {
     .user-profile-page .profile-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }

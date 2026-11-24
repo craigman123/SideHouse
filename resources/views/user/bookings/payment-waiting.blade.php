@@ -41,7 +41,7 @@
         data-create-qr-url="{{ route('guest.book.payment.qrph') }}"
         data-landing-url="{{ route('user.bookings.index') }}"
     >
-        <a href="{{ $bookUrl }}?openBooking=1&amp;court_id={{ $booking->court_id }}" class="wt-back" id="backToHome">&larr; Back to booking</a>
+        <a href="{{ $bookUrl }}?openBooking=1&amp;court_id={{ $booking->court_id }}" class="wt-back btn-ghost-danger" id="backToHome">&larr; Back to booking</a>
 
         <div class="wt-hero">
             <h1 id="waitTitle">
@@ -118,7 +118,7 @@
                     <strong class="wt-float-timer-value" id="waitCountdown">--:--</strong>
                 </div>
                 <div class="wt-cancel-actions modal-actions" id="waitActions" @if ($booking->status !== 'pending') style="display:none;" @endif>
-                    <button type="button" class="wt-btn-cancel btn btn-secondary" id="waitCancelBtn">Cancel Booking</button>
+                    <button type="button" class="wt-btn-cancel btn btn-secondary btn-ghost-danger" id="waitCancelBtn">Cancel Booking</button>
                 </div>
                 <div class="wt-cancel-actions modal-actions" id="waitDoneActions" @if ($booking->status === 'pending') style="display:none;" @endif>
                     <a href="{{ route('user.bookings.index') }}" class="btn btn-primary">View My Bookings</a>

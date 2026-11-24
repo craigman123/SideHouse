@@ -20,7 +20,7 @@
         <div class="modal-box">
             <div class="modal-header">
                 <h2>New Announcement</h2>
-                <button type="button" class="modal-close" id="closeAnnouncementModal" aria-label="Close">&times;</button>
+                <button type="button" class="modal-close btn-ghost-danger" id="closeAnnouncementModal" aria-label="Close">&times;</button>
             </div>
 
             <p class="modal-text announcement-intro">
@@ -48,7 +48,7 @@
 
                 <div class="announcement-form-actions">
                     <button type="submit" class="btn btn-filter" id="sendAnnouncementBtn">Send to All Users</button>
-                    <button type="button" class="btn btn-ghost-cancel" id="cancelAnnouncementModal">Cancel</button>
+                    <button type="button" class="btn btn-ghost-danger" id="cancelAnnouncementModal">Cancel</button>
                 </div>
             </form>
         </div>
@@ -66,7 +66,7 @@
             </p>
 
             <div class="announcement-confirm-actions">
-                <button type="button" class="btn btn-ghost-cancel" id="cancelSendConfirm">Cancel</button>
+                <button type="button" class="btn btn-ghost-danger" id="cancelSendConfirm">Cancel</button>
                 <button type="button" class="btn btn-filter" id="confirmSendBtn">Send to All Users</button>
             </div>
         </div>
@@ -90,7 +90,7 @@
             </p>
 
             <div class="announcement-confirm-actions">
-                <button type="button" class="btn btn-ghost-cancel" id="cancelDeleteConfirm">Cancel</button>
+                <button type="button" class="btn btn-ghost-danger" id="cancelDeleteConfirm">Cancel</button>
                 <button type="button" class="btn btn-danger" id="confirmDeleteBtn">Delete</button>
             </div>
         </div>

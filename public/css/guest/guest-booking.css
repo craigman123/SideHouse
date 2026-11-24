@@ -1642,3 +1642,29 @@ body > .landing-wrapper {
     opacity: 0.45;
     cursor: not-allowed;
 }
+
+.landing-wrapper :is(.btn-secondary, .modal-back, .modal-close).btn-ghost-danger,
+#timePickerModal .modal-close.btn-ghost-danger,
+#equipmentModal .modal-close.btn-ghost-danger,
+#timePickerModal .modal-actions .btn-ghost-danger,
+#equipmentModal .modal-actions .btn-ghost-danger {
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--text);
+    transition: color 0.3s, border-color 0.3s;
+}
+
+.landing-wrapper :is(.btn-secondary, .modal-back, .modal-close).btn-ghost-danger:hover:not(:disabled),
+.landing-wrapper :is(.btn-secondary, .modal-back, .modal-close).btn-ghost-danger:focus-visible:not(:disabled),
+#timePickerModal .modal-close.btn-ghost-danger:hover:not(:disabled),
+#timePickerModal .modal-close.btn-ghost-danger:focus-visible:not(:disabled),
+#equipmentModal .modal-close.btn-ghost-danger:hover:not(:disabled),
+#equipmentModal .modal-close.btn-ghost-danger:focus-visible:not(:disabled),
+#timePickerModal .modal-actions .btn-ghost-danger:hover:not(:disabled),
+#timePickerModal .modal-actions .btn-ghost-danger:focus-visible:not(:disabled),
+#equipmentModal .modal-actions .btn-ghost-danger:hover:not(:disabled),
+#equipmentModal .modal-actions .btn-ghost-danger:focus-visible:not(:disabled) {
+    border-color: var(--danger);
+    background: transparent;
+    color: var(--danger);
+}

@@ -13,13 +13,13 @@
                 @if (session('success'))
                     <div class="schedule-toast schedule-toast-success" role="alert">
                         <span>{{ session('success') }}</span>
-                        <button type="button" class="schedule-toast-close" aria-label="Dismiss">&times;</button>
+                        <button type="button" class="schedule-toast-close btn-ghost-danger" aria-label="Dismiss">&times;</button>
                     </div>
                 @endif
                 @if (session('error'))
                     <div class="schedule-toast schedule-toast-error" role="alert">
                         <span>{{ session('error') }}</span>
-                        <button type="button" class="schedule-toast-close" aria-label="Dismiss">&times;</button>
+                        <button type="button" class="schedule-toast-close btn-ghost-danger" aria-label="Dismiss">&times;</button>
                     </div>
                 @endif
                 @if ($errors->any())
@@ -28,7 +28,7 @@
                          failed submit is never silent / easy to miss. --}}
                     <div class="schedule-toast schedule-toast-error" role="alert">
                         <span>{{ $errors->first() }}</span>
-                        <button type="button" class="schedule-toast-close" aria-label="Dismiss">&times;</button>
+                        <button type="button" class="schedule-toast-close btn-ghost-danger" aria-label="Dismiss">&times;</button>
                     </div>
                 @endif
             </div>
@@ -228,7 +228,7 @@
                                 </div>
                                 <div class="tc-dp-grid" id="tc-dp-grid"></div>
                                 <div class="tc-dp-footer">
-                                    <button type="button" class="tc-btn tc-btn-secondary tc-btn-sm" id="tc-dp-clear">Clear</button>
+                                    <button type="button" class="tc-btn tc-btn-secondary tc-btn-sm btn-ghost-danger" id="tc-dp-clear">Clear</button>
                                     <button type="button" class="tc-btn tc-btn-primary tc-btn-sm" id="tc-dp-done">Done</button>
                                 </div>
                             </div>
@@ -279,7 +279,7 @@
                                             @method('DELETE')
                                         </form>
                                         <button type="button"
-                                            class="tc-btn tc-btn-danger tc-btn-sm sh-specific-closure-delete-btn"
+                                            class="tc-btn tc-btn-danger tc-btn-sm btn-ghost-danger sh-specific-closure-delete-btn"
                                             data-form-id="specificClosureDeleteForm{{ $closure->id }}"
                                             data-label="{{ \Illuminate\Support\Carbon::parse($closure->date)->format('M d, Y') }} at {{ \Illuminate\Support\Carbon::parse($closure->time_closing)->format('g:i A') }}"
                                         >Remove</button>
@@ -300,7 +300,7 @@
             <div class="mb-modal-box">
                 <div class="mb-modal-header">
                     <h3>Edit Closure</h3>
-                    <button type="button" class="mb-modal-close" id="specificClosureEditClose" aria-label="Close">&times;</button>
+                    <button type="button" class="mb-modal-close btn-ghost-danger" id="specificClosureEditClose" aria-label="Close">&times;</button>
                 </div>
 
                 <form
@@ -324,7 +324,7 @@
                     </div>
 
                     <div class="mb-modal-actions">
-                        <button type="button" class="btn btn-secondary btn-ghost-cancel" id="specificClosureEditCancel">Cancel</button>
+                        <button type="button" class="btn btn-secondary btn-ghost-danger" id="specificClosureEditCancel">Cancel</button>
                         <button type="submit" class="btn btn-primary">Save Changes</button>
                     </div>
                 </form>
@@ -336,11 +336,11 @@
             <div class="mb-modal-box">
                 <div class="mb-modal-header">
                     <h3>Remove Closure?</h3>
-                    <button type="button" class="mb-modal-close" id="specificClosureDeleteClose" aria-label="Close">&times;</button>
+                    <button type="button" class="mb-modal-close btn-ghost-danger" id="specificClosureDeleteClose" aria-label="Close">&times;</button>
                 </div>
                 <p class="schedule-panel-note" id="specificClosureDeleteText">This will reopen bookings for this date/time.</p>
                 <div class="mb-modal-actions">
-                    <button type="button" class="btn btn-secondary btn-ghost-cancel" id="specificClosureDeleteCancel">Cancel</button>
+                    <button type="button" class="btn btn-secondary btn-ghost-danger" id="specificClosureDeleteCancel">Cancel</button>
                     <button type="button" class="btn btn-danger" id="specificClosureDeleteConfirm">Remove</button>
                 </div>
             </div>
@@ -532,7 +532,7 @@
                             </form>
                             <button
                                 type="button"
-                                class="btn btn-secondary btn-sm delete-closure sh-closure-delete-btn"
+                                class="btn btn-secondary btn-sm delete-closure btn-ghost-danger sh-closure-delete-btn"
                                 data-form-id="closureDeleteForm{{ $closure->id }}"
                                 data-label="{{ $closure->date->format('M d, Y') }} &mdash; {{ $closure->court?->name ?? 'All Courts' }}"
                             >Remove</button>
@@ -551,7 +551,7 @@
         <div class="mb-modal-box">
             <div class="mb-modal-header">
                 <h3>Edit Closure</h3>
-                <button type="button" class="mb-modal-close" id="closureEditClose" aria-label="Close">&times;</button>
+                <button type="button" class="mb-modal-close btn-ghost-danger" id="closureEditClose" aria-label="Close">&times;</button>
             </div>
 
             {{-- Each closure row is a single date, so this picker stays in
@@ -623,7 +623,7 @@
                 </div>
 
                 <div class="mb-modal-actions">
-                    <button type="button" class="btn btn-secondary btn-ghost-cancel" id="closureEditCancel">Cancel</button>
+                    <button type="button" class="btn btn-secondary btn-ghost-danger" id="closureEditCancel">Cancel</button>
                     <button type="submit" class="btn btn-primary">Save Changes</button>
                 </div>
             </form>
@@ -635,11 +635,11 @@
         <div class="mb-modal-box">
             <div class="mb-modal-header">
                 <h3>Remove Closure?</h3>
-                <button type="button" class="mb-modal-close" id="closureDeleteClose" aria-label="Close">&times;</button>
+                <button type="button" class="mb-modal-close btn-ghost-danger" id="closureDeleteClose" aria-label="Close">&times;</button>
             </div>
             <p class="schedule-panel-note" id="closureDeleteText">This will reopen the court for this date.</p>
             <div class="mb-modal-actions">
-                <button type="button" class="btn btn-secondary btn-ghost-cancel" id="closureDeleteCancel">Cancel</button>
+                <button type="button" class="btn btn-secondary btn-ghost-danger" id="closureDeleteCancel">Cancel</button>
                 <button type="button" class="btn btn-danger" id="closureDeleteConfirm">Remove</button>
             </div>
         </div>
@@ -650,7 +650,7 @@
     <div class="mb-modal-box">
         <div class="mb-modal-header">
             <h3>Select a Date</h3>
-            <button type="button" class="mb-modal-close" id="mbCalendarClose" aria-label="Close">&times;</button>
+            <button type="button" class="mb-modal-close btn-ghost-danger" id="mbCalendarClose" aria-label="Close">&times;</button>
         </div>
         <div class="mb-calendar">
             <div class="mb-calendar-header">
@@ -670,8 +670,8 @@
     <div class="mb-modal-overlay" id="mbTimeModal">
         <div class="mb-modal-box mb-time-box">
             <div class="mb-modal-header">
-                <button type="button" class="mb-modal-back btn-ghost-cancel" id="mbBackToCalendar">&larr; Back to date</button>
-                <button type="button" class="mb-modal-close" id="mbTimeClose" aria-label="Close">&times;</button>
+                <button type="button" class="mb-modal-back btn-ghost-danger" id="mbBackToCalendar">&larr; Back to date</button>
+                <button type="button" class="mb-modal-close btn-ghost-danger" id="mbTimeClose" aria-label="Close">&times;</button>
             </div>
             <h3 id="mbTimeDateLabel" class="mb-time-date-label">Pick Your Hours</h3>
             <div class="mb-time-legend">
@@ -681,7 +681,7 @@
             </div>
             <div class="mb-time-slot-list" id="mbTimeSlotGrid"></div>
             <div class="mb-modal-actions">
-                <button type="button" class="btn btn-secondary btn-ghost-cancel" id="mbTimeCancel">Cancel</button>
+                <button type="button" class="btn btn-secondary btn-ghost-danger" id="mbTimeCancel">Cancel</button>
                 <button type="button" class="btn btn-primary" id="mbTimeAdd">Add</button>
             </div>
         </div>

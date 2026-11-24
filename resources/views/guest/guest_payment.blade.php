@@ -51,7 +51,7 @@
             data-receipt-url-template="{{ route('guest.book.receipt', ['booking' => '__ID__'], false) }}">
             <div class="modal-header payment-header">
                 <h3>Almost Done</h3>
-                <a href="{{ $landingUrl }}" class="payment-page-exit" aria-label="Exit booking">&times;</a>
+                <a href="{{ $landingUrl }}" class="payment-page-exit btn-ghost-danger" aria-label="Exit booking">&times;</a>
                 <div class="booking-flow-progress booking-flow-progress-compact" aria-label="Booking progress">
                     <span class="booking-flow-step complete" data-checkout-step="1"><b>1</b>Date &amp; time</span>
                     <span class="booking-flow-step complete" data-checkout-step="2"><b>2</b>Equipment</span>
@@ -98,7 +98,7 @@
                         </div>
                         <div class="guest-email-confirmed" id="guestEmailConfirmed" hidden>
                             <span>Signed in as <strong id="guestEmailConfirmedAddress"></strong></span>
-                            <button class="btn btn-link btn-change-email" type="button" id="guestEmailChange">X</button>
+                            <button class="btn btn-link btn-change-email btn-ghost-danger" type="button" id="guestEmailChange">X</button>
                         </div>
                     </div>
                 </div>
@@ -151,7 +151,7 @@
                 <strong id="summaryTotal">₱{{ number_format($totalAmount, 2) }}</strong>
             </div>
             <div class="modal-actions">
-                <button type="button" class="btn btn-secondary btn-ghost-cancel" id="backToEquipment2">Back</button>
+                <button type="button" class="btn btn-secondary btn-ghost-danger" id="backToEquipment2">Back</button>
                 <button type="button" class="btn btn-primary" id="confirmBooking">Confirm Booking</button></div>
         </div>
     </div>

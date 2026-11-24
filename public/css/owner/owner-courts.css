@@ -51,12 +51,12 @@ html.owner-layout-shell .admin-courts-page .status {
     text-transform: capitalize;
 }
 
-html.owner-layout-shell .admin-courts-page .btn-icon.btn-delete {
+html.owner-layout-shell .admin-courts-page .btn-icon.btn-delete:not(.btn-ghost-danger) {
     border-color: var(--danger);
     color: var(--danger);
 }
 
-html.owner-layout-shell .admin-courts-page .btn-icon.btn-delete:hover {
+html.owner-layout-shell .admin-courts-page .btn-icon.btn-delete:not(.btn-ghost-danger):hover {
     border-color: var(--danger);
     background: var(--danger);
     color: var(--on-brand, var(--text));

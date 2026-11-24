@@ -53,7 +53,7 @@
 
                                 <button
                                     type="button"
-                                    class="btn-icon btn-delete"
+                                    class="btn-icon btn-delete btn-ghost-danger"
                                     title="Delete court"
                                     onclick="openDeleteCourtModal({{ $court->id }}, {{ json_encode($court->name) }})"
                                 >Delete</button>
@@ -74,7 +74,7 @@
         <div class="modal-box">
             <div class="modal-header">
                 <h3 id="court-modal-title">Add Court</h3>
-                <button type="button" class="modal-close" onclick="closeCourtModal()">&times;</button>
+                <button type="button" class="modal-close btn-ghost-danger" onclick="closeCourtModal()">&times;</button>
             </div>
 
             <form id="court-form" method="POST" action="{{ route('courts.store') }}">
@@ -132,7 +132,7 @@
                 </div>
 
                 <div class="modal-actions">
-                    <button type="button" class="btn btn-secondary btn-ghost-cancel" onclick="closeCourtModal()">Cancel</button>
+                    <button type="button" class="btn btn-secondary btn-ghost-danger" onclick="closeCourtModal()">Cancel</button>
                     <button type="submit" class="btn btn-primary-sm" id="court-form-submit">Save Court</button>
                 </div>
             </form>
@@ -144,7 +144,7 @@
         <div class="modal-box modal-box-sm">
             <div class="modal-header">
                 <h3>Delete Court</h3>
-                <button type="button" class="modal-close" onclick="closeDeleteModal()">&times;</button>
+                <button type="button" class="modal-close btn-ghost-danger" onclick="closeDeleteModal()">&times;</button>
             </div>
 
             <p class="modal-text">
@@ -157,7 +157,7 @@
                 @method('DELETE')
 
                 <div class="modal-actions">
-                    <button type="button" class="btn btn-secondary btn-ghost-cancel" onclick="closeDeleteModal()">Cancel</button>
+                    <button type="button" class="btn btn-secondary btn-ghost-danger" onclick="closeDeleteModal()">Cancel</button>
                     <button type="submit" class="btn btn-danger">Delete</button>
                 </div>
             </form>

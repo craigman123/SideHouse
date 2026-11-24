@@ -151,7 +151,7 @@
                         autocomplete="off"
                         readonly
                     >
-                    <button type="button" class="nav-search-clear" id="navSearchClearMobile" aria-label="Clear search" hidden>&times;</button>
+                    <button type="button" class="nav-search-clear btn-ghost-danger" id="navSearchClearMobile" aria-label="Clear search" hidden>&times;</button>
                 </div>
             </div>
         </div>
@@ -667,8 +667,8 @@
     <div class="modal-overlay" id="timePickerModal">
         <div class="modal-box modal-box-lg modal-box-timepicker">
             <div class="modal-header-timepicker">
-                <button type="button" class="modal-back modal-back-time btn-ghost-cancel" id="backToCalendar">&larr; Back to date</button>
-                <button type="button" class="modal-close" id="timePickerModalClose" aria-label="Close">&times;</button>
+                <button type="button" class="modal-back modal-back-time btn-ghost-danger" id="backToCalendar">&larr; Back to date</button>
+                <button type="button" class="modal-close btn-ghost-danger" id="timePickerModalClose" aria-label="Close">&times;</button>
                 <div class="booking-flow-progress booking-flow-progress-compact" aria-label="Booking progress">
                     <span class="booking-flow-step active" data-booking-step="1"><b>1</b>Date &amp; time</span>
                     <span class="booking-flow-step" data-booking-step="2"><b>2</b>Equipment</span>
@@ -712,7 +712,7 @@
             </div>
 
             <div class="modal-actions">
-                <button type="button" class="btn btn-secondary btn-ghost-cancel" id="backToCalendar2">Back</button>
+                <button type="button" class="btn btn-secondary btn-ghost-danger" id="backToCalendar2">Back</button>
                 <button type="button" class="btn btn-primary" id="continueToEquipment">Continue</button>
             </div>
         </div>
@@ -723,7 +723,7 @@
         <div class="modal-box modal-box-lg modal-box-scrollable">
             <div class="modal-header equipment-header">
                 <h3>Rent Equipment</h3>
-                <button type="button" class="modal-close" id="equipmentModalClose" aria-label="Close">&times;</button>
+                <button type="button" class="modal-close btn-ghost-danger" id="equipmentModalClose" aria-label="Close">&times;</button>
                 <div class="booking-flow-progress booking-flow-progress-compact" aria-label="Booking progress">
                     <span class="booking-flow-step" data-booking-step="1"><b>1</b>Date &amp; time</span>
                     <span class="booking-flow-step active" data-booking-step="2"><b>2</b>Equipment</span>
@@ -749,7 +749,7 @@
             </div>
 
             <div class="modal-actions">
-                <button type="button" class="btn btn-secondary btn-ghost-cancel" id="backToBookingFromEquipment2">Back Previous</button>
+                <button type="button" class="btn btn-secondary btn-ghost-danger" id="backToBookingFromEquipment2">Back Previous</button>
                 <button type="button" class="btn btn-primary" id="continueToGuestInfo">Continue</button>
             </div>
         </div>
@@ -764,7 +764,7 @@
             <div class="modal-header">
                 <div class="search-modal-header">
                     <h3 id="searchModalLabel">Find Your Booking</h3>
-                    <button type="button" class="modal-close" id="searchModalClose" aria-label="Close search">&times;</button>
+                    <button type="button" class="modal-close btn-ghost-danger" id="searchModalClose" aria-label="Close search">&times;</button>
                 </div>
                 <p class="search-modal-hint" id="searchModalHint">Enter the email you used when booking — we'll send you a 4-digit code.</p>
             </div>
@@ -783,7 +783,7 @@
                                 placeholder="you@example.com"
                                 aria-label="Email address"
                             />
-                            <button type="button" class="booking-search-field-clear" id="searchEmailClear" aria-label="Clear email" hidden>&times;</button>
+                            <button type="button" class="booking-search-field-clear btn-ghost-danger" id="searchEmailClear" aria-label="Clear email" hidden>&times;</button>
                         </div>
                     </div>
 

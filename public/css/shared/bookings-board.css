@@ -173,6 +173,20 @@ html[data-theme="light"] .admin-bookings-page .btn-filter {
     color: var(--brand);
 }
 
+.admin-bookings-page .btn-clear.btn-ghost-danger {
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--text);
+    transition: color 0.3s, border-color 0.3s;
+}
+
+.admin-bookings-page .btn-clear.btn-ghost-danger:hover:not(:disabled),
+.admin-bookings-page .btn-clear.btn-ghost-danger:focus-visible:not(:disabled) {
+    border-color: var(--danger);
+    background: transparent;
+    color: var(--danger);
+}
+
 .admin-bookings-page .bookings-table-panel h2 {
     display: flex;
     align-items: center;
@@ -556,6 +570,27 @@ html[data-theme="light"] .admin-bookings-page .btn-filter {
     font-size: .6875rem;
     white-space: nowrap;
 }
+.admin-bookings-page .court-week-grid .court-month-hour-cell {
+    position: relative;
+}
+.admin-bookings-page .court-week-grid .court-month-hour-cell.past-slot::before,
+.admin-bookings-page .court-week-grid .court-month-hour-cell.past-slot-current::before {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    background-color: color-mix(in srgb, var(--bg) 22%, transparent);
+    background-image: repeating-linear-gradient(
+        45deg,
+        color-mix(in srgb, var(--text) 9%, transparent) 0 6px,
+        transparent 6px 12px
+    );
+    content: "";
+    pointer-events: none;
+}
+.admin-bookings-page .court-week-grid .court-month-hour-cell.past-slot-current::before {
+    inset: 0 0 auto;
+    height: var(--past-progress);
+}
 .admin-bookings-page .court-week-grid .court-month-bar {
     display: flex;
     flex-direction: column;
@@ -907,7 +942,7 @@ html[data-theme="light"] .admin-bookings-page .btn-filter {
 .court-block-secondary:hover { border-color: var(--danger); color: var(--danger); }
 .closure-court-block-primary { background: var(--brand); transition: background 150ms ease; }
 .closure-court-block-primary:hover { background: var(--brand-hover);  }
-.court-block-modal-actions .court-block-danger { border-color: var(--danger); color: var(--danger); }
+.court-block-modal-actions .court-block-danger { border-color: var(--danger); color: var(--danger); transition: color 0.3s, border-color 0.3s, background-color 0.3s; }
 .court-block-modal-actions button:disabled { border-color: var(--border); background: var(--surface-2); color: var(--text-muted); cursor: wait; }
 #courtBlockDetailsNotes { white-space: pre-wrap; color: var(--text-muted); }
 .court-block-players {

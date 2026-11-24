@@ -136,7 +136,7 @@
             : 'Your slot stays held until the timer runs out. You can return from My Bookings.';
         exitStayBtn.textContent = cancel ? 'Keep waiting' : 'Stay here';
         exitConfirmBtn.textContent = cancel ? 'Yes, cancel booking' : 'Yes, leave';
-        exitConfirmBtn.className = `wt-confirm-accept wt-confirm-accept-${cancel ? 'cancel' : 'leave'}`;
+        exitConfirmBtn.className = `wt-confirm-accept wt-confirm-accept-${cancel ? 'cancel' : 'leave'}${cancel ? ' btn-ghost-danger' : ''}`;
         exitAction = cancel ? { type: 'cancel' } : { type: 'back', href: control.href };
         previousPageOverflow = {
             html: document.documentElement.style.overflow,

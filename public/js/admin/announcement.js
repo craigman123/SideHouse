@@ -39,7 +39,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!toastContainer) return;
         const toast = document.createElement('div');
         toast.className = `toast toast-${type}`;
-        toast.innerHTML = `<span class="toast-message"></span><button type="button" class="toast-close" aria-label="Dismiss">&times;</button>`;
+        toast.innerHTML = `<span class="toast-message"></span><button type="button" class="toast-close btn-ghost-danger" aria-label="Dismiss">&times;</button>`;
         toast.querySelector('.toast-message').textContent = message;
         toastContainer.appendChild(toast);
         const remove = () => { toast.classList.add('toast-out'); setTimeout(() => toast.remove(), 300); };
@@ -203,7 +203,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const deleteBtn = document.createElement('button');
         deleteBtn.type = 'button';
-        deleteBtn.className = 'row-delete-btn';
+        deleteBtn.className = 'row-delete-btn btn-ghost-danger';
         deleteBtn.dataset.deleteUrl = item.delete_url;
         deleteBtn.setAttribute('aria-label', 'Delete announcement');
         deleteBtn.textContent = 'Delete';

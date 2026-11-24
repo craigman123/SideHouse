@@ -6,6 +6,7 @@
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
     <title>CSRF Token Expired</title>
     <link rel="icon" href="{{ asset('images/419.png') }}">
+    <link rel="stylesheet" href="{{ asset('css/tokens.css') }}">
     <style>
         * {
             margin: 0;
@@ -96,6 +97,20 @@
             padding: 13px;
             font-size: 14px;
         }
+
+        .btn-back.btn-ghost-danger {
+            color: var(--text);
+            border: 1px solid transparent;
+            background: transparent;
+            transition: color 0.3s, border-color 0.3s;
+        }
+
+        .btn-back.btn-ghost-danger:hover,
+        .btn-back.btn-ghost-danger:focus-visible {
+            color: var(--danger);
+            border-color: var(--danger);
+            background: transparent;
+        }
     </style>
 </head>
 <body>
@@ -108,7 +123,7 @@
         <p>"This page has expired because too much time passed since it was loaded, or you may have used the browser's back
              button to resubmit an old form. As a security measure, we require a fresh page load before processing your request. 
              Simply refresh the page and try again."</p>
-        <button onclick="history.back()" class="btn-back">Go Back</button>
+        <button onclick="history.back()" class="btn-back btn-ghost-danger">Go Back</button>
     </div>
 </body>
 </html>

@@ -69,7 +69,7 @@
 
             <div class="customers-empty" id="customersEmpty" role="status" aria-live="polite" aria-atomic="true" hidden>
                 <p id="customersEmptyMessage">No customers match your search.</p>
-                <button type="button" class="customers-clear-filters" id="customerFiltersClear">Clear filters</button>
+                <button type="button" class="customers-clear-filters btn-ghost-danger" id="customerFiltersClear">Clear filters</button>
             </div>
             <p class="customers-error" id="customersError" hidden>Couldn't load customers. Please refresh the page.</p>
         </div>
@@ -80,7 +80,7 @@
         <div class="modal-box" role="document">
             <div class="modal-header">
                 <h3 id="customerBookingsModalLabel">Bookings</h3>
-                <button type="button" class="modal-close" id="customerBookingsModalClose" aria-label="Close">&times;</button>
+                <button type="button" class="modal-close btn-ghost-danger" id="customerBookingsModalClose" aria-label="Close">&times;</button>
             </div>
             <div class="modal-body">
                 <div id="customerBookingsList" class="customer-bookings-list"></div>
@@ -121,7 +121,7 @@
 
                         <p class="send-credit-modal-error" id="sendCreditError" role="alert" hidden></p>
                         <div class="send-credit-form-actions">
-                            <button type="button" class="btn-secondary btn-ghost-cancel" id="sendCreditCancel">Cancel</button>
+                            <button type="button" class="btn-secondary btn-ghost-danger" id="sendCreditCancel">Cancel</button>
                             <button type="submit" class="btn-primary send-credit-submit" id="sendCreditSubmit" disabled>Review Send</button>
                         </div>
                     </div>
@@ -133,7 +133,7 @@
                         </div>
                         <p class="send-credit-modal-error" id="sendCreditConfirmError" role="alert" hidden></p>
                         <div class="send-credit-confirm-actions">
-                            <button type="button" class="btn-secondary btn-ghost-cancel" id="sendCreditBack">Back</button>
+                            <button type="button" class="btn-secondary btn-ghost-danger" id="sendCreditBack">Back</button>
                             <button type="button" class="btn-primary" id="sendCreditConfirm">Send Credit</button>
                         </div>
                     </div>

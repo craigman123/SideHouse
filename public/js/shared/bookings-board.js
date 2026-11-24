@@ -384,7 +384,7 @@
             <label class="court-price-confirm-choice"><input type="radio" name="drag-price-choice" value="keep" checked> Keep original amount</label>
             ${mayChooseNew ? '<label class="court-price-confirm-choice"><input type="radio" name="drag-price-choice" value="new"> Use new amount</label><label class="court-price-confirm-ack"><input type="checkbox"> I acknowledge this price change</label>' : ''}
             ${qrPaid ? '<p class="court-price-confirm-note">Paid by QR. The amount can’t change.</p>' : ''}
-            <div class="court-price-confirm-actions"><button type="button" class="btn-ghost-cancel" data-price-cancel>Cancel</button><button type="button" data-price-confirm disabled>Confirm move</button></div>
+            <div class="court-price-confirm-actions"><button type="button" class="btn-ghost-danger" data-price-cancel>Cancel</button><button type="button" data-price-confirm disabled>Confirm move</button></div>
         </section>`;
         document.body.append(wrap);
         const ack = wrap.querySelector('.court-price-confirm-ack input');
@@ -2961,6 +2961,30 @@
         activeCalendarGrid = monthGrid;
         renderCalendarGrid(start, new Date(year, month, 0).getDate(), 'month', monthGrid, changedDates);
     };
+    const updateWeekPastSlots = () => {
+        if (!weekGrid) return;
+        const now = new Date();
+        const today = dateKey(now);
+        const currentHour = now.getHours();
+        const currentMinute = now.getMinutes();
+
+        weekGrid.querySelectorAll('.court-month-date-col').forEach((column) => {
+            const date = column.dataset.date || '';
+            const isPastDay = date < today;
+            const isToday = date === today;
+            column.querySelectorAll('.court-month-hour-cell').forEach((cell) => {
+                const hour = Number(cell.dataset.hour);
+                const isCurrentHour = isToday && hour === currentHour && currentMinute > 0;
+                cell.classList.toggle('past-slot', isPastDay || (isToday && hour < currentHour));
+                cell.classList.toggle('past-slot-current', isCurrentHour);
+                if (isCurrentHour) {
+                    cell.style.setProperty('--past-progress', `${currentMinute / 60 * 100}%`);
+                } else {
+                    cell.style.removeProperty('--past-progress');
+                }
+            });
+        });
+    };
     const renderWeek = (changedDates = null) => {
         const chosen = isoDateIsValid(weekInput.value) ? weekInput.value : venueToday;
         weekInput.value = chosen;
@@ -2969,7 +2993,9 @@
         renderCalendarGrid(weekStart, 7, 'week', weekGrid, changedDates);
         weekHeading.textContent = fullWeekRangeLabel(weekStart, addDays(weekStart, 6));
         updateWeekNavigation();
+        updateWeekPastSlots();
     };
+    window.setInterval(updateWeekPastSlots, 60000);
 
     function updateWeekNavigation() {
         const previous = workspace.querySelector('[data-week-nav="previous"]');

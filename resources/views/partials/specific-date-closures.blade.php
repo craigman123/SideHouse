@@ -36,7 +36,7 @@
         <p class="specific-closure-message" data-closure-message role="status" aria-live="polite" hidden></p>
         <div class="specific-closure-conflicts" data-closure-conflicts hidden></div>
         <div class="specific-closure-form-actions court-block-modal-actions">
-            <button class="court-block-secondary" type="reset">Reset</button>
+            <button class="court-block-secondary btn-ghost-danger" type="reset">Reset</button>
             <button class="court-block-primary" type="submit" disabled>Add weekly closure</button>
         </div>
     </form>

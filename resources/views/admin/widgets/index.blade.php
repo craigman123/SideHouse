@@ -27,7 +27,7 @@
                     <input type="checkbox" id="systemMonitorEnabled">
                     <span>Floating panel</span>
                 </label>
-                <button type="button" class="btn-secondary" id="systemMonitorResetPosition">Reset position</button>
+                <button type="button" class="btn-secondary btn-ghost-danger" id="systemMonitorResetPosition">Reset position</button>
             </div>
             <div class="system-monitor-preview" id="systemMonitorPreview" aria-live="polite">
                 <div class="system-monitor-preview-heading">

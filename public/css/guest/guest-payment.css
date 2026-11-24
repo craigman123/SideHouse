@@ -576,6 +576,26 @@ body {
     color: var(--brand-hover);
 }
 
+#paymentPage .payment-page-exit.btn-ghost-danger,
+#paymentPage .btn-change-email.btn-ghost-danger,
+#paymentPage .modal-actions .btn-ghost-danger {
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--text);
+    transition: color 0.3s, border-color 0.3s;
+}
+
+#paymentPage .payment-page-exit.btn-ghost-danger:hover:not(:disabled),
+#paymentPage .payment-page-exit.btn-ghost-danger:focus-visible:not(:disabled),
+#paymentPage .btn-change-email.btn-ghost-danger:hover:not(:disabled),
+#paymentPage .btn-change-email.btn-ghost-danger:focus-visible:not(:disabled),
+#paymentPage .modal-actions .btn-ghost-danger:hover:not(:disabled),
+#paymentPage .modal-actions .btn-ghost-danger:focus-visible:not(:disabled) {
+    border-color: var(--danger);
+    background: transparent;
+    color: var(--danger);
+}
+
 /* ---- Skeletons ---- */
 @keyframes sk-shimmer {
     0%   { background-position: 200% 0; }

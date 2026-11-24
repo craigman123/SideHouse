@@ -96,11 +96,11 @@
                                 @if ($booking->status === 'pending' && !$isExpired)
                                     <a class="booking-action booking-pay-action" href="{{ route('book.waiting', ['booking' => $booking->id]) }}">Pay now / View QR</a>
                                     @if ($isCancellable)
-                                    <button type="button" class="btn-icon btn-delete" data-cancel>Cancel</button>
+                                    <button type="button" class="btn-icon btn-delete btn-ghost-danger" data-cancel>Cancel</button>
                                     @endif
                                 @elseif ($booking->status === 'paid' && $isCancellable)
                                     <a class="booking-action booking-pay-action" href="{{ route('book.receipt', ['booking' => $booking->id]) }}">View receipt</a>
-                                    <button type="button" class="btn-icon btn-delete" data-cancel data-paid="1">Cancel &amp; Refund</button>
+                                    <button type="button" class="btn-icon btn-delete btn-ghost-danger" data-cancel data-paid="1">Cancel &amp; Refund</button>
                                 @elseif ($isExpired)
                                     <a class="booking-action booking-retry-action" href="{{ route('book.index', ['openBooking' => 1, 'court_id' => $booking->court_id]) }}">Book again</a>
                                 @elseif ($booking->status === 'cancelled')
@@ -151,7 +151,7 @@
         <div class="modal-box modal-box-sm">
             <div class="modal-header">
                 <h3 id="cancelModalTitle">Cancel this booking?</h3>
-                <button type="button" class="modal-close" id="modalClose" aria-label="Close">&times;</button>
+                <button type="button" class="modal-close btn-ghost-danger" id="modalClose" aria-label="Close">&times;</button>
             </div>
             <p class="modal-text" id="modalText">This will free up the slot for other players. This can't be undone.</p>
             <p class="modal-text modal-text-refund" id="modalRefundNote" hidden>
@@ -159,7 +159,7 @@
             </p>
             <div class="modal-actions">
                 <button type="button" class="btn btn-secondary btn-ghost-cancel" id="modalKeep">Keep booking</button>
-                <button type="button" class="btn btn-danger" id="modalConfirm">Cancel booking</button>
+                <button type="button" class="btn btn-danger btn-ghost-danger" id="modalConfirm">Cancel booking</button>
             </div>
         </div>
     </div>

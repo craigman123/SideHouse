@@ -139,3 +139,29 @@
 #wt-back-nav-modal .wt-confirm-modal-title {
     color: var(--warning);
 }
+
+#wt-confirm-modal .wt-confirm-modal-confirm.btn-ghost-danger,
+#wt-back-nav-modal .wt-confirm-modal-confirm.btn-ghost-danger {
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--text);
+    transition: color 0.3s, border-color 0.3s;
+}
+
+#wt-confirm-modal .wt-confirm-modal-confirm.btn-ghost-danger:hover:not(:disabled),
+#wt-confirm-modal .wt-confirm-modal-confirm.btn-ghost-danger:focus-visible:not(:disabled),
+#wt-back-nav-modal .wt-confirm-modal-confirm.btn-ghost-danger:hover:not(:disabled),
+#wt-back-nav-modal .wt-confirm-modal-confirm.btn-ghost-danger:focus-visible:not(:disabled) {
+    border-color: var(--danger);
+    background: transparent;
+    color: var(--danger);
+}
+
+#wt-confirm-modal .wt-confirm-modal-confirm.btn-ghost-danger:disabled,
+#wt-back-nav-modal .wt-confirm-modal-confirm.btn-ghost-danger:disabled {
+    border-color: transparent;
+    background: transparent;
+    color: var(--text);
+    opacity: .5;
+    cursor: not-allowed;
+}

@@ -147,7 +147,7 @@
         toast.className = `wt-toast wt-toast-${type}`;
         toast.innerHTML = `
             <span class="wt-toast-message"></span>
-            <button type="button" class="wt-toast-close" aria-label="Dismiss">&times;</button>
+            <button type="button" class="wt-toast-close btn-ghost-danger" aria-label="Dismiss">&times;</button>
         `;
         toast.querySelector('.wt-toast-message').textContent = message;
 

@@ -143,6 +143,9 @@ html[data-theme="light"] .user-notifications-page .notifications-book-link { col
 .user-notifications-page .toast.toast-error { border-left-color: var(--danger); }
 .user-notifications-page .toast-message { color: var(--text); font-size: var(--font-size-small); }
 .user-notifications-page .toast-close { display: inline-flex; align-items: center; justify-content: center; min-width: 44px; min-height: 44px; color: var(--text-muted); }
+.user-notifications-page .toast-close.btn-ghost-danger { border: 1px solid transparent; background: transparent; color: var(--text); transition: color 0.3s, border-color 0.3s; }
+.user-notifications-page .toast-close.btn-ghost-danger:hover:not(:disabled),
+.user-notifications-page .toast-close.btn-ghost-danger:focus-visible:not(:disabled) { border-color: var(--danger); background: transparent; color: var(--danger); }
 
 @media (max-width: 560px) {
     .user-notifications-page .notifications-page { padding: 0; }

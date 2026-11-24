@@ -335,6 +335,21 @@ html[data-theme="light"] .auth-page .auth-bubble-layer > .bg-particle {
 }
 .auth-page #mfa-recovery-close:hover { background: color-mix(in srgb, var(--brand) 12%, transparent); }
 .auth-page .mfa-modal-close { color: var(--text); }
+.auth-page .mfa-modal-close.btn-ghost-danger,
+.auth-page #mfa-recovery-close.btn-ghost-danger {
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--text);
+    transition: color 0.3s, border-color 0.3s;
+}
+.auth-page .mfa-modal-close.btn-ghost-danger:hover:not(:disabled),
+.auth-page .mfa-modal-close.btn-ghost-danger:focus-visible:not(:disabled),
+.auth-page #mfa-recovery-close.btn-ghost-danger:hover:not(:disabled),
+.auth-page #mfa-recovery-close.btn-ghost-danger:focus-visible:not(:disabled) {
+    border-color: var(--danger);
+    background: transparent;
+    color: var(--danger);
+}
 .auth-page .google-btn-wrap:focus-within { outline: 2px solid var(--brand); outline-offset: 3px; }
 .auth-page .toast { border-color: var(--border); border-left-color: var(--brand); background: var(--surface); color: var(--text); }
 .auth-page .toast.toast-error { border-left-color: var(--danger); }
@@ -343,6 +358,18 @@ html[data-theme="light"] .auth-page .auth-bubble-layer > .bg-particle {
 .auth-page .toast.toast-error .toast-icon { color: var(--danger); }
 .auth-page .toast-close { color: var(--text-muted); }
 .auth-page .toast-close:hover { color: var(--text); }
+.auth-page .toast-close.btn-ghost-danger {
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--text);
+    transition: color 0.3s, border-color 0.3s;
+}
+.auth-page .toast-close.btn-ghost-danger:hover:not(:disabled),
+.auth-page .toast-close.btn-ghost-danger:focus-visible:not(:disabled) {
+    border-color: var(--danger);
+    background: transparent;
+    color: var(--danger);
+}
 .auth-page .guest-theme-toggle--corner { z-index: 10000; }
 
 @media (max-width: 480px) {

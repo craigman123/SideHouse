@@ -36,7 +36,7 @@ function showToast(message, type = 'success') {
     toast.innerHTML = `
         <span class="toast-icon">${icon}</span>
         <span class="toast-message">${message}</span>
-        <button class="toast-close" onclick="dismissToast(this.parentElement)">&times;</button>
+        <button class="toast-close btn-ghost-danger" onclick="dismissToast(this.parentElement)">&times;</button>
     `;
 
     container.appendChild(toast);

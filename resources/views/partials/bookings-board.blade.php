@@ -56,7 +56,7 @@
 
             <div class="filter-actions">
                 <button type="submit" class="btn-filter">Filter</button>
-                <a href="{{ request()->url() }}" class="btn-clear">Clear</a>
+                <a href="{{ request()->url() }}" class="btn-clear btn-ghost-danger">Clear</a>
             </div>
 
                 </form>
@@ -195,7 +195,7 @@
 
     <div class="court-block-modal-overlay" id="courtBlockModal" hidden>
         <section class="court-block-modal" role="dialog" aria-modal="true" aria-labelledby="courtBlockModalTitle">
-            <button type="button" class="court-block-modal-close" id="courtBlockModalClose" aria-label="Close dialog">&times;</button>
+            <button type="button" class="court-block-modal-close btn-ghost-danger" id="courtBlockModalClose" aria-label="Close dialog">&times;</button>
 
             <div id="courtBlockFormPanel">
                 <h2 id="courtBlockModalTitle">Add calendar event</h2>
@@ -255,7 +255,7 @@
                     </div>
                     <p class="court-block-modal-message" id="courtBlockFormMessage" role="status" aria-live="polite"></p>
                     <div class="court-block-modal-actions">
-                        <button type="button" class="court-block-secondary btn-ghost-cancel" id="courtBlockCancel">Cancel</button>
+                        <button type="button" class="court-block-secondary btn-ghost-danger" id="courtBlockCancel">Cancel</button>
                         <button type="submit" class="court-block-primary" id="courtBlockSave">Save event</button>
                     </div>
                 </form>
@@ -273,7 +273,7 @@
                 <p class="court-block-modal-message" id="courtBlockDeleteMessage" role="status" aria-live="polite"></p>
                 <p class="court-past-edit-note" id="courtBlockPastNote" hidden>Past calendar events are read-only except for notes.</p>
                 <div class="court-block-modal-actions">
-                    <button type="button" class="court-block-secondary" id="courtBlockDetailsClose">Close</button>
+                    <button type="button" class="court-block-secondary btn-ghost-danger" id="courtBlockDetailsClose">Close</button>
                     <button type="button" class="court-block-secondary" id="courtBlockEditOpen">Edit event</button>
                     <button type="button" class="court-block-danger" id="courtBlockDelete">Delete event</button>
                 </div>
@@ -296,7 +296,7 @@
                     </div>
                     <p class="court-block-modal-message" id="courtBlockEditMessage" role="status" aria-live="polite"></p>
                     <div class="court-block-modal-actions">
-                        <button type="button" class="court-block-secondary btn-ghost-cancel" id="courtBlockEditCancel">Back</button>
+                        <button type="button" class="court-block-secondary btn-ghost-danger" id="courtBlockEditCancel">Back</button>
                         <button type="submit" class="court-block-primary">Save event</button>
                     </div>
                 </form>
@@ -309,7 +309,7 @@
                 <p class="court-block-modal-message" id="courtBookingDetailsMessage" role="status" aria-live="polite"></p>
                 <p class="court-past-edit-note" id="courtBookingPastNote" hidden>Past bookings can't be edited.</p>
                 <div class="court-block-modal-actions">
-                    <button type="button" class="court-block-secondary" id="courtBookingDetailsClose">Close</button>
+                    <button type="button" class="court-block-secondary btn-ghost-danger" id="courtBookingDetailsClose">Close</button>
                     <button type="button" class="court-block-primary" id="courtBookingEditOpen" data-permission="bookings.edit">Edit booking</button>
                 </div>
             </div>
@@ -332,7 +332,7 @@
                     </div>
                     <p class="court-block-modal-message" id="courtBookingEditMessage" role="status" aria-live="polite"></p>
                     <div class="court-block-modal-actions">
-                        <button type="button" class="court-block-secondary btn-ghost-cancel" id="courtBookingEditCancel">Back</button>
+                        <button type="button" class="court-block-secondary btn-ghost-danger" id="courtBookingEditCancel">Back</button>
                         <button type="submit" class="court-block-primary" data-permission="bookings.edit">Save booking</button>
                     </div>
                 </form>

@@ -124,13 +124,13 @@ html.owner-layout-shell .announcements-page .btn-filter:hover {
 }
 
 html.owner-layout-shell .announcements-page .btn-danger,
-html.owner-layout-shell .announcements-page .row-delete-btn {
+html.owner-layout-shell .announcements-page .row-delete-btn:not(.btn-ghost-danger) {
     border-color: var(--danger);
     color: var(--danger);
 }
 
 html.owner-layout-shell .announcements-page .btn-danger:hover,
-html.owner-layout-shell .announcements-page .row-delete-btn:hover {
+html.owner-layout-shell .announcements-page .row-delete-btn:not(.btn-ghost-danger):hover {
     background: var(--danger);
     color: var(--bg);
 }
@@ -138,7 +138,7 @@ html.owner-layout-shell .announcements-page .row-delete-btn:hover {
 html.owner-layout-shell .announcements-page .btn:disabled,
 html.owner-layout-shell .announcements-page .btn-filter:disabled,
 html.owner-layout-shell .announcements-page .btn-danger:disabled,
-html.owner-layout-shell .announcements-page .row-delete-btn:disabled {
+html.owner-layout-shell .announcements-page .row-delete-btn:not(.btn-ghost-danger):disabled {
     opacity: 0.6;
     cursor: not-allowed;
 }
@@ -271,9 +271,7 @@ html.owner-layout-shell .announcements-page .row-delete-btn {
     min-width: 44px;
     min-height: 44px;
     padding: var(--s2) var(--s3);
-    border: 1px solid var(--danger);
     border-radius: var(--r-pill);
-    background: transparent;
     font: inherit;
     font-weight: var(--font-weight-button);
     cursor: pointer;

@@ -358,6 +358,51 @@ html.owner-layout-shell .toast-close:hover {
     color: var(--text);
 }
 
+html.owner-layout-shell .btn-ghost-danger,
+html.owner-layout-shell .btn-icon.btn-ghost-danger,
+html.owner-layout-shell .user-access-secondary.btn-ghost-danger,
+html.owner-layout-shell .court-block-modal-actions .btn-ghost-danger {
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--text);
+    transition: color 0.3s, border-color 0.3s;
+}
+
+html.owner-layout-shell .btn-ghost-danger:hover:not(:disabled),
+html.owner-layout-shell .btn-ghost-danger:focus-visible:not(:disabled),
+html.owner-layout-shell .btn-icon.btn-ghost-danger:hover:not(:disabled),
+html.owner-layout-shell .btn-icon.btn-ghost-danger:focus-visible:not(:disabled),
+html.owner-layout-shell .user-access-secondary.btn-ghost-danger:hover:not(:disabled),
+html.owner-layout-shell .user-access-secondary.btn-ghost-danger:focus-visible:not(:disabled),
+html.owner-layout-shell .court-block-modal-actions .btn-ghost-danger:hover:not(:disabled),
+html.owner-layout-shell .court-block-modal-actions .btn-ghost-danger:focus-visible:not(:disabled) {
+    border-color: var(--danger);
+    background: transparent;
+    color: var(--danger);
+}
+
+html.owner-layout-shell .btn-ghost-danger:disabled {
+    border-color: transparent;
+    background: transparent;
+    color: var(--text);
+    opacity: .5;
+    cursor: not-allowed;
+}
+
+html.owner-layout-shell .toast-close.btn-ghost-danger {
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--text);
+    transition: color 0.3s, border-color 0.3s;
+}
+
+html.owner-layout-shell .toast-close.btn-ghost-danger:hover:not(:disabled),
+html.owner-layout-shell .toast-close.btn-ghost-danger:focus-visible:not(:disabled) {
+    border-color: var(--danger);
+    background: transparent;
+    color: var(--danger);
+}
+
 @media (max-width: 767px) {
     html.owner-layout-shell .modal-actions,
     html.owner-layout-shell .equip-form-actions {

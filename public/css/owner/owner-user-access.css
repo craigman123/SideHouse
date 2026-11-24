@@ -53,6 +53,7 @@
 .user-access-secondary { color: var(--text); background: transparent; border-color: var(--brand); }
 .user-access-secondary:hover:not(:disabled) { background: color-mix(in srgb, var(--brand), transparent 88%); }
 .user-access-danger { color: var(--danger); background: transparent; border-color: var(--danger); }
+.user-access-danger:not(.btn-ghost-danger) { transition: color 0.3s, border-color 0.3s, background-color 0.3s; }
 .user-access-danger:hover:not(:disabled) { background: color-mix(in srgb, var(--danger), transparent 90%); }
 .user-access-primary:disabled,
 .user-access-secondary:disabled,

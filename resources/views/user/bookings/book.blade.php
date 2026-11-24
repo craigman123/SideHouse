@@ -94,7 +94,7 @@
         <div class="modal-box modal-box-lg">
             <div class="modal-header">
                 <h3 id="modalCourtName">Court</h3>
-                <button type="button" class="modal-close" id="courtInfoModalClose" aria-label="Close">&times;</button>
+                <button type="button" class="modal-close btn-ghost-danger" id="courtInfoModalClose" aria-label="Close">&times;</button>
             </div>
 
             <div class="court-modal-graphic" aria-hidden="true">
@@ -113,7 +113,7 @@
                 <p class="court-modal-row"><span>Rate</span><strong id="modalCourtPrice"></strong></p>
             </div>
             <div class="modal-actions">
-                <button type="button" class="btn btn-secondary" id="stepInfoClose">Close</button>
+                <button type="button" class="btn btn-secondary btn-ghost-danger" id="stepInfoClose">Close</button>
                 <button type="button" class="btn btn-primary" id="goToBooking">Book This Court</button>
             </div>
         </div>
@@ -124,7 +124,7 @@
         <div class="modal-box modal-box-lg">
             <div class="modal-header">
                 <h3 id="modalCourtNameBooking">Book a Court</h3>
-                <button type="button" class="modal-close" id="courtBookingModalClose" aria-label="Close">&times;</button>
+                <button type="button" class="modal-close btn-ghost-danger" id="courtBookingModalClose" aria-label="Close">&times;</button>
             </div>
 
             <div class="booking-flow-progress user-booking-progress" aria-label="Booking progress">
@@ -134,7 +134,7 @@
                 <span class="booking-flow-step" data-booking-step="4"><b>4</b>Payment</span>
             </div>
 
-            <button type="button" class="modal-back btn-ghost-cancel" id="backToInfo">&larr; Back to details</button>
+            <button type="button" class="modal-back btn-ghost-danger" id="backToInfo">&larr; Back to details</button>
 
             <div class="booking-section">
                 <p class="booking-section-label">Pick a date</p>
@@ -152,7 +152,7 @@
             </div>
 
             <div class="modal-actions">
-                <button type="button" class="btn btn-secondary btn-ghost-cancel" id="backToInfo2">Back</button>
+                <button type="button" class="btn btn-secondary btn-ghost-danger" id="backToInfo2">Back</button>
             </div>
         </div>
     </div>
@@ -161,8 +161,8 @@
     <div class="modal-overlay" id="timePickerModal">
         <div class="modal-box modal-box-lg modal-box-timepicker">
             <div class="modal-header-timepicker">
-                <button type="button" class="modal-back modal-back-time" id="backToCalendar">&larr; Back to date</button>
-                <button type="button" class="modal-close" id="timePickerModalClose" aria-label="Close">&times;</button>
+                <button type="button" class="modal-back modal-back-time btn-ghost-danger" id="backToCalendar">&larr; Back to date</button>
+                <button type="button" class="modal-close btn-ghost-danger" id="timePickerModalClose" aria-label="Close">&times;</button>
                 <div class="booking-flow-progress booking-flow-progress-compact user-booking-progress" aria-label="Booking progress">
                     <span class="booking-flow-step active" data-booking-step="1"><b>1</b>Date &amp; time</span>
                     <span class="booking-flow-step" data-booking-step="2"><b>2</b>Equipment</span>
@@ -200,7 +200,7 @@
             </div>
 
             <div class="modal-actions">
-                <button type="button" class="btn btn-secondary btn-ghost-cancel" id="backToCalendar2">Back</button>
+                <button type="button" class="btn btn-secondary btn-ghost-danger" id="backToCalendar2">Back</button>
                 <button type="button" class="btn btn-primary" id="continueToEquipment">Continue</button>
             </div>
         </div>
@@ -211,7 +211,7 @@
         <div class="modal-box modal-box-lg modal-box-scrollable">
             <div class="modal-header equipment-header">
                 <h3>Rent Equipment</h3>
-                <button type="button" class="modal-close" id="equipmentModalClose" aria-label="Close">&times;</button>
+                <button type="button" class="modal-close btn-ghost-danger" id="equipmentModalClose" aria-label="Close">&times;</button>
                 <div class="booking-flow-progress booking-flow-progress-compact user-booking-progress" aria-label="Booking progress">
                     <span class="booking-flow-step" data-booking-step="1"><b>1</b>Date &amp; time</span>
                     <span class="booking-flow-step active" data-booking-step="2"><b>2</b>Equipment</span>
@@ -237,7 +237,7 @@
             </div>
 
             <div class="modal-actions">
-                <button type="button" class="btn btn-secondary btn-ghost-cancel" id="backToBookingFromEquipment2">Back Previous</button>
+                <button type="button" class="btn btn-secondary btn-ghost-danger" id="backToBookingFromEquipment2">Back Previous</button>
                 <button type="button" class="btn btn-primary" id="continueToPayment">Continue</button>
             </div>
         </div>
@@ -248,7 +248,7 @@
         <div class="modal-box modal-box-lg modal-box-scrollable" id="paymentPage">
             <div class="modal-header payment-header">
                 <h3>Almost Done</h3>
-                <button type="button" class="modal-close" id="courtPaymentModalClose" aria-label="Close">&times;</button>
+                <button type="button" class="modal-close btn-ghost-danger" id="courtPaymentModalClose" aria-label="Close">&times;</button>
                 <div class="booking-flow-progress booking-flow-progress-compact user-booking-progress" aria-label="Booking progress">
                     <span class="booking-flow-step" data-booking-step="1"><b>1</b><span class="booking-flow-label">Date &amp; time</span></span>
                     <span class="booking-flow-step" data-booking-step="2"><b>2</b><span class="booking-flow-label">Equipment</span></span>
@@ -328,7 +328,7 @@
             <div class="booking-total-bar booking-summary-total">Total: <strong id="summaryTotal"></strong></div>
 
             <div class="modal-actions">
-                <button type="button" class="btn btn-secondary btn-ghost-cancel" id="backToEquipment2">Back</button>
+                <button type="button" class="btn btn-secondary btn-ghost-danger" id="backToEquipment2">Back</button>
                 <button type="button" class="btn btn-primary" id="confirmBooking">Confirm Booking</button>
             </div>
         </div>

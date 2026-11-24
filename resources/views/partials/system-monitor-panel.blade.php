@@ -8,7 +8,7 @@
             <button type="button" class="system-monitor-action" id="systemMonitorCollapse" aria-label="Collapse System Monitor" title="Collapse">
                 <span aria-hidden="true">−</span>
             </button>
-            <button type="button" class="system-monitor-action" id="systemMonitorClose" aria-label="Close System Monitor" title="Close">
+            <button type="button" class="system-monitor-action btn-ghost-danger" id="systemMonitorClose" aria-label="Close System Monitor" title="Close">
                 <span aria-hidden="true">×</span>
             </button>
         </div>

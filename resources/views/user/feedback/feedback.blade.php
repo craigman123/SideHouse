@@ -107,7 +107,7 @@
                         <form method="POST" action="{{ route('user.feedback.destroy', $feedback) }}" class="feedback-delete-form" onsubmit="return confirm('Delete this feedback? This can\'t be undone.');">
                             @csrf
                             @method('DELETE')
-                            <button type="submit" class="btn-icon btn-delete">Delete</button>
+                            <button type="submit" class="btn-icon btn-delete btn-ghost-danger">Delete</button>
                         </form>
                     </div>
                 </div>
@@ -143,7 +143,7 @@
                     </div>
 
                     <div class="feedback-edit-actions">
-                        <button type="button" class="btn-icon btn-cancel-edit btn-ghost-cancel">Cancel</button>
+                        <button type="button" class="btn-icon btn-cancel-edit btn-ghost-danger">Cancel</button>
                         <button type="submit" class="btn btn-primary-sm">Save Changes</button>
                     </div>
                 </form>

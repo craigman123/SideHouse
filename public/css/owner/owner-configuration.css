@@ -188,6 +188,30 @@ html.owner-layout-shell .admin-configuration-page :is(button, input, select):dis
     cursor: not-allowed;
 }
 
+html.owner-layout-shell .admin-configuration-page :is(button, a).btn-ghost-danger,
+html.owner-layout-shell .admin-configuration-page :is(button, a).btn-ghost-danger:hover,
+html.owner-layout-shell .admin-configuration-page :is(button, a).btn-ghost-danger:focus-visible {
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--text);
+    transition: color 0.3s, border-color 0.3s;
+}
+
+html.owner-layout-shell .admin-configuration-page :is(button, a).btn-ghost-danger:hover:not(:disabled),
+html.owner-layout-shell .admin-configuration-page :is(button, a).btn-ghost-danger:focus-visible:not(:disabled) {
+    border-color: var(--danger);
+    background: transparent;
+    color: var(--danger);
+}
+
+html.owner-layout-shell .admin-configuration-page :is(button, a).btn-ghost-danger:disabled {
+    border-color: transparent;
+    background: transparent;
+    color: var(--text);
+    opacity: .5;
+    cursor: not-allowed;
+}
+
 html.owner-layout-shell .admin-configuration-page .schedule-field-weekdays {
     margin-top: var(--s5);
 }
@@ -500,6 +524,20 @@ html.owner-layout-shell .admin-configuration-page .schedule-toast-close {
     background: transparent;
     color: var(--text);
     cursor: pointer;
+}
+
+html.owner-layout-shell .admin-configuration-page .schedule-toast-close.btn-ghost-danger {
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--text);
+    transition: color 0.3s, border-color 0.3s;
+}
+
+html.owner-layout-shell .admin-configuration-page .schedule-toast-close.btn-ghost-danger:hover:not(:disabled),
+html.owner-layout-shell .admin-configuration-page .schedule-toast-close.btn-ghost-danger:focus-visible:not(:disabled) {
+    border-color: var(--danger);
+    background: transparent;
+    color: var(--danger);
 }
 
 html.owner-layout-shell .admin-configuration-page .mb-slot-list {

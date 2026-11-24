@@ -39,7 +39,7 @@
         data-landing-url="{{ $landingUrl }}"
         data-receipt-url="{{ $receiptUrl }}"
     >
-        <a href="#" class="wt-back" id="backToHome">&larr; Back to home</a>
+        <a href="#" class="wt-back btn-ghost-danger" id="backToHome">&larr; Back to home</a>
 
         <div class="wt-hero">
             <h1>Almost there</h1>
@@ -99,7 +99,7 @@
                     <span class="wt-float-timer-value" id="floatTimerValue">--:--</span>
                 </div>
                 <div class="wt-cancel-actions">
-                    <button type="button" class="wt-btn-cancel" id="cancelBtn">Cancel this booking</button>
+                    <button type="button" class="wt-btn-cancel btn-ghost-danger" id="cancelBtn">Cancel this booking</button>
                 </div>
             </div>
         </div>
@@ -117,7 +117,7 @@
                 <button type="button" class="wt-confirm-modal-cancel" id="wt-confirm-modal-cancel">
                     Keep booking
                 </button>
-                <button type="button" class="wt-confirm-modal-confirm" id="wt-confirm-modal-confirm">
+                <button type="button" class="wt-confirm-modal-confirm btn-ghost-danger" id="wt-confirm-modal-confirm">
                     Yes, cancel
                 </button>
             </div>
@@ -136,7 +136,7 @@
                 <button type="button" class="wt-confirm-modal-cancel" id="wt-back-nav-stay">
                     Stay &amp; complete payment
                 </button>
-                <button type="button" class="wt-confirm-modal-confirm" id="wt-back-nav-leave">
+                <button type="button" class="wt-confirm-modal-confirm btn-ghost-danger" id="wt-back-nav-leave">
                     Yes, cancel &amp; leave
                 </button>
             </div>

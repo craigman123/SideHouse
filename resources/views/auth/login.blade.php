@@ -91,7 +91,7 @@
         <div class="mfa-modal-content">
             <div class="mfa-modal-header">
                 <h2 id="mfa-modal-title">Two-Factor Authentication</h2>
-                <button type="button" id="mfa-modal-close" class="mfa-modal-close" aria-label="Close">&times;</button>
+                <button type="button" id="mfa-modal-close" class="mfa-modal-close btn-ghost-danger" aria-label="Close">&times;</button>
             </div>
 
             <div class="mfa-modal-body">
@@ -125,7 +125,7 @@
                     <p><strong>Save these recovery codes</strong> in a safe place. Each can only be used once.</p>
                     <ul id="mfa-recovery-list" class="mfa-recovery-list"></ul>
                     <button id="mfa-recovery-continue" class="mfa-btn">Continue to Dashboard</button>
-                    <button id="mfa-recovery-close" class="mfa-btn">Close</button>
+                    <button id="mfa-recovery-close" class="mfa-btn btn-ghost-danger">Close</button>
                 </div>
             </div>
         </div>

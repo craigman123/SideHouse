@@ -205,7 +205,7 @@
                                 </span>
                             </td>
                             <td class="actions-cell">
-                                <button type="button" class="btn-icon btn-delete" data-cancel>Cancel</button>
+                                <button type="button" class="btn-icon btn-delete btn-ghost-danger" data-cancel>Cancel</button>
                             </td>
                         </tr>
                     @empty
@@ -257,12 +257,12 @@
         <div class="modal-box modal-box-sm">
             <div class="modal-header">
                 <h3>Cancel this booking?</h3>
-                <button type="button" class="modal-close" id="modalClose" aria-label="Close">&times;</button>
+                <button type="button" class="modal-close btn-ghost-danger" id="modalClose" aria-label="Close">&times;</button>
             </div>
             <p class="modal-text" id="modalText">This will free up the slot for other players. This can't be undone.</p>
             <div class="modal-actions">
                 <button type="button" class="btn btn-secondary btn-ghost-cancel" id="modalKeep">Keep booking</button>
-                <button type="button" class="btn btn-danger" id="modalConfirm">Cancel booking</button>
+                <button type="button" class="btn btn-danger btn-ghost-danger" id="modalConfirm">Cancel booking</button>
             </div>
         </div>
     </div>

@@ -295,7 +295,7 @@
         toast.className = `toast toast-${type}`;
         toast.innerHTML = `
             <span class="toast-message"></span>
-            <button type="button" class="toast-close" aria-label="Dismiss">&times;</button>
+            <button type="button" class="toast-close btn-ghost-danger" aria-label="Dismiss">&times;</button>
         `;
         toast.querySelector('.toast-message').textContent = message;
 

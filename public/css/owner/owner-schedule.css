@@ -546,6 +546,19 @@
     padding: 0;
 }
 .schedule-toast-close:hover { opacity: 1; }
+.schedule-toast-close.btn-ghost-danger {
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--text);
+    transition: color 0.3s, border-color 0.3s;
+}
+.schedule-toast-close.btn-ghost-danger:hover:not(:disabled),
+.schedule-toast-close.btn-ghost-danger:focus-visible:not(:disabled) {
+    border-color: var(--danger);
+    background: transparent;
+    color: var(--danger);
+    opacity: 1;
+}
 
 .schedule-toast-hide {
     opacity: 0;

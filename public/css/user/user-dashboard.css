@@ -795,3 +795,25 @@ a.is-cancelling-disabled {
     .user-dashboard-page .court-card,
     .user-dashboard-page .btn-hero-cta { transition: none; transform: none; }
 }
+
+.user-dashboard-page .btn-ghost-danger {
+    border-color: transparent;
+    background: transparent;
+    color: var(--text);
+    transition: color 0.3s, border-color 0.3s;
+}
+
+.user-dashboard-page .btn-ghost-danger:hover:not(:disabled),
+.user-dashboard-page .btn-ghost-danger:focus-visible:not(:disabled) {
+    border-color: var(--danger);
+    background: transparent;
+    color: var(--danger);
+}
+
+.user-dashboard-page .btn-ghost-danger:disabled {
+    border-color: transparent;
+    background: transparent;
+    color: var(--text);
+    opacity: .5;
+    cursor: not-allowed;
+}

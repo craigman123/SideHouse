@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Page Not Found | Court Booking</title>
     <link rel="icon" href="public/images/tab_icon.png">
+    <link rel="stylesheet" href="{{ asset('css/tokens.css') }}">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -120,6 +121,19 @@
         }
         .btn-secondary:hover { border-color: #56d364; color: #56d364; }
 
+        .btn-ghost-danger {
+            color: var(--text);
+            border: 1px solid transparent;
+            background: transparent;
+            transition: color 0.3s, border-color 0.3s;
+        }
+        .btn-ghost-danger:hover,
+        .btn-ghost-danger:focus-visible {
+            color: var(--danger);
+            border-color: var(--danger);
+            background: transparent;
+        }
+
         .error-footer {
             margin-top: 28px;
             font-size: 12px;
@@ -155,7 +169,7 @@
 
         <div class="error-actions">
             <a href="{{ url('/') }}" class="btn btn-primary">Refresh</a>
-            <a href="{{ url()->previous() }}" class="btn btn-secondary">Go back</a>
+            <a href="{{ url()->previous() }}" class="btn btn-secondary btn-ghost-danger">Go back</a>
         </div>
 
         <p class="error-footer">Court Booking &middot; Side House Paddlers</p>

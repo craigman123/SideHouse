@@ -534,3 +534,34 @@
         padding: var(--s4);
     }
 }
+
+#waitingPage .wt-back.btn-ghost-danger,
+#waitingPage .wt-btn-cancel.btn-ghost-danger {
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--text);
+    transition: color 0.3s, border-color 0.3s;
+}
+
+#waitingPage .wt-back.btn-ghost-danger:hover:not(:disabled),
+#waitingPage .wt-back.btn-ghost-danger:focus-visible:not(:disabled),
+#waitingPage .wt-btn-cancel.btn-ghost-danger:hover:not(:disabled),
+#waitingPage .wt-btn-cancel.btn-ghost-danger:focus-visible:not(:disabled) {
+    border-color: var(--danger);
+    background: transparent;
+    color: var(--danger);
+}
+
+.wt-toast-close.btn-ghost-danger {
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--text);
+    transition: color 0.3s, border-color 0.3s;
+}
+
+.wt-toast-close.btn-ghost-danger:hover:not(:disabled),
+.wt-toast-close.btn-ghost-danger:focus-visible:not(:disabled) {
+    border-color: var(--danger);
+    background: transparent;
+    color: var(--danger);
+}
