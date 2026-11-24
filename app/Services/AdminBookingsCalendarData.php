@@ -24,9 +24,10 @@ class AdminBookingsCalendarData
         $from = $from->toDateString();
         $to = $to->toDateString();
 
-        $bookings = Booking::with(['court', 'slots', 'equipment.equipment'])
+        $bookingRows = Booking::with(['court', 'slots', 'equipment.equipment'])
             ->whereDate('date', '>=', $queryFrom)->whereDate('date', '<=', $to)
-            ->orderBy('date')->orderBy('start_time')->get()
+            ->orderBy('date')->orderBy('start_time')->get();
+        $bookings = $bookingRows
             ->map(fn (Booking $booking) => [
                 'id' => $booking->id,
                 'updated_at' => $booking->updated_at?->format('Y-m-d\\TH:i:s.uP'),
@@ -62,8 +63,13 @@ class AdminBookingsCalendarData
             'reason' => $closure->reason,
         ])->values();
 
+        $availability = app(OpenPlayAvailability::class);
         $blocks = CourtBlock::with('court')->whereDate('block_date', '>=', $queryFrom)->whereDate('block_date', '<=', $to)
-            ->orderBy('block_date')->orderBy('start_time')->get()->map(fn (CourtBlock $block) => [
+            ->orderBy('block_date')->orderBy('start_time')->get()->map(function (CourtBlock $block) use ($availability, $bookingRows) {
+                $participants = $block->type === 'open_play'
+                    ? $availability->participants($block, $bookingRows)
+                    : [];
+                return [
                 'id' => $block->id,
                 'updated_at' => $block->updated_at?->format('Y-m-d\\TH:i:s.uP'),
                 'court_id' => $block->court?->id,
@@ -75,9 +81,10 @@ class AdminBookingsCalendarData
                 'end_time' => substr((string) $block->end_time, 0, 5),
                 'max_players' => $block->max_players,
                 'price_per_player' => $block->price_per_player,
-                'participant_count' => $block->type === 'open_play'
-                    ? app(OpenPlayAvailability::class)->joined($block, (int) $block->court_id) : null,
-            ])->values();
+                    'participant_count' => $block->type === 'open_play' ? count($participants) : null,
+                    'participants' => $participants,
+                    ];
+            })->values();
 
         $weeklyRules = WeeklyCourtClosure::query()->where('active', true)->whereIn('weekday', [0, 1, 2, 3, 4, 5, 6])->get();
         $weeklyBlocks = collect();

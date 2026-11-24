@@ -900,7 +900,7 @@ html[data-theme="light"] .admin-bookings-page .btn-filter {
 .court-block-modal-message { min-height: 1.4em; margin: var(--s3) 0; color: var(--text-muted); font-size: var(--font-size-small); }
 .court-block-modal-message.is-error { color: var(--danger); }
 .court-block-modal-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--s2); }
-.court-block-modal-actions button { min-height: 44px; padding: var(--s2) var(--s4); border-radius: var(--r-pill); background: transparent; font: var(--font-weight-button) var(--font-size-button)/1.2 var(--font-family); cursor: pointer; }
+.court-block-modal-actions button { color: var(--text); min-height: 44px; padding: var(--s2) var(--s4); border-radius: var(--brand); background: transparent; font: var(--font-weight-button) var(--font-size-button)/1.2 var(--font-family); cursor: pointer; }
 .court-block-modal-actions .court-block-primary { background: var(--brand); }
 .court-block-modal-actions .court-block-primary:hover { background: var(--brand-hover); }
 .court-block-secondary {border-color: transparent; color: var(--text-muted); transition: 150ms ease-in-out; }
@@ -910,6 +910,83 @@ html[data-theme="light"] .admin-bookings-page .btn-filter {
 .court-block-modal-actions .court-block-danger { border-color: var(--danger); color: var(--danger); }
 .court-block-modal-actions button:disabled { border-color: var(--border); background: var(--surface-2); color: var(--text-muted); cursor: wait; }
 #courtBlockDetailsNotes { white-space: pre-wrap; color: var(--text-muted); }
+.court-block-players {
+    margin-top: var(--s4);
+    min-width: 0;
+}
+.court-block-players h3 {
+    display: flex;
+    align-items: center;
+    gap: var(--s2);
+    margin: 0 0 var(--s3);
+    color: var(--text);
+    font-size: var(--font-size-h3);
+}
+.court-block-players h3 svg {
+    width: 18px;
+    height: 18px;
+    flex: 0 0 18px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+.court-block-player-list {
+    max-height: 240px;
+    margin: 0;
+    padding: 0;
+    overflow-y: auto;
+    list-style: none;
+    border: 1px solid var(--border);
+    border-radius: var(--r-md);
+}
+.court-block-player-list li {
+    display: grid;
+    grid-template-columns: 28px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: var(--s2);
+    min-height: 44px;
+    padding: var(--s2) var(--s3);
+    border-bottom: 1px solid var(--border);
+}
+.court-block-player-list li:last-child { border-bottom: 0; }
+.court-block-player-number {
+    color: var(--text-muted);
+    font-weight: var(--font-weight-button);
+}
+.court-block-player-name,
+.court-block-player-detail {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.court-block-player-name { color: var(--text); font-weight: var(--font-weight-button); }
+.court-block-player-detail { color: var(--text-muted); font-size: var(--font-size-small); }
+.court-block-player-empty {
+    margin: 0;
+    padding: var(--s4);
+    border: 1px solid var(--border);
+    border-radius: var(--r-md);
+    color: var(--text-muted);
+    text-align: center;
+}
+.court-block-player-list {
+    scrollbar-color: var(--text-muted) var(--surface-2);
+    scrollbar-width: thin;
+}
+
+@media (max-width: 600px) {
+    .court-block-player-list li {
+        grid-template-columns: 24px minmax(0, 1fr);
+    }
+    .court-block-player-detail {
+        grid-column: 2;
+        white-space: normal;
+        overflow-wrap: anywhere;
+    }
+}
 
 @media (max-width: 600px) {
     .court-block-modal { padding: var(--s5) var(--s4); }

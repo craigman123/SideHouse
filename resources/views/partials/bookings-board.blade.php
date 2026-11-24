@@ -265,6 +265,11 @@
                 <h2 id="courtBlockDetailsTitle"></h2>
                 <p id="courtBlockDetailsMeta" class="court-block-modal-intro"></p>
                 <p id="courtBlockDetailsNotes"></p>
+                <section id="courtBlockPlayersSection" class="court-block-players" hidden aria-labelledby="courtBlockPlayersTitle">
+                    <h3 id="courtBlockPlayersTitle"></h3>
+                    <ol id="courtBlockPlayersList" class="court-block-player-list"></ol>
+                    <p id="courtBlockPlayersEmpty" class="court-block-player-empty"></p>
+                </section>
                 <p class="court-block-modal-message" id="courtBlockDeleteMessage" role="status" aria-live="polite"></p>
                 <p class="court-past-edit-note" id="courtBlockPastNote" hidden>Past calendar events are read-only except for notes.</p>
                 <div class="court-block-modal-actions">

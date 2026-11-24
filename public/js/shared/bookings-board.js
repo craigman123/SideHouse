@@ -734,8 +734,47 @@
             const joined = Math.max(0, Number(block.participant_count ?? 0));
             const maxPlayers = Math.max(0, Number(block.max_players ?? 0));
             const spotsLeft = Math.max(0, maxPlayers - joined);
+            const capacityText = block.max_players == null
+                ? 'Capacity not set'
+                : joined >= maxPlayers ? 'Full' : `${spotsLeft} of ${maxPlayers} spots left`;
+            const participants = Array.isArray(block.participants) ? block.participants : [];
+            const listCount = participants.length;
             document.getElementById('courtBlockDetailsMeta').textContent +=
-                ` · ${joined} joined · ${joined >= maxPlayers ? 'Full' : `${spotsLeft} of ${maxPlayers} spots left`}`;
+                ` · ${listCount} joined · ${capacityText}`;
+
+            const playersSection = document.getElementById('courtBlockPlayersSection');
+            const playersTitle = document.getElementById('courtBlockPlayersTitle');
+            const playersList = document.getElementById('courtBlockPlayersList');
+            const playersEmpty = document.getElementById('courtBlockPlayersEmpty');
+            playersSection.hidden = false;
+            playersTitle.replaceChildren();
+            playersTitle.insertAdjacentHTML('beforeend', '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>');
+            const count = listCount;
+            playersTitle.append(document.createTextNode(`Players (${count})`));
+            playersList.replaceChildren();
+            playersEmpty.textContent = '';
+            playersEmpty.hidden = true;
+            if (count === 0) {
+                playersEmpty.textContent = 'No players have joined yet.';
+                playersEmpty.hidden = false;
+            } else {
+                participants.forEach((participant, index) => {
+                    const row = document.createElement('li');
+                    const number = document.createElement('span');
+                    number.className = 'court-block-player-number';
+                    number.textContent = String(index + 1);
+                    const name = document.createElement('span');
+                    name.className = 'court-block-player-name';
+                    name.textContent = participant.name || 'Player';
+                    const detail = document.createElement('span');
+                    detail.className = 'court-block-player-detail';
+                    detail.textContent = participant.joined_time || participant.status || '';
+                    row.append(number, name, detail);
+                    playersList.append(row);
+                });
+            }
+        } else {
+            document.getElementById('courtBlockPlayersSection').hidden = true;
         }
         const notes = document.getElementById('courtBlockDetailsNotes');
         notes.textContent = block.notes || '';
@@ -2525,7 +2564,9 @@
                     event.dataset.calendarKind = 'block';
                     event.dataset.calendarId = String(block.id);
                     event.style.cssText = `top:${topPx}px;left:${mode === 'week' ? `calc(${laneLeft(lane)} + 2px)` : laneLeft(lane)};width:${mode === 'week' ? `calc(${laneWidth} - 4px)` : laneWidth};height:${heightPx}px;`;
-                    const sessionCount = block.participant_count ?? block.attendee_count ?? block.players_count;
+                    const sessionCount = block.participants
+                        ? block.participants.length
+                        : (block.participant_count ?? block.attendee_count ?? block.players_count);
                     const sessionCapacity = block.max_players ?? block.capacity ?? block.max_participants ?? block.max_capacity;
                     const type = block.type === 'closed' ? 'Closed' : block.type === 'maintenance' ? 'Maintenance' : 'Open play';
                     const title = block.title || type;
@@ -2542,9 +2583,11 @@
                         const joinedText = `${joined} joined`;
                         statusLine = cancelled ? joinedText
                             : fullSession ? `${joinedText} · Full`
-                                : maxPlayers > 0
-                                    ? `${joinedText} · ${spotsLeft} of ${maxPlayers} spots left`
-                                    : `${joinedText} · 0 of 0 spots left`;
+                                : sessionCapacity == null
+                                    ? `${joinedText} · Capacity not set`
+                                    : maxPlayers > 0
+                                        ? `${joinedText} · ${spotsLeft} of ${maxPlayers} spots left`
+                                        : `${joinedText} · 0 of 0 spots left`;
                         const perPlayer = block.price_per_player ?? block.price ?? block.amount_per_player;
                         if (perPlayer != null && Number.isFinite(Number(perPlayer))) price = `₱${Number(perPlayer).toLocaleString('en-PH')}/player`;
                     }
@@ -2553,8 +2596,13 @@
                     if (block.type === 'open_play') {
                         const joined = Math.max(0, Number(sessionCount || 0));
                         const maxPlayers = Math.max(0, Number(sessionCapacity || 0));
-                        const fullText = fullSession ? 'Full' : `${Math.max(0, maxPlayers - joined)} of ${maxPlayers} spots left`;
-                        const compactLabel = mode === 'week' ? `${title} · ${joined}/${maxPlayers}` : `Open Play · ${joined} joined`;
+                        const fullText = sessionCapacity == null
+                            ? 'Capacity not set'
+                            : fullSession ? 'Full'
+                                : `${Math.max(0, maxPlayers - joined)} of ${maxPlayers} spots left`;
+                        const compactLabel = mode === 'week'
+                            ? (sessionCapacity == null ? `${title} · ${joined} joined` : `${title} · ${joined}/${maxPlayers}`)
+                            : `Open Play · ${joined} joined`;
                         const content = appendCalendarContent(event, {
                             icon: 'people',
                             title,
