@@ -152,6 +152,72 @@ html.admin-layout-shell .sidebar-nav-icon {
     width: 20px;
     height: 20px;
     color: currentColor;
+    transform: translateY(0) scale(1);
+    transform-origin: center;
+    transition:
+        transform var(--sidebar-icon-duration, 200ms) var(--sidebar-icon-easing, ease-out),
+        color var(--sidebar-icon-duration, 200ms) var(--sidebar-icon-easing, ease-out);
+}
+
+html.admin-layout-shell {
+    --sidebar-icon-duration: 200ms;
+    --sidebar-icon-easing: ease-out;
+    --sidebar-icon-spring-easing: cubic-bezier(.2, .75, .35, 1.25);
+}
+
+@keyframes sidebar-icon-pop {
+    0% { transform: translateY(0) scale(1); }
+    55% { transform: translateY(-1px) scale(1.2); }
+    100% { transform: translateY(0) scale(1); }
+}
+
+@keyframes sidebar-icon-bounce {
+    0% { transform: translateY(-2px) scale(1.1); }
+    50% { transform: translateY(-5px) scale(1.1); }
+    100% { transform: translateY(-2px) scale(1.1); }
+}
+
+@media (hover: hover) {
+    html.admin-layout-shell .sidebar-nav a:hover .sidebar-nav-icon,
+    html.admin-layout-shell .switch-access-trigger:hover .switch-access-icon {
+        color: var(--brand-hover);
+        transform: translateY(-2px) scale(1.1);
+    }
+
+    html.admin-layout-shell .sidebar-nav a:hover .sidebar-nav-icon[data-sidebar-icon="bookings"] {
+        transform: translateY(-2px) scale(1.1) rotate(-8deg);
+    }
+
+    html.admin-layout-shell .sidebar-nav a:hover .sidebar-nav-icon[data-sidebar-icon="configuration"] {
+        transform: translateY(-2px) scale(1.1) rotate(45deg);
+    }
+
+    html.admin-layout-shell .sidebar-nav a:hover .sidebar-nav-icon[data-sidebar-icon="customers"],
+    html.admin-layout-shell .sidebar-nav a:hover .sidebar-nav-icon[data-sidebar-icon="access"] {
+        animation: sidebar-icon-bounce var(--sidebar-icon-duration) var(--sidebar-icon-easing);
+    }
+
+    html.admin-layout-shell .switch-access-trigger:hover .switch-access-icon {
+        transform: translateY(-2px) scale(1.1) rotate(180deg);
+    }
+}
+
+html.admin-layout-shell .sidebar-nav a:active .sidebar-nav-icon,
+html.admin-layout-shell .switch-access-trigger:active .switch-access-icon {
+    color: var(--brand-hover);
+    transform: translateY(0) scale(.9);
+    transition-timing-function: var(--sidebar-icon-spring-easing);
+}
+
+html.admin-layout-shell .sidebar-nav a.active .sidebar-nav-icon {
+    animation: sidebar-icon-pop 300ms var(--sidebar-icon-spring-easing) 1;
+}
+
+html.admin-layout-shell .switch-access-icon {
+    transition:
+        transform var(--sidebar-icon-duration) var(--sidebar-icon-easing),
+        color var(--sidebar-icon-duration) var(--sidebar-icon-easing);
+    color: currentColor;
 }
 
 html.admin-layout-shell .admin-nav-text {
@@ -707,8 +773,16 @@ html.admin-layout-shell.is-admin-sidebar-collapsed .admin-sidebar-collapse-toggl
     html.admin-layout-shell .admin-sidebar-backdrop,
     html.admin-layout-shell .main,
     html.admin-layout-shell .sidebar-nav a,
-    html.admin-layout-shell .admin-sidebar-collapse-toggle {
+    html.admin-layout-shell .admin-sidebar-collapse-toggle,
+    html.admin-layout-shell .sidebar-nav-icon,
+    html.admin-layout-shell .switch-access-icon {
         transition: none;
+    }
+
+    html.admin-layout-shell .sidebar-nav-icon,
+    html.admin-layout-shell .switch-access-icon {
+        animation: none !important;
+        transform: none !important;
     }
 }
 

@@ -287,6 +287,11 @@ Route::middleware(['auth', 'admin', 'admin.mfa', 'throttle:120,1'])->group(funct
     Route::get('/reports', [ReportController::class, 'index'])->middleware('owner.page.redirect')->name('admin.reports.index');
     Route::get('/reports/system', [ReportController::class, 'system'])->middleware('can.access:reports.system')->name('admin.reports.system');
 
+    // Widgets
+    Route::get('/admin/widgets', fn () => view('admin.widgets.index'))
+        ->middleware('owner.page.redirect')
+        ->name('admin.widgets.index');
+
     // Configuration / Schedule
     Route::get('/admin/configuration', [ConfigurationController::class, 'index'])->middleware('owner.page.redirect')->name('admin.configuration.index');
     Route::put('/admin/configuration/hours', [ConfigurationController::class, 'updateHours'])->name('admin.configuration.hours.update');

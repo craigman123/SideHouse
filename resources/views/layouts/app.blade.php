@@ -6,6 +6,7 @@
         'profile_route' => 'admin.profile',
         'menu' => [
             ['section' => 'Main', 'label' => 'Overview', 'icon' => 'overview', 'route' => 'admin.dashboard'],
+            ['section' => 'Main', 'label' => 'Widgets', 'icon' => 'widgets', 'route' => 'admin.widgets.index', 'active' => 'admin.widgets.*'],
             ['section' => 'Management', 'label' => 'Bookings', 'icon' => 'bookings', 'route' => 'bookings.index', 'active' => 'bookings.*'],
             ['section' => 'Management', 'label' => 'Courts', 'icon' => 'courts', 'route' => 'courts.index', 'active' => 'courts.*'],
             ['section' => 'Management', 'label' => 'Configuration', 'icon' => 'configuration', 'route' => 'admin.configuration.index', 'active' => 'admin.configuration.*'],
