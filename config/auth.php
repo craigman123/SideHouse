@@ -20,6 +20,8 @@ return [
         'passwords' => env('AUTH_PASSWORD_BROKER', 'users'),
     ],
 
+    'multi_guard' => env('MULTI_GUARD_ENABLED', false),
+
     /*
     |--------------------------------------------------------------------------
     | Authentication Guards
@@ -39,6 +41,22 @@ return [
 
     'guards' => [
         'web' => [
+            'driver' => 'session',
+            'provider' => 'users',
+        ],
+        'admin' => [
+            'driver' => 'session',
+            'provider' => 'users',
+        ],
+        'owner' => [
+            'driver' => 'session',
+            'provider' => 'users',
+        ],
+        'staff' => [
+            'driver' => 'session',
+            'provider' => 'users',
+        ],
+        'customer' => [
             'driver' => 'session',
             'provider' => 'users',
         ],

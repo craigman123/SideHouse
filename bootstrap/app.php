@@ -24,6 +24,7 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
         $middleware->web(append: [
             \App\Http\Middleware\PreventBackHistory::class,
+            \App\Http\Middleware\SelectRoleGuard::class,
             \App\Http\Middleware\EnsureAccessVersion::class,
         ]);
         $middleware->append(\App\Http\Middleware\LogRequestTraffic::class);
