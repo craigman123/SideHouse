@@ -15,7 +15,7 @@ class UserDashboardController extends Controller
         $userInfo = Auth::user();
 
         $upcomingBookings = Booking::where('user_id', $userInfo->user_id)
-            ->where('date', '>=', today())
+            ->where('date', '>=', today()->toDateString())
             ->orderBy('date')
             ->orderBy('start_time')
             ->where('status', 'paid')

@@ -524,7 +524,7 @@ class User_UserController extends Controller
         $activeMembership = Membership::with('plan')
             ->where('user_id', auth()->id())
             ->where('status', 'active')
-            ->where('expiry_date', '>=', now())
+            ->where('expiry_date', '>=', today()->toDateString())
             ->orderByDesc('expiry_date')
             ->first();
         $discountPercent = $activeMembership?->plan?->discount_percent ?? 0;
@@ -940,7 +940,7 @@ class User_UserController extends Controller
         // Those have to go through staff (Admin\BookingController).
         Booking::where('user_id', $user->user_id)
             ->where('status', 'pending')
-            ->where('date', '>=', today())
+            ->where('date', '>=', today()->toDateString())
             ->update(['status' => 'cancelled']);
 
         ActivityLogger::log(

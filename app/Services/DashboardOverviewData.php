@@ -25,7 +25,7 @@ class DashboardOverviewData
             ->whereNotIn('status', ['cancelled', 'expired'])
             ->count();
 
-        $upcoming = Booking::where('date', '>=', today())
+        $upcoming = Booking::where('date', '>=', today()->toDateString())
             ->whereNotIn('status', ['cancelled', 'expired'])
             ->orderBy('date')->orderBy('start_time')->limit(5)->get();
 
