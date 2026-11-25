@@ -77,6 +77,12 @@ const confirmRemove = (rule) => new Promise((resolve) => {
     widgets.forEach((widget) => {
         const form = widget.querySelector('[data-closure-form]');
         const list = widget.querySelector('[data-closure-list]');
+        const listUrl = widget.dataset.listUrl;
+        const hoursUrl = widget.dataset.hoursUrl;
+        const storeUrl = widget.dataset.storeUrl;
+        const updateUrlTemplate = widget.dataset.updateUrlTemplate;
+        const deleteUrlTemplate = widget.dataset.deleteUrlTemplate;
+        const routeWithId = (template, id) => template.replace('__ID__', encodeURIComponent(String(id)));
         const message = widget.querySelector('[data-closure-message]');
         const hoursNote = widget.querySelector('[data-closure-hours-note]');
         const preview = widget.querySelector('[data-closure-preview]');
@@ -283,7 +289,9 @@ const confirmRemove = (rule) => new Promise((resolve) => {
             selectedDays().forEach((day) => params.append('weekdays[]', String(day)));
             if (court.value) params.set('court_id', court.value);
             try {
-                const data = await api(`/admin/specific-closures/operating-hours?${params}`);
+                const requestUrl = new URL(hoursUrl, window.location.href);
+                params.forEach((value, key) => requestUrl.searchParams.append(key, value));
+                const data = await api(requestUrl.toString());
                 if (requestId !== hoursRequest) return;
                 widget.dataset.step = String(data.step_minutes);
                 weekdayHours = data.weekdays || [];
@@ -397,7 +405,7 @@ const confirmRemove = (rule) => new Promise((resolve) => {
                     setBusy(true);
                     remove.replaceChildren('Removing', makeDots());
                     try {
-                        const result = await api(`/admin/specific-closures/${rule.id}`, { method: 'DELETE' });
+                        const result = await api(routeWithId(deleteUrlTemplate, rule.id), { method: 'DELETE' });
                         if (editingRule && Number(editingRule.id) === Number(rule.id)) form.reset();
                         renderList(result.closures || []);
                         showMessage(result.message);
@@ -416,7 +424,7 @@ const confirmRemove = (rule) => new Promise((resolve) => {
         };
 
         const loadList = async () => {
-            try { const data = await api('/admin/specific-closures'); renderList(data.closures || []); }
+            try { const data = await api(listUrl); renderList(data.closures || []); }
             catch (error) { list.textContent = error.message; }
         };
         dayInputs.forEach((input) => input.addEventListener('change', () => {
@@ -444,8 +452,8 @@ const confirmRemove = (rule) => new Promise((resolve) => {
             setSaving(true);
             try {
                 const result = editingRule
-                    ? await api(`/admin/specific-closures/${editingRule.id}`, { method: 'PATCH', body: JSON.stringify({ ...common, weekday: days[0] }) })
-                    : await api('/admin/specific-closures', { method: 'POST', body: JSON.stringify({ ...common, weekdays: days }) });
+                    ? await api(routeWithId(updateUrlTemplate, editingRule.id), { method: 'PATCH', body: JSON.stringify({ ...common, weekday: days[0] }) })
+                    : await api(storeUrl, { method: 'POST', body: JSON.stringify({ ...common, weekdays: days }) });
                 renderList(result.closures || []);
                 renderWarnings(result.warnings || []);
                 showMessage(result.message);

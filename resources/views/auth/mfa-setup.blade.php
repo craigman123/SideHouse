@@ -45,7 +45,7 @@
                 </div>
                 <p class="mfa-secret-text">Or enter this code manually:<br><code>{{ $secret }}</code></p>
 
-                <form method="POST" action="{{ route('mfa.enable') }}">
+                <form method="POST" action="{{ $mfaEnableUrl }}">
                     @csrf
                     <div class="form-group">
                         <input type="text" name="code" maxlength="6" placeholder="Enter 6-digit code" autocomplete="one-time-code" required>

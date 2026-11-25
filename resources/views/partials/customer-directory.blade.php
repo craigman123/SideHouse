@@ -5,8 +5,10 @@
         $realRole = $access->realRole(auth()->user());
         $creditGiver = in_array($realRole, ['admin', 'owner'], true);
     }
+    $roleGuard = \Illuminate\Support\Facades\Auth::getDefaultDriver();
+    $creditRoutesAvailable = ! config('auth.multi_guard') || in_array($roleGuard, ['admin', 'owner'], true);
 @endphp
-<div class="customers-page is-loading" id="customersPage" data-customers-url="{{ route('admin.customers.data') }}" data-credit-lookup-url="{{ route('admin.customer-credits.lookup') }}" data-credit-store-url="{{ route('admin.customer-credits.store') }}" data-credit-giver="{{ $creditGiver ? 'true' : 'false' }}" data-credit-max="{{ (int) config('credit.max_amount', 10000) }}" data-show-financials="{{ $showFinancials ? 'true' : 'false' }}">
+<div class="customers-page is-loading" id="customersPage" data-customers-url="{{ role_route('admin.customers.data') }}" data-credit-lookup-url="{{ $creditRoutesAvailable ? role_route('admin.customer-credits.lookup') : '' }}" data-credit-store-url="{{ $creditRoutesAvailable ? role_route('admin.customer-credits.store') : '' }}" data-credit-giver="{{ $creditGiver ? 'true' : 'false' }}" data-credit-max="{{ (int) config('credit.max_amount', 10000) }}" data-show-financials="{{ $showFinancials ? 'true' : 'false' }}">
 
         <div class="customers-header">
             <div>

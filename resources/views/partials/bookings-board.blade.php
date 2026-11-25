@@ -11,9 +11,18 @@
         $initialBookingsView = in_array($requestedBookingsView, ['list', 'board', 'month', 'week'], true)
             ? $requestedBookingsView
             : ($hasBookingListState ? 'list' : 'month');
+        $roleGuard = \Illuminate\Support\Facades\Auth::getDefaultDriver();
+        $canStoreWalkIn = ! config('auth.multi_guard') || in_array($roleGuard, ['admin', 'owner'], true);
+        $canManageWeeklyClosures = ! config('auth.multi_guard') || in_array($roleGuard, ['admin', 'owner'], true);
     @endphp
 
-    <div class="bookings-workspace" id="bookingsWorkspace">
+    <div class="bookings-workspace" id="bookingsWorkspace"
+         data-calendar-url="{{ role_route('admin.bookings.calendar') }}"
+         data-walk-in-url="{{ $canStoreWalkIn ? role_route('admin.bookings.walk-in.store') : '' }}"
+         data-block-store-url="{{ role_route('admin.blocks.store') }}"
+         data-booking-update-url-template="{{ role_route('admin.bookings.update', ['booking' => '__ID__']) }}"
+         data-block-update-url-template="{{ role_route('admin.blocks.update', ['block' => '__ID__']) }}"
+         data-block-delete-url-template="{{ role_route('admin.blocks.destroy', ['block' => '__ID__']) }}">
         <div class="bookings-view-tabs" role="tablist" aria-label="Bookings views">
             <button type="button" class="bookings-view-tab {{ $initialBookingsView === 'list' ? 'is-active' : '' }}" role="tab" aria-selected="{{ $initialBookingsView === 'list' ? 'true' : 'false' }}" aria-controls="bookingListView" data-bookings-view="list">
                 Booking list
@@ -159,7 +168,7 @@
                 <div class="court-month-scroll">
                     <div id="courtMonthGrid" class="court-month-grid" aria-live="polite"></div>
                 </div>
-                @if (auth()->user() && app(\App\Services\UserAccessService::class)->allows(auth()->user(), 'calendar_events.manage'))
+                @if (auth()->user() && app(\App\Services\UserAccessService::class)->allows(auth()->user(), 'calendar_events.manage') && $canManageWeeklyClosures)
                     @include('partials.specific-date-closures')
                 @endif
             </div>
@@ -186,7 +195,7 @@
                 <div class="court-week-scroll court-month-scroll">
                     <div id="courtWeekGrid" class="court-month-grid court-week-grid" aria-live="polite"></div>
                 </div>
-                @if (auth()->user() && app(\App\Services\UserAccessService::class)->allows(auth()->user(), 'calendar_events.manage'))
+                @if (auth()->user() && app(\App\Services\UserAccessService::class)->allows(auth()->user(), 'calendar_events.manage') && $canManageWeeklyClosures)
                     @include('partials.specific-date-closures')
                 @endif
             </div>
@@ -208,7 +217,7 @@
                                 <option value="closed" data-event-permission="calendar_events.manage">Closed</option>
                                 <option value="maintenance" data-event-permission="calendar_events.manage">Maintenance</option>
                                 <option value="open_play" data-event-permission="calendar_events.open_play">Open play</option>
-                                <option value="walk_in" data-permission="bookings.create">Walk-in</option>
+                                <option value="walk_in" data-permission="bookings.create" @disabled(! $canStoreWalkIn)>Walk-in</option>
                             </select>
                         </label>
                         <label><span>Court <span class="required-mark" aria-hidden="true" hidden>*</span></span>

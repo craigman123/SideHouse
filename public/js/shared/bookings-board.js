@@ -5,6 +5,13 @@
 
     if (!workspace || !dataElement || !board) return;
 
+    const calendarUrl = workspace.dataset.calendarUrl;
+    const walkInStoreUrl = workspace.dataset.walkInUrl;
+    const blockStoreUrl = workspace.dataset.blockStoreUrl;
+    const bookingUpdateUrlTemplate = workspace.dataset.bookingUpdateUrlTemplate;
+    const blockUpdateUrlTemplate = workspace.dataset.blockUpdateUrlTemplate;
+    const blockDeleteUrlTemplate = workspace.dataset.blockDeleteUrlTemplate;
+    const routeWithId = (template, id) => template.replace('__ID__', encodeURIComponent(String(id)));
     const data = JSON.parse(dataElement.textContent || '{}');
     const priceRules = data.pricingRules || {};
     const priceCalculator = window.SideHouseBookingPriceCalculator;
@@ -12,6 +19,7 @@
     const hasPermission = (permission) => permissions[permission] === true;
     const canManageEventType = (type) => hasPermission('calendar_events.manage')
         || (type === 'open_play' && hasPermission('calendar_events.open_play'));
+    const canCreateWalkIn = () => hasPermission('bookings.create') && Boolean(walkInStoreUrl);
     const canManageBlock = (block) => Boolean(block && block.source !== 'weekly_closure' && canManageEventType(block.type));
     let bookings  = data.bookings  || [];
     let closures  = data.closures  || [];
@@ -344,7 +352,10 @@
         const headers = { Accept: 'application/json' };
         if (etags.has(key)) headers['If-None-Match'] = etags.get(key);
         try {
-            const response = await fetch(`/admin/bookings/calendar?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`, {
+            const requestUrl = new URL(calendarUrl, window.location.href);
+            requestUrl.searchParams.set('from', from);
+            requestUrl.searchParams.set('to', to);
+            const response = await fetch(requestUrl.toString(), {
                 credentials: 'same-origin', headers,
             });
             if (response.status === 304) {
@@ -699,7 +710,10 @@
 
         const sent = { ...queue.wanted, position: { ...queue.wanted.position }, payload: { ...queue.wanted.payload } };
         queue.inFlight = sent;
-        const url = `/admin/${queue.kind === 'block' ? 'blocks' : 'bookings'}/${encodeURIComponent(queue.id)}`;
+        const url = routeWithId(
+            queue.kind === 'block' ? blockUpdateUrlTemplate : bookingUpdateUrlTemplate,
+            queue.id,
+        );
         const headers = { Accept: 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': token };
         const isCurrent = () => moveQueues.get(queue.key) === queue
             && queue.wanted?.sequence === sent.sequence && samePosition(queue.wanted.position, sent.position);
@@ -1025,7 +1039,7 @@
     };
 
     const openCreateModal = (selection) => {
-        if (!hasPermission('calendar_events.manage') && !hasPermission('calendar_events.open_play') && !hasPermission('bookings.create')) return;
+        if (!hasPermission('calendar_events.manage') && !hasPermission('calendar_events.open_play') && !canCreateWalkIn()) return;
         if (isPastDate(selection.date)) return;
         selectedBlock = null;
         selectedBooking = null;
@@ -1040,8 +1054,8 @@
         });
         const walkInOption = walkInType.querySelector('option[value="walk_in"]');
         if (walkInOption) {
-            walkInOption.hidden = !hasPermission('bookings.create');
-            walkInOption.disabled = !hasPermission('bookings.create');
+            walkInOption.hidden = !canCreateWalkIn();
+            walkInOption.disabled = !canCreateWalkIn();
         }
         walkInType.value = hasPermission('calendar_events.manage') ? 'closed'
             : (hasPermission('calendar_events.open_play') ? 'open_play' : 'walk_in');
@@ -1262,7 +1276,7 @@
     blockForm.addEventListener('submit', async (event) => {
         event.preventDefault();
         const selectedType = walkInType.value;
-        if ((selectedType === 'walk_in' && !hasPermission('bookings.create'))
+        if ((selectedType === 'walk_in' && !canCreateWalkIn())
             || (selectedType !== 'walk_in' && !canManageEventType(selectedType))) return;
         if (!validateCalendarForm(blockForm)) return;
         if (savingBlock) return;
@@ -1270,6 +1284,12 @@
         const formData = new FormData(blockForm);
         const payload = Object.fromEntries(formData.entries());
         const isWalkIn = payload.type === 'walk_in';
+        const storeUrl = isWalkIn ? walkInStoreUrl : blockStoreUrl;
+        if (!storeUrl) {
+            blockFormMessage.textContent = 'This event type is not available for your role.';
+            blockFormMessage.classList.add('is-error');
+            return;
+        }
         if (isWalkIn) {
             payload.date = payload.block_date;
             delete payload.block_date;
@@ -1295,7 +1315,7 @@
         saveButton.disabled = true;
         blockFormMessage.textContent = '';
         try {
-            const response = await fetch(isWalkIn ? '/admin/bookings' : '/admin/blocks', {
+            const response = await fetch(storeUrl, {
                 method: 'POST',
                 credentials: 'same-origin',
                 headers: {
@@ -1401,7 +1421,7 @@
         const token = csrfToken();
         if (!token) return null;
         const selectedId = String(selectedBooking.id);
-        const response = await fetch(`/admin/bookings/${encodeURIComponent(selectedId)}`, { method: 'PATCH', credentials: 'same-origin', headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': token }, body: JSON.stringify({ date: target.date, court_id: target.court_id, start_time: target.start, end_time: target.end, ...(Number(durationControl.dataset.adjustMinutes || 0) ? { adjust_minutes: Number(durationControl.dataset.adjustMinutes) } : {}), dry_run: true, expected_updated_at: selectedBooking.updated_at }) });
+        const response = await fetch(routeWithId(bookingUpdateUrlTemplate, selectedId), { method: 'PATCH', credentials: 'same-origin', headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': token }, body: JSON.stringify({ date: target.date, court_id: target.court_id, start_time: target.start, end_time: target.end, ...(Number(durationControl.dataset.adjustMinutes || 0) ? { adjust_minutes: Number(durationControl.dataset.adjustMinutes) } : {}), dry_run: true, expected_updated_at: selectedBooking.updated_at }) });
         const result = await response.json().catch(() => ({}));
         if (String(selectedBooking?.id) !== selectedId) return null;
         if (!response.ok || !result.quote) {
@@ -1630,7 +1650,7 @@
         bookingEditMessage.textContent = '';
         bookingEditMessage.classList.remove('is-error');
         try {
-            let response = await fetch(`/admin/bookings/${encodeURIComponent(selectedBooking.id)}`, {
+            let response = await fetch(routeWithId(bookingUpdateUrlTemplate, selectedBooking.id), {
                 method: 'PATCH',
                 credentials: 'same-origin',
                 headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': token },
@@ -1652,7 +1672,7 @@
                         payload.expected_amount = Number(corrected.new_amount);
                         payload.price_rules_version = corrected.rules_version;
                     }
-                    response = await fetch(`/admin/bookings/${encodeURIComponent(selectedBooking.id)}`, {
+                    response = await fetch(routeWithId(bookingUpdateUrlTemplate, selectedBooking.id), {
                         method: 'PATCH', credentials: 'same-origin',
                         headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': token },
                         body: JSON.stringify(payload),
@@ -1777,7 +1797,7 @@
         blockEditMessage.textContent = '';
         blockEditMessage.classList.remove('is-error');
         try {
-            const response = await fetch(`/admin/blocks/${encodeURIComponent(selectedBlock.id)}`, {
+            const response = await fetch(routeWithId(blockUpdateUrlTemplate, selectedBlock.id), {
                 method: 'PATCH',
                 credentials: 'same-origin',
                 headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': token },
@@ -1845,7 +1865,7 @@
         const deleteButton = document.getElementById('courtBlockDelete');
         deleteButton.disabled = true;
         try {
-            const response = await fetch(`/admin/blocks/${encodeURIComponent(selectedBlock.id)}`, {
+            const response = await fetch(routeWithId(blockDeleteUrlTemplate, selectedBlock.id), {
                 method: 'DELETE',
                 credentials: 'same-origin',
                 headers: {
@@ -3557,7 +3577,7 @@
     changeView(initialView, false);
 
     const requestedNewItem = new URLSearchParams(window.location.search).get('new');
-    if ((requestedNewItem === 'walk-in' && hasPermission('bookings.create'))
+    if ((requestedNewItem === 'walk-in' && canCreateWalkIn())
         || (requestedNewItem === 'event' && (hasPermission('calendar_events.manage') || hasPermission('calendar_events.open_play')))) {
         const currentMinutes = venueNowMinutes();
         const firstOpen = BIZ_OPEN_HOUR * 60;

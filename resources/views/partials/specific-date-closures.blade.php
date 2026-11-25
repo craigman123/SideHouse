@@ -2,7 +2,12 @@
     $weeklyDays = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
     $closedWeekdays = $businessSettings->closed_weekdays ?? [];
 @endphp
-<section class="specific-closures" data-specific-closures>
+<section class="specific-closures" data-specific-closures
+         data-list-url="{{ role_route('admin.specific-closures.index') }}"
+         data-hours-url="{{ role_route('admin.specific-closures.hours') }}"
+         data-store-url="{{ role_route('admin.specific-closures.store') }}"
+         data-update-url-template="{{ role_route('admin.specific-closures.update', ['closure' => '__ID__']) }}"
+         data-delete-url-template="{{ role_route('admin.specific-closures.destroy', ['closure' => '__ID__']) }}">
     <h2>Weekly closures</h2>
     <p>Close a court at the selected time every week. Existing bookings and events are not changed.</p>
     <form class="specific-closure-form" data-closure-form>

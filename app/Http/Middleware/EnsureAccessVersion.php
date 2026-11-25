@@ -59,11 +59,15 @@ class EnsureAccessVersion
 
     private function logoutForRevokedAccess(Request $request): Response
     {
+        $loginRoute = 'login';
         if (config('auth.multi_guard')) {
             $guard = GuardSessionState::currentGuard();
             Auth::guard($guard)->logout();
             GuardSessionState::forgetGuard($request, $guard);
             $request->session()->regenerate();
+            if ($guard !== 'customer') {
+                $loginRoute = $guard.'.login';
+            }
         } else {
             $request->session()->forget('view_as');
             Auth::logout();
@@ -75,7 +79,7 @@ class EnsureAccessVersion
             return response()->json(['message' => 'Your access changed. Please sign in again.'], 401);
         }
 
-        return redirect()->route('login')->withErrors([
+        return redirect()->route($loginRoute)->withErrors([
             'username' => 'Your access changed. Please sign in again.',
         ]);
     }

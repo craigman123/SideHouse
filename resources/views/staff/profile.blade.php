@@ -56,7 +56,7 @@
                 <h2 id="staffSignoutTitle">Sign out</h2>
                 <p>End your staff session on this device.</p>
             </div>
-            <form method="POST" action="{{ route('logout') }}" id="staffLogoutForm">
+            <form method="POST" action="{{ role_route('logout') }}" id="staffLogoutForm">
                 @csrf
                 <div class="profile-actions">
                     <button class="btn btn-danger btn-ghost-danger" type="button" id="staffLogoutButton">Log out</button>

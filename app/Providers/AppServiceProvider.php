@@ -46,7 +46,13 @@ class AppServiceProvider extends ServiceProvider
         // attacker can't dodge the limit just by rotating usernames, and
         // a single IP can't be used to lock out every account at once.
         RateLimiter::for('login', function (\Illuminate\Http\Request $request) {
+            $lane = config('auth.multi_guard')
+                ? (string) ($request->route()?->defaults['_role_guard'] ?? '')
+                : '';
             $key = Str::lower((string) $request->input('username')).'|'.$request->ip();
+            if (config('auth.multi_guard')) {
+                $key .= '|'.$lane;
+            }
 
             return Limit::perMinute(5)->by($key)->response(function (\Illuminate\Http\Request $request, array $headers) {
                 return response()->json([

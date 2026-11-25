@@ -77,7 +77,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // ---------- Setup Modal ----------
     async function openSetupModal() {
-        const res = await fetch('/mfa/setup/init', {
+        const res = await fetch(loginForm.dataset.mfaSetupInitUrl, {
             method: 'POST',
             headers: {
                 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
@@ -110,7 +110,7 @@ document.addEventListener('DOMContentLoaded', () => {
         setupSubmitBtn.textContent = 'Enabling MFA…';
 
         try {
-            const res = await fetch('/mfa/enable', {
+            const res = await fetch(loginForm.dataset.mfaEnableUrl, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -186,7 +186,7 @@ document.addEventListener('DOMContentLoaded', () => {
         verifyBtn.textContent = 'Verifying…';
 
         try {
-            const res = await fetch('/mfa/verify', {
+            const res = await fetch(loginForm.dataset.mfaVerifyUrl, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

@@ -1,7 +1,7 @@
 {{-- is-loading starts present so the skeleton shows immediately on
          first paint, before admin-reports.js even runs — avoids a flash
          of "₱0" before the real numbers load. --}}
-    <div class="reports-page is-loading" id="reportsPage" data-reports-url="{{ route('admin.reports.data') }}" @unless ($ownerView ?? false) data-system-url="{{ route('admin.reports.system') }}" @endunless>
+    <div class="reports-page is-loading" id="reportsPage" data-reports-url="{{ role_route('admin.reports.data') }}" @unless ($ownerView ?? false) data-system-url="{{ route('admin.reports.system') }}" @endunless>
 
         <div class="reports-header">
             <div>

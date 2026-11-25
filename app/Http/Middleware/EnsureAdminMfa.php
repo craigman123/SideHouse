@@ -36,9 +36,9 @@ class EnsureAdminMfa
         ]);
 
         if ($user->hasMfaEnabled()) {
-            return redirect()->route('mfa.challenge');
+            return redirect()->route(mfa_route_name('mfa.challenge'));
         }
 
-        return redirect()->route('mfa.setup');
+        return redirect()->route(mfa_route_name('mfa.setup'));
     }
 }

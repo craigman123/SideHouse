@@ -49,7 +49,8 @@
             @foreach ($visibleMenu->groupBy('section') as $section => $items)
                 <label class="nav-label">{{ $section }}</label>
                 @foreach ($items as $item)
-                    <a href="{{ route($item['route']) }}" @class(['active' => request()->routeIs($item['active'] ?? $item['route'])]) aria-label="{{ $item['label'] }}" title="{{ $item['label'] }}">
+                    @php($menuUrl = in_array($item['route'], ['admin.dashboard', 'admin.user-access.page'], true) ? role_route($item['route']) : route($item['route']))
+                    <a href="{{ $menuUrl }}" @class(['active' => request()->routeIs($item['active'] ?? $item['route'])]) aria-label="{{ $item['label'] }}" title="{{ $item['label'] }}">
                         <svg class="sidebar-nav-icon" @if(in_array($item['icon'], ['bookings', 'configuration', 'customers', 'access'], true)) data-sidebar-icon="{{ $item['icon'] }}" @endif viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#shell-icon-{{ $item['icon'] }}"></use></svg>
                         <span class="admin-nav-text {{ ($item['icon'] ?? '') === 'equipment' ? 'equipment-availability-nav-text' : '' }}">{{ $item['label'] }}</span>
                     </a>
@@ -102,7 +103,7 @@
             <div class="mfa-modal-body"><p>Going back will log you out. Do you want to continue?</p><button id="logout-confirm-no" class="mfa-btn btn-ghost-cancel">Stay</button><button id="logout-confirm-yes" class="mfa-modal-ghost-btn btn-ghost-danger">Log out</button></div>
         </div>
     </div>
-    <form id="logout-form" class="dashboard-shell-logout-form" method="POST" action="{{ route('logout') }}">@csrf</form>
+    <form id="logout-form" class="dashboard-shell-logout-form" method="POST" action="{{ role_route('logout') }}">@csrf</form>
     @stack('scripts')
 </body>
 </html>

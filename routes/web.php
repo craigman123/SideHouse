@@ -150,27 +150,75 @@ Route::get('/guest-book/payment', [GuestBookingController::class, 'paymentPage']
 // version registered above, defeating the rate limit entirely. Do not
 // re-add a bare Route::post('/guest-book', ...) here.
 
-Route::get('/login', [AuthController::class, 'showLogin'])
-    ->middleware('throttle:30,1')
-    ->name('login');
-Route::post('/login', [AuthController::class, 'login'])
-    ->middleware('throttle:login')
-    ->name('login.submit');
+if (! config('auth.multi_guard')) {
+    Route::get('/login', [AuthController::class, 'showLogin'])
+        ->middleware('throttle:30,1')
+        ->name('login');
+    Route::post('/login', [AuthController::class, 'login'])
+        ->middleware('throttle:login')
+        ->name('login.submit');
 
-Route::get('/register', [AuthController::class, 'showRegister'])
-    ->middleware('throttle:30,1')
-    ->name('register');
-// register.submit likely sends a welcome/verification email — keep it
-// under the named 'register' limiter you already have configured.
-Route::post('/register', [AuthController::class, 'register'])
-    ->middleware('throttle:register')
-    ->name('register.submit');
+    Route::get('/register', [AuthController::class, 'showRegister'])
+        ->middleware('throttle:30,1')
+        ->name('register');
+    // Keep registration under its named limiter.
+    Route::post('/register', [AuthController::class, 'register'])
+        ->middleware('throttle:register')
+        ->name('register.submit');
 
-Route::post('/auth/google', [AuthController::class, 'googleAuth'])->middleware('throttle:15,1')->name('auth.google');
+    Route::post('/auth/google', [AuthController::class, 'googleAuth'])
+        ->middleware('throttle:15,1')
+        ->name('auth.google');
 
-Route::post('/logout', [AuthController::class, 'logout'])
-    ->middleware('throttle:10,1,logout')
-    ->name('logout');
+    Route::post('/logout', [AuthController::class, 'logout'])
+        ->middleware('throttle:10,1,logout')
+        ->name('logout');
+} else {
+    $authLanes = [
+        'customer' => ['prefix' => '', 'name' => ''],
+        'admin' => ['prefix' => 'admin', 'name' => 'admin.'],
+        'owner' => ['prefix' => 'owner', 'name' => 'owner.'],
+        'staff' => ['prefix' => 'staff', 'name' => 'staff.'],
+    ];
+
+    $registerLaneRoute = static function (
+        string $method,
+        string $uri,
+        mixed $action,
+        array $middleware,
+        string $name,
+        string $guard,
+    ): void {
+        $route = Route::match([$method], $uri, $action);
+        $route->middleware($middleware)->name($name)->defaults('_role_guard', $guard);
+    };
+
+    foreach ($authLanes as $guard => $lane) {
+        $path = static fn (string $uri): string => trim($lane['prefix'].'/'.$uri, '/');
+        $name = static fn (string $suffix): string => $lane['name'].$suffix;
+
+        $registerLaneRoute('GET', $path('login'), [AuthController::class, 'showLogin'], ['throttle:30,1'], $name('login'), $guard);
+        $registerLaneRoute('POST', $path('login'), [AuthController::class, 'login'], ['throttle:login'], $name('login.submit'), $guard);
+
+        if ($guard === 'customer') {
+            $registerLaneRoute('GET', 'register', [AuthController::class, 'showRegister'], ['throttle:30,1'], 'register', $guard);
+            $registerLaneRoute('POST', 'register', [AuthController::class, 'register'], ['throttle:register'], 'register.submit', $guard);
+        }
+
+        $registerLaneRoute('POST', $path('auth/google'), [AuthController::class, 'googleAuth'], ['throttle:15,1'], $name('auth.google'), $guard);
+        $registerLaneRoute('POST', $path('logout'), [AuthController::class, 'logout'], ['throttle:10,1,logout'], $name('logout'), $guard);
+
+        foreach ([
+            ['GET', 'mfa/setup', [MfaController::class, 'setup'], ['auth', 'throttle:20,1'], 'mfa.setup'],
+            ['POST', 'mfa/setup/init', [MfaController::class, 'initSetup'], ['auth', 'throttle:5,1'], 'mfa.setup.init'],
+            ['POST', 'mfa/enable', [MfaController::class, 'enable'], ['auth', 'throttle:5,1'], 'mfa.enable'],
+            ['GET', 'mfa/challenge', [MfaController::class, 'challenge'], ['auth', 'throttle:20,1'], 'mfa.challenge'],
+            ['POST', 'mfa/verify', [MfaController::class, 'verify'], ['auth', 'throttle:5,1'], 'mfa.verify'],
+        ] as [$method, $uri, $action, $middleware, $suffix]) {
+            $registerLaneRoute($method, $path($uri), $action, $middleware, $name($suffix), $guard);
+        }
+    }
+}
 
 Route::middleware(['auth', 'real-admin.view-as', 'admin.mfa', 'throttle:20,1'])->group(function () {
     Route::post('/switch-access', [ViewAsController::class, 'switch'])->name('view-as.switch');
@@ -179,25 +227,25 @@ Route::middleware(['auth', 'real-admin.view-as', 'admin.mfa', 'throttle:20,1'])-
 
 
 // =================================== MFA ROUTES =====================================
-Route::middleware('auth')->group(function () {
-    Route::get('/mfa/setup', [MfaController::class, 'setup'])
-        ->middleware('throttle:20,1')
-        ->name('mfa.setup');
-    // init likely emails/texts an OTP or generates a fresh secret — treat
-    // it like a send-code endpoint, not a plain page load.
-    Route::post('/mfa/setup/init', [MfaController::class, 'initSetup'])
-        ->middleware('throttle:5,1')
-        ->name('mfa.setup.init');
-    Route::post('/mfa/enable', [MfaController::class, 'enable'])
-        ->middleware('throttle:5,1')
-        ->name('mfa.enable');
-    Route::get('/mfa/challenge', [MfaController::class, 'challenge'])
-        ->middleware('throttle:20,1')
-        ->name('mfa.challenge');
-    Route::post('/mfa/verify', [MfaController::class, 'verify'])
-        ->middleware('throttle:5,1')
-        ->name('mfa.verify');
-});
+if (! config('auth.multi_guard')) {
+    Route::middleware('auth')->group(function () {
+        Route::get('/mfa/setup', [MfaController::class, 'setup'])
+            ->middleware('throttle:20,1')
+            ->name('mfa.setup');
+        Route::post('/mfa/setup/init', [MfaController::class, 'initSetup'])
+            ->middleware('throttle:5,1')
+            ->name('mfa.setup.init');
+        Route::post('/mfa/enable', [MfaController::class, 'enable'])
+            ->middleware('throttle:5,1')
+            ->name('mfa.enable');
+        Route::get('/mfa/challenge', [MfaController::class, 'challenge'])
+            ->middleware('throttle:20,1')
+            ->name('mfa.challenge');
+        Route::post('/mfa/verify', [MfaController::class, 'verify'])
+            ->middleware('throttle:5,1')
+            ->name('mfa.verify');
+    });
+}
 
 // These controller actions are shared; the route table preserves the legacy
 // middleware in flag-off mode and scopes copies when multi-guard is enabled.

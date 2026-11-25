@@ -43,6 +43,8 @@ class MfaController extends Controller
         return view('auth.mfa-setup', [
             'qrCodeSvg' => $qrCodeSvg,
             'secret'    => $secret,
+            'qrCodeUrl' => $qrCodeUrl,
+            'mfaEnableUrl' => route(mfa_route_name('mfa.enable')),
         ]);
     }
 
@@ -141,7 +143,9 @@ class MfaController extends Controller
 
     public function challenge()
     {
-        return view('auth.mfa-challenge');
+        return view('auth.mfa-challenge', [
+            'mfaVerifyUrl' => route(mfa_route_name('mfa.verify')),
+        ]);
     }
 
     public function verify(Request $request)
@@ -163,11 +167,11 @@ class MfaController extends Controller
             if ($request->expectsJson()) {
                 return response()->json([
                     'message'  => 'Your MFA setup needs to be redone. Please set it up again.',
-                    'redirect' => route('mfa.setup', absolute: false),
+                    'redirect' => route(mfa_route_name('mfa.setup'), absolute: false),
                 ], 409);
             }
 
-            return redirect()->route('mfa.setup')
+            return redirect()->route(mfa_route_name('mfa.setup'))
                 ->withErrors(['code' => 'Your MFA setup needs to be redone. Please set it up again.']);
         }
 

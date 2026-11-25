@@ -1,15 +1,27 @@
 @php
     $role = auth()->user()?->role;
-    $homeUrl = match ($role) {
-        'staff' => route('staff.dashboard'),
-        'user'  => url('/my-dashboard'),
-        default => url('/'),
-    };
-    $homeLabel = match ($role) {
-        'staff' => 'Go to staff dashboard',
-        'user'  => 'Go to my dashboard',
-        default => 'Go to home',
-    };
+    if (config('auth.multi_guard')) {
+        $homeGuard = \Illuminate\Support\Facades\Auth::getDefaultDriver();
+        $homeUrl = role_home_url();
+        $homeLabel = match ($homeGuard) {
+            'admin' => 'Go to admin dashboard',
+            'owner' => 'Go to owner dashboard',
+            'staff' => 'Go to staff dashboard',
+            'customer' => 'Go to my dashboard',
+            default => 'Go to home',
+        };
+    } else {
+        $homeUrl = match ($role) {
+            'staff' => route('staff.dashboard'),
+            'user'  => url('/my-dashboard'),
+            default => url('/'),
+        };
+        $homeLabel = match ($role) {
+            'staff' => 'Go to staff dashboard',
+            'user'  => 'Go to my dashboard',
+            default => 'Go to home',
+        };
+    }
 @endphp
 <!DOCTYPE html>
 <html lang="en">

@@ -113,6 +113,61 @@ class RoleScopedSharedRoutesTest extends TestCase
             }
         }
 
+        $authLanePaths = [
+            'customer' => [
+                'login' => 'login',
+                'login.submit' => 'login',
+                'register' => 'register',
+                'register.submit' => 'register',
+                'auth.google' => 'auth/google',
+                'logout' => 'logout',
+                'mfa.setup' => 'mfa/setup',
+                'mfa.setup.init' => 'mfa/setup/init',
+                'mfa.enable' => 'mfa/enable',
+                'mfa.challenge' => 'mfa/challenge',
+                'mfa.verify' => 'mfa/verify',
+            ],
+            'admin' => [
+                'login' => 'admin/login',
+                'login.submit' => 'admin/login',
+                'auth.google' => 'admin/auth/google',
+                'logout' => 'admin/logout',
+                'mfa.setup' => 'admin/mfa/setup',
+                'mfa.setup.init' => 'admin/mfa/setup/init',
+                'mfa.enable' => 'admin/mfa/enable',
+                'mfa.challenge' => 'admin/mfa/challenge',
+                'mfa.verify' => 'admin/mfa/verify',
+            ],
+            'owner' => [
+                'login' => 'owner/login',
+                'login.submit' => 'owner/login',
+                'auth.google' => 'owner/auth/google',
+                'logout' => 'owner/logout',
+                'mfa.setup' => 'owner/mfa/setup',
+                'mfa.setup.init' => 'owner/mfa/setup/init',
+                'mfa.enable' => 'owner/mfa/enable',
+                'mfa.challenge' => 'owner/mfa/challenge',
+                'mfa.verify' => 'owner/mfa/verify',
+            ],
+            'staff' => [
+                'login' => 'staff/login',
+                'login.submit' => 'staff/login',
+                'auth.google' => 'staff/auth/google',
+                'logout' => 'staff/logout',
+                'mfa.setup' => 'staff/mfa/setup',
+                'mfa.setup.init' => 'staff/mfa/setup/init',
+                'mfa.enable' => 'staff/mfa/enable',
+                'mfa.challenge' => 'staff/mfa/challenge',
+                'mfa.verify' => 'staff/mfa/verify',
+            ],
+        ];
+        foreach ($authLanePaths as $guard => $routes) {
+            foreach ($routes as $suffix => $uri) {
+                $name = $guard === 'customer' ? $suffix : $guard.'.'.$suffix;
+                $expectedCopies[$name] = [$uri, $guard];
+            }
+        }
+
         ksort($definitionRoles);
         $expectedMatrix = self::ROLE_MATRIX;
         ksort($expectedMatrix);

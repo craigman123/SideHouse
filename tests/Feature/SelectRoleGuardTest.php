@@ -15,14 +15,6 @@ class SelectRoleGuardTest extends TestCase
 {
     use UsesMultiGuardEnvironment;
 
-    private const UNMAPPED_AUTHENTICATED_ROUTES = [
-        'mfa.challenge',
-        'mfa.enable',
-        'mfa.setup',
-        'mfa.setup.init',
-        'mfa.verify',
-    ];
-
     protected function setUp(): void
     {
         $this->setMultiGuardEnvironment(true);
@@ -92,40 +84,40 @@ class SelectRoleGuardTest extends TestCase
         }
 
         sort($unmapped);
-        $expectedUnmapped = self::UNMAPPED_AUTHENTICATED_ROUTES;
-        sort($expectedUnmapped);
-
         $this->assertSame(
-            $expectedUnmapped,
+            [],
             $unmapped,
-            'Only MFA routes may remain unmapped in this checkpoint. Unmapped routes: '.implode(', ', $unmapped),
+            'Every authenticated route must have a role guard mapping. Unmapped routes: '.implode(', ', $unmapped),
         );
     }
 
-    public function test_shared_auth_and_mfa_routes_remain_unmapped_for_checkpoint_five(): void
+    public function test_all_auth_and_mfa_lane_routes_have_guard_markers(): void
     {
         foreach ([
-            'login',
-            'login.submit',
-            'register',
-            'register.submit',
-            'auth.google',
-            'logout',
-            ...self::UNMAPPED_AUTHENTICATED_ROUTES,
-        ] as $routeName) {
-            $route = app('router')->getRoutes()->getByName($routeName);
-            $this->assertNotNull($route, $routeName);
-            $this->assertNull((new SelectRoleGuard)->guardForRoute($route), $routeName);
+            'customer' => ['login', 'login.submit', 'register', 'register.submit', 'auth.google', 'logout', 'mfa.setup', 'mfa.setup.init', 'mfa.enable', 'mfa.challenge', 'mfa.verify'],
+            'admin' => ['admin.login', 'admin.login.submit', 'admin.auth.google', 'admin.logout', 'admin.mfa.setup', 'admin.mfa.setup.init', 'admin.mfa.enable', 'admin.mfa.challenge', 'admin.mfa.verify'],
+            'owner' => ['owner.login', 'owner.login.submit', 'owner.auth.google', 'owner.logout', 'owner.mfa.setup', 'owner.mfa.setup.init', 'owner.mfa.enable', 'owner.mfa.challenge', 'owner.mfa.verify'],
+            'staff' => ['staff.login', 'staff.login.submit', 'staff.auth.google', 'staff.logout', 'staff.mfa.setup', 'staff.mfa.setup.init', 'staff.mfa.enable', 'staff.mfa.challenge', 'staff.mfa.verify'],
+        ] as $guard => $routeNames) {
+            foreach ($routeNames as $name) {
+                $route = app('router')->getRoutes()->getByName($name);
+                $this->assertNotNull($route, $name);
+                $this->assertSame($guard, (new SelectRoleGuard)->guardForRoute($route), $name);
+            }
         }
     }
 
     public function test_unmapped_authenticated_route_fails_with_its_route_name(): void
     {
         config(['auth.multi_guard' => true]);
-        $request = $this->requestFor('GET', '/mfa/setup');
+        $route = app('router')->get('/test/unmapped-auth', fn () => response()->noContent())
+            ->middleware('auth')
+            ->name('test.unmapped-auth');
+        $request = Request::create('/test/unmapped-auth', 'GET');
+        $request->setRouteResolver(fn () => $route);
 
         $this->expectException(LogicException::class);
-        $this->expectExceptionMessage('mfa.setup');
+        $this->expectExceptionMessage('test.unmapped-auth');
 
         (new SelectRoleGuard)->handle($request, fn () => response()->noContent());
     }

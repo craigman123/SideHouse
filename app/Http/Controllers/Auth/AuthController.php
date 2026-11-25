@@ -17,7 +17,24 @@ class AuthController extends Controller
 {
     public function showLogin()
     {
-        return view('auth.login');
+        $guard = config('auth.multi_guard') ? GuardSessionState::currentGuard() : 'customer';
+        $routePrefix = $guard === 'customer' ? '' : $guard.'.';
+        $homeRoute = match ($guard) {
+            'admin' => 'admin.dashboard',
+            'owner' => 'owner.dashboard',
+            'staff' => 'staff.dashboard',
+            default => 'user.dashboard',
+        };
+
+        return view('auth.login', [
+            'loginLane' => $guard,
+            'loginSubmitUrl' => route($routePrefix.'login.submit'),
+            'googleAuthUrl' => route($routePrefix.'auth.google'),
+            'loginHomeUrl' => route($homeRoute),
+            'mfaSetupInitUrl' => route(mfa_route_name('mfa.setup.init', $guard)),
+            'mfaEnableUrl' => route(mfa_route_name('mfa.enable', $guard)),
+            'mfaVerifyUrl' => route(mfa_route_name('mfa.verify', $guard)),
+        ]);
     }
 
     public function login(Request $request)
@@ -26,6 +43,10 @@ class AuthController extends Controller
             'username' => 'required|string',
             'password' => 'required',
         ]);
+
+        if (config('auth.multi_guard')) {
+            return $this->loginOnRoleGuard($request, $credentials);
+        }
 
         if (!Auth::attempt($credentials)) {
             ActivityLogger::log(
@@ -108,7 +129,11 @@ class AuthController extends Controller
         ]);
 
         $request->session()->forget(GuardSessionState::key('view_as'));
-        Auth::login($user);
+        if (config('auth.multi_guard')) {
+            Auth::guard('customer')->login($user);
+        } else {
+            Auth::login($user);
+        }
         $this->resetLumiPopoverSession($request);
         $this->recordSuccessfulLogin($request, $user);
 
@@ -144,6 +169,10 @@ class AuthController extends Controller
             return response()->json([
                 'message' => "We couldn't verify that Google sign-in. Please try again.",
             ], 422);
+        }
+
+        if (config('auth.multi_guard')) {
+            return $this->googleLoginOnRoleGuard($request, $claims);
         }
 
         $user = User::whereRaw('LOWER(email) = ?', [$claims['email']])->first();
@@ -184,6 +213,122 @@ class AuthController extends Controller
             'message'  => $isNewAccount ? 'Account created! Welcome to Side House.' : 'Logged in successfully!',
             'redirect' => $this->homePath($user),
         ]);
+    }
+
+    private function loginOnRoleGuard(Request $request, array $credentials)
+    {
+        $guard = GuardSessionState::currentGuard();
+        $provider = Auth::guard($guard)->getProvider();
+        $user = $provider->retrieveByCredentials($credentials);
+
+        if (
+            ! $user instanceof User
+            || ! $provider->validateCredentials($user, $credentials)
+            || $user->role !== $this->roleForGuard($guard)
+        ) {
+            ActivityLogger::log(
+                'user.login_failed',
+                'Failed login attempt from '.$request->ip().'.',
+            );
+
+            if ($request->expectsJson()) {
+                return response()->json(['message' => 'Invalid username or password.'], 422);
+            }
+
+            return back()->withErrors(['username' => 'Invalid username or password.'])->onlyInput('username');
+        }
+
+        Auth::guard($guard)->login($user);
+        $request->session()->forget(GuardSessionState::key('view_as'));
+        $request->session()->regenerate();
+        $this->resetLumiPopoverSession($request);
+        $this->recordSuccessfulLogin($request, $user);
+
+        if ($user->requiresMfa()) {
+            ActivityLogger::log(
+                $user->isAdmin() ? 'admin.logged_in' : 'staff.logged_in',
+                $user->name.' logged in.',
+                subject: $user,
+            );
+
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'mfa_required' => true,
+                    'mfa_type' => $user->hasMfaEnabled() ? 'challenge' : 'setup',
+                    'csrf_token' => csrf_token(),
+                ]);
+            }
+
+            return redirect()->route(mfa_route_name(
+                $user->hasMfaEnabled() ? 'mfa.challenge' : 'mfa.setup',
+                $guard,
+            ));
+        }
+
+        ActivityLogger::log(
+            'user.logged_in',
+            $user->name.' logged in.',
+            subject: $user,
+        );
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'redirect' => $this->homePath($user),
+                'message' => 'Logged in successfully!',
+            ]);
+        }
+
+        return redirect($this->homePath($user))->with('success', 'Logged in successfully!');
+    }
+
+    private function googleLoginOnRoleGuard(Request $request, array $claims)
+    {
+        $guard = GuardSessionState::currentGuard();
+        $user = User::whereRaw('LOWER(email) = ?', [$claims['email']])->first();
+
+        if (($user !== null && $user->role !== $this->roleForGuard($guard))
+            || ($user === null && $guard !== 'customer')) {
+            return response()->json([
+                'message' => "We couldn't verify that Google sign-in. Please try again.",
+            ], 422);
+        }
+
+        $isNewAccount = false;
+        if ($user === null) {
+            $user = User::create([
+                'name' => $claims['name'] ?: Str::before($claims['email'], '@'),
+                'username' => $this->generateUniqueUsername($claims['name'] ?? $claims['email']),
+                'email' => $claims['email'],
+                'password' => Str::random(40),
+                'role' => 'user',
+            ]);
+            $user->forceFill(['email_verified_at' => now()])->save();
+            $isNewAccount = true;
+        }
+
+        Auth::guard($guard)->login($user);
+        $request->session()->forget(GuardSessionState::key('view_as'));
+        $request->session()->regenerate();
+        $this->resetLumiPopoverSession($request);
+        $this->recordSuccessfulLogin($request, $user);
+
+        ActivityLogger::log(
+            $isNewAccount ? 'user.registered' : 'user.logged_in',
+            $isNewAccount
+                ? $user->name.' registered via Google sign-in.'
+                : $user->name.' logged in via Google sign-in.',
+            subject: $user,
+        );
+
+        return response()->json([
+            'message' => $isNewAccount ? 'Account created! Welcome to Side House.' : 'Logged in successfully!',
+            'redirect' => $this->homePath($user),
+        ]);
+    }
+
+    private function roleForGuard(string $guard): string
+    {
+        return $guard === 'customer' ? 'user' : $guard;
     }
 
     /**
@@ -270,6 +415,10 @@ class AuthController extends Controller
             $request->session()->regenerateToken();
         }
 
-        return redirect()->route('login')->with('success', 'Logged out successfully.');
+        $loginRoute = config('auth.multi_guard') && $guard !== 'customer'
+            ? $guard.'.login'
+            : 'login';
+
+        return redirect()->route($loginRoute)->with('success', 'Logged out successfully.');
     }
 }

@@ -34,15 +34,15 @@
         <div class="auth-box">
             <img src="{{ asset('images/logo.png') }}" alt="Side House" style="width: 100%; max-width: 260px; display: block; margin: 0 auto 10px;">
             <h1>Log in to your <span class="auth-heading-accent">account</span></h1>
-            <p class="subtitle">Log in to manage customer bookings</p>
+            <p class="subtitle">{{ $loginLane === 'customer' ? 'Log in to manage customer bookings' : 'Log in to the '.ucfirst($loginLane).' dashboard' }}</p>
 
             <div class="google-signin-shell">
                 <div
                     id="googleSignInBtn"
                     class="google-btn-wrap"
                     data-google-client-id="{{ config('services.google.client_id') }}"
-                    data-google-auth-url="{{ route('auth.google') }}"
-                    data-redirect-fallback="{{ route('user.dashboard') }}"
+                    data-google-auth-url="{{ $googleAuthUrl }}"
+                    data-redirect-fallback="{{ $loginHomeUrl }}"
                     data-button-text="continue_with"
                 ></div>
                 <span class="google-loading-status" aria-live="polite" aria-atomic="true"></span>
@@ -54,7 +54,14 @@
 
             <div class="auth-divider"><span>or</span></div>
 
-            <form method="POST" action="{{ route('login.submit') }}" id="login-form">
+            <form
+                method="POST"
+                action="{{ $loginSubmitUrl }}"
+                id="login-form"
+                data-mfa-setup-init-url="{{ $mfaSetupInitUrl }}"
+                data-mfa-enable-url="{{ $mfaEnableUrl }}"
+                data-mfa-verify-url="{{ $mfaVerifyUrl }}"
+            >
                 @csrf
 
                 <div class="form-group">
@@ -79,7 +86,9 @@
             </form>
 
             <div class="auth-footer">
-                <br>Don't have an account? <a href="{{ route('register') }}">Register</a>
+                @if ($loginLane === 'customer')
+                    <br>Don't have an account? <a href="{{ route('register') }}">Register</a>
+                @endif
                 <p class="auth-footer-back">Book as Guest <a href="{{ route('landing') }}">here</a></p>
             </div>
         </div>

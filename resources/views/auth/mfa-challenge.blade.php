@@ -36,7 +36,7 @@
             <div class="mfa-modal-body">
                 <p>Enter the 6-digit code from your authenticator app<br>(or a recovery code).</p>
 
-                <form method="POST" action="{{ route('mfa.verify') }}">
+                <form method="POST" action="{{ $mfaVerifyUrl }}">
                     @csrf
                     <div class=form-group>
                         <input type="text" name="code" maxlength="10" placeholder="6-digit code or recovery code" autocomplete="one-time-code" required autofocus>

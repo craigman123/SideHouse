@@ -9,6 +9,20 @@ class LegacySharedRoutesSnapshotTest extends TestCase
 {
     use UsesMultiGuardEnvironment;
 
+    private const AUTH_ROUTES = [
+        'login' => ['login', ['GET', 'HEAD'], ['web', 'throttle:30,1']],
+        'login.submit' => ['login', ['POST'], ['web', 'throttle:login']],
+        'register' => ['register', ['GET', 'HEAD'], ['web', 'throttle:30,1']],
+        'register.submit' => ['register', ['POST'], ['web', 'throttle:register']],
+        'auth.google' => ['auth/google', ['POST'], ['web', 'throttle:15,1']],
+        'logout' => ['logout', ['POST'], ['web', 'throttle:10,1,logout']],
+        'mfa.setup' => ['mfa/setup', ['GET', 'HEAD'], ['web', 'auth', 'throttle:20,1']],
+        'mfa.setup.init' => ['mfa/setup/init', ['POST'], ['web', 'auth', 'throttle:5,1']],
+        'mfa.enable' => ['mfa/enable', ['POST'], ['web', 'auth', 'throttle:5,1']],
+        'mfa.challenge' => ['mfa/challenge', ['GET', 'HEAD'], ['web', 'auth', 'throttle:20,1']],
+        'mfa.verify' => ['mfa/verify', ['POST'], ['web', 'auth', 'throttle:5,1']],
+    ];
+
     private const SHARED_ROUTES = [
         'admin.specific-closures.index' => [
             'admin/specific-closures',
@@ -169,5 +183,24 @@ class LegacySharedRoutesSnapshotTest extends TestCase
     public function test_role_route_helper_uses_the_legacy_name_when_the_flag_is_off(): void
     {
         $this->assertSame(route('admin.bookings.calendar'), role_route('admin.bookings.calendar'));
+    }
+
+    public function test_flag_off_preserves_auth_and_mfa_route_names_uris_methods_and_middleware(): void
+    {
+        $actual = [];
+        foreach (array_keys(self::AUTH_ROUTES) as $name) {
+            $route = app('router')->getRoutes()->getByName($name);
+            $this->assertNotNull($route, $name);
+            $actual[$name] = [
+                $route->uri(),
+                array_values($route->methods()),
+                $route->gatherMiddleware(),
+            ];
+        }
+
+        $this->assertSame(self::AUTH_ROUTES, $actual);
+        $this->assertNull(app('router')->getRoutes()->getByName('admin.login'));
+        $this->assertNull(app('router')->getRoutes()->getByName('owner.mfa.setup'));
+        $this->assertNull(app('router')->getRoutes()->getByName('staff.logout'));
     }
 }

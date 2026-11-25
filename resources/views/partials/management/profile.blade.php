@@ -27,7 +27,7 @@
                     <span class="admin-role-badge">Admin</span>
                 </div>
 
-                <form method="POST" action="{{ route('logout') }}" class="logout-form" id="logoutForm">
+                <form method="POST" action="{{ role_route('logout') }}" class="logout-form" id="logoutForm">
                     @csrf
                     <button type="button" class="btn btn-danger btn-ghost-danger" id="logoutBtn">Log Out</button>
                 </form>

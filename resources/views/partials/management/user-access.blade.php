@@ -3,12 +3,12 @@
 @endpush
 
 <section class="user-access-page" id="userAccessPage"
-        data-list-url="{{ route('admin.users.index') }}"
-        data-candidates-url="{{ route('admin.users.candidates') }}"
-        data-create-url="{{ route('admin.users.store') }}"
-        data-update-url-template="{{ route('admin.users.update', ['user' => '__USER__']) }}"
-        data-remove-url-template="{{ route('admin.users.remove-access', ['user' => '__USER__']) }}"
-        data-details-url-template="{{ $actorRole === 'admin' ? route('admin.users.details', ['user' => '__USER__']) : '' }}"
+        data-list-url="{{ role_route('admin.users.index') }}"
+        data-candidates-url="{{ role_route('admin.users.candidates') }}"
+        data-create-url="{{ role_route('admin.users.store') }}"
+        data-update-url-template="{{ role_route('admin.users.update', ['user' => '__USER__']) }}"
+        data-remove-url-template="{{ role_route('admin.users.remove-access', ['user' => '__USER__']) }}"
+        data-details-url-template="{{ $actorRole === 'admin' ? role_route('admin.users.details', ['user' => '__USER__']) : '' }}"
         data-can-edit-details="{{ $actorRole === 'admin' ? 'true' : 'false' }}"
         data-actor-role="{{ $actorRole }}"
         data-current-id="{{ $actorId }}"

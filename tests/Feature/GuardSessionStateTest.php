@@ -12,14 +12,17 @@ use App\Support\GuardSessionState;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Tests\Feature\Concerns\UsesMultiGuardEnvironment;
 use Tests\TestCase;
 
 class GuardSessionStateTest extends TestCase
 {
     use RefreshDatabase;
+    use UsesMultiGuardEnvironment;
 
     protected function setUp(): void
     {
+        $this->setMultiGuardEnvironment(true);
         parent::setUp();
         config(['auth.multi_guard' => true]);
     }
@@ -28,6 +31,7 @@ class GuardSessionStateTest extends TestCase
     {
         Auth::shouldUse('web');
         parent::tearDown();
+        $this->restoreMultiGuardEnvironment();
     }
 
     public function test_customer_login_keeps_the_admin_guard_and_session_state(): void
@@ -99,6 +103,24 @@ class GuardSessionStateTest extends TestCase
         $this->assertNull($session->get(GuardSessionState::key('access_version_user_id', 'customer')));
     }
 
+    public function test_revoked_access_redirects_to_the_selected_role_login_lane(): void
+    {
+        $admin = $this->user('admin');
+        $session = app('session.store');
+        $session->start();
+        Auth::shouldUse('admin');
+        Auth::guard('admin')->login($admin);
+        EnsureAccessVersion::stamp($this->request($session, $admin), $admin);
+        $admin->forceFill(['access_version' => 2])->save();
+
+        $response = (new EnsureAccessVersion)->handle(
+            $this->request($session, $admin),
+            fn () => response()->noContent(),
+        );
+
+        $this->assertSame(route('admin.login'), $response->headers->get('Location'));
+    }
+
     public function test_mfa_pass_for_admin_does_not_satisfy_owner_or_staff(): void
     {
         $admin = $this->user('admin', ['mfa_enabled' => true, 'mfa_secret' => 'test-secret']);
@@ -119,7 +141,7 @@ class GuardSessionStateTest extends TestCase
         foreach (['owner' => $owner, 'staff' => $staff] as $guard => $user) {
             Auth::shouldUse($guard);
             $response = $middleware->handle($this->request($session, $user), fn () => response()->noContent());
-            $this->assertSame(route('mfa.challenge'), $response->headers->get('Location'));
+            $this->assertSame(route($guard.'.mfa.challenge'), $response->headers->get('Location'));
             $this->assertSame($admin->user_id, $session->get(GuardSessionState::key('mfa_passed_user_id', 'admin')));
             $this->assertNull($session->get(GuardSessionState::key('mfa_passed_user_id', $guard)));
         }
