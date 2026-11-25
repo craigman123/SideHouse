@@ -110,6 +110,7 @@ class StaffPermissionLockdownTest extends TestCase
                 'start_time' => sprintf('%02d:00', $hour),
                 'end_time' => sprintf('%02d:00', $hour + 1),
                 'payment_method' => 'cash',
+                'amount' => 1000,
             ])->assertCreated();
         }
     }
