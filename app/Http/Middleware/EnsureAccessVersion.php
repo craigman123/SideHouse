@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use App\Models\User;
+use App\Support\GuardSessionState;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -25,8 +26,8 @@ class EnsureAccessVersion
             return $this->logoutForRevokedAccess($request);
         }
 
-        $sessionUserId = $request->session()->get(self::USER_KEY);
-        $sessionVersion = $request->session()->get(self::VERSION_KEY);
+        $sessionUserId = $request->session()->get(GuardSessionState::key(self::USER_KEY));
+        $sessionVersion = $request->session()->get(GuardSessionState::key(self::VERSION_KEY));
 
         // Older customer sessions can remain valid. A privileged account with
         // no version stamp must re-authenticate before it can reach staff/admin
@@ -51,17 +52,24 @@ class EnsureAccessVersion
     public static function stamp(Request $request, User $user): void
     {
         $request->session()->put([
-            self::USER_KEY => (int) $user->user_id,
-            self::VERSION_KEY => (int) $user->access_version,
+            GuardSessionState::key(self::USER_KEY) => (int) $user->user_id,
+            GuardSessionState::key(self::VERSION_KEY) => (int) $user->access_version,
         ]);
     }
 
     private function logoutForRevokedAccess(Request $request): Response
     {
-        $request->session()->forget('view_as');
-        Auth::logout();
-        $request->session()->invalidate();
-        $request->session()->regenerateToken();
+        if (config('auth.multi_guard')) {
+            $guard = GuardSessionState::currentGuard();
+            Auth::guard($guard)->logout();
+            GuardSessionState::forgetGuard($request, $guard);
+            $request->session()->regenerate();
+        } else {
+            $request->session()->forget('view_as');
+            Auth::logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+        }
 
         if ($request->expectsJson()) {
             return response()->json(['message' => 'Your access changed. Please sign in again.'], 401);

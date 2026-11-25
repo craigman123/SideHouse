@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Support\ActivityLogger;
+use App\Support\GuardSessionState;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -17,7 +18,8 @@ class ViewAsController extends Controller
         $actor = User::query()->findOrFail($request->user()->user_id);
         abort_unless($actor->role === 'admin', 403, 'Only a real admin can switch access views.');
 
-        $from = $request->session()->get('view_as', 'admin');
+        $viewAsKey = GuardSessionState::key('view_as');
+        $from = $request->session()->get($viewAsKey, 'admin');
         $to = $validated['role'];
         ActivityLogger::log(
             'view_as.switched',
@@ -26,7 +28,7 @@ class ViewAsController extends Controller
             subject: $actor,
             properties: ['from' => $from, 'to' => $to],
         );
-        $request->session()->put('view_as', $to);
+        $request->session()->put($viewAsKey, $to);
 
         return redirect()->to($this->dashboardPath($to));
     }
@@ -36,7 +38,8 @@ class ViewAsController extends Controller
         $actor = User::query()->findOrFail($request->user()->user_id);
         abort_unless($actor->role === 'admin', 403, 'Only a real admin can reset the access view.');
 
-        $from = $request->session()->get('view_as', 'admin');
+        $viewAsKey = GuardSessionState::key('view_as');
+        $from = $request->session()->get($viewAsKey, 'admin');
         ActivityLogger::log(
             'view_as.reset',
             "Admin #{$actor->user_id} returned from {$from} view to admin.",
@@ -44,7 +47,7 @@ class ViewAsController extends Controller
             subject: $actor,
             properties: ['from' => $from, 'to' => 'admin'],
         );
-        $request->session()->forget('view_as');
+        $request->session()->forget($viewAsKey);
 
         return redirect()->to($this->dashboardPath('admin'));
     }

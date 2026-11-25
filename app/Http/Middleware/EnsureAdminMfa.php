@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Support\GuardSessionState;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -18,8 +19,8 @@ class EnsureAdminMfa
             return $next($request);
         }
 
-        $passedAt = session('mfa_passed_at');
-        $passedUserId = session('mfa_passed_user_id');
+        $passedAt = $request->session()->get(GuardSessionState::key('mfa_passed_at'));
+        $passedUserId = $request->session()->get(GuardSessionState::key('mfa_passed_user_id'));
 
         if (
             $passedAt
@@ -29,7 +30,10 @@ class EnsureAdminMfa
             return $next($request);
         }
 
-        session()->forget(['mfa_passed_at', 'mfa_passed_user_id']);
+        $request->session()->forget([
+            GuardSessionState::key('mfa_passed_at'),
+            GuardSessionState::key('mfa_passed_user_id'),
+        ]);
 
         if ($user->hasMfaEnabled()) {
             return redirect()->route('mfa.challenge');

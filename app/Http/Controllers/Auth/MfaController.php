@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Support\GuardSessionState;
 use Illuminate\Http\Request;
 use PragmaRX\Google2FA\Google2FA;
 use Illuminate\Support\Str;
@@ -26,8 +27,8 @@ class MfaController extends Controller
         if (!$secret) {
             $secret = $google2fa->generateSecretKey();
             session([
-                'mfa_temp_secret' => $secret,
-                'mfa_temp_secret_user_id' => $user->user_id,
+                GuardSessionState::key('mfa_temp_secret') => $secret,
+                GuardSessionState::key('mfa_temp_secret_user_id') => $user->user_id,
             ]);
         }
 
@@ -60,8 +61,8 @@ class MfaController extends Controller
         if (!$secret) {
             $secret = $google2fa->generateSecretKey();
             session([
-                'mfa_temp_secret' => $secret,
-                'mfa_temp_secret_user_id' => $user->user_id,
+                GuardSessionState::key('mfa_temp_secret') => $secret,
+                GuardSessionState::key('mfa_temp_secret_user_id') => $user->user_id,
             ]);
         }
 
@@ -114,10 +115,13 @@ class MfaController extends Controller
             'mfa_recovery_codes' => $recoveryCodes,
         ]);
 
-        session()->forget(['mfa_temp_secret', 'mfa_temp_secret_user_id']);
+        session()->forget([
+            GuardSessionState::key('mfa_temp_secret'),
+            GuardSessionState::key('mfa_temp_secret_user_id'),
+        ]);
         session([
-            'mfa_passed_at' => now()->timestamp,
-            'mfa_passed_user_id' => $user->user_id,
+            GuardSessionState::key('mfa_passed_at') => now()->timestamp,
+            GuardSessionState::key('mfa_passed_user_id') => $user->user_id,
         ]);
         session()->regenerate();
 
@@ -186,8 +190,8 @@ class MfaController extends Controller
         }
 
         session([
-            'mfa_passed_at' => now()->timestamp,
-            'mfa_passed_user_id' => $user->user_id,
+            GuardSessionState::key('mfa_passed_at') => now()->timestamp,
+            GuardSessionState::key('mfa_passed_user_id') => $user->user_id,
         ]);
         session()->regenerate();
 
@@ -217,11 +221,14 @@ class MfaController extends Controller
      */
     private function tempSecretFor($user): ?string
     {
-        if ((int) session('mfa_temp_secret_user_id') !== (int) $user->user_id) {
-            session()->forget(['mfa_temp_secret', 'mfa_temp_secret_user_id']);
+        if ((int) session(GuardSessionState::key('mfa_temp_secret_user_id')) !== (int) $user->user_id) {
+            session()->forget([
+                GuardSessionState::key('mfa_temp_secret'),
+                GuardSessionState::key('mfa_temp_secret_user_id'),
+            ]);
             return null;
         }
 
-        return session('mfa_temp_secret');
+        return session(GuardSessionState::key('mfa_temp_secret'));
     }
 }

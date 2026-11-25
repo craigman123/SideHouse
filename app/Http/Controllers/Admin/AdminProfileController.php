@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Support\GuardSessionState;
 use App\Support\ActivityLogger;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -82,7 +83,7 @@ class AdminProfileController extends Controller
             subject: $user,
         );
 
-        $request->session()->forget('view_as');
+        $request->session()->forget(GuardSessionState::key('view_as'));
         auth()->logout();
         $user->delete();
 

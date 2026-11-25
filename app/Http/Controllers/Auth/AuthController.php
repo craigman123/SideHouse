@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Middleware\EnsureAccessVersion;
 use App\Models\User;
 use App\Support\ActivityLogger;
+use App\Support\GuardSessionState;
 use App\Support\GoogleIdentity;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -39,7 +40,7 @@ class AuthController extends Controller
             return back()->withErrors(['username' => 'Invalid username or password.'])->onlyInput('username');
         }
 
-        $request->session()->forget('view_as');
+        $request->session()->forget(GuardSessionState::key('view_as'));
         $request->session()->regenerate();
         $user = auth()->user();
         $this->resetLumiPopoverSession($request);
@@ -106,7 +107,7 @@ class AuthController extends Controller
             'role' => 'user',
         ]);
 
-        $request->session()->forget('view_as');
+        $request->session()->forget(GuardSessionState::key('view_as'));
         Auth::login($user);
         $this->resetLumiPopoverSession($request);
         $this->recordSuccessfulLogin($request, $user);
@@ -165,7 +166,7 @@ class AuthController extends Controller
             $isNewAccount = true;
         }
 
-        $request->session()->forget('view_as');
+        $request->session()->forget(GuardSessionState::key('view_as'));
         Auth::login($user);
         $request->session()->regenerate();
         $this->resetLumiPopoverSession($request);
@@ -245,7 +246,10 @@ class AuthController extends Controller
 
     public function logout(Request $request)
     {
-        $user = Auth::user();
+        $guard = GuardSessionState::currentGuard();
+        $user = config('auth.multi_guard')
+            ? Auth::guard($guard)->user()
+            : Auth::user();
 
         if ($user) {
             ActivityLogger::log(
@@ -255,10 +259,16 @@ class AuthController extends Controller
             );
         }
 
-        $request->session()->forget('view_as');
-        Auth::logout();
-        $request->session()->invalidate();
-        $request->session()->regenerateToken();
+        if (config('auth.multi_guard')) {
+            Auth::guard($guard)->logout();
+            GuardSessionState::forgetGuard($request, $guard);
+            $request->session()->regenerate();
+        } else {
+            $request->session()->forget('view_as');
+            Auth::logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+        }
 
         return redirect()->route('login')->with('success', 'Logged out successfully.');
     }

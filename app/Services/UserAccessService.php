@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\User;
+use App\Support\GuardSessionState;
 use Illuminate\Http\Request;
 
 class UserAccessService
@@ -27,15 +28,16 @@ class UserAccessService
     {
         if (! $isCurrentActor) return $realRole;
 
-        $viewAs = $request->session()->get('view_as');
+        $viewAsKey = GuardSessionState::key('view_as');
+        $viewAs = $request->session()->get($viewAsKey);
         if ($realRole !== 'admin') {
-            if ($viewAs !== null) $request->session()->forget('view_as');
+            if ($viewAs !== null) $request->session()->forget($viewAsKey);
             return $realRole;
         }
 
         if ($viewAs === null) return 'admin';
         if (! in_array($viewAs, self::VIEW_AS_ROLES, true)) {
-            $request->session()->forget('view_as');
+            $request->session()->forget($viewAsKey);
             return 'admin';
         }
 
