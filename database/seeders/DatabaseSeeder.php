@@ -5,33 +5,29 @@ namespace Database\Seeders;
 use App\Models\User;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
-use RuntimeException;
+use Illuminate\Support\Facades\Hash;
 
 class DatabaseSeeder extends Seeder
 {
     use WithoutModelEvents;
 
-    public function run(): void
+    /**
+     * Seed the application's database.
+     */
+    // DatabaseSeeder.php
+    public function run()
     {
-        $password = config('password_pepper.seed_admin_password');
-        if (app()->environment('production')) {
-            if (! is_string($password) || trim($password) === '' || trim($password) === 'password') {
-                throw new RuntimeException(
-                    'SEED_ADMIN_PASSWORD must be set to a non-empty value other than "password" before production seeding.'
-                );
-            }
-        } elseif (! is_string($password) || $password === '') {
-            $password = config('password_pepper.development_seed_password');
-        }
-
-        User::firstOrCreate(
-            ['email' => 'admin@sidehouse.com'],
-            [
-                'username' => 'admin',
-                'name' => 'Admin',
-                'password' => $password,
-                'role' => 'admin',
-            ],
-        );
+        // Remove hardcoded password
+        // Use a secure random password and output it during seeding
+        $password = Str::random(16);
+        
+        User::create([
+            'name' => 'Admin',
+            'email' => 'admin@sidehouse.com',
+            'password' => Hash::make($password),
+            'is_admin' => true,
+        ]);
+        
+        $this->command->info("Admin password: {$password}");
     }
 }

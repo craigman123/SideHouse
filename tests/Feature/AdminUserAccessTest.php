@@ -507,7 +507,7 @@ class AdminUserAccessTest extends TestCase
         $this->assertSame('updated.staff@example.test', $updated->email);
         $this->assertSame('staff', $updated->role);
         $this->assertSame(['bookings.view'], $updated->permissions);
-        $this->assertTrue(app(\App\Support\PasswordHasher::class)->check($updated, 'password'));
+        $this->assertTrue(\Illuminate\Support\Facades\Hash::check('password', $updated->password));
         $this->assertTrue($updated->mfa_enabled);
         $this->assertSame('mfa-secret', $updated->mfa_secret);
         $this->assertNull($updated->email_verified_at);

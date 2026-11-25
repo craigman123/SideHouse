@@ -9,11 +9,11 @@ use App\Services\UserAccessService;
 use App\Support\ActivityLogger;
 use App\Support\LikePattern;
 use App\Support\Mask;
-use App\Support\PasswordHasher;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
@@ -489,9 +489,9 @@ class UserAccessController extends Controller
         return $row;
     }
 
-    private function assertPassword(User $actor, #[\SensitiveParameter] string $password): void
+    private function assertPassword(User $actor, string $password): void
     {
-        abort_unless(app(PasswordHasher::class)->check($actor, $password), 422, 'Password confirmation failed.');
+        abort_unless(Hash::check($password, $actor->password), 422, 'Password confirmation failed.');
     }
 
     private function authorizeAction(User $actor, ?User $target, string $action, ?string $role, UserAccessService $access): void

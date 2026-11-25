@@ -555,7 +555,7 @@ tr.row-removing {
     font-size: var(--font-size-small);
 }
 
-.user-dashboard-page .topbar .date a { color: var(--text); }
+.user-dashboard-page .topbar .date a { color: var(--text-muted); }
 .user-dashboard-page .guest-theme-toggle--toolbar { width: 44px; height: 44px; border-color: var(--brand); }
 
 .user-dashboard-page .hero-next-game,

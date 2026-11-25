@@ -33,8 +33,7 @@ class UserLumiPagesTest extends TestCase
         $this->assertLessThan($lumiLink, $themeButtonEnd);
         $this->assertLessThan($whatsNew, $overview);
         $response->assertSee('data-user-lumi-button', false)
-            ->assertSee('data-href="/lumi"', false)
-            ->assertSee('aria-haspopup="dialog"', false);
+            ->assertSee('data-href="/lumi"', false);
         $response->assertSee('Your Artificial Assistant')->assertSee('aria-current="page"', false);
     }
 

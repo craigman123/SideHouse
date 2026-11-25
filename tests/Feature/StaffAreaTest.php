@@ -379,6 +379,6 @@ class StaffAreaTest extends TestCase
             'password_confirmation' => 'replacement-password-123',
         ])->assertRedirect();
 
-        $this->assertTrue(app(\App\Support\PasswordHasher::class)->check($staff->fresh(), 'replacement-password-123'));
+        $this->assertTrue(password_verify('replacement-password-123', $staff->fresh()->password));
     }
 }

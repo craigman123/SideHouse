@@ -4,8 +4,6 @@ namespace App\Providers;
 
 use App\Models\PaymentReference;
 use App\Observers\PaymentReferenceObserver;
-use App\Auth\PepperedEloquentUserProvider;
-use App\Support\PasswordPepperBootGuard;
 use App\Services\UserAccessService;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Database\Eloquent\Model;
@@ -22,7 +20,6 @@ use Symfony\Component\Mailer\Transport\Dsn;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Auth\Events\Logout;
 use Illuminate\Support\Facades\Event;
-use Illuminate\Support\Facades\Auth;
 
 
 class AppServiceProvider extends ServiceProvider
@@ -41,23 +38,6 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {   
-        Auth::provider('peppered-eloquent', function ($app, array $config) {
-            return new PepperedEloquentUserProvider(
-                $app['hash']->driver(),
-                $config['model'],
-                $app->make(\App\Support\PasswordHasher::class),
-            );
-        });
-
-        $consoleCommand = $this->app->runningInConsole()
-            ? ($_SERVER['argv'][1] ?? null)
-            : null;
-        app(PasswordPepperBootGuard::class)->assertConfiguredForRuntime(
-            $this->app->environment('production'),
-            $this->app->runningInConsole(),
-            is_string($consoleCommand) ? $consoleCommand : null,
-        );
-
         Model::preventSilentlyDiscardingAttributes(! $this->app->isProduction());
         Paginator::defaultView('vendor.pagination.pagination-custom');
         PaymentReference::observe(PaymentReferenceObserver::class);

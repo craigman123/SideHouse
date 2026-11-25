@@ -174,7 +174,7 @@ svg {
 }
 
 .date a {
-    color: var(--text);
+    color: var(--text-muted);
     text-decoration: none;
 }
 
@@ -785,8 +785,7 @@ svg {
 }
 
 .topbar .date button.user-lumi-topbar-button:hover,
-.topbar .date button.user-lumi-topbar-button.active,
-.topbar .date button.user-lumi-topbar-button[aria-expanded="true"] {
+.topbar .date button.user-lumi-topbar-button.active {
     border-color: var(--brand);
     background: color-mix(in srgb, var(--brand) 12%, var(--surface));
     color: var(--brand-hover);
