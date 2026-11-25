@@ -55,7 +55,12 @@ class ViewAsController extends Controller
     private function dashboardPath(string $role): string
     {
         if (config('auth.multi_guard')) {
-            return role_route($role === 'admin' ? 'admin.dashboard' : 'admin.dashboard.view-as');
+            return match ($role) {
+                'owner' => route('owner.dashboard', absolute: false),
+                'staff' => route('staff.dashboard', absolute: false),
+                'customer' => route('user.dashboard.view-as', absolute: false),
+                default => route('admin.dashboard', absolute: false),
+            };
         }
 
         return match ($role) {

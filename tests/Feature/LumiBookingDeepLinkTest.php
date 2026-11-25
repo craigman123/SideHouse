@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\BusinessSetting;
 use App\Models\Court;
 use App\Models\User;
+use App\Support\GuardSessionState;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -76,7 +77,10 @@ class LumiBookingDeepLinkTest extends TestCase
             'time' => '14:00',
             'court' => $this->court->id,
             'source' => 'lumi',
-        ]))->assertOk()->assertSessionHas('lumi_suggestions_seen', true);
+        ]))->assertOk()->assertSessionHas(
+            GuardSessionState::key('lumi_suggestions_seen', config('auth.multi_guard') ? 'customer' : null),
+            true,
+        );
     }
 
     public function test_invalid_past_and_unknown_deep_link_values_are_safely_ignored(): void

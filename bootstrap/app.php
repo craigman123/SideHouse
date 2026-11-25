@@ -27,9 +27,14 @@ return Application::configure(basePath: dirname(__DIR__))
             \App\Http\Middleware\SelectRoleGuard::class,
             \App\Http\Middleware\EnsureAccessVersion::class,
         ]);
+        $middleware->prependToPriorityList(
+            \Illuminate\Contracts\Auth\Middleware\AuthenticatesRequests::class,
+            \App\Http\Middleware\SelectRoleGuard::class,
+        );
         $middleware->append(\App\Http\Middleware\LogRequestTraffic::class);
         $middleware->append(\App\Http\Middleware\SecurityHeaders::class);
         $middleware->alias([
+            'auth' => \App\Http\Middleware\RoleAwareAuthenticate::class,
             'cron.auth'   => \App\Http\Middleware\VerifyCronToken::class,
             'admin'       => \App\Http\Middleware\EnsureUserIsAdmin::class,
             'admin.or.owner' => \App\Http\Middleware\EnsureUserIsAdminOrOwner::class,

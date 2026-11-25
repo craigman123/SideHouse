@@ -372,11 +372,11 @@ class AuthController extends Controller
     private function resetLumiPopoverSession(Request $request): void
     {
         $request->session()->forget([
-            'lumi_login_popover_pending',
-            'lumi_login_popover_shown',
-            'lumi_suggestions_seen',
+            GuardSessionState::key('lumi_login_popover_pending'),
+            GuardSessionState::key('lumi_login_popover_shown'),
+            GuardSessionState::key('lumi_suggestions_seen'),
         ]);
-        $request->session()->put('lumi_login_popover_pending', true);
+        $request->session()->put(GuardSessionState::key('lumi_login_popover_pending'), true);
     }
 
     private function homePath(User $user): string

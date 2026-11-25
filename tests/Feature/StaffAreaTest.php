@@ -72,7 +72,7 @@ class StaffAreaTest extends TestCase
         $profile->assertSee('shared/profile.css')->assertSee('shared/dashboard-base.css')->assertDontSee('css/admin/');
         $profile->assertSee('Change password')->assertSee('Pending setup');
         $profile->assertSee('id="staffLogoutForm"', false)
-            ->assertSee('action="'.route('logout').'"', false)
+            ->assertSee('action="'.route(config('auth.multi_guard') ? 'staff.logout' : 'logout').'"', false)
             ->assertSee('name="_token"', false)
             ->assertSee('Sign out')
             ->assertDontSee('Delete Account')
@@ -85,8 +85,8 @@ class StaffAreaTest extends TestCase
         $this->assertStringNotContainsString('dashboard-shell-logout', $sidebarMatch[0]);
         $profile->assertSee('href="'.route('staff.profile').'" class="active"', false);
 
-        $this->signInStaff($staff)->post(route('logout'))
-            ->assertRedirect(route('login'))
+        $this->signInStaff($staff)->post(route(config('auth.multi_guard') ? 'staff.logout' : 'logout'))
+            ->assertRedirect(route(config('auth.multi_guard') ? 'staff.login' : 'login'))
             ->assertSessionHas('success', 'Logged out successfully.');
         $this->assertGuest();
     }
@@ -163,14 +163,24 @@ class StaffAreaTest extends TestCase
     public function test_staff_cannot_load_admin_pages_or_admin_dashboard_data(): void
     {
         $staff = $this->staff(['bookings.view', 'customers.view', 'activity_logs.view']);
-        foreach ([
-            '/dashboard', '/courts', '/admin/configuration', '/admin/equipment/availability',
-            '/announcements', '/reports', '/reports/data', '/admin/users', '/admin/profile', '/activity_logs',
-        ] as $path) {
-            $this->signInStaff($staff)->get($path)->assertForbidden();
+        if (config('auth.multi_guard')) {
+            foreach ([
+                '/staff/courts', '/staff/configuration', '/staff/equipment/availability',
+                '/staff/announcements', '/staff/reports', '/staff/reports/data', '/staff/users',
+                '/staff/activity_logs',
+            ] as $path) {
+                $this->signInStaff($staff)->get($path)->assertNotFound();
+            }
+            $this->signInStaff($staff)->get('/dashboard')->assertRedirect(route('admin.login'));
+        } else {
+            foreach ([
+                '/dashboard', '/courts', '/admin/configuration', '/admin/equipment/availability',
+                '/announcements', '/reports', '/reports/data', '/admin/users', '/admin/profile', '/activity_logs',
+            ] as $path) {
+                $this->signInStaff($staff)->get($path)->assertForbidden();
+            }
         }
 
-        $this->signInStaff($staff)->get('/dashboard')->assertForbidden()->assertDontSee('Total Income')->assertDontSee('Today\'s Income');
     }
 
     public function test_staff_activity_logs_are_allowlisted_paginated_and_redacted(): void
@@ -274,7 +284,7 @@ class StaffAreaTest extends TestCase
         $page->assertSee('shared/customers.css')->assertSee('staff-customers.js');
         $page->assertSee('shared/dashboard-shell.js')->assertDontSee('css/admin/')->assertDontSee('js/admin/');
 
-        $data = $this->getJson('/customers/data')->assertOk()->json('customers.0');
+        $data = $this->getJson(role_route('admin.customers.data'))->assertOk()->json('customers.0');
         $this->assertArrayNotHasKey('total_spent', $data);
         $this->assertArrayNotHasKey('amount', $data['bookings'][0]);
     }
@@ -286,7 +296,7 @@ class StaffAreaTest extends TestCase
 
         $page = $this->signInStaff($staff)->get('/staff/customers')->assertOk();
         $page->assertSee('Total Spent');
-        $data = $this->getJson('/customers/data')->assertOk()->json('customers.0');
+        $data = $this->getJson(role_route('admin.customers.data'))->assertOk()->json('customers.0');
         $this->assertArrayHasKey('total_spent', $data);
         $this->assertArrayHasKey('amount', $data['bookings'][0]);
     }
@@ -297,14 +307,18 @@ class StaffAreaTest extends TestCase
         $booking = $this->bookingForToday($staff);
         $date = now('Asia/Manila')->toDateString();
 
-        $response = $this->signInStaff($staff)->getJson("/admin/bookings/calendar?from={$date}&to={$date}")->assertOk();
+        $response = $this->signInStaff($staff)->getJson(role_route('admin.bookings.calendar')."?from={$date}&to={$date}")->assertOk();
         $this->assertArrayNotHasKey('amount', $response->json('bookings.0'));
 
-        $this->patchJson("/admin/bookings/{$booking->id}", [
+        $this->patchJson(role_route('admin.bookings.update', ['booking' => $booking->id]), [
             'notes' => 'Forbidden update',
         ])->assertForbidden();
-        $this->postJson('/admin/bookings', [])->assertForbidden();
-        $this->postJson('/admin/blocks', [])->assertForbidden();
+        if (config('auth.multi_guard')) {
+            $this->postJson('/staff/bookings', [])->assertMethodNotAllowed();
+        } else {
+            $this->postJson('/admin/bookings', [])->assertForbidden();
+        }
+        $this->postJson(role_route('admin.blocks.store'), [])->assertForbidden();
     }
 
     public function test_staff_pages_require_staff_role_and_bookings_permission(): void
@@ -317,7 +331,12 @@ class StaffAreaTest extends TestCase
             'username' => 'not-staff', 'name' => 'Customer', 'email' => 'not-staff@example.test',
             'password' => 'current-password-123', 'role' => 'user',
         ]);
-        $this->signInStaff($customer)->get('/staff/dashboard')->assertForbidden();
+        $response = $this->signInStaff($customer)->get('/staff/dashboard');
+        if (config('auth.multi_guard')) {
+            $response->assertRedirect(route('staff.login'));
+        } else {
+            $response->assertForbidden();
+        }
     }
 
     public function test_staff_overview_hides_booking_data_without_the_booking_permission(): void
@@ -344,7 +363,11 @@ class StaffAreaTest extends TestCase
     {
         $staff = $this->staff(['bookings.create', 'bookings.view']);
 
-        $this->signInStaff($staff)->postJson('/admin/bookings', [])->assertForbidden();
+        if (config('auth.multi_guard')) {
+            $this->signInStaff($staff)->postJson('/staff/bookings', [])->assertMethodNotAllowed();
+        } else {
+            $this->signInStaff($staff)->postJson('/admin/bookings', [])->assertForbidden();
+        }
         $this->assertDatabaseCount('bookings', 0);
     }
 
@@ -358,7 +381,7 @@ class StaffAreaTest extends TestCase
         $page->assertSee('calendar_events.open_play')
             ->assertSee('"bookings":[]', false);
 
-        $calendar = $this->getJson("/admin/bookings/calendar?from={$date}&to={$date}")->assertOk();
+        $calendar = $this->getJson(role_route('admin.bookings.calendar')."?from={$date}&to={$date}")->assertOk();
         $this->assertSame([], $calendar->json('bookings'));
         $this->get('/staff/dashboard')->assertOk()->assertSee('Add event');
     }

@@ -6,9 +6,11 @@ use App\Models\ActivityLog;
 use App\Models\User;
 use App\Services\UserAccessService;
 use App\Support\ActivityLogger;
+use App\Support\GuardSessionState;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Middleware\ThrottleRequests;
+use Illuminate\Support\Facades\Auth;
 use Tests\TestCase;
 
 class ViewAsAccessTest extends TestCase
@@ -26,13 +28,15 @@ class ViewAsAccessTest extends TestCase
         $admin = $this->user('admin');
         $this->signIn($admin)->post('/switch-access', ['role' => 'staff'])
             ->assertRedirect('/staff/dashboard')
-            ->assertSessionHas('view_as', 'staff');
+            ->assertSessionHas(GuardSessionState::key('view_as', config('auth.multi_guard') ? 'admin' : null), 'staff');
 
         $log = ActivityLog::query()->where('action', 'view_as.switched')->firstOrFail();
         $this->assertSame($admin->user_id, $log->user_id);
         $this->assertSame(['from' => 'admin', 'to' => 'staff'], $log->properties);
 
-        $this->post('/switch-access/reset')->assertRedirect('/admin/dashboard')->assertSessionMissing('view_as');
+        $this->post('/switch-access/reset')
+            ->assertRedirect(config('auth.multi_guard') ? '/dashboard' : '/admin/dashboard')
+            ->assertSessionMissing(GuardSessionState::key('view_as', config('auth.multi_guard') ? 'admin' : null));
         $reset = ActivityLog::query()->where('action', 'view_as.reset')->firstOrFail();
         $this->assertSame($admin->user_id, $reset->user_id);
         $this->assertSame(['from' => 'staff', 'to' => 'admin', 'view_as' => 'staff'], $reset->properties);
@@ -45,20 +49,26 @@ class ViewAsAccessTest extends TestCase
             'staff' => '/staff/profile',
             'user' => '/my-dashboard',
         ] as $role => $page) {
-            $this->signIn($this->user($role))->post('/switch-access', ['role' => 'admin'])->assertForbidden();
+            $denied = $this->signIn($this->user($role))->post('/switch-access', ['role' => 'admin']);
+            if (config('auth.multi_guard')) {
+                $denied->assertRedirect(route('admin.login'));
+            } else {
+                $denied->assertForbidden();
+            }
             $this->get($page)->assertOk()->assertDontSee('data-switch-access');
         }
 
         $admin = $this->user('admin');
         $this->signIn($admin)->get('/dashboard')->assertOk()->assertSee('data-switch-access', false);
         $this->signIn($admin)->postJson('/switch-access', ['role' => 'superuser'])->assertUnprocessable();
-        $this->postJson('/switch-access/reset')->assertRedirect('/admin/dashboard');
+        $this->postJson('/switch-access/reset')->assertRedirect(config('auth.multi_guard') ? '/dashboard' : '/admin/dashboard');
     }
 
     public function test_effective_role_and_permissions_follow_view_mode_and_panel_is_available_in_each_layout(): void
     {
         $admin = $this->user('admin');
         $access = app(UserAccessService::class);
+        Auth::shouldUse('admin');
         $request = Request::create('/');
         $request->setUserResolver(fn () => $admin);
         $session = app('session')->driver();
@@ -68,12 +78,13 @@ class ViewAsAccessTest extends TestCase
             'staff' => 'staff',
             'customer' => 'user',
         ] as $view => $effective) {
-            $session->put('view_as', $view);
+            $session->put(GuardSessionState::key('view_as', 'admin'), $view);
             $request->setLaravelSession($session);
             $this->assertSame($effective, $access->effectiveRole($admin, $request));
         }
 
-        $this->signIn($admin, ['view_as' => 'staff'])->get('/staff/profile')->assertOk()
+        $adminHome = '/staff/profile';
+        $this->signIn($admin, ['view_as' => 'staff'])->get($adminHome)->assertOk()
             ->assertSee('data-switch-access', false)->assertSee('Viewing as Staff');
         $this->assertTrue($access->allows($admin, 'calendar_events.open_play'));
         $this->assertFalse($access->allows($admin, 'bookings.create'));
@@ -82,17 +93,22 @@ class ViewAsAccessTest extends TestCase
         $this->assertSame(['view_as' => 'staff'], ActivityLog::query()->where('action', 'view_as.test_action')->firstOrFail()->properties);
         $this->get('/staff/dashboard')->assertOk()->assertSee('data-switch-access', false);
         $this->get('/reports/system')->assertForbidden();
-        $this->get('/dashboard')->assertForbidden();
-        $this->postJson('/admin/bookings', [])->assertForbidden();
-        $this->postJson('/admin/blocks', ['type' => 'closed'])->assertForbidden();
-        $this->postJson('/admin/blocks', ['type' => 'maintenance'])->assertForbidden();
+        if (! config('auth.multi_guard')) {
+            $this->get('/dashboard')->assertForbidden();
+        }
+        $this->postJson(role_route('admin.bookings.walk-in.store'), [])->assertForbidden();
+        $this->postJson(role_route('admin.blocks.store'), ['type' => 'closed'])->assertForbidden();
+        $this->postJson(role_route('admin.blocks.store'), ['type' => 'maintenance'])->assertForbidden();
 
         $this->signIn($admin, ['view_as' => 'owner']);
-        $this->get('/owner/profile')->assertOk()->assertSee('data-switch-access', false)->assertSee('Viewing as Owner');
-        $this->post('/switch-access/reset')->assertRedirect('/admin/dashboard')->assertSessionMissing('view_as');
+        $this->get('/owner/profile')
+            ->assertOk()->assertSee('data-switch-access', false)->assertSee('Viewing as Owner');
+        $this->post('/switch-access/reset')
+            ->assertRedirect(config('auth.multi_guard') ? '/dashboard' : '/admin/dashboard')
+            ->assertSessionMissing(GuardSessionState::key('view_as', config('auth.multi_guard') ? 'admin' : null));
         $this->signIn($admin, ['view_as' => 'owner']);
         $targetAdmin = $this->user('admin');
-        $this->patchJson('/admin/users/'.$targetAdmin->user_id, [
+        $this->patchJson(role_route('admin.users.update', ['user' => $targetAdmin->user_id]), [
             'role' => 'staff', 'password' => 'password',
         ])->assertForbidden();
         $this->get('/reports/system')->assertForbidden();
@@ -100,30 +116,36 @@ class ViewAsAccessTest extends TestCase
         $this->signIn($admin, ['view_as' => 'customer']);
         $this->get('/user/dashboard')->assertOk()->assertSee('data-switch-access', false)
             ->assertSee('This is your own admin account.');
-        $this->post('/switch-access/reset')->assertRedirect('/admin/dashboard')->assertSessionMissing('view_as');
+        $this->post('/switch-access/reset')
+            ->assertRedirect(config('auth.multi_guard') ? '/dashboard' : '/admin/dashboard')
+            ->assertSessionMissing(GuardSessionState::key('view_as', config('auth.multi_guard') ? 'admin' : null));
     }
 
     public function test_view_as_is_cleared_for_a_real_non_admin_and_on_logout(): void
     {
         $owner = $this->user('owner');
         $this->signIn($owner, ['view_as' => 'staff'])->get('/owner/profile')
-            ->assertOk()->assertSessionMissing('view_as');
+            ->assertOk()->assertSessionMissing(GuardSessionState::key('view_as', config('auth.multi_guard') ? 'owner' : null));
 
         $admin = $this->user('admin');
-        $this->signIn($admin, ['view_as' => 'owner'])->post('/logout')
-            ->assertRedirect('/login')->assertSessionMissing('view_as');
-        $this->assertGuest();
+        $this->signIn($admin, ['view_as' => 'owner'])->post(config('auth.multi_guard') ? '/admin/logout' : '/logout')
+            ->assertRedirect(route(config('auth.multi_guard') ? 'admin.login' : 'login'))
+            ->assertSessionMissing(GuardSessionState::key('view_as', config('auth.multi_guard') ? 'admin' : null));
+        $this->assertGuest(config('auth.multi_guard') ? 'admin' : null);
 
         $customer = $this->user('user');
         $this->withSession(['view_as' => 'staff'])->post('/login', [
             'username' => $customer->username,
             'password' => 'password',
-        ])->assertRedirect('/my-dashboard')->assertSessionMissing('view_as');
+        ])->assertRedirect('/my-dashboard')
+            ->assertSessionMissing(GuardSessionState::key('view_as', config('auth.multi_guard') ? 'customer' : null));
 
         $admin = $this->user('admin');
         $this->signIn($admin, ['view_as' => 'owner']);
         $admin->forceFill(['role' => 'owner', 'access_version' => 2])->save();
-        $this->get('/owner/profile')->assertRedirect('/login')->assertSessionMissing('view_as');
+        $this->get(config('auth.multi_guard') ? '/dashboard' : '/owner/profile')
+            ->assertRedirect(route(config('auth.multi_guard') ? 'admin.login' : 'login'))
+            ->assertSessionMissing(GuardSessionState::key('view_as', config('auth.multi_guard') ? 'admin' : null));
     }
 
     private function signIn(User $user, array $extra = []): self

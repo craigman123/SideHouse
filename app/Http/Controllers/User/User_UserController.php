@@ -17,10 +17,12 @@ use App\Services\BookingAvailabilityService;
 use App\Services\LumiSuggestionService;
 use App\Support\ActivityLogger;
 use App\Support\BookingHours;
+use App\Support\GuardSessionState;
 use App\Support\PaymentWindows;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
@@ -92,7 +94,7 @@ class User_UserController extends Controller
 
         $deepLink = $this->bookingDeepLink($request, $courts);
         if ($request->query('source') === 'lumi') {
-            $request->session()->put('lumi_suggestions_seen', true);
+            $request->session()->put(GuardSessionState::key('lumi_suggestions_seen'), true);
         }
 
         return view('user.bookings.book', [
@@ -288,7 +290,7 @@ class User_UserController extends Controller
         $booking      = $result['booking'];
         $refundAmount = $result['refundAmount'];
         app(LumiSuggestionService::class)->forgetForUser((int) $user->user_id);
-        session()->forget('lumi_suggestions_seen');
+        session()->forget(GuardSessionState::key('lumi_suggestions_seen'));
 
         ActivityLogger::log(
             'booking.cancelled',
@@ -819,7 +821,7 @@ class User_UserController extends Controller
         [$bookings, $isPaid] = [$result['bookings'], $result['isPaid']];
         $idempotent = (bool) ($result['idempotent'] ?? false);
         app(LumiSuggestionService::class)->forgetForUser((int) $user->user_id);
-        session()->forget('lumi_suggestions_seen');
+        session()->forget(GuardSessionState::key('lumi_suggestions_seen'));
 
         // Log each booking only on the first (non-idempotent) submit.
         foreach ($bookings as $booking) {
@@ -984,8 +986,23 @@ class User_UserController extends Controller
             subject: $user,
         );
 
-        auth()->logout();
+        $multiGuard = config('auth.multi_guard');
+        $guard = GuardSessionState::currentGuard();
+        if ($multiGuard) {
+            Auth::guard($guard)->logout();
+            GuardSessionState::forgetGuard($request, $guard);
+        } else {
+            auth()->logout();
+        }
+
         $user->delete();
+
+        if ($multiGuard) {
+            $request->session()->regenerate();
+            $loginRoute = $guard === 'customer' ? 'login' : $guard.'.login';
+
+            return redirect()->route($loginRoute);
+        }
 
         $request->session()->invalidate();
         $request->session()->regenerateToken();

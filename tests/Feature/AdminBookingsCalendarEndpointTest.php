@@ -7,6 +7,7 @@ use App\Models\BusinessSetting;
 use App\Models\Court;
 use App\Models\CourtBlock;
 use App\Models\User;
+use App\Support\GuardSessionState;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -32,6 +33,13 @@ class AdminBookingsCalendarEndpointTest extends TestCase
                 'access_version_user_id' => $admin->user_id,
                 'access_version' => 1,
             ]);
+            if (config('auth.multi_guard')) {
+                $this->assertSame(
+                    (int) $admin->user_id,
+                    session()->get(GuardSessionState::key('access_version_user_id', 'admin')),
+                );
+                $this->assertSame(1, session()->get(GuardSessionState::key('access_version', 'admin')));
+            }
         }
         return $admin;
     }
@@ -90,7 +98,8 @@ class AdminBookingsCalendarEndpointTest extends TestCase
     {
         $this->getJson('/admin/bookings/calendar?from=2020-01-01&to=2020-01-02')->assertUnauthorized();
         $this->admin(false);
-        $this->get('/admin/bookings/calendar?from=2020-01-01&to=2020-01-02')->assertRedirect(route('mfa.setup'));
+        $this->get('/admin/bookings/calendar?from=2020-01-01&to=2020-01-02')
+            ->assertRedirect(route(mfa_route_name('mfa.setup', 'admin')));
     }
 
     public function test_unchanged_calendar_range_returns_not_modified(): void

@@ -158,7 +158,7 @@ class RoleScopedUrlRenderingTest extends TestCase
     {
         $admin = $this->user('admin');
         $this->signInAs($admin, 'admin')->post(route('view-as.switch'), ['role' => 'staff'])
-            ->assertRedirect(route('admin.dashboard.view-as', absolute: false));
+            ->assertRedirect(route('staff.dashboard', absolute: false));
 
         foreach ([
             'admin' => ['admin', 'admin.dashboard', 'Go to admin dashboard'],

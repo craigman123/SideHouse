@@ -36,20 +36,20 @@ class StaffPermissionLockdownTest extends TestCase
         $this->signIn($staff);
 
         $payload = $this->blockPayload('open_play');
-        $created = $this->postJson('/admin/blocks', $payload)->assertCreated();
+        $created = $this->postJson(role_route('admin.blocks.store'), $payload)->assertCreated();
         $blockId = $created->json('block.id');
-        $this->patchJson("/admin/blocks/{$blockId}", ['notes' => 'Staff update'])->assertOk();
-        $this->deleteJson("/admin/blocks/{$blockId}")->assertOk();
+        $this->patchJson(role_route('admin.blocks.update', ['block' => $blockId]), ['notes' => 'Staff update'])->assertOk();
+        $this->deleteJson(role_route('admin.blocks.destroy', ['block' => $blockId]))->assertOk();
 
         foreach (['closed', 'maintenance'] as $type) {
-            $this->postJson('/admin/blocks', $this->blockPayload($type))->assertForbidden();
+            $this->postJson(role_route('admin.blocks.store'), $this->blockPayload($type))->assertForbidden();
             $existing = CourtBlock::create([
                 'court_id' => $this->court->id, 'type' => $type, 'title' => "Existing {$type}",
                 'block_date' => '2030-05-15', 'start_time' => '13:00', 'end_time' => '14:00',
                 'created_by' => $staff->user_id,
             ]);
-            $this->patchJson("/admin/blocks/{$existing->id}", ['notes' => 'Not permitted'])->assertForbidden();
-            $this->deleteJson("/admin/blocks/{$existing->id}")->assertForbidden();
+            $this->patchJson(role_route('admin.blocks.update', ['block' => $existing->id]), ['notes' => 'Not permitted'])->assertForbidden();
+            $this->deleteJson(role_route('admin.blocks.destroy', ['block' => $existing->id]))->assertForbidden();
         }
 
         $openPlay = CourtBlock::create([
@@ -57,12 +57,16 @@ class StaffPermissionLockdownTest extends TestCase
             'block_date' => '2030-05-15', 'start_time' => '15:00', 'end_time' => '16:00',
             'max_players' => 8, 'price_per_player' => 100, 'created_by' => $staff->user_id,
         ]);
-        $this->patchJson("/admin/blocks/{$openPlay->id}", ['type' => 'closed'])->assertForbidden();
-        $this->patchJson("/admin/blocks/{$openPlay->id}", ['type' => 'maintenance'])->assertForbidden();
+        $this->patchJson(role_route('admin.blocks.update', ['block' => $openPlay->id]), ['type' => 'closed'])->assertForbidden();
+        $this->patchJson(role_route('admin.blocks.update', ['block' => $openPlay->id]), ['type' => 'maintenance'])->assertForbidden();
 
-        // These date-range closure endpoints remain inaccessible to staff at the route group.
-        $this->postJson('/admin/configuration/closures', [])->assertForbidden();
-        $this->postJson('/configuration/specific-date-closure', [])->assertForbidden();
+        if (config('auth.multi_guard')) {
+            $this->postJson('/staff/configuration/closures', [])->assertNotFound();
+            $this->postJson('/staff/specific-date-closure', [])->assertNotFound();
+        } else {
+            $this->postJson('/admin/configuration/closures', [])->assertForbidden();
+            $this->postJson('/configuration/specific-date-closure', [])->assertForbidden();
+        }
     }
 
     public function test_legacy_staff_walk_in_and_calendar_permissions_are_fixed_denied(): void
@@ -70,9 +74,13 @@ class StaffPermissionLockdownTest extends TestCase
         $staff = $this->user('staff', ['bookings.create', 'calendar_events.manage', 'calendar_events.open_play']);
         $this->signIn($staff);
 
-        $this->postJson('/admin/bookings', [])->assertForbidden();
-        $this->postJson('/admin/blocks', $this->blockPayload('closed'))->assertForbidden();
-        $this->postJson('/admin/blocks', $this->blockPayload('maintenance'))->assertForbidden();
+        if (config('auth.multi_guard')) {
+            $this->postJson('/staff/bookings', [])->assertMethodNotAllowed();
+        } else {
+            $this->postJson('/admin/bookings', [])->assertForbidden();
+        }
+        $this->postJson(role_route('admin.blocks.store'), $this->blockPayload('closed'))->assertForbidden();
+        $this->postJson(role_route('admin.blocks.store'), $this->blockPayload('maintenance'))->assertForbidden();
         $this->assertFalse(app(\App\Services\UserAccessService::class)->allows($staff, 'bookings.create'));
         $this->assertFalse(app(\App\Services\UserAccessService::class)->allows($staff, 'calendar_events.manage'));
     }
@@ -88,10 +96,10 @@ class StaffPermissionLockdownTest extends TestCase
                     $payload['max_players'] = 8;
                     $payload['price_per_player'] = 100;
                 }
-                $created = $this->postJson('/admin/blocks', $payload)->assertCreated();
+                $created = $this->postJson(role_route('admin.blocks.store'), $payload)->assertCreated();
                 $id = $created->json('block.id');
-                $this->patchJson("/admin/blocks/{$id}", ['notes' => "{$role} update"])->assertOk();
-                $this->deleteJson("/admin/blocks/{$id}")->assertOk();
+                $this->patchJson(role_route('admin.blocks.update', ['block' => $id]), ['notes' => "{$role} update"])->assertOk();
+                $this->deleteJson(role_route('admin.blocks.destroy', ['block' => $id]))->assertOk();
             }
         }
     }
@@ -102,7 +110,7 @@ class StaffPermissionLockdownTest extends TestCase
             $actor = $this->user($role, null);
             $this->signIn($actor);
             $hour = 17 + $index;
-            $this->postJson('/admin/bookings', [
+            $this->postJson(role_route('admin.bookings.walk-in.store'), [
                 'customer_name' => "{$role} Walk-in",
                 'contact_number' => '09171234567',
                 'court_id' => $this->court->id,

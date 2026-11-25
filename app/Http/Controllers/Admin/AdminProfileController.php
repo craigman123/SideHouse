@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Support\GuardSessionState;
 use App\Support\ActivityLogger;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
 
 class AdminProfileController extends Controller
@@ -50,8 +51,16 @@ class AdminProfileController extends Controller
             properties: ['changed_fields' => array_keys($user->getChanges())],
         );
 
+        $profileRoute = config('auth.multi_guard')
+            ? match (GuardSessionState::currentGuard()) {
+                'owner' => 'owner.profile',
+                'staff' => 'staff.profile',
+                default => 'admin.profile',
+            }
+            : 'admin.profile';
+
         return redirect()
-            ->route('admin.profile')
+            ->route($profileRoute)
             ->with('success', 'Profile updated.');
     }
 
@@ -83,9 +92,24 @@ class AdminProfileController extends Controller
             subject: $user,
         );
 
-        $request->session()->forget(GuardSessionState::key('view_as'));
-        auth()->logout();
+        $multiGuard = config('auth.multi_guard');
+        $guard = GuardSessionState::currentGuard();
+        if ($multiGuard) {
+            Auth::guard($guard)->logout();
+            GuardSessionState::forgetGuard($request, $guard);
+        } else {
+            $request->session()->forget(GuardSessionState::key('view_as'));
+            auth()->logout();
+        }
+
         $user->delete();
+
+        if ($multiGuard) {
+            $request->session()->regenerate();
+            $loginRoute = $guard === 'customer' ? 'login' : $guard.'.login';
+
+            return redirect()->route($loginRoute);
+        }
 
         $request->session()->invalidate();
         $request->session()->regenerateToken();

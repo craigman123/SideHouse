@@ -15,6 +15,9 @@ class GuardSessionState
         'mfa_temp_secret',
         'mfa_temp_secret_user_id',
         'view_as',
+        'lumi_login_popover_pending',
+        'lumi_login_popover_shown',
+        'lumi_suggestions_seen',
     ];
 
     public static function currentGuard(): string

@@ -67,14 +67,24 @@ class BookingWidgetAccessTest extends TestCase
         foreach (['admin', 'owner', 'staff'] as $role) {
             $user = $this->makeUser($role);
 
-            $this->signIn($user)->get('/book')->assertOk();
-            $this->get('/my-bookings')->assertForbidden();
+            $bookingPage = $this->signIn($user)->get('/book');
+            if (config('auth.multi_guard')) {
+                $bookingPage->assertRedirect(route('login'));
+            } else {
+                $bookingPage->assertOk();
+            }
+            $history = $this->get('/my-bookings');
+            if (config('auth.multi_guard')) {
+                $history->assertRedirect(route('login'));
+            } else {
+                $history->assertForbidden();
+            }
         }
     }
 
-    public function test_admin_can_wait_for_own_booking_but_cannot_open_another_users_booking(): void
+    public function test_customer_can_wait_for_own_booking_but_cannot_open_another_users_booking(): void
     {
-        $admin = $this->makeUser('admin');
+        $customerOwner = $this->makeUser('user');
         $customer = $this->makeUser('user');
         $court = Court::create([
             'name' => 'Widget Test Court',
@@ -83,10 +93,10 @@ class BookingWidgetAccessTest extends TestCase
             'hourly_rate' => 500,
             'status' => 'active',
         ]);
-        $ownBooking = $this->makeBooking($admin, $court);
+        $ownBooking = $this->makeBooking($customerOwner, $court);
         $otherBooking = $this->makeBooking($customer, $court);
 
-        $this->signIn($admin)
+        $this->signIn($customerOwner)
             ->get("/book/bookings/{$ownBooking->id}/waiting")
             ->assertOk()
             ->assertSee('Almost there');

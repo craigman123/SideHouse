@@ -5,6 +5,7 @@ namespace App\Http\Controllers\User;
 use App\Http\Controllers\Controller;
 use App\Models\LumiSuggestionDismissal;
 use App\Services\LumiSuggestionService;
+use App\Support\GuardSessionState;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -13,7 +14,7 @@ class LumiController extends Controller
 {
     public function show(LumiSuggestionService $suggestions): View
     {
-        session()->put('lumi_suggestions_seen', true);
+        session()->put(GuardSessionState::key('lumi_suggestions_seen'), true);
 
         return view('user.lumi', [
             'suggestions' => $suggestions->forCustomer(auth()->user()),
@@ -24,18 +25,21 @@ class LumiController extends Controller
     public function suggestions(Request $request, LumiSuggestionService $suggestions): JsonResponse
     {
         $items = $suggestions->forCustomer($request->user());
-        $loginPopoverPending = (bool) $request->session()->pull('lumi_login_popover_pending', false);
+        $loginPopoverPending = (bool) $request->session()->pull(
+            GuardSessionState::key('lumi_login_popover_pending'),
+            false,
+        );
         $showLoginPopover = $loginPopoverPending
             && $items !== []
             && $request->path() !== 'lumi';
 
         if ($showLoginPopover) {
-            $request->session()->put('lumi_login_popover_shown', true);
+            $request->session()->put(GuardSessionState::key('lumi_login_popover_shown'), true);
         }
 
         return response()->json([
             'suggestions' => $items,
-            'has_unseen' => ! $request->session()->get('lumi_suggestions_seen', false) && $items !== [],
+            'has_unseen' => ! $request->session()->get(GuardSessionState::key('lumi_suggestions_seen'), false) && $items !== [],
             'show_login_popover' => $showLoginPopover,
         ]);
     }

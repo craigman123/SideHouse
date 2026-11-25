@@ -266,7 +266,7 @@ class AdminCalendarEditTest extends TestCase
             'mfa_passed_user_id' => $staff->user_id,
             'access_version_user_id' => $staff->user_id,
             'access_version' => 1,
-        ])->patchJson("/admin/bookings/{$booking->id}", [
+        ])->patchJson(role_route('admin.bookings.update', ['booking' => $booking->id]), [
             'start_time' => '17:00', 'end_time' => '19:00', 'price_decision' => 'new',
             'expected_amount' => 1200, 'price_rules_version' => $rules['version'], 'acknowledge_price_change' => true,
         ])->assertForbidden()->assertJsonPath('message', 'You do not have permission to change booking prices.');

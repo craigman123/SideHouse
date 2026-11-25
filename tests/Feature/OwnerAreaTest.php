@@ -57,8 +57,13 @@ class OwnerAreaTest extends TestCase
             $response->assertSee('shared/dashboard-shell.css')->assertSee('shared/dashboard-shell.js');
             $this->assertStringNotContainsString('css/admin/admin-shell.css', $response->getContent());
             $this->assertStringNotContainsString('js/admin/admin-shell.js', $response->getContent());
-            $this->signIn($admin)->get($path)->assertForbidden();
-            $this->signIn($staff)->get($path)->assertForbidden();
+            if (config('auth.multi_guard')) {
+                $this->signIn($admin)->get($path)->assertRedirect(route('owner.login'));
+                $this->signIn($staff)->get($path)->assertRedirect(route('owner.login'));
+            } else {
+                $this->signIn($admin)->get($path)->assertForbidden();
+                $this->signIn($staff)->get($path)->assertForbidden();
+            }
         }
     }
 
@@ -88,8 +93,12 @@ class OwnerAreaTest extends TestCase
         self::assertTrue($access->allows($admin, 'reports.system'));
         self::assertFalse($access->allows($staff, 'reports.system'));
 
-        $this->signIn($owner)->getJson('/reports/system')->assertForbidden();
-        $ownerData = $this->getJson('/reports/data')->assertOk()->json();
+        if (config('auth.multi_guard')) {
+            $this->signIn($owner)->getJson('/owner/reports/system')->assertNotFound();
+        } else {
+            $this->signIn($owner)->getJson('/reports/system')->assertForbidden();
+        }
+        $ownerData = $this->getJson(role_route('admin.reports.data'))->assertOk()->json();
         self::assertSame(['summary', 'income_split', 'by_payment_method', 'by_court', 'trend'], array_keys($ownerData));
         self::assertArrayNotHasKey('database', $ownerData);
         self::assertArrayNotHasKey('server', $ownerData);
@@ -104,6 +113,11 @@ class OwnerAreaTest extends TestCase
     public function test_owner_is_redirected_from_admin_page_urls_to_the_owner_equivalent(): void
     {
         $owner = $this->user('owner');
+        if (config('auth.multi_guard')) {
+            $this->signIn($owner)->get('/dashboard')->assertRedirect(route('admin.login'));
+            return;
+        }
+
         foreach ([
             '/dashboard' => '/owner/dashboard',
             '/bookings' => '/owner/bookings',
@@ -125,14 +139,14 @@ class OwnerAreaTest extends TestCase
     {
         $owner = $this->user('owner');
         $candidate = $this->user('user');
-        $this->signIn($owner)->postJson('/admin/users', [
+        $this->signIn($owner)->postJson(role_route('admin.users.store'), [
             'user_id' => $candidate->user_id,
             'role' => 'staff',
             'password' => 'password',
         ])->assertCreated()->assertJsonPath('user.role', 'staff');
 
         $otherCandidate = $this->user('user');
-        $this->postJson('/admin/users', [
+        $this->postJson(role_route('admin.users.store'), [
             'user_id' => $otherCandidate->user_id,
             'role' => 'owner',
             'password' => 'password',
@@ -143,7 +157,7 @@ class OwnerAreaTest extends TestCase
             'username' => $owner->username,
             'email' => $owner->email,
             'phone_number' => '09171234567',
-        ])->assertRedirect(route('admin.profile'));
+        ])->assertRedirect(route(config('auth.multi_guard') ? 'owner.profile' : 'admin.profile'));
         self::assertSame('Updated Owner', $owner->fresh()->name);
     }
 
@@ -151,14 +165,17 @@ class OwnerAreaTest extends TestCase
     {
         $secret = (new Google2FA())->generateSecretKey();
         $owner = $this->user('owner', null, ['mfa_enabled' => true, 'mfa_secret' => $secret]);
-        $login = $this->postJson('/login', ['username' => $owner->username, 'password' => 'password'])
+        $loginPath = config('auth.multi_guard') ? '/owner/login' : '/login';
+        $login = $this->postJson($loginPath, ['username' => $owner->username, 'password' => 'password'])
             ->assertOk()->assertJsonPath('mfa_required', true)->assertJsonPath('mfa_type', 'challenge');
         $otp = (new Google2FA())->getCurrentOtp($secret);
-        $this->postJson('/mfa/verify', ['code' => $otp])->assertOk()->assertJsonPath('redirect', '/owner/dashboard');
+        $verifyPath = config('auth.multi_guard') ? '/owner/mfa/verify' : '/mfa/verify';
+        $this->postJson($verifyPath, ['code' => $otp])->assertOk()->assertJsonPath('redirect', '/owner/dashboard');
 
         config(['services.google.client_id' => 'owner-area-client']);
         $token = $this->fakeGoogleToken($owner->email, $owner->name, 'owner-area-client');
-        $this->postJson('/auth/google', ['id_token' => $token])
+        $googlePath = config('auth.multi_guard') ? '/owner/auth/google' : '/auth/google';
+        $this->postJson($googlePath, ['id_token' => $token])
             ->assertOk()->assertJsonPath('redirect', '/owner/dashboard');
     }
 
@@ -264,7 +281,8 @@ class OwnerAreaTest extends TestCase
 
         config(['services.google.client_id' => 'owner-area-client']);
         $token = $this->fakeGoogleToken($owner->email, $owner->name, 'owner-area-client');
-        $this->postJson('/auth/google', ['id_token' => $token])->assertOk();
+        $googlePath = config('auth.multi_guard') ? '/owner/auth/google' : '/auth/google';
+        $this->postJson($googlePath, ['id_token' => $token])->assertOk();
 
         $response = $this->get('/owner/dashboard');
         $this->assertContains($response->getStatusCode(), [302, 403], 'Unexpected status: '.$response->getStatusCode());

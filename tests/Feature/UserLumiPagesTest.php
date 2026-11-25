@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\User;
 use App\Models\BusinessSetting;
 use App\Models\Court;
+use App\Support\GuardSessionState;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\RateLimiter;
 use Tests\TestCase;
@@ -138,9 +139,9 @@ class UserLumiPagesTest extends TestCase
             'lumi_suggestions_seen' => true,
         ])->post('/login', $credentials)
             ->assertRedirect(route('user.dashboard'))
-            ->assertSessionHas('lumi_login_popover_pending', true)
-            ->assertSessionMissing('lumi_login_popover_shown')
-            ->assertSessionMissing('lumi_suggestions_seen');
+            ->assertSessionHas(GuardSessionState::key('lumi_login_popover_pending', config('auth.multi_guard') ? 'customer' : null), true)
+            ->assertSessionMissing(GuardSessionState::key('lumi_login_popover_shown', config('auth.multi_guard') ? 'customer' : null))
+            ->assertSessionMissing(GuardSessionState::key('lumi_suggestions_seen', config('auth.multi_guard') ? 'customer' : null));
 
         $this->get('/my-dashboard')->assertOk()->assertDontSee('data-lumi-login-card', false);
         $this->getJson('/lumi/suggestions')->assertOk()
@@ -151,7 +152,7 @@ class UserLumiPagesTest extends TestCase
 
         $this->post('/logout')->assertRedirect(route('login'));
         $this->post('/login', $credentials)->assertRedirect(route('user.dashboard'))
-            ->assertSessionHas('lumi_login_popover_pending', true);
+            ->assertSessionHas(GuardSessionState::key('lumi_login_popover_pending', config('auth.multi_guard') ? 'customer' : null), true);
         $this->getJson('/lumi/suggestions')->assertOk()->assertJsonPath('show_login_popover', true);
     }
 
@@ -224,12 +225,17 @@ class UserLumiPagesTest extends TestCase
             'access_version' => 1,
         ]);
 
-        $this->actingAs($admin)->withSession([
+        $adminHome = $this->actingAs($admin)->withSession([
             'mfa_passed_at' => now()->timestamp,
             'mfa_passed_user_id' => $admin->user_id,
             'access_version_user_id' => $admin->user_id,
             'access_version' => (int) $admin->access_version,
-        ])->get('/lumi')->assertForbidden();
+        ])->get('/lumi');
+        if (config('auth.multi_guard')) {
+            $adminHome->assertRedirect(route('login'));
+        } else {
+            $adminHome->assertForbidden();
+        }
     }
 
     public function test_lumi_icon_uses_current_color_and_standalone_asset_uses_fixed_color(): void

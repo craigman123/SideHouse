@@ -67,7 +67,7 @@ class AdminCalendarRateLimitTest extends TestCase
             $this->patchJson("/admin/bookings/{$this->booking->id}", $quote)->assertOk();
         }
 
-        $this->patchJson("/admin/bookings/{$this->booking->id}", [
+        $this->patchJson(role_route('admin.bookings.update', ['booking' => $this->booking->id]), [
             'notes' => 'Saved after a full quote bucket',
         ])->assertOk()->assertJsonPath('booking.notes', 'Saved after a full quote bucket');
     }
@@ -80,7 +80,7 @@ class AdminCalendarRateLimitTest extends TestCase
             $this->getJson('/admin/bookings/calendar?from=2030-05-15&to=2030-05-21')->assertOk();
         }
 
-        $this->patchJson("/admin/bookings/{$this->booking->id}", [
+        $this->patchJson(role_route('admin.bookings.update', ['booking' => $this->booking->id]), [
             'notes' => 'Saved after a full read bucket',
         ])->assertOk()->assertJsonPath('booking.notes', 'Saved after a full read bucket');
     }
@@ -103,12 +103,12 @@ class AdminCalendarRateLimitTest extends TestCase
 
         try {
             for ($attempt = 0; $attempt < 60; $attempt++) {
-                $this->patchJson("/admin/bookings/{$this->booking->id}", [
+                $this->patchJson(role_route('admin.bookings.update', ['booking' => $this->booking->id]), [
                     'date' => 'not-a-date',
                 ])->assertUnprocessable();
             }
 
-            $this->patchJson("/admin/bookings/{$this->booking->id}", [
+            $this->patchJson(role_route('admin.bookings.update', ['booking' => $this->booking->id]), [
                 'date' => 'not-a-date',
             ])->assertTooManyRequests()->assertHeader('Retry-After');
         } finally {
@@ -170,10 +170,10 @@ class AdminCalendarRateLimitTest extends TestCase
 
         try {
             for ($attempt = 0; $attempt < 600; $attempt++) {
-                $this->getJson('/admin/bookings/calendar?from=2030-05-15&to=2030-05-21')->assertOk();
+                $this->getJson(role_route('admin.bookings.calendar').'?from=2030-05-15&to=2030-05-21')->assertOk();
             }
 
-            $this->getJson('/admin/bookings/calendar?from=2030-05-15&to=2030-05-21')
+            $this->getJson(role_route('admin.bookings.calendar').'?from=2030-05-15&to=2030-05-21')
                 ->assertTooManyRequests();
         } finally {
             RateLimiter::clear(md5('admin-calendar-read'.$identity));

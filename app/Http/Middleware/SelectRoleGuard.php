@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Support\GuardSessionState;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Route;
@@ -72,7 +73,7 @@ class SelectRoleGuard
             return $next($request);
         }
 
-        $guard = $this->guardForRoute($route);
+        $guard = $this->selectedGuardForRoute($request, $route);
         if ($guard !== null) {
             Auth::shouldUse($guard);
 
@@ -115,6 +116,27 @@ class SelectRoleGuard
         }
 
         return $guards[0] ?? null;
+    }
+
+    public function selectedGuardForRoute(Request $request, Route $route): ?string
+    {
+        $guard = $this->guardForRoute($route);
+        if ($guard === null || $guard === 'admin') {
+            return $guard;
+        }
+
+        if (Auth::guard($guard)->check()) {
+            return $guard;
+        }
+
+        $viewAs = $request->hasSession()
+            ? $request->session()->get(GuardSessionState::key('view_as', 'admin'))
+            : null;
+        if ($viewAs === $guard && Auth::guard('admin')->check()) {
+            return 'admin';
+        }
+
+        return $guard;
     }
 
     private function middlewareNames(array $middleware): array

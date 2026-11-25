@@ -44,6 +44,13 @@ class GuardSessionStateTest extends TestCase
         Auth::shouldUse('admin');
         Auth::guard('admin')->login($admin);
         $session->put(GuardSessionState::key('view_as'), 'staff');
+        $session->put([
+            GuardSessionState::key('lumi_login_popover_pending', 'admin') => true,
+            GuardSessionState::key('lumi_login_popover_shown', 'admin') => true,
+            GuardSessionState::key('lumi_suggestions_seen', 'admin') => true,
+            GuardSessionState::key('lumi_login_popover_shown', 'customer') => true,
+            GuardSessionState::key('lumi_suggestions_seen', 'customer') => true,
+        ]);
         EnsureAccessVersion::stamp($this->request($session, $admin), $admin);
         $adminGuardSessionKey = Auth::guard('admin')->getName();
 
@@ -64,6 +71,12 @@ class GuardSessionStateTest extends TestCase
         $this->assertSame(1, $session->get(GuardSessionState::key('access_version', 'admin')));
         $this->assertSame($customer->user_id, $session->get(GuardSessionState::key('access_version_user_id', 'customer')));
         $this->assertSame(1, $session->get(GuardSessionState::key('access_version', 'customer')));
+        $this->assertTrue($session->get(GuardSessionState::key('lumi_login_popover_pending', 'admin')));
+        $this->assertTrue($session->get(GuardSessionState::key('lumi_login_popover_shown', 'admin')));
+        $this->assertTrue($session->get(GuardSessionState::key('lumi_suggestions_seen', 'admin')));
+        $this->assertTrue($session->get(GuardSessionState::key('lumi_login_popover_pending', 'customer')));
+        $this->assertNull($session->get(GuardSessionState::key('lumi_login_popover_shown', 'customer')));
+        $this->assertNull($session->get(GuardSessionState::key('lumi_suggestions_seen', 'customer')));
 
         Auth::forgetGuards();
         Auth::shouldUse('admin');
