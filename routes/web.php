@@ -204,34 +204,40 @@ Route::middleware('auth')->group(function () {
 
 // Shared admin implementations are also available to staff with the matching
 // capability. Owner/admin access remains unchanged through UserAccessService.
-Route::middleware(['auth', 'admin.mfa', 'throttle:120,1'])->group(function () {
-    Route::get('/admin/specific-closures', [SpecificDateClosureController::class, 'index'])->middleware('throttle:30,1')->name('admin.specific-closures.index');
-    Route::get('/admin/specific-closures/operating-hours', [SpecificDateClosureController::class, 'operatingHours'])->middleware('throttle:30,1')->name('admin.specific-closures.hours');
-    Route::post('/admin/specific-closures', [SpecificDateClosureController::class, 'store'])->middleware('throttle:20,1')->name('admin.specific-closures.store');
-    Route::patch('/admin/specific-closures/{closure}', [SpecificDateClosureController::class, 'update'])->middleware('throttle:20,1')->name('admin.specific-closures.update');
-    Route::delete('/admin/specific-closures/{closure}', [SpecificDateClosureController::class, 'destroy'])->middleware('throttle:20,1')->name('admin.specific-closures.destroy');
+Route::middleware(['auth', 'admin.mfa'])->group(function () {
+    Route::middleware('throttle:120,1')->group(function () {
+        Route::get('/admin/specific-closures', [SpecificDateClosureController::class, 'index'])->middleware('throttle:30,1')->name('admin.specific-closures.index');
+        Route::get('/admin/specific-closures/operating-hours', [SpecificDateClosureController::class, 'operatingHours'])->middleware('throttle:30,1')->name('admin.specific-closures.hours');
+        Route::post('/admin/bookings', [App\Http\Controllers\Admin\WalkInBookingController::class, 'store'])
+            ->middleware(['can.access:bookings.create', 'staff.redact', 'throttle:20,1'])
+            ->name('admin.bookings.walk-in.store');
+        Route::post('/admin/blocks', [CourtBlockController::class, 'store'])
+            ->middleware(['can.access:calendar_events.manage,calendar_events.open_play', 'throttle:20,1'])
+            ->name('admin.blocks.store');
+        Route::get('/customers/data', [CustomerController::class, 'data'])
+            ->middleware(['can.access:customers.view', 'staff.redact'])
+            ->name('admin.customers.data');
+    });
+
+    Route::post('/admin/specific-closures', [SpecificDateClosureController::class, 'store'])
+        ->middleware('throttle:admin-closures')->name('admin.specific-closures.store');
+    Route::patch('/admin/specific-closures/{closure}', [SpecificDateClosureController::class, 'update'])
+        ->middleware('throttle:admin-closures')->name('admin.specific-closures.update');
+    Route::delete('/admin/specific-closures/{closure}', [SpecificDateClosureController::class, 'destroy'])
+        ->middleware('throttle:admin-calendar-delete')->name('admin.specific-closures.destroy');
 
     Route::get('/admin/bookings/calendar', [BookingController::class, 'calendar'])
-        ->middleware(['can.access:bookings.view,calendar_events.open_play', 'staff.redact'])
+        ->middleware(['can.access:bookings.view,calendar_events.open_play', 'staff.redact', 'throttle:admin-calendar-read'])
         ->name('admin.bookings.calendar');
     Route::patch('/admin/bookings/{booking}', [BookingController::class, 'update'])
-        ->middleware(['can.access:bookings.edit', 'staff.redact', 'throttle:20,1'])
+        ->middleware(['can.access:bookings.edit', 'staff.redact', 'throttle:admin-calendar-quote', 'throttle:admin-calendar-save'])
         ->name('admin.bookings.update');
-    Route::post('/admin/bookings', [App\Http\Controllers\Admin\WalkInBookingController::class, 'store'])
-        ->middleware(['can.access:bookings.create', 'staff.redact', 'throttle:20,1'])
-        ->name('admin.bookings.walk-in.store');
-    Route::post('/admin/blocks', [CourtBlockController::class, 'store'])
-        ->middleware(['can.access:calendar_events.manage,calendar_events.open_play', 'throttle:20,1'])
-        ->name('admin.blocks.store');
     Route::patch('/admin/blocks/{block}', [CourtBlockController::class, 'update'])
-        ->middleware(['can.access:calendar_events.manage,calendar_events.open_play', 'throttle:20,1'])
+        ->middleware(['can.access:calendar_events.manage,calendar_events.open_play', 'throttle:admin-calendar-save'])
         ->name('admin.blocks.update');
     Route::delete('/admin/blocks/{block}', [CourtBlockController::class, 'destroy'])
-        ->middleware(['can.access:calendar_events.manage,calendar_events.open_play', 'throttle:20,1'])
+        ->middleware(['can.access:calendar_events.manage,calendar_events.open_play', 'throttle:admin-calendar-delete'])
         ->name('admin.blocks.destroy');
-    Route::get('/customers/data', [CustomerController::class, 'data'])
-        ->middleware(['can.access:customers.view', 'staff.redact'])
-        ->name('admin.customers.data');
 });
 
 Route::middleware(['auth', 'admin.mfa', 'real-admin', 'throttle:30,1'])

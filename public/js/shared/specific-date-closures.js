@@ -155,7 +155,11 @@ const confirmRemove = (rule) => new Promise((resolve) => {
             });
             const data = await response.json().catch(() => ({}));
             if (!response.ok) {
-                const error = new Error(data.message || 'The request could not be completed.');
+                const retryAfter = Number(response.headers.get('Retry-After'));
+                const message = response.status === 429
+                    ? `Too many changes. Try again in ${Number.isFinite(retryAfter) && retryAfter > 0 ? Math.ceil(retryAfter) : 60} seconds.`
+                    : data.message || 'The request could not be completed.';
+                const error = new Error(message);
                 error.data = data;
                 error.status = response.status;
                 throw error;

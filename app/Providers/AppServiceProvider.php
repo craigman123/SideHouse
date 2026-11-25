@@ -4,8 +4,10 @@ namespace App\Providers;
 
 use App\Models\PaymentReference;
 use App\Observers\PaymentReferenceObserver;
+use App\Services\UserAccessService;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Http\Request;
 use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
@@ -61,6 +63,40 @@ class AppServiceProvider extends ServiceProvider
         RateLimiter::for('register', function (\Illuminate\Http\Request $request) {
             return Limit::perMinute(5)->by($request->ip());
         });
+
+        $calendarLimitResponse = static function (Request $request, array $headers) {
+            $retryAfter = max(1, (int) ($headers['Retry-After'] ?? 60));
+            $headers['Retry-After'] = (string) $retryAfter;
+
+            return response()->json([
+                'message' => "Too many changes. Try again in {$retryAfter} seconds.",
+            ], 429, $headers);
+        };
+        $calendarLimit = static function (Request $request, int $adminLimit, int $staffLimit) use ($calendarLimitResponse) {
+            $user = $request->user();
+            $identity = $user
+                ? 'user:'.$user->getAuthIdentifier()
+                : 'ip:'.$request->ip();
+            $isStaff = $user && app(UserAccessService::class)->effectiveRole($user, $request) === 'staff';
+
+            return Limit::perMinute($isStaff ? $staffLimit : $adminLimit)
+                ->by($identity)
+                ->response($calendarLimitResponse);
+        };
+
+        RateLimiter::for('admin-calendar-quote', static function (Request $request) use ($calendarLimit) {
+            return $request->boolean('dry_run')
+                ? $calendarLimit($request, 120, 60)
+                : Limit::none();
+        });
+        RateLimiter::for('admin-calendar-save', static function (Request $request) use ($calendarLimit) {
+            return $request->boolean('dry_run')
+                ? Limit::none()
+                : $calendarLimit($request, 120, 60);
+        });
+        RateLimiter::for('admin-calendar-delete', static fn (Request $request) => $calendarLimit($request, 60, 30));
+        RateLimiter::for('admin-closures', static fn (Request $request) => $calendarLimit($request, 120, 120));
+        RateLimiter::for('admin-calendar-read', static fn (Request $request) => $calendarLimit($request, 120, 60));
 
         Event::listen(function (Login $event) {
             session()->forget(['mfa_passed_at', 'mfa_passed_user_id', 'mfa_temp_secret', 'mfa_temp_secret_user_id']);

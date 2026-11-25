@@ -362,7 +362,9 @@
                 return false;
             }
             if (!response.ok) {
-                throw new Error(`Calendar sync failed (${response.status})`);
+                const error = new Error(responseFailureMessage({}, `Calendar sync failed (${response.status})`, response));
+                error.status = response.status;
+                throw error;
             }
             const incoming = await response.json();
             updateVenueClock(incoming.businessSettings?.today || response.headers.get('X-Venue-Date'),
@@ -383,6 +385,7 @@
             }
             pollDelay = Math.min(Math.max(pollDelay * 2, 45000), 300000);
             setSyncState('Sync paused');
+            if (error.status === 429) notify(error.message, 'error');
             return false;
         }
     };
@@ -550,6 +553,7 @@
             autoConfirm() {
                 finish({ decision: 'keep', quote: activeQuote, automatic: true });
             },
+            dismiss() { finish(null); },
         };
         return modal;
     };
@@ -667,9 +671,16 @@
         }
         return error?.message || 'Could not move this calendar item.';
     };
-    const responseFailureMessage = (result, fallback) => result.message
-        || Object.values(result.errors || {}).flat().find((message) => typeof message === 'string')
-        || fallback;
+    const responseFailureMessage = (result, fallback, response = null) => {
+        if (response?.status === 429) {
+            const retryAfter = Number(response.headers.get('Retry-After'));
+            const seconds = Number.isFinite(retryAfter) && retryAfter > 0 ? Math.ceil(retryAfter) : 60;
+            return `Too many changes. Try again in ${seconds} seconds.`;
+        }
+        return result.message
+            || Object.values(result.errors || {}).flat().find((message) => typeof message === 'string')
+            || fallback;
+    };
     const pumpMoveQueue = async (queue) => {
         if (moveQueues.get(queue.key) !== queue || queue.inFlight || !queue.wanted) return;
         if (!moveItemExists(queue)) { finishMoveQueue(queue, false); return; }
@@ -803,7 +814,9 @@
                                 const result = await response.json().catch(() => ({}));
                                 if (moveQueues.get(queue.key) !== queue || !isCurrent()) return;
                                 if (!response.ok || !result.quote) {
-                                    throw new Error(responseFailureMessage(result, 'Could not check the new booking price.'));
+                                    const error = new Error(responseFailureMessage(result, 'Could not check the new booking price.', response));
+                                    error.status = response.status;
+                                    throw error;
                                 }
                                 quote = { ...result.quote, can_change_amount: Boolean(result.quote.can_change_amount) };
                                 modal.setQuote(quote);
@@ -812,6 +825,11 @@
                             } catch (error) {
                                 if (moveQueues.get(queue.key) !== queue || !isCurrent()) return;
                                 lastQuoteError = requestFailureMessage(error);
+                                if (error.status === 429) {
+                                    modal.dismiss();
+                                    rollback(lastQuoteError);
+                                    return;
+                                }
                                 modal.setError(lastQuoteError);
                                 if (!await modal.waitForRetry()) return;
                             }
@@ -903,7 +921,7 @@
                 const staleMessage = saved.response.status === 409
                     ? 'This calendar item changed on the server. Reload the board and try again.'
                     : 'The server rejected this calendar move.';
-                rollback(responseFailureMessage(saved.result, staleMessage));
+                rollback(responseFailureMessage(saved.result, staleMessage, saved.response));
                 return;
             }
 
@@ -1386,7 +1404,11 @@
         const response = await fetch(`/admin/bookings/${encodeURIComponent(selectedId)}`, { method: 'PATCH', credentials: 'same-origin', headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': token }, body: JSON.stringify({ date: target.date, court_id: target.court_id, start_time: target.start, end_time: target.end, ...(Number(durationControl.dataset.adjustMinutes || 0) ? { adjust_minutes: Number(durationControl.dataset.adjustMinutes) } : {}), dry_run: true, expected_updated_at: selectedBooking.updated_at }) });
         const result = await response.json().catch(() => ({}));
         if (String(selectedBooking?.id) !== selectedId) return null;
-        if (!response.ok || !result.quote) throw new Error(result.message || 'Could not check the new booking price.');
+        if (!response.ok || !result.quote) {
+            const error = new Error(responseFailureMessage(result, 'Could not check the new booking price.', response));
+            error.status = response.status;
+            throw error;
+        }
         return result.quote;
     };
     const refreshEditQuote = () => {
@@ -1401,7 +1423,11 @@
         }
         editQuoteTimer = setTimeout(async () => {
             try { currentEditQuote = await loadEditQuote(); if (currentEditQuote) durationPreview.textContent = `New end ${currentEditQuote.end} · ${formatCurrency(currentEditQuote.new_amount)}`; }
-            catch (error) { durationWarning.textContent = error.message; durationWarning.hidden = false; }
+            catch (error) {
+                durationWarning.textContent = error.message;
+                durationWarning.hidden = false;
+                if (error.status === 429) notify(error.message, 'error');
+            }
         }, 250);
     };
     [bookingEditForm.elements.date, bookingEditForm.elements.court_id, bookingStartInput, bookingEndInput].forEach((field) => field.addEventListener('change', refreshEditQuote));    const bookingEditMessage = document.getElementById('courtBookingEditMessage');
@@ -1552,6 +1578,7 @@
             catch (error) {
                 bookingEditMessage.textContent = error.message;
                 bookingEditMessage.classList.add('is-error');
+                if (error.status === 429) notify(error.message, 'error');
                 return;
             }
             if (!quote) {
@@ -1643,8 +1670,14 @@
                 const fieldErrors = Object.values(result.errors || {}).flat();
                 const conflict = result.conflict;
                 const conflictMessage = conflict ? ` ${conflict.title || conflict.type}${conflict.start_time ? ` (${conflict.start_time}–${conflict.end_time})` : ''}.` : '';
-                bookingEditMessage.textContent = `${result.message || (response.status === 419 ? 'Your session or security token expired. Refresh the page and try again.' : 'Could not update this booking.')}${conflictMessage}${fieldErrors.length ? ` ${fieldErrors.join(' ')}` : ''}`;
+                const failureMessage = responseFailureMessage(
+                    result,
+                    response.status === 419 ? 'Your session or security token expired. Refresh the page and try again.' : 'Could not update this booking.',
+                    response
+                );
+                bookingEditMessage.textContent = `${failureMessage}${conflictMessage}${fieldErrors.length ? ` ${fieldErrors.join(' ')}` : ''}`;
                 bookingEditMessage.classList.add('is-error');
+                if (response.status === 429) notify(failureMessage, 'error');
                 return;
             }
             const index = bookings.findIndex((booking) => String(booking.id) === String(result.booking.id));
@@ -1761,8 +1794,14 @@
                 const fieldErrors = Object.values(result.errors || {}).flat();
                 const conflict = result.conflict;
                 const conflictMessage = conflict ? ` ${conflict.title || conflict.type}${conflict.start_time ? ` (${conflict.start_time}–${conflict.end_time})` : ''}.` : '';
-                blockEditMessage.textContent = `${result.message || (response.status === 419 ? 'Your session or security token expired. Refresh the page and try again.' : 'Could not update this event.')}${conflictMessage}${fieldErrors.length ? ` ${fieldErrors.join(' ')}` : ''}`;
+                const failureMessage = responseFailureMessage(
+                    result,
+                    response.status === 419 ? 'Your session or security token expired. Refresh the page and try again.' : 'Could not update this event.',
+                    response
+                );
+                blockEditMessage.textContent = `${failureMessage}${conflictMessage}${fieldErrors.length ? ` ${fieldErrors.join(' ')}` : ''}`;
                 blockEditMessage.classList.add('is-error');
+                if (response.status === 429) notify(failureMessage, 'error');
                 return;
             }
             const index = blocks.findIndex((item) => String(item.id) === String(result.block.id));
@@ -1822,8 +1861,9 @@
                     blockDeleteMessage.classList.add('is-error');
                     return;
                 }
-                blockDeleteMessage.textContent = result.message || 'Could not delete this event.';
+                blockDeleteMessage.textContent = responseFailureMessage(result, 'Could not delete this event.', response);
                 blockDeleteMessage.classList.add('is-error');
+                if (response.status === 429) notify(blockDeleteMessage.textContent, 'error');
                 return;
             }
 
