@@ -48,6 +48,9 @@
             data-peak-end-hour="{{ $peakEndHour ?? '' }}"
             data-peak-adjustment-type="{{ $peakAdjustmentType ?? '' }}"
             data-peak-adjustment-value="{{ $peakAdjustmentValue ?? '' }}"
+            data-deep-link-date="{{ $deepLink['date'] ?? '' }}"
+            data-deep-link-time="{{ $deepLink['time'] ?? '' }}"
+            data-deep-link-court="{{ $deepLink['court_id'] ?? '' }}"
             {{-- Credit balance — given/reserved/total — rendered server-side so
                  book.js can initialise the credit panel without an extra request.
                  Absent (empty string) when the user has no wallet or zero balance. --}}
@@ -187,6 +190,7 @@
                         <span class="time-picker-legend-item"><span class="time-picker-legend-swatch legend-booked"></span> Booked</span>
                     </div>
 
+                    <p class="booking-deep-link-notice" id="bookingDeepLinkNotice" role="status" aria-live="polite" hidden></p>
                     <div class="time-slot-list" id="timeSlotGrid"></div>
 
                     <aside class="booking-selection-summary user-booking-selection" aria-live="polite">

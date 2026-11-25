@@ -13,6 +13,8 @@ use App\Models\Equipment;
 use App\Models\Membership;
 use App\Models\PaymentReference as PaymentReferenceModel;
 use App\Services\CreditService;
+use App\Services\BookingAvailabilityService;
+use App\Services\LumiSuggestionService;
 use App\Support\ActivityLogger;
 use App\Support\BookingHours;
 use App\Support\PaymentWindows;
@@ -43,7 +45,7 @@ class User_UserController extends Controller
         ]);
     }
 
-    public function createBooking()
+    public function createBooking(Request $request)
     {
         $courts = Court::where('status', 'active')
             ->orderBy('name')
@@ -88,6 +90,8 @@ class User_UserController extends Controller
             'total'    => (int) $creditWallet->given_balance + (int) $creditWallet->reserved_balance,
         ] : null;
 
+        $deepLink = $this->bookingDeepLink($request, $courts);
+
         return view('user.bookings.book', [
             'userName'            => auth()->user()->name,
             'userPhone'           => auth()->user()->phone_number ?? '',
@@ -104,7 +108,62 @@ class User_UserController extends Controller
             'peakAdjustmentType'  => $settings->hasPeakPricing() ? $settings->peak_adjustment_type : null,
             'peakAdjustmentValue' => $settings->hasPeakPricing() ? $settings->peak_adjustment_value : null,
             'creditBalance'       => $creditBalance,
+            'deepLink'            => $deepLink,
         ]);
+    }
+
+    private function bookingDeepLink(Request $request, $courts): array
+    {
+        $timezone = (string) config('lumi.timezone', 'Asia/Manila');
+        $rawDate = $request->query('date');
+        $date = null;
+        if (is_string($rawDate) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $rawDate)) {
+            $parsedDate = \DateTimeImmutable::createFromFormat('!Y-m-d', $rawDate, new \DateTimeZone($timezone));
+            $parseErrors = \DateTimeImmutable::getLastErrors();
+            if ($parsedDate
+                && ($parseErrors === false || ($parseErrors['warning_count'] === 0 && $parseErrors['error_count'] === 0))
+                && $parsedDate->format('Y-m-d') === $rawDate
+                && $rawDate >= Carbon::now($timezone)->toDateString()) {
+                $date = $rawDate;
+            }
+        }
+
+        $rawTime = $request->query('time');
+        $time = is_string($rawTime)
+            && preg_match('/^(?:[01]\d|2[0-3]):[0-5]\d$/', $rawTime)
+            && ((int) substr($rawTime, 3, 2) % max(1, BookingHours::stepMinutes())) === 0
+                ? $rawTime
+                : null;
+        if ($date === Carbon::now($timezone)->toDateString() && $time !== null) {
+            $requestedStart = Carbon::createFromFormat('Y-m-d H:i', $date.' '.$time, $timezone);
+            if ($requestedStart->lessThanOrEqualTo(Carbon::now($timezone)->addHour())) {
+                $time = null;
+            }
+        }
+
+        $courtId = null;
+        if ($request->query->has('court')) {
+            $rawCourt = $request->query('court');
+            if (! is_string($rawCourt) || ! ctype_digit($rawCourt)) {
+                return ['date' => null, 'time' => null, 'court_id' => null];
+            }
+            $courtId = $courts->first(fn (Court $court) => (int) $court->id === (int) $rawCourt)?->id;
+            if ($courtId === null) {
+                return ['date' => null, 'time' => null, 'court_id' => null];
+            }
+        } elseif ($date !== null && $time !== null) {
+            $courtId = $courts->first()?->id;
+        }
+
+        if ($date === null) {
+            $time = null;
+        }
+
+        return [
+            'date' => $date,
+            'time' => $time,
+            'court_id' => $courtId === null ? null : (int) $courtId,
+        ];
     }
 
     /**
@@ -225,6 +284,8 @@ class User_UserController extends Controller
 
         $booking      = $result['booking'];
         $refundAmount = $result['refundAmount'];
+        app(LumiSuggestionService::class)->forgetForUser((int) $user->user_id);
+        session()->forget('lumi_suggestions_seen');
 
         ActivityLogger::log(
             'booking.cancelled',
@@ -313,40 +374,8 @@ class User_UserController extends Controller
             'date'     => ['required', 'date'],
         ]);
 
-        // Spots are looked up by their OWN date (booking_slots.date), not
-        // the parent booking's envelope date — matches GuestBookingController
-        // so overnight tail slots still show as booked on the next day.
-        $slots = \App\Models\BookingSlot::where('date', $validated['date'])
-            ->whereHas('booking', function ($q) use ($validated) {
-                $q->where('court_id', $validated['court_id'])
-                    ->where('status', '!=', 'cancelled');
-            })
-            ->get(['start_time', 'end_time']);
-
-        $booked = $slots->map(fn ($slot) => [
-            'start' => substr($slot->start_time, 0, 5),
-            'end'   => substr($slot->end_time, 0, 5),
-        ])->all();
-
-        // Legacy bookings with no slot rows fall back to envelope on booking.date.
-        $legacyBookings = Booking::where('court_id', $validated['court_id'])
-            ->where('date', $validated['date'])
-            ->where('status', '!=', 'cancelled')
-            ->whereDoesntHave('slots')
-            ->get(['start_time', 'end_time']);
-
-        foreach ($legacyBookings as $booking) {
-            $booked[] = [
-                'start' => substr($booking->start_time, 0, 5),
-                'end'   => substr($booking->end_time, 0, 5),
-            ];
-        }
-
-        return response()->json([
-            'booked' => $booked,
-            'open_play' => app(\App\Services\OpenPlayAvailability::class)->forDate((int) $validated['court_id'], $validated['date']),
-            'closed_blocks' => app(\App\Services\CourtBlockClosureAvailability::class)->closedRangesForDate((int) $validated['court_id'], $validated['date']),
-        ]);
+        return response()->json(app(BookingAvailabilityService::class)
+            ->forCourtDate((int) $validated['court_id'], $validated['date']));
     }
 
     /**
@@ -786,6 +815,8 @@ class User_UserController extends Controller
 
         [$bookings, $isPaid] = [$result['bookings'], $result['isPaid']];
         $idempotent = (bool) ($result['idempotent'] ?? false);
+        app(LumiSuggestionService::class)->forgetForUser((int) $user->user_id);
+        session()->forget('lumi_suggestions_seen');
 
         // Log each booking only on the first (non-idempotent) submit.
         foreach ($bookings as $booking) {

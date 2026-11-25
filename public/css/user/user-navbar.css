@@ -763,6 +763,7 @@ svg {
 }
 
 .topbar .date button.user-lumi-topbar-button {
+    position: relative;
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -796,6 +797,19 @@ svg {
 }
 
 .user-lumi-topbar-button svg { flex: 0 0 auto; }
+
+.user-lumi-badge {
+    position: absolute;
+    top: 3px;
+    right: 3px;
+    width: 9px;
+    height: 9px;
+    border: 2px solid var(--surface);
+    border-radius: 50%;
+    background: var(--brand);
+}
+
+.user-lumi-badge[hidden] { display: none; }
 
 /* Mobile: keep the badge compact — show icon only below 480 px */
 @media (max-width: 480px) {

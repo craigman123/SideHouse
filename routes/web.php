@@ -357,9 +357,8 @@ Route::middleware(['auth', 'admin.mfa', 'customer.only', 'throttle:120,1'])->gro
     Route::get('/my-dashboard', [UserDashboardController::class, 'index'])->name('user.dashboard');
     Route::get('/user/dashboard', [UserDashboardController::class, 'index'])->name('user.dashboard.view-as');
     Route::get('/lumi', [LumiController::class, 'show'])->name('user.lumi');
-    Route::post('/lumi/message', [LumiController::class, 'reply'])
-        ->middleware('throttle:20,1')
-        ->name('user.lumi.message');
+    Route::get('/lumi/suggestions', [LumiController::class, 'suggestions'])->name('user.lumi.suggestions');
+    Route::post('/lumi/dismiss', [LumiController::class, 'dismiss'])->name('user.lumi.dismiss');
     Route::get('/whats-new', [LumiController::class, 'whatsNew'])->name('user.whats-new');
 
     // Book a court

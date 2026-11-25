@@ -339,6 +339,32 @@ html {
     gap: 10px;
 }
 
+.booking-deep-link-notice:not([hidden]) {
+    margin: 0 0 var(--s3);
+    padding: var(--s3) var(--s4);
+    border: 1px solid var(--border);
+    border-radius: var(--r-sm);
+    background: var(--surface-2);
+    color: var(--text);
+    font-size: var(--font-size-small);
+}
+
+.time-slot-row.lumi-time-slot-highlight .time-slot-row-toggle {
+    outline: 2px solid var(--brand);
+    outline-offset: 2px;
+    animation: lumi-slot-pulse 1.2s ease-in-out 3;
+}
+
+@keyframes lumi-slot-pulse {
+    50% { outline-offset: 5px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .time-slot-row.lumi-time-slot-highlight .time-slot-row-toggle {
+        animation: none;
+    }
+}
+
 .time-slot-row-time {
     display: flex;
     align-items: center;

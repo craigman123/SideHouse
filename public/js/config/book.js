@@ -126,6 +126,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const timePickerPrevDay = document.getElementById('timePickerPrevDay');
     const timePickerNextDay = document.getElementById('timePickerNextDay');
     const timeSlotGrid = document.getElementById('timeSlotGrid');
+    const deepLinkNotice = document.getElementById('bookingDeepLinkNotice');
     const timePickerFeeRanges = document.getElementById('timePickerFeeRanges');
     const timePickerFeeTotal = document.getElementById('timePickerFeeTotal');
     const continueToEquipmentBtn = document.getElementById('continueToEquipment');
@@ -894,6 +895,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const row = document.createElement('div');
         row.className = 'time-slot-row time-slot-row-openplay'
             + (isSelected ? ' selected' : '') + (unavailable ? ' disabled' : '');
+        row.dataset.slotDate = sessionDate;
+        row.dataset.slotTime = openPlay.start;
+        if (unavailable) row.dataset.unavailableReason = full ? 'full' : past ? 'past' : 'closed';
 
         const times = document.createElement('div');
         times.className = 'time-slot-openplay-times';
@@ -993,6 +997,11 @@ document.addEventListener('DOMContentLoaded', () => {
             // right (the price pill) actually toggles the selection.
             const row = document.createElement('div');
             row.className = 'time-slot-row' + (isSelected ? ' selected' : '') + (unavailable ? ' disabled' : '');
+            row.dataset.slotDate = sessionDate;
+            row.dataset.slotTime = timeStr;
+            if (unavailable) {
+                row.dataset.unavailableReason = booked ? 'taken' : timedClosed ? 'closed' : past ? 'past' : 'full';
+            }
 
             const label = document.createElement('span');
             label.className = 'time-slot-row-time';
@@ -1627,11 +1636,57 @@ document.addEventListener('DOMContentLoaded', () => {
         setTimeout(remove, 4000);
     }
 
+    function validDeepLinkDate(value) {
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(value || '')) return false;
+        const [year, month, day] = value.split('-').map(Number);
+        const parsed = new Date(year, month - 1, day);
+        const normalized = `${parsed.getFullYear()}-${pad(parsed.getMonth() + 1)}-${pad(parsed.getDate())}`;
+        return normalized === value && value >= todayStr();
+    }
+
+    function validDeepLinkTime(value) {
+        if (!/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(value || '')) return false;
+        return Number(value.slice(3, 5)) % Math.max(1, STEP_MINUTES) === 0;
+    }
+
+    function highlightDeepLinkedTime(date, time) {
+        const rows = Array.from(timeSlotGrid.querySelectorAll('.time-slot-row[data-slot-date][data-slot-time]'))
+            .filter((row) => row.dataset.slotDate === date);
+        const exact = rows.find((row) => row.dataset.slotTime === time);
+        const unavailableBecauseTaken = exact?.dataset.unavailableReason === 'taken';
+        let target = exact && !exact.classList.contains('disabled') ? exact : null;
+
+        if (!target && unavailableBecauseTaken) {
+            const requestedMinutes = timeToMinutes(time);
+            target = rows
+                .filter((row) => !row.classList.contains('disabled'))
+                .sort((left, right) => Math.abs(timeToMinutes(left.dataset.slotTime) - requestedMinutes)
+                    - Math.abs(timeToMinutes(right.dataset.slotTime) - requestedMinutes))[0] || null;
+            if (deepLinkNotice) {
+                deepLinkNotice.textContent = 'That time was just taken. Here are the closest open times.';
+                deepLinkNotice.hidden = false;
+            }
+        }
+
+        if (!target) return;
+        target.classList.add('lumi-time-slot-highlight');
+        target.scrollIntoView?.({
+            behavior: window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
+            block: 'center',
+        });
+        window.setTimeout(() => target.classList.remove('lumi-time-slot-highlight'), 5000);
+    }
+
     const returnParams = new URLSearchParams(window.location.search);
-    if (returnParams.get('openBooking') === '1') {
-        const requestedCourtId = returnParams.get('court_id');
+    const legacyOpenBooking = returnParams.get('openBooking') === '1';
+    const requestedCourtId = grid.dataset.deepLinkCourt || returnParams.get('court_id') || '';
+    const deepLinkDate = validDeepLinkDate(grid.dataset.deepLinkDate) ? grid.dataset.deepLinkDate : '';
+    const deepLinkTime = deepLinkDate && validDeepLinkTime(grid.dataset.deepLinkTime)
+        ? grid.dataset.deepLinkTime
+        : '';
+    if (legacyOpenBooking || deepLinkDate) {
         const courtCard = Array.from(grid.querySelectorAll('.court-card-clickable'))
-            .find((card) => card.dataset.id === requestedCourtId);
+            .find((card) => !requestedCourtId || card.dataset.id === requestedCourtId);
         if (courtCard) {
             selectedCourt = {
                 id: courtCard.dataset.id,
@@ -1642,7 +1697,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 price: courtCard.dataset.price,
             };
             openBookingModal();
-            window.history.replaceState({}, '', window.location.pathname);
+            if (deepLinkDate && deepLinkTime) {
+                selectDate(deepLinkDate).then(() => highlightDeepLinkedTime(deepLinkDate, deepLinkTime));
+            } else if (deepLinkDate) {
+                const [year, month, day] = deepLinkDate.split('-').map(Number);
+                selectedDate = deepLinkDate;
+                calendarCursor = new Date(year, month - 1, day);
+                renderCalendar();
+            } else if (legacyOpenBooking) {
+                window.history.replaceState({}, '', window.location.pathname);
+            }
         }
     }
 });

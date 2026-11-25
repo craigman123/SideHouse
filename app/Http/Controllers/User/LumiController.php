@@ -3,28 +3,57 @@
 namespace App\Http\Controllers\User;
 
 use App\Http\Controllers\Controller;
+use App\Models\LumiSuggestionDismissal;
+use App\Services\LumiSuggestionService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
 class LumiController extends Controller
 {
-    public function show(): View
+    public function show(LumiSuggestionService $suggestions): View
     {
+        session()->put('lumi_suggestions_seen', true);
+
         return view('user.lumi', [
+            'suggestions' => $suggestions->forCustomer(auth()->user()),
             'userName' => auth()->user()->name,
         ]);
     }
 
-    public function reply(Request $request): JsonResponse
+    public function suggestions(Request $request, LumiSuggestionService $suggestions): JsonResponse
     {
-        $validated = $request->validate([
-            'message' => ['required', 'string', 'max:2000'],
-        ]);
+        $items = $suggestions->forCustomer($request->user());
 
         return response()->json([
-            'reply' => $this->replyFromAlgorithm($validated['message']),
+            'suggestions' => $items,
+            'has_unseen' => ! $request->session()->get('lumi_suggestions_seen', false) && $items !== [],
         ]);
+    }
+
+    public function dismiss(Request $request, LumiSuggestionService $suggestions): JsonResponse
+    {
+        $validated = $request->validate([
+            'key' => ['required', 'string', 'max:191'],
+        ]);
+        $user = $request->user();
+        $visible = collect($suggestions->forCustomer($user))
+            ->contains(fn (array $suggestion) => $suggestion['key'] === $validated['key']);
+
+        abort_unless($visible, 404);
+
+        LumiSuggestionDismissal::query()->updateOrCreate(
+            [
+                'user_id' => $user->user_id,
+                'suggestion_key' => $validated['key'],
+            ],
+            [
+                'dismissed_until' => now()->addDays(max(1, (int) config('lumi.dismissal_cooldown_days', 7))),
+            ],
+        );
+        $suggestions->forgetForUser((int) $user->user_id);
+
+        return response()->json(['dismissed' => true]);
     }
 
     public function whatsNew(): View
@@ -37,11 +66,5 @@ class LumiController extends Controller
             'updates' => $updates,
             'userName' => auth()->user()->name,
         ]);
-    }
-
-    private function replyFromAlgorithm(string $message): string
-    {
-        // TODO Connect the existing assistant algorithm when it is available; none exists in this repo yet.
-        return "I'm not connected to the venue's assistant service yet. For current booking details, use Book a Court or My Bookings.";
     }
 }

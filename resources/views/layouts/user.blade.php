@@ -127,6 +127,10 @@
                    @if (request()->routeIs('user.lumi')) aria-current="page" @endif>
                     <x-lumi-icon size="20" aria-hidden="true" />
                     <span class="user-lumi-topbar-label">Lumi</span>
+                    <span class="user-lumi-badge" data-lumi-badge
+                          data-suggestions-url="{{ route('user.lumi.suggestions', [], false) }}"
+                          data-dismiss-url="{{ route('user.lumi.dismiss', [], false) }}"
+                          aria-label="New Lumi suggestions" hidden></span>
                 </button>
                 {{-- Credit balance badge — links to the booking page --}}
                 <a href="{{ route('book.index') }}"
@@ -176,6 +180,7 @@
         @endif
 
     @stack('scripts')
+    <script src="{{ asset('js/user/lumi-suggestions.js') }}" defer></script>
 
 </body>
 </html>

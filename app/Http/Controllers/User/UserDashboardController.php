@@ -5,14 +5,17 @@ namespace App\Http\Controllers\User;
 use App\Models\Booking;
 use App\Models\Court;
 use Carbon\Carbon;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use App\Http\Controllers\Controller;
 
 class UserDashboardController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
         $userInfo = Auth::user();
+        $showLumiLoginCard = ! $request->session()->get('lumi_login_card_shown', false);
+        $request->session()->put('lumi_login_card_shown', true);
 
         $upcomingBookings = Booking::where('user_id', $userInfo->user_id)
             ->where('date', '>=', today()->toDateString())
@@ -69,7 +72,8 @@ class UserDashboardController extends Controller
             'nextBooking',
             'nextBookingIso',
             'nextBookingEndIso',
-            'courts'
+            'courts',
+            'showLumiLoginCard'
         ));
     }
 }
