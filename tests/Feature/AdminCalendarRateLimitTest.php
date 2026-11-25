@@ -63,7 +63,7 @@ class AdminCalendarRateLimitTest extends TestCase
             'expected_updated_at' => $this->booking->updated_at->format('Y-m-d\\TH:i:s.uP'),
         ];
 
-        for ($attempt = 0; $attempt < 120; $attempt++) {
+        for ($attempt = 0; $attempt < 600; $attempt++) {
             $this->patchJson("/admin/bookings/{$this->booking->id}", $quote)->assertOk();
         }
 
@@ -76,7 +76,7 @@ class AdminCalendarRateLimitTest extends TestCase
     {
         $this->authenticateAdmin();
 
-        for ($attempt = 0; $attempt < 120; $attempt++) {
+        for ($attempt = 0; $attempt < 600; $attempt++) {
             $this->getJson('/admin/bookings/calendar?from=2030-05-15&to=2030-05-21')->assertOk();
         }
 
@@ -116,11 +116,11 @@ class AdminCalendarRateLimitTest extends TestCase
         }
     }
 
-    public function test_booking_save_bucket_allows_120_requests_then_returns_retry_after(): void
+    public function test_admin_booking_save_bucket_allows_600_requests_then_returns_retry_after(): void
     {
         $this->authenticateAdmin();
 
-        for ($attempt = 0; $attempt < 120; $attempt++) {
+        for ($attempt = 0; $attempt < 600; $attempt++) {
             $this->patchJson("/admin/bookings/{$this->booking->id}", [
                 'date' => 'not-a-date',
             ])->assertUnprocessable();
@@ -133,6 +133,78 @@ class AdminCalendarRateLimitTest extends TestCase
         $response->assertTooManyRequests()->assertHeader('Retry-After');
         $retryAfter = (int) $response->headers->get('Retry-After');
         $this->assertSame("Too many changes. Try again in {$retryAfter} seconds.", $response->json('message'));
+    }
+
+    public function test_stacked_management_limits_are_scaled_and_do_not_share_guest_counters(): void
+    {
+        $this->authenticateAdmin();
+
+        for ($attempt = 0; $attempt < 50; $attempt++) {
+            $this->postJson('/admin/blocks', [])->assertUnprocessable();
+        }
+
+        $this->postJson('/admin/blocks', [])->assertTooManyRequests();
+
+        for ($attempt = 0; $attempt < 20; $attempt++) {
+            $this->getJson('/guest/booking/latest?email=missing@example.test')->assertOk();
+        }
+
+        $this->getJson('/guest/booking/latest?email=missing@example.test')->assertTooManyRequests();
+    }
+
+    public function test_owner_gets_five_times_the_admin_management_calendar_read_limit(): void
+    {
+        $owner = User::create([
+            'username' => 'calendar-limit-owner', 'name' => 'Calendar Limit Owner',
+            'email' => 'calendar-limit-owner@example.test', 'password' => 'password', 'role' => 'owner',
+        ]);
+        $identity = 'admin-mgmt:user:'.$owner->getAuthIdentifier();
+        RateLimiter::clear(md5('admin-calendar-read'.$identity));
+
+        $this->actingAs($owner)->withSession([
+            'mfa_passed_at' => now()->timestamp,
+            'mfa_passed_user_id' => $owner->user_id,
+            'access_version_user_id' => $owner->user_id,
+            'access_version' => 1,
+        ]);
+
+        try {
+            for ($attempt = 0; $attempt < 600; $attempt++) {
+                $this->getJson('/admin/bookings/calendar?from=2030-05-15&to=2030-05-21')->assertOk();
+            }
+
+            $this->getJson('/admin/bookings/calendar?from=2030-05-15&to=2030-05-21')
+                ->assertTooManyRequests();
+        } finally {
+            RateLimiter::clear(md5('admin-calendar-read'.$identity));
+        }
+    }
+
+    public function test_customer_keeps_the_existing_guest_route_limit(): void
+    {
+        $customer = User::create([
+            'username' => 'calendar-limit-customer', 'name' => 'Calendar Limit Customer',
+            'email' => 'calendar-limit-customer@example.test', 'password' => 'password', 'role' => 'user',
+        ]);
+        RateLimiter::clear(sha1((string) $customer->getAuthIdentifier()));
+        $this->actingAs($customer);
+
+        for ($attempt = 0; $attempt < 20; $attempt++) {
+            $this->getJson('/guest/booking/latest?email=missing@example.test')->assertOk();
+        }
+
+        $this->getJson('/guest/booking/latest?email=missing@example.test')->assertTooManyRequests();
+    }
+
+    public function test_password_confirmed_user_access_route_keeps_its_existing_stacked_limit(): void
+    {
+        $this->authenticateAdmin();
+
+        for ($attempt = 0; $attempt < 10; $attempt++) {
+            $this->postJson('/admin/users', [])->assertUnprocessable();
+        }
+
+        $this->postJson('/admin/users', [])->assertTooManyRequests();
     }
 
     public function test_login_limiter_remains_five_attempts_per_minute(): void
@@ -173,7 +245,10 @@ class AdminCalendarRateLimitTest extends TestCase
             'admin-calendar-read',
         ] as $limiter) {
             RateLimiter::clear(md5($limiter.$identity));
+            RateLimiter::clear(md5($limiter.'admin-mgmt:'.$identity));
         }
+        RateLimiter::clear(sha1((string) $this->admin->getAuthIdentifier()));
+        RateLimiter::clear(sha1('admin-mgmt:'.sha1((string) $this->admin->getAuthIdentifier())));
         RateLimiter::clear(md5('login'.Str::lower($this->loginUsername).'|127.0.0.1'));
     }
 }

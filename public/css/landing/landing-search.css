@@ -619,7 +619,7 @@ body.nav-hidden-for-modal .landing-nav-wrap {
     }
 }
 
-@media (max-width: 1420px) {
+@media (max-width: 1490px) {
     .nav-toggle {
         display: flex;
     }

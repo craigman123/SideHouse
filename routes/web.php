@@ -205,14 +205,14 @@ Route::middleware('auth')->group(function () {
 // Shared admin implementations are also available to staff with the matching
 // capability. Owner/admin access remains unchanged through UserAccessService.
 Route::middleware(['auth', 'admin.mfa'])->group(function () {
-    Route::middleware('throttle:120,1')->group(function () {
-        Route::get('/admin/specific-closures', [SpecificDateClosureController::class, 'index'])->middleware('throttle:30,1')->name('admin.specific-closures.index');
-        Route::get('/admin/specific-closures/operating-hours', [SpecificDateClosureController::class, 'operatingHours'])->middleware('throttle:30,1')->name('admin.specific-closures.hours');
+    Route::middleware('throttle.admin-management:120,1')->group(function () {
+        Route::get('/admin/specific-closures', [SpecificDateClosureController::class, 'index'])->middleware('throttle.admin-management:30,1')->name('admin.specific-closures.index');
+        Route::get('/admin/specific-closures/operating-hours', [SpecificDateClosureController::class, 'operatingHours'])->middleware('throttle.admin-management:30,1')->name('admin.specific-closures.hours');
         Route::post('/admin/bookings', [App\Http\Controllers\Admin\WalkInBookingController::class, 'store'])
-            ->middleware(['can.access:bookings.create', 'staff.redact', 'throttle:20,1'])
+            ->middleware(['can.access:bookings.create', 'staff.redact', 'throttle.admin-management:20,1'])
             ->name('admin.bookings.walk-in.store');
         Route::post('/admin/blocks', [CourtBlockController::class, 'store'])
-            ->middleware(['can.access:calendar_events.manage,calendar_events.open_play', 'throttle:20,1'])
+            ->middleware(['can.access:calendar_events.manage,calendar_events.open_play', 'throttle.admin-management:20,1'])
             ->name('admin.blocks.store');
         Route::get('/customers/data', [CustomerController::class, 'data'])
             ->middleware(['can.access:customers.view', 'staff.redact'])
@@ -240,15 +240,15 @@ Route::middleware(['auth', 'admin.mfa'])->group(function () {
         ->name('admin.blocks.destroy');
 });
 
-Route::middleware(['auth', 'admin.mfa', 'real-admin', 'throttle:30,1'])
+Route::middleware(['auth', 'admin.mfa', 'real-admin', 'throttle.admin-management:30,1'])
     ->get('/admin/widgets/metrics', [MetricsController::class, 'index'])
     ->name('admin.widgets.metrics');
 
 // =================================== ADMIN ROUTES =====================================
-// Baseline limit for every admin route below; individual routes that
-// send email (announcements, account deletion) get a tighter override.
-Route::middleware(['auth', 'admin.mfa', 'admin.or.owner', 'throttle:120,1'])->group(function () {
-    Route::middleware(['can.access:user_access.manage', 'throttle:20,1'])->group(function () {
+// Admin/owner management limits are scaled per middleware layer. Password-
+// confirmed user-access mutations retain their existing throttles.
+Route::middleware(['auth', 'admin.mfa', 'admin.or.owner', 'throttle.admin-management:120,1'])->group(function () {
+    Route::middleware(['can.access:user_access.manage', 'throttle.admin-management:20,1'])->group(function () {
         Route::get('/admin/user-access', [UserAccessController::class, 'page'])->middleware('owner.page.redirect')->name('admin.user-access.page');
         Route::get('/admin/users', [UserAccessController::class, 'index'])->name('admin.users.index');
         Route::get('/admin/users/candidates', [UserAccessController::class, 'candidates'])->name('admin.users.candidates');
@@ -262,20 +262,20 @@ Route::middleware(['auth', 'admin.mfa', 'admin.or.owner', 'throttle:120,1'])->gr
     });
 });
 
-Route::middleware(['auth', 'admin.mfa', 'admin.or.owner', 'throttle:120,1'])
+Route::middleware(['auth', 'admin.mfa', 'admin.or.owner', 'throttle.admin-management:120,1'])
     ->get('/reports/data', [ReportController::class, 'data'])
     ->name('admin.reports.data');
 
-Route::middleware(['auth', 'admin.mfa', 'credit.giver', 'throttle:120,1'])->group(function () {
+Route::middleware(['auth', 'admin.mfa', 'credit.giver', 'throttle.admin-management:120,1'])->group(function () {
     Route::get('/customers/credits/lookup', [CustomerCreditController::class, 'lookup'])
-        ->middleware('throttle:20,1')
+        ->middleware('throttle.admin-management:20,1')
         ->name('admin.customer-credits.lookup');
     Route::post('/customers/credits', [CustomerCreditController::class, 'store'])
-        ->middleware('throttle:10,1')
+        ->middleware('throttle.admin-management:10,1')
         ->name('admin.customer-credits.store');
 });
 
-Route::middleware(['auth', 'admin', 'admin.mfa', 'throttle:120,1'])->group(function () {
+Route::middleware(['auth', 'admin', 'admin.mfa', 'throttle.admin-management:120,1'])->group(function () {
     Route::get('/dashboard', [Admin_DashboardController::class, 'index'])->middleware('owner.page.redirect')->name('admin.dashboard');
     Route::get('/admin/dashboard', [Admin_DashboardController::class, 'index'])->name('admin.dashboard.view-as');
 
@@ -297,7 +297,7 @@ Route::middleware(['auth', 'admin', 'admin.mfa', 'throttle:120,1'])->group(funct
     // If store() mass-emails users/customers, this is your biggest single
     // SMTP-spike risk in the admin area — kept tight on purpose.
     Route::post('/announcements', [AnnouncementController::class, 'store'])
-        ->middleware('throttle:5,1')
+        ->middleware('throttle.admin-management:5,1')
         ->name('admin.announcements.store');
     Route::delete('/announcements/{announcement}', [AnnouncementController::class, 'destroy'])->name('admin.announcements.destroy');
 

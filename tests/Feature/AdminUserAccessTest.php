@@ -261,10 +261,10 @@ class AdminUserAccessTest extends TestCase
         self::assertNotContains($otherAdmin->user_id, array_column($matches, 'id'));
         self::assertNotContains($staff->user_id, array_column($matches, 'id'));
 
-        for ($request = 0; $request < 19; $request++) {
-            $response = $this->getJson('/admin/users/candidates?q=searchable');
+        for ($request = 0; $request < 48; $request++) {
+            $this->getJson('/admin/users/candidates?q=searchable')->assertOk();
         }
-        $response->assertTooManyRequests();
+        $this->getJson('/admin/users/candidates?q=searchable')->assertTooManyRequests();
     }
 
     public function test_candidate_lookup_returns_full_email_and_only_safe_fields(): void

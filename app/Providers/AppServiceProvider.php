@@ -77,10 +77,12 @@ class AppServiceProvider extends ServiceProvider
             $identity = $user
                 ? 'user:'.$user->getAuthIdentifier()
                 : 'ip:'.$request->ip();
-            $isStaff = $user && app(UserAccessService::class)->effectiveRole($user, $request) === 'staff';
+            $role = $user ? app(UserAccessService::class)->effectiveRole($user, $request) : null;
+            $isStaff = $role === 'staff';
+            $isAdminManagement = in_array($role, ['admin', 'owner'], true);
 
-            return Limit::perMinute($isStaff ? $staffLimit : $adminLimit)
-                ->by($identity)
+            return Limit::perMinute($isStaff ? $staffLimit : $adminLimit * ($isAdminManagement ? 5 : 1))
+                ->by($isAdminManagement ? 'admin-mgmt:'.$identity : $identity)
                 ->response($calendarLimitResponse);
         };
 

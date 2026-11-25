@@ -856,7 +856,7 @@
             const navWrap = wrap?.parentElement;
             if (!wrap || !slot || !navWrap) return;
 
-            const mq = window.matchMedia('(max-width: 1420px)');
+            const mq = window.matchMedia('(max-width: 1490px)');
 
             function place() {
                 const popover = wrap.querySelector('.landing-credit-popover');
