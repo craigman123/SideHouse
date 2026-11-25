@@ -4,8 +4,7 @@
     min-height: 0;
 }
 
-.lumi-page,
-.lumi-login-card {
+.lumi-page {
     width: min(100%, 1040px);
     margin: 0 auto;
 }
@@ -17,8 +16,7 @@
 }
 
 .lumi-page-header,
-.lumi-heading,
-.lumi-login-card-heading {
+.lumi-heading {
     display: flex;
     align-items: center;
 }
@@ -46,15 +44,13 @@
     font-size: var(--font-size-small);
 }
 
-.lumi-suggestion-feed,
-.lumi-login-suggestions {
+.lumi-suggestion-feed {
     display: grid;
     gap: var(--s3);
 }
 
 .lumi-suggestion-card,
-.lumi-empty-state,
-.lumi-login-card {
+.lumi-empty-state {
     border: 1px solid var(--border);
     border-radius: var(--r-lg);
     background: var(--surface);
@@ -113,8 +109,7 @@
     gap: var(--s2) var(--s3);
 }
 
-.lumi-suggestion-cta,
-.lumi-login-all {
+.lumi-suggestion-cta {
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -128,14 +123,12 @@
     text-decoration: none;
 }
 
-.lumi-suggestion-cta:hover,
-.lumi-login-all:hover {
+.lumi-suggestion-cta:hover {
     background: var(--brand-hover);
     color: var(--text);
 }
 
-.lumi-dismiss-button,
-.lumi-login-card-close {
+.lumi-dismiss-button {
     min-height: 44px;
     padding: var(--s2) var(--s3);
     border: 1px solid var(--border);
@@ -146,16 +139,13 @@
     cursor: pointer;
 }
 
-.lumi-dismiss-button:hover,
-.lumi-login-card-close:hover {
+.lumi-dismiss-button:hover {
     border-color: var(--brand);
     color: var(--brand-hover);
 }
 
 .lumi-dismiss-button:focus-visible,
-.lumi-suggestion-cta:focus-visible,
-.lumi-login-card-close:focus-visible,
-.lumi-login-all:focus-visible {
+.lumi-suggestion-cta:focus-visible {
     outline: 2px solid var(--brand-hover);
     outline-offset: 2px;
 }
@@ -188,93 +178,6 @@
     font-size: var(--font-size-body);
 }
 
-.lumi-login-card {
-    position: relative;
-    display: grid;
-    gap: var(--s3);
-    padding: var(--s4);
-    background: color-mix(in srgb, var(--brand) 6%, var(--surface));
-}
-
-.lumi-login-card[hidden] {
-    display: none;
-}
-
-.lumi-login-card-heading {
-    gap: var(--s3);
-    padding-right: var(--s5);
-    color: var(--brand-hover);
-}
-
-.lumi-login-card-heading h2 {
-    margin: 0;
-    color: var(--text);
-    font-size: var(--font-size-h3);
-}
-
-.lumi-login-card-heading p {
-    margin: var(--s1) 0 0;
-    color: var(--text-muted);
-    font-size: var(--font-size-small);
-}
-
-.lumi-login-card-close {
-    position: absolute;
-    top: var(--s3);
-    right: var(--s3);
-    width: 44px;
-    padding: 0;
-    font-size: 1.4rem;
-}
-
-.lumi-login-suggestions {
-    gap: var(--s2);
-}
-
-.lumi-login-suggestion {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    align-items: center;
-    gap: var(--s2) var(--s3);
-    padding: var(--s3);
-    border: 1px solid var(--border);
-    border-radius: var(--r-md);
-    background: var(--surface);
-}
-
-.lumi-login-suggestion h3 {
-    margin: 0;
-    color: var(--text);
-    font-size: var(--font-size-body);
-}
-
-.lumi-login-suggestion p {
-    grid-column: 1 / -1;
-    margin: 0;
-    color: var(--text-muted);
-    font-size: var(--font-size-small);
-}
-
-.lumi-login-suggestion .lumi-suggestion-cta {
-    grid-column: 2;
-    grid-row: 1;
-    min-height: 40px;
-    padding: var(--s1) var(--s3);
-    font-size: var(--font-size-small);
-}
-
-.lumi-login-all {
-    justify-self: start;
-    min-height: 40px;
-    padding: var(--s1) var(--s3);
-    background: transparent;
-    color: var(--brand-hover);
-}
-
-.lumi-login-all:hover {
-    background: color-mix(in srgb, var(--brand) 10%, var(--surface));
-}
-
 @media (max-width: 800px) {
     .user-lumi-page .content {
         padding: var(--s3);
@@ -298,17 +201,4 @@
         width: 100%;
     }
 
-    .lumi-login-card {
-        padding: var(--s3);
-    }
-
-    .lumi-login-suggestion {
-        grid-template-columns: minmax(0, 1fr);
-    }
-
-    .lumi-login-suggestion .lumi-suggestion-cta {
-        grid-column: 1;
-        grid-row: auto;
-        justify-self: start;
-    }
 }

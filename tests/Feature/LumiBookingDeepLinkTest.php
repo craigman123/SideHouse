@@ -69,6 +69,16 @@ class LumiBookingDeepLinkTest extends TestCase
             ->assertSee('data-deep-link-court="'.$this->court->id.'"', false);
     }
 
+    public function test_lumi_booking_link_marks_suggestions_seen_without_an_extra_request(): void
+    {
+        $this->get('/book?'.http_build_query([
+            'date' => '2026-11-28',
+            'time' => '14:00',
+            'court' => $this->court->id,
+            'source' => 'lumi',
+        ]))->assertOk()->assertSessionHas('lumi_suggestions_seen', true);
+    }
+
     public function test_invalid_past_and_unknown_deep_link_values_are_safely_ignored(): void
     {
         $this->get('/book?date=2026-02-31&time=14:00&court='.$this->court->id)->assertOk()

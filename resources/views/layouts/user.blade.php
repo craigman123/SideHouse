@@ -118,20 +118,44 @@
             <h1>@yield('page-title', 'Dashboard')</h1>
             <div class="date">
                 @include('partials.guest.theme-toggle', ['placement' => 'toolbar'])
-                <button type="button"
-                   class="user-lumi-topbar-button {{ request()->routeIs('user.lumi') ? 'active' : '' }}"
-                   data-user-lumi-button
-                   data-href="{{ route('user.lumi', [], false) }}"
-                   aria-label="Open Lumi"
-                   title="Lumi"
-                   @if (request()->routeIs('user.lumi')) aria-current="page" @endif>
-                    <x-lumi-icon size="20" aria-hidden="true" />
-                    <span class="user-lumi-topbar-label">Lumi</span>
-                    <span class="user-lumi-badge" data-lumi-badge
-                          data-suggestions-url="{{ route('user.lumi.suggestions', [], false) }}"
-                          data-dismiss-url="{{ route('user.lumi.dismiss', [], false) }}"
-                          aria-label="New Lumi suggestions" hidden></span>
-                </button>
+                <div class="user-lumi-control">
+                    <button type="button"
+                       class="user-lumi-topbar-button {{ request()->routeIs('user.lumi') ? 'active' : '' }}"
+                       data-user-lumi-button
+                       data-href="{{ route('user.lumi', [], false) }}"
+                       aria-label="Open Lumi"
+                       aria-controls="userLumiPopover"
+                       aria-expanded="false"
+                       title="Lumi"
+                       @if (request()->routeIs('user.lumi')) aria-current="page" @endif>
+                        <x-lumi-icon size="20" aria-hidden="true" />
+                        <span class="user-lumi-topbar-label">Lumi</span>
+                        <span class="user-lumi-badge" data-lumi-badge
+                              data-suggestions-url="{{ route('user.lumi.suggestions', [], false) }}"
+                              data-dismiss-url="{{ route('user.lumi.dismiss', [], false) }}"
+                              aria-label="New Lumi suggestions" hidden></span>
+                    </button>
+                    <section class="user-lumi-popover" id="userLumiPopover" data-lumi-popover
+                             data-dismiss-url="{{ route('user.lumi.dismiss', [], false) }}"
+                             role="dialog" aria-label="Lumi suggestion" aria-live="polite"
+                             aria-hidden="true" hidden>
+                        <header class="user-lumi-popover-header">
+                            <div class="user-lumi-popover-brand">
+                                <x-lumi-icon size="20" aria-hidden="true" />
+                                <span>Lumi</span>
+                            </div>
+                            <button type="button" class="user-lumi-popover-close"
+                                    data-lumi-popover-close aria-label="Close Lumi suggestion">×</button>
+                        </header>
+                        <div class="user-lumi-popover-primary" data-lumi-popover-primary></div>
+                        <div class="user-lumi-popover-secondary" data-lumi-popover-secondary></div>
+                        <p class="user-lumi-popover-error" data-lumi-popover-error role="status" hidden></p>
+                        <footer class="user-lumi-popover-footer">
+                            <a href="{{ route('user.lumi', [], false) }}" data-lumi-see-all>See all suggestions</a>
+                            <button type="button" data-lumi-not-interested>Not interested</button>
+                        </footer>
+                    </section>
+                </div>
                 {{-- Credit balance badge — links to the booking page --}}
                 <a href="{{ route('book.index') }}"
                    class="user-credit-badge"

@@ -91,6 +91,9 @@ class User_UserController extends Controller
         ] : null;
 
         $deepLink = $this->bookingDeepLink($request, $courts);
+        if ($request->query('source') === 'lumi') {
+            $request->session()->put('lumi_suggestions_seen', true);
+        }
 
         return view('user.bookings.book', [
             'userName'            => auth()->user()->name,

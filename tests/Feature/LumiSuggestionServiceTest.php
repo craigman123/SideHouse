@@ -143,7 +143,7 @@ class LumiSuggestionServiceTest extends TestCase
         $this->assertNotNull($suggestion);
         $this->assertSame(350.0, $suggestion['details']['price']);
         $this->assertSame(7, $suggestion['details']['spots_left']);
-        $this->assertSame('/book?date=2026-11-28&time=14%3A00&court='.$this->court->id, $suggestion['cta_url']);
+        $this->assertSame('/book?date=2026-11-28&time=14%3A00&court='.$this->court->id.'&source=lumi', $suggestion['cta_url']);
     }
 
     public function test_taken_closed_and_past_times_are_skipped(): void

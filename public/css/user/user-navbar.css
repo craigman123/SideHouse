@@ -798,6 +798,12 @@ svg {
 
 .user-lumi-topbar-button svg { flex: 0 0 auto; }
 
+.user-lumi-control {
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+}
+
 .user-lumi-badge {
     position: absolute;
     top: 3px;
@@ -811,6 +817,219 @@ svg {
 
 .user-lumi-badge[hidden] { display: none; }
 
+.user-lumi-popover {
+    position: fixed;
+    z-index: 30;
+    box-sizing: border-box;
+    width: min(420px, calc(100vw - 32px));
+    max-height: min(80vh, 560px);
+    max-height: min(80dvh, 560px);
+    overflow-y: auto;
+    padding: var(--s4);
+    border: 1px solid var(--border);
+    border-radius: var(--r-lg);
+    background: var(--surface);
+    box-shadow: var(--shadow-card);
+    color: var(--text);
+    opacity: 0;
+    transform: translateY(-8px);
+    transition: opacity 180ms ease, transform 180ms ease;
+}
+
+.user-lumi-popover[hidden] { display: none; }
+
+.user-lumi-popover.is-open {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.user-lumi-popover::before {
+    position: absolute;
+    top: 0;
+    left: var(--lumi-caret-left, 50%);
+    width: 0;
+    height: 0;
+    border-right: 8px solid transparent;
+    border-bottom: 8px solid var(--surface);
+    border-left: 8px solid transparent;
+    content: "";
+    filter: drop-shadow(0 -1px 0 var(--border));
+    transform: translateX(-50%);
+}
+
+.user-lumi-popover-header,
+.user-lumi-popover-brand,
+.user-lumi-popover-footer,
+.user-lumi-popover-details {
+    display: flex;
+    align-items: center;
+}
+
+.user-lumi-popover-header {
+    justify-content: space-between;
+    gap: var(--s3);
+    margin-bottom: var(--s3);
+}
+
+.user-lumi-popover-brand {
+    gap: var(--s2);
+    color: var(--brand-hover);
+    font-weight: var(--font-weight-button);
+}
+
+.user-lumi-popover-close {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    min-height: 40px;
+    border: 1px solid transparent;
+    border-radius: var(--r-pill);
+    background: transparent;
+    color: var(--text-muted);
+    font: inherit;
+    font-size: 1.25rem;
+    cursor: pointer;
+}
+
+.user-lumi-popover-close:hover,
+.user-lumi-popover-footer button:hover {
+    border-color: var(--border);
+    color: var(--text);
+}
+
+.user-lumi-popover-primary h2,
+.user-lumi-popover-secondary h3 {
+    margin: 0;
+    color: var(--text);
+}
+
+.user-lumi-popover-primary h2 {
+    font-size: var(--font-size-h3);
+}
+
+.user-lumi-popover-primary p,
+.user-lumi-popover-secondary p {
+    margin: var(--s2) 0;
+    color: var(--text-muted);
+    font-size: var(--font-size-small);
+    line-height: var(--line-height-body);
+}
+
+.user-lumi-popover-details {
+    flex-wrap: wrap;
+    gap: var(--s1) var(--s3);
+    margin: var(--s2) 0 var(--s3);
+    color: var(--text-muted);
+    font-size: var(--font-size-small);
+}
+
+.user-lumi-popover-cta,
+.user-lumi-popover-secondary a {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    padding: var(--s2) var(--s4);
+    border: 1px solid var(--brand);
+    border-radius: var(--r-pill);
+    background: var(--brand);
+    color: var(--text);
+    font-weight: var(--font-weight-button);
+    text-decoration: none;
+}
+
+.user-lumi-popover-cta:hover,
+.user-lumi-popover-secondary a:hover {
+    background: var(--brand-hover);
+    color: var(--text);
+}
+
+.user-lumi-popover-secondary {
+    display: grid;
+    gap: var(--s2);
+    margin-top: var(--s3);
+}
+
+.user-lumi-popover-secondary article {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: var(--s2) var(--s3);
+    padding: var(--s3);
+    border: 1px solid var(--border);
+    border-radius: var(--r-md);
+}
+
+.user-lumi-popover-secondary h3 {
+    font-size: var(--font-size-small);
+}
+
+.user-lumi-popover-secondary p {
+    grid-column: 1;
+    margin: 0;
+}
+
+.user-lumi-popover-secondary .user-lumi-popover-details {
+    grid-column: 1;
+    margin: 0;
+    font-size: 0.75rem;
+}
+
+.user-lumi-popover-secondary a {
+    grid-column: 2;
+    grid-row: 1 / span 3;
+    min-height: 38px;
+    padding: var(--s1) var(--s3);
+    font-size: var(--font-size-small);
+    white-space: nowrap;
+}
+
+.user-lumi-popover-footer {
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: var(--s2) var(--s3);
+    margin-top: var(--s3);
+    padding-top: var(--s3);
+    border-top: 1px solid var(--border);
+}
+
+.user-lumi-popover-footer a,
+.user-lumi-popover-footer button {
+    min-height: 40px;
+    border: 1px solid transparent;
+    border-radius: var(--r-pill);
+    background: transparent;
+    color: var(--text-muted);
+    font: inherit;
+    font-size: var(--font-size-small);
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.user-lumi-popover-footer a {
+    display: inline-flex;
+    align-items: center;
+    padding: 0 var(--s2);
+    color: var(--brand-hover);
+}
+
+.user-lumi-popover-footer button {
+    padding: 0 var(--s2);
+}
+
+.user-lumi-popover-error {
+    margin: var(--s2) 0 0;
+    color: var(--danger);
+    font-size: var(--font-size-small);
+}
+
+.user-lumi-popover button:focus-visible,
+.user-lumi-popover a:focus-visible {
+    outline: 2px solid var(--brand-hover);
+    outline-offset: 2px;
+}
+
 /* Mobile: keep the badge compact — show icon only below 480 px */
 @media (max-width: 480px) {
     .user-credit-badge-amount { display: none; }
@@ -820,4 +1039,30 @@ svg {
 @media (max-width: 800px) {
     .user-lumi-topbar-label { display: none; }
     .topbar .date button.user-lumi-topbar-button { padding: 0; }
+}
+
+@media (max-width: 600px) {
+    .user-lumi-popover {
+        width: calc(100vw - 16px);
+        max-height: min(78vh, 560px);
+        max-height: min(78dvh, 560px);
+        padding: var(--s3);
+    }
+
+    .user-lumi-popover-secondary article {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .user-lumi-popover-secondary a {
+        grid-column: 1;
+        grid-row: auto;
+        justify-self: start;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .user-lumi-popover {
+        transition: none;
+        transform: none;
+    }
 }

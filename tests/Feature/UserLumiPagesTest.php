@@ -71,7 +71,8 @@ class UserLumiPagesTest extends TestCase
 
         $this->signIn($user)->getJson('/lumi/suggestions')
             ->assertOk()
-            ->assertJsonStructure(['suggestions', 'has_unseen'])
+            ->assertJsonStructure(['suggestions', 'has_unseen', 'show_login_popover'])
+            ->assertJsonPath('show_login_popover', false)
             ->assertJsonPath('has_unseen', true);
 
         $this->get('/lumi')->assertOk();
@@ -79,15 +80,65 @@ class UserLumiPagesTest extends TestCase
         $this->postJson('/lumi/message', ['message' => 'How do I book a court?'])->assertNotFound();
     }
 
-    public function test_dashboard_suggestion_card_is_rendered_once_per_session(): void
+    public function test_dashboard_uses_the_topbar_popover_and_has_no_suggestion_card(): void
     {
         $user = $this->makeCustomer();
         $this->signIn($user)->get('/my-dashboard')
             ->assertOk()
-            ->assertSee('data-lumi-login-card', false)
-            ->assertSee('data-show-once="true"', false);
+            ->assertSee('data-lumi-popover', false)
+            ->assertSee('role="dialog"', false)
+            ->assertDontSee('data-lumi-login-card', false)
+            ->assertDontSee('lumi-login-card');
+    }
+
+    public function test_popover_is_offered_once_after_each_successful_login(): void
+    {
+        $user = $this->makeCustomer();
+        $this->prepareSuggestionCourt();
+        config(['lumi.cache_seconds' => 0]);
+
+        $credentials = ['username' => $user->username, 'password' => 'password'];
+        $this->withSession([
+            'lumi_login_popover_shown' => true,
+            'lumi_suggestions_seen' => true,
+        ])->post('/login', $credentials)
+            ->assertRedirect(route('user.dashboard'))
+            ->assertSessionHas('lumi_login_popover_pending', true)
+            ->assertSessionMissing('lumi_login_popover_shown')
+            ->assertSessionMissing('lumi_suggestions_seen');
 
         $this->get('/my-dashboard')->assertOk()->assertDontSee('data-lumi-login-card', false);
+        $this->getJson('/lumi/suggestions')->assertOk()
+            ->assertJsonPath('show_login_popover', true)
+            ->assertJsonPath('has_unseen', true);
+        $this->get('/whats-new')->assertOk();
+        $this->getJson('/lumi/suggestions')->assertOk()->assertJsonPath('show_login_popover', false);
+
+        $this->post('/logout')->assertRedirect(route('login'));
+        $this->post('/login', $credentials)->assertRedirect(route('user.dashboard'))
+            ->assertSessionHas('lumi_login_popover_pending', true);
+        $this->getJson('/lumi/suggestions')->assertOk()->assertJsonPath('show_login_popover', true);
+    }
+
+    public function test_popover_is_not_offered_when_the_service_has_no_suggestions(): void
+    {
+        $user = $this->makeCustomer();
+        $this->signIn($user)->withSession(['lumi_login_popover_pending' => true])
+            ->getJson('/lumi/suggestions')->assertOk()
+            ->assertJsonCount(0, 'suggestions')
+            ->assertJsonPath('show_login_popover', false);
+    }
+
+    public function test_popover_shell_is_absent_from_admin_owner_and_staff_dashboards(): void
+    {
+        foreach ([
+            ['admin', '/dashboard'],
+            ['owner', '/owner/dashboard'],
+            ['staff', '/staff/dashboard'],
+        ] as [$role, $path]) {
+            $user = $this->makeRoleUser($role);
+            $this->signIn($user)->get($path)->assertOk()->assertDontSee('data-lumi-popover', false);
+        }
     }
 
     public function test_customer_can_dismiss_a_visible_suggestion_for_the_cooldown(): void
@@ -170,6 +221,41 @@ class UserLumiPagesTest extends TestCase
             'password' => 'password',
             'role' => 'user',
             'access_version' => 1,
+        ]);
+    }
+
+    private function makeRoleUser(string $role): User
+    {
+        static $sequence = 0;
+        $sequence++;
+
+        return User::create([
+            'username' => "lumi-{$role}-{$sequence}",
+            'name' => ucfirst($role).' Lumi',
+            'email' => "lumi-{$role}-{$sequence}@example.test",
+            'password' => 'password',
+            'role' => $role,
+            'permissions' => $role === 'staff' ? ['bookings.view'] : null,
+            'access_version' => 1,
+        ]);
+    }
+
+    private function prepareSuggestionCourt(): void
+    {
+        BusinessSetting::query()->firstOrCreate([], [
+            'open_hour' => 8,
+            'close_hour' => 22,
+            'step_minutes' => 60,
+            'min_duration_hours' => 1,
+            'max_duration_hours' => 8,
+            'closed_weekdays' => [],
+        ]);
+        Court::create([
+            'name' => 'Lumi Login Court',
+            'width' => 10,
+            'length' => 20,
+            'hourly_rate' => 500,
+            'status' => 'active',
         ]);
     }
 

@@ -7,7 +7,6 @@
 @push('styles')
     <link rel="stylesheet" href="{{ asset('css/user/dashboard.css') }}">
     <link rel="stylesheet" href="{{ asset('css/user/user-dashboard.css') }}">
-    <link rel="stylesheet" href="{{ asset('css/user/lumi.css') }}">
 @endpush
 
 @section('content')
@@ -119,24 +118,6 @@
             </svg>
         </div>
     </section>
-
-    @if ($showLumiLoginCard)
-        <section class="lumi-login-card" data-lumi-login-card
-                 data-suggestions-url="{{ route('user.lumi.suggestions', [], false) }}"
-                 data-show-once="true" aria-live="polite" hidden>
-            <div class="lumi-login-card-heading">
-                <x-lumi-icon size="28" aria-hidden="true" />
-                <div>
-                    <h2>A little suggestion from Lumi</h2>
-                    <p>Your Artificial Assistant found a few ideas for your next game.</p>
-                </div>
-            </div>
-            <button type="button" class="lumi-login-card-close" data-lumi-login-dismiss
-                    aria-label="Dismiss Lumi suggestions">×</button>
-            <div class="lumi-login-suggestions" data-lumi-login-items></div>
-            <a class="lumi-login-all" href="{{ route('user.lumi') }}">See all suggestions</a>
-        </section>
-    @endif
 
     <div class="card-grid">
         <div class="card">

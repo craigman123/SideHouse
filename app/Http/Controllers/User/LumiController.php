@@ -24,10 +24,19 @@ class LumiController extends Controller
     public function suggestions(Request $request, LumiSuggestionService $suggestions): JsonResponse
     {
         $items = $suggestions->forCustomer($request->user());
+        $loginPopoverPending = (bool) $request->session()->pull('lumi_login_popover_pending', false);
+        $showLoginPopover = $loginPopoverPending
+            && $items !== []
+            && $request->path() !== 'lumi';
+
+        if ($showLoginPopover) {
+            $request->session()->put('lumi_login_popover_shown', true);
+        }
 
         return response()->json([
             'suggestions' => $items,
             'has_unseen' => ! $request->session()->get('lumi_suggestions_seen', false) && $items !== [],
+            'show_login_popover' => $showLoginPopover,
         ]);
     }
 

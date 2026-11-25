@@ -450,6 +450,7 @@ class LumiSuggestionService
             'date' => $date,
             'time' => $time,
             'court' => $courtId,
+            'source' => 'lumi',
         ]);
     }
 

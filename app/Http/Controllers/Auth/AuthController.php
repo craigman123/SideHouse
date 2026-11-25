@@ -42,6 +42,7 @@ class AuthController extends Controller
         $request->session()->forget('view_as');
         $request->session()->regenerate();
         $user = auth()->user();
+        $this->resetLumiPopoverSession($request);
         $this->recordSuccessfulLogin($request, $user);
 
         if ($user->requiresMfa()) {
@@ -107,6 +108,7 @@ class AuthController extends Controller
 
         $request->session()->forget('view_as');
         Auth::login($user);
+        $this->resetLumiPopoverSession($request);
         $this->recordSuccessfulLogin($request, $user);
 
         ActivityLogger::log(
@@ -166,6 +168,7 @@ class AuthController extends Controller
         $request->session()->forget('view_as');
         Auth::login($user);
         $request->session()->regenerate();
+        $this->resetLumiPopoverSession($request);
         $this->recordSuccessfulLogin($request, $user);
 
         ActivityLogger::log(
@@ -218,6 +221,16 @@ class AuthController extends Controller
         $user->forceFill(['last_login_at' => now()])->save();
         $user->refresh();
         EnsureAccessVersion::stamp($request, $user);
+    }
+
+    private function resetLumiPopoverSession(Request $request): void
+    {
+        $request->session()->forget([
+            'lumi_login_popover_pending',
+            'lumi_login_popover_shown',
+            'lumi_suggestions_seen',
+        ]);
+        $request->session()->put('lumi_login_popover_pending', true);
     }
 
     private function homePath(User $user): string
