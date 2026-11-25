@@ -14,6 +14,7 @@
     <link rel="stylesheet" href="{{ asset('css/booking/landing-book.css') }}">
     <link rel="stylesheet" href="{{ asset('css/user/courts.css') }}">
     <link rel="stylesheet" href="{{ asset('css/guest/payment-info-placeholder.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/auth/mfa-modal.css') }}">
     <link rel="stylesheet" href="{{ asset('css/guest/guest-payment.css') }}">
     <link rel="stylesheet" href="{{ asset('css/guest/theme-toggle.css') }}">
     <script src="{{ asset('js/guest/payment.js') }}" defer></script>
@@ -96,10 +97,6 @@
                             <span class="sk-block sk-line"></span>
                             <small>Signing you in…</small>
                         </div>
-                        <div class="guest-email-confirmed" id="guestEmailConfirmed" hidden>
-                            <span>Signed in as <strong id="guestEmailConfirmedAddress"></strong></span>
-                            <button class="btn btn-link btn-change-email btn-ghost-danger" type="button" id="guestEmailChange">X</button>
-                        </div>
                     </div>
                 </div>
                 <div class="booking-section">
@@ -118,15 +115,28 @@
                             <span class="sk-block sk-line"></span>
                         </div>
                         <div class="guest-credit-content">
+                            <div class="guest-credit-overview">
+                                <div class="guest-email-confirmed guest-account-chip" id="guestEmailConfirmed" hidden aria-live="polite">
+                                    <span class="guest-account-avatar" aria-hidden="true">
+                                        <img id="guestGooglePicture" width="40" height="40" loading="lazy" referrerpolicy="no-referrer" alt="" hidden>
+                                        <span id="guestGoogleInitials"></span>
+                                    </span>
+                                    <span class="guest-account-copy">
+                                        <strong id="guestGoogleName" hidden></strong>
+                                        <span id="guestEmailConfirmedAddress"></span>
+                                    </span>
+                                    <button class="btn btn-link btn-change-email" type="button" id="guestEmailChange">Change email</button>
+                                </div>
+                                <div class="guest-credit-balances" aria-live="polite">
+                                    <span>Given <strong id="guestGivenBalance"></strong></span>
+                                    <span>Reserved <strong id="guestReservedBalance"></strong></span>
+                                    <span>Total <strong id="guestCreditTotal"></strong></span>
+                                </div>
+                            </div>
                             <label class="guest-credit-use">
                                 <input type="checkbox" id="useGuestCredit" checked>
                                 <span>Use my credit</span>
                             </label>
-                            <div class="guest-credit-balances" aria-live="polite">
-                                <span>Given <strong id="guestGivenBalance"></strong></span>
-                                <span>Reserved <strong id="guestReservedBalance"></strong></span>
-                                <span>Total <strong id="guestCreditTotal"></strong></span>
-                            </div>
                             <div class="guest-credit-payment-summary" aria-live="polite">
                                 <p><span>Total</span><strong id="guestCreditCheckoutTotal">—</strong></p>
                                 <p><span>Given used</span><strong id="guestGivenUsed"></strong></p>
@@ -155,6 +165,22 @@
                 <button type="button" class="btn btn-primary" id="confirmBooking">Confirm Booking</button></div>
         </div>
     </div>
+    <dialog id="guestEmailSwitchDialog" class="guest-email-switch-dialog" aria-labelledby="guestEmailSwitchTitle" aria-describedby="guestEmailSwitchMessage">
+        <div class="mfa-modal-overlay" aria-hidden="true"></div>
+        <div class="mfa-modal-content">
+            <div class="mfa-modal-header">
+                <h2 id="guestEmailSwitchTitle">Switch Google account?</h2>
+            </div>
+            <div class="mfa-modal-body">
+                <p id="guestEmailSwitchMessage"></p>
+                <p id="guestEmailSwitchStatus" class="guest-email-switch-status" role="status" hidden></p>
+                <div class="guest-email-switch-actions">
+                    <button class="mfa-btn" type="button" id="guestEmailSwitchConfirm">Switch account</button>
+                    <button class="btn btn-ghost-danger" type="button" id="guestEmailSwitchCancel">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </dialog>
     <div id="toastContainer" class="toast-container"></div>
 </body>
 </html>

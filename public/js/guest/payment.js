@@ -17,11 +17,21 @@
 
     const guestNameInput = document.getElementById('guestName');
     const guestContactInput = document.getElementById('guestContact');
+    const guestEmailSavedInput = document.getElementById('guestEmailSaved');
     const googleSignInBtnEl = document.getElementById('googleSignInBtn');
     const guestEmailConfirmed = document.getElementById('guestEmailConfirmed');
     const guestEmailConfirmedAddress = document.getElementById('guestEmailConfirmedAddress');
+    const guestGoogleName = document.getElementById('guestGoogleName');
+    const guestGooglePicture = document.getElementById('guestGooglePicture');
+    const guestGoogleInitials = document.getElementById('guestGoogleInitials');
     const guestEmailChangeBtn = document.getElementById('guestEmailChange');
     const guestEmailLabel = document.getElementById('guestEmailLabel');
+    const guestCreditOverview = document.querySelector('.guest-credit-overview');
+    const guestEmailSwitchDialog = document.getElementById('guestEmailSwitchDialog');
+    const guestEmailSwitchMessage = document.getElementById('guestEmailSwitchMessage');
+    const guestEmailSwitchStatus = document.getElementById('guestEmailSwitchStatus');
+    const guestEmailSwitchConfirm = document.getElementById('guestEmailSwitchConfirm');
+    const guestEmailSwitchCancel = document.getElementById('guestEmailSwitchCancel');
     const paymentGrid = document.getElementById('paymentGrid');
     const summaryPayment = document.getElementById('summaryPayment');
     const confirmBtn = document.getElementById('confirmBooking');
@@ -33,6 +43,10 @@
     let guestIdentityVerified = false;
     let confirmInFlight = false;
     const CHECKOUT_DRAFT_KEY = 'sidehouse_guest_checkout_draft';
+    const GUEST_IDENTITY_KEY = 'sidehouse_guest_google_identity';
+    let storedGuestIdentity = null;
+    let guestIdentityStorageCorrupt = false;
+    let identitySessionReset = Promise.resolve();
 
     let prefillInFlight = false;
     let guestCredit = null;
@@ -175,35 +189,114 @@
     document.getElementById('useGuestCredit')?.addEventListener('change', updateCreditSummary);
 
     async function restoreVerifiedGuestState() {
+        if (guestIdentityStorageCorrupt) {
+            identitySessionReset = clearGoogleSignIn();
+            await identitySessionReset;
+            return;
+        }
+
         setPrefillLoading(true);
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), 8000);
-        fetch(creditStateUrl, {
-            headers: { Accept: 'application/json' },
-            signal: controller.signal,
-            credentials: 'same-origin',
-        })
-            .then((res) => res.json())
-            .then((data) => {
-                if (!data.verified) return;
-                if (data.prefill?.name && !guestNameInput.value.trim()) {
-                    guestNameInput.value = data.prefill.name;
-                }
-                if (data.prefill?.phone && !guestContactInput.value.trim()) {
-                    guestContactInput.value = data.prefill.phone;
-                }
-                googleEmail = data.email;
-                showSignedInState(data.email);
-                if (data.credit) updateCreditDisplay(data.credit);
-            })
-            .catch((err) => console.warn('Verified guest state failed:', err))
-            .finally(() => {
-                clearTimeout(timeout);
-                setPrefillLoading(false);
+        try {
+            const response = await fetch(creditStateUrl, {
+                headers: { Accept: 'application/json' },
+                signal: controller.signal,
+                credentials: 'same-origin',
             });
+            const data = await response.json();
+            if (!response.ok) {
+                throw new Error(data.message || 'Could not restore the verified guest session.');
+            }
+            if (!data.verified || typeof data.email !== 'string') {
+                removeStoredGuestIdentity();
+                return;
+            }
+
+            if (data.prefill?.name && !guestNameInput.value.trim()) {
+                guestNameInput.value = data.prefill.name;
+            }
+            if (data.prefill?.phone && !guestContactInput.value.trim()) {
+                guestContactInput.value = data.prefill.phone;
+            }
+
+            const cachedIdentity = storedGuestIdentity
+                && storedGuestIdentity.email.toLowerCase() === data.email.toLowerCase()
+                ? storedGuestIdentity
+                : null;
+            if (storedGuestIdentity && !cachedIdentity) removeStoredGuestIdentity();
+
+            googleEmail = data.email;
+            showSignedInState({
+                email: data.email,
+                name: cachedIdentity?.name || data.prefill?.name || '',
+                picture: cachedIdentity?.picture || '',
+            });
+            if (data.credit) updateCreditDisplay(data.credit);
+        } catch (err) {
+            console.warn('Verified guest state failed:', err);
+        } finally {
+            clearTimeout(timeout);
+            setPrefillLoading(false);
+        }
     }
 
     const GUEST_FIELDS_KEY = 'sidehouse_guest_checkout_fields';
+
+    function removeStoredGuestIdentity() {
+        storedGuestIdentity = null;
+        try {
+            localStorage.removeItem(GUEST_IDENTITY_KEY);
+        } catch (_) {}
+    }
+
+    function readStoredGuestIdentity() {
+        try {
+            const raw = localStorage.getItem(GUEST_IDENTITY_KEY);
+            if (raw === null) return null;
+
+            let saved;
+            try {
+                saved = JSON.parse(raw);
+            } catch (_) {
+                if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(raw.trim())) {
+                    return { email: raw.trim(), name: '', picture: '' };
+                }
+                guestIdentityStorageCorrupt = true;
+                removeStoredGuestIdentity();
+                return null;
+            }
+
+            if (typeof saved === 'string' && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(saved.trim())) {
+                return { email: saved.trim(), name: '', picture: '' };
+            }
+            if (!saved || typeof saved !== 'object' || Array.isArray(saved) || typeof saved.email !== 'string' || !saved.email.trim()) {
+                guestIdentityStorageCorrupt = true;
+                removeStoredGuestIdentity();
+                return null;
+            }
+
+            return {
+                email: saved.email.trim(),
+                name: typeof saved.name === 'string' ? saved.name.trim() : '',
+                picture: typeof saved.picture === 'string' ? saved.picture.trim() : '',
+            };
+        } catch (_) {
+            return null;
+        }
+    }
+
+    function saveStoredGuestIdentity(identity) {
+        const saved = {
+            email: identity.email,
+            name: identity.name || '',
+            picture: identity.picture || '',
+        };
+        storedGuestIdentity = saved;
+        try {
+            localStorage.setItem(GUEST_IDENTITY_KEY, JSON.stringify(saved));
+        } catch (_) {}
+    }
 
     function saveGuestFields() {
         try {
@@ -214,6 +307,8 @@
         } catch (_) {}
     }
 
+    storedGuestIdentity = readStoredGuestIdentity();
+
     function restoreGuestFields() {
         try {
             const saved = JSON.parse(localStorage.getItem(GUEST_FIELDS_KEY) || 'null');
@@ -221,10 +316,6 @@
             if (saved.name && !guestNameInput.value.trim()) guestNameInput.value = saved.name;
             if (saved.contact && !guestContactInput.value.trim()) guestContactInput.value = saved.contact;
         } catch (_) {}
-    }
-
-    function clearGuestFields() {
-        try { localStorage.removeItem(GUEST_FIELDS_KEY); } catch (_) {}
     }
 
     guestNameInput.addEventListener('input', saveGuestFields);
@@ -328,12 +419,48 @@
 
     // ---------- Google sign-in ----------
 
-    function showSignedInState(email) {
+    function googlePictureUrl(value) {
+        if (typeof value !== 'string' || !value) return '';
+        try {
+            const url = new URL(value);
+            return url.protocol === 'https:' && url.hostname === 'lh3.googleusercontent.com' ? url.href : '';
+        } catch (_) {
+            return '';
+        }
+    }
+
+    function guestInitials(name, email) {
+        const source = (name || email.split('@')[0] || email).trim();
+        const words = source.split(/\s+/).filter(Boolean);
+        const initials = words.length > 1
+            ? words[0].charAt(0) + words[words.length - 1].charAt(0)
+            : source.slice(0, 2);
+        return initials.toLocaleUpperCase();
+    }
+
+    function showSignedInState(identity) {
+        const email = identity.email;
+        const name = typeof identity.name === 'string' ? identity.name.trim() : '';
+        const picture = googlePictureUrl(identity.picture);
         guestIdentityVerified = true;
         guestEmailLabel.hidden = true;
         googleSignInBtnEl.hidden = true;
         guestEmailConfirmed.hidden = false;
+        guestEmailSavedInput.value = email;
         guestEmailConfirmedAddress.textContent = email;
+        guestGoogleName.textContent = name;
+        guestGoogleName.hidden = !name;
+        guestGoogleInitials.textContent = guestInitials(name, email);
+        guestGoogleInitials.hidden = false;
+        guestGooglePicture.hidden = true;
+        guestGooglePicture.removeAttribute('src');
+        guestGooglePicture.alt = `Profile picture of ${name || email}`;
+        if (picture) {
+            guestGooglePicture.src = picture;
+            guestGooglePicture.hidden = false;
+            guestGoogleInitials.hidden = true;
+        }
+        guestCreditOverview?.classList.add('has-account');
     }
 
     async function clearGoogleSignIn() {
@@ -343,24 +470,29 @@
         guestEmailLabel.hidden = false;
         googleSignInBtnEl.hidden = false;
         guestEmailConfirmed.hidden = true;
+        guestEmailSavedInput.value = '';
+        guestGoogleName.textContent = '';
+        guestGoogleName.hidden = true;
+        guestGooglePicture.hidden = true;
+        guestGooglePicture.removeAttribute('src');
+        guestGoogleInitials.textContent = '';
+        guestCreditOverview?.classList.remove('has-account');
+        removeStoredGuestIdentity();
 
-        // Reset the credit UI so nothing stale is left on screen
         guestCredit = null;
         if (creditBoxEl) creditBoxEl.hidden = true;
         if (summaryTotalEl) summaryTotalEl.textContent = originalSummaryTotal;
 
-        // Signing out means a different person may book, so wipe their details
-        guestNameInput.value = '';
-        guestContactInput.value = '';
-        clearGuestFields();
-
         try {
-            await fetch(creditSwitchUrl, {
+            const response = await fetch(creditSwitchUrl, {
                 method: 'POST',
                 credentials: 'same-origin',
                 headers: { Accept: 'application/json', ...csrfHeaders() },
             });
-        } catch (_) {}
+            if (!response.ok) throw new Error('Could not clear the verified guest session.');
+        } catch (_) {
+            showToast('Could not clear the verified Google session. Please try again.', 'error');
+        }
         if (window.google && window.google.accounts && window.google.accounts.id) {
             window.google.accounts.id.disableAutoSelect();
         }
@@ -369,8 +501,9 @@
     function decodeJwtPayload(jwt) {
         try {
             const base64 = jwt.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+            const paddedBase64 = base64.padEnd(Math.ceil(base64.length / 4) * 4, '=');
             const json = decodeURIComponent(
-                atob(base64)
+                atob(paddedBase64)
                     .split('')
                     .map((c) => '%' + c.charCodeAt(0).toString(16).padStart(2, '0'))
                     .join('')
@@ -382,9 +515,90 @@
     }
 
     let googleNonce = null;
+    let switchNonce = null;
+    let switchNonceRequest = 0;
+
+    guestGooglePicture.addEventListener('error', () => {
+        guestGooglePicture.hidden = true;
+        guestGooglePicture.removeAttribute('src');
+        guestGoogleInitials.hidden = false;
+    });
+
+    async function fetchGoogleNonce() {
+        const response = await fetch(creditNonceUrl, {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: { Accept: 'application/json', ...csrfHeaders() },
+        });
+        const data = await response.json();
+        if (!response.ok || typeof data.nonce !== 'string' || !data.nonce) {
+            throw new Error(data.message || 'Could not prepare Google sign-in.');
+        }
+        return data.nonce;
+    }
+
+    async function prepareAccountSwitchNonce(requestId) {
+        guestEmailSwitchConfirm.disabled = true;
+        guestEmailSwitchStatus.textContent = 'Preparing secure Google sign-in…';
+        guestEmailSwitchStatus.hidden = false;
+        try {
+            const nonce = await fetchGoogleNonce();
+            if (!guestEmailSwitchDialog.open || requestId !== switchNonceRequest) return;
+            switchNonce = nonce;
+            guestEmailSwitchStatus.hidden = true;
+            guestEmailSwitchConfirm.disabled = false;
+        } catch (_) {
+            if (!guestEmailSwitchDialog.open || requestId !== switchNonceRequest) return;
+            guestEmailSwitchStatus.textContent = 'Google sign-in is unavailable. Please try again.';
+            guestEmailSwitchConfirm.disabled = true;
+        }
+    }
+
+    function openAccountSwitchDialog() {
+        if (!guestIdentityVerified || !googleEmail || guestEmailSwitchDialog.open) return;
+        guestEmailSwitchMessage.textContent = `Credits are tied to ${googleEmail}. Switching to another account will use that account's credits.`;
+        guestEmailSwitchStatus.hidden = true;
+        guestEmailSwitchConfirm.disabled = true;
+        guestEmailSwitchDialog.showModal();
+        const requestId = ++switchNonceRequest;
+        switchNonce = null;
+        prepareAccountSwitchNonce(requestId);
+    }
+
+    function startAccountSwitch() {
+        if (!switchNonce) return;
+        const googleIdentity = window.google?.accounts?.id;
+        if (!googleIdentity) {
+            guestEmailSwitchStatus.textContent = 'Google sign-in is unavailable. Please try again.';
+            guestEmailSwitchStatus.hidden = false;
+            return;
+        }
+
+        const nonce = switchNonce;
+        switchNonce = null;
+        switchNonceRequest += 1;
+        try {
+            googleIdentity.disableAutoSelect();
+            googleIdentity.initialize({
+                client_id: googleClientId,
+                callback: handleGoogleCredential,
+                auto_select: false,
+                nonce,
+            });
+            guestEmailSwitchDialog.close();
+            googleIdentity.prompt((notification) => {
+                if (notification.isNotDisplayed?.() || notification.isSkippedMoment?.() || notification.isDismissedMoment?.()) {
+                    switchNonce = null;
+                }
+            });
+        } catch (_) {
+            guestEmailSwitchDialog.close();
+            showToast('Could not open Google account selection. Your current account is unchanged.', 'error');
+        }
+    }
 
     async function handleGoogleCredential(response) {
-    if (signingIn) return;
+        if (signingIn) return;
         setSigningIn(true);
         try {
             const res = await fetch(creditVerifyUrl, {
@@ -403,14 +617,20 @@
                 return;
             }
             if (!data.verified) {
-                showToast('Google sign-in is verified, but no registered account or unique credit match was found.', 'success');
-                googleIdToken = null;
-                googleEmail = null;
+                await clearGoogleSignIn();
+                showToast('Google sign-in is verified, but no registered account or unique credit match was found.', 'error');
                 return;
             }
+            const claims = decodeJwtPayload(response.credential) || {};
+            const identity = {
+                email: data.email,
+                name: (typeof claims.name === 'string' && claims.name.trim()) || data.prefill?.name || '',
+                picture: googlePictureUrl(claims.picture),
+            };
             googleIdToken = response.credential;
             googleEmail = data.email;
-            showSignedInState(data.email);
+            saveStoredGuestIdentity(identity);
+            showSignedInState(identity);
             if (data.prefill?.name && !guestNameInput.value.trim()) guestNameInput.value = data.prefill.name;
             if (data.prefill?.phone && !guestContactInput.value.trim()) guestContactInput.value = data.prefill.phone;
             updateCreditDisplay(data.credit);
@@ -422,21 +642,27 @@
         }
     }
 
-    guestEmailChangeBtn.addEventListener('click', clearGoogleSignIn);
+    guestEmailChangeBtn.addEventListener('click', openAccountSwitchDialog);
+    guestEmailSwitchCancel.addEventListener('click', () => {
+        switchNonce = null;
+        switchNonceRequest += 1;
+        guestEmailSwitchDialog.close();
+    });
+    guestEmailSwitchConfirm.addEventListener('click', startAccountSwitch);
+    guestEmailSwitchDialog.addEventListener('cancel', () => {
+        switchNonce = null;
+        switchNonceRequest += 1;
+    });
+    guestEmailSwitchDialog.addEventListener('close', () => guestEmailChangeBtn.focus());
 
     (function initGoogleSignIn() {
         if (!googleClientId || !googleSignInBtnEl) return;
 
         async function render() {
+            await identitySessionReset;
             if (!googleNonce) {
                 try {
-                    const nonceResponse = await fetch(creditNonceUrl, {
-                        method: 'POST',
-                        credentials: 'same-origin',
-                        headers: { Accept: 'application/json', ...csrfHeaders() },
-                    });
-                    const nonceData = await nonceResponse.json();
-                    googleNonce = nonceData.nonce;
+                    googleNonce = await fetchGoogleNonce();
                 } catch (_) {
                     googleNonce = null;
                 }
