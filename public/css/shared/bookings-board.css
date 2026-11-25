@@ -510,9 +510,23 @@ html[data-theme="light"] .admin-bookings-page .btn-filter {
 .court-month-drag-clone { position: fixed; z-index: 2000; margin: 0; box-sizing: border-box; opacity: .96; pointer-events: none; will-change: transform; box-shadow: 0 12px 36px color-mix(in srgb, var(--bg) 78%, transparent); }
 .court-month-drag-clone.is-settling { transition: transform 150ms ease; }
 .admin-bookings-page .court-month-bar.is-saving,
-.admin-bookings-page .court-month-bar.is-saving,
-.admin-bookings-page .court-month-block.is-saving { opacity: 1; animation: calendar-saving-border 900ms ease-in-out infinite alternate; }
+.admin-bookings-page .court-month-block.is-saving { opacity: .78; animation: calendar-saving-border 900ms ease-in-out infinite alternate; }
+.admin-bookings-page .court-month-bar.is-saving::after,
+.admin-bookings-page .court-month-block.is-saving::after {
+    position: absolute;
+    top: 3px;
+    right: 3px;
+    width: 9px;
+    height: 9px;
+    border: 1.5px solid currentColor;
+    border-right-color: transparent;
+    border-radius: 50%;
+    content: "";
+    pointer-events: none;
+    animation: calendar-saving-spin 700ms linear infinite;
+}
 @keyframes calendar-saving-border { from { outline: 1px solid transparent; outline-offset: -1px; } to { outline: 1px solid currentColor; outline-offset: -1px; } }
+@keyframes calendar-saving-spin { to { transform: rotate(360deg); } }
 .admin-bookings-page .court-month-selection-ghost.is-booking-drag-ghost { z-index: 4; }
 .court-month-selection-ghost.is-booking-drag-ghost.is-conflict { border: 2px dashed var(--danger); background: transparent; }
 .admin-bookings-page .court-week-scroll {
@@ -1091,11 +1105,37 @@ html[data-theme="light"] .admin-bookings-page .btn-filter {
 .court-price-confirm { width: min(100%, 28rem); padding: var(--s5); border: 1px solid var(--border); border-radius: var(--r-md); background: var(--surface); color: var(--text); box-shadow: 0 18px 48px rgb(0 0 0 / 45%); }
 .court-price-confirm h2 { margin: 0 0 var(--s3); font-size: var(--font-size-h3); }
 .court-price-confirm p { margin: var(--s2) 0; }
+.court-price-confirm-new-amount { display: flex; flex-wrap: wrap; align-items: center; gap: 0 var(--s2); }
+.court-price-confirm-new-amount small { color: var(--text-muted); font-size: var(--font-size-small); }
+.court-price-confirm-spinner {
+    display: inline-block;
+    width: .8em;
+    height: .8em;
+    margin-right: var(--s1);
+    border: 2px solid currentColor;
+    border-right-color: transparent;
+    border-radius: 50%;
+    vertical-align: -.1em;
+    animation: calendar-saving-spin 700ms linear infinite;
+}
+.court-price-confirm-error { color: var(--danger); }
+.court-price-confirm-retry {
+    margin-top: var(--s3);
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--brand);
+    font: inherit;
+    text-decoration: underline;
+    cursor: pointer;
+}
+.court-price-confirm-retry[hidden] { display: none; }
 .court-price-confirm-choice, .court-price-confirm-ack { display: flex; align-items: center; gap: var(--s2); margin-top: var(--s3); }
 .court-price-confirm-ack { padding-top: var(--s3); border-top: 1px solid var(--border); }
 .court-price-confirm-actions { display: flex; justify-content: flex-end; gap: var(--s2); margin-top: var(--s4); }
 .court-price-confirm-actions button { min-height: 40px; padding: 0 var(--s3); border: 1px solid var(--border); border-radius: var(--r-sm); background: var(--surface-2); color: var(--text); cursor: pointer; }
-.court-price-confirm-actions [data-price-confirm] { border-color: var(--brand); background: var(--brand); color: var(--surface); }
+.court-price-confirm-actions [data-price-confirm],
+.court-price-confirm-actions [data-move-confirm] { border-color: var(--brand); background: var(--brand); color: var(--surface); }
 .court-price-confirm-actions button:disabled { opacity: .5; cursor: not-allowed; }
 .court-booking-duration-control { display: grid; gap: var(--s2); align-content: start; color: var(--text-muted); font-size: var(--font-size-small); }
 .court-booking-duration-control > div { display: flex; align-items: center; gap: var(--s2); }

@@ -421,6 +421,138 @@
         updateConfirm();
         confirm.focus();
     });
+    const openMoveConfirmModal = ({
+        title, label, previous, target, amount, estimate, notes = [], hasPrice = true,
+        quoteRequired = true, canChangeAmount = false, qrPaid = false,
+    }) => {
+        const wrap = document.createElement('div');
+        wrap.className = 'court-price-confirm-backdrop';
+        const showEstimate = estimate !== null && estimate !== undefined && Number.isFinite(Number(estimate));
+        const groupName = `move-price-${Math.random().toString(36).slice(2)}`;
+        wrap.innerHTML = `<section class="court-price-confirm" role="dialog" aria-modal="true" aria-labelledby="courtMoveConfirmTitle">
+            <h2 id="courtMoveConfirmTitle">${escapeHtml(title)}</h2>
+            <p>${escapeHtml(label)}</p>
+            <p>Previous time: <strong>${escapeHtml(previous.date)} · ${escapeHtml(previous.start)}–${escapeHtml(previous.end)}</strong></p>
+            <p>New time: <strong>${escapeHtml(target.date)} · ${escapeHtml(target.start)}–${escapeHtml(target.end)}</strong></p>
+            ${hasPrice ? `<p>Current amount: <strong>${escapeHtml(formatCurrency(amount))}</strong></p>
+                <p class="court-price-confirm-new-amount">New amount: <strong data-move-new-amount>${showEstimate ? escapeHtml(formatCurrency(estimate)) : '<span class="court-price-confirm-spinner" aria-hidden="true"></span> Checking…'}</strong>
+                <small data-move-price-status>${showEstimate ? 'Estimated · checking with server' : 'Checking with server'}</small></p>
+                <div class="court-price-confirm-choices" data-move-price-choices hidden>
+                    <label class="court-price-confirm-choice"><input type="radio" name="${groupName}" value="keep" checked> Keep original amount</label>
+                    <label class="court-price-confirm-choice" data-move-new-choice hidden><input type="radio" name="${groupName}" value="new"> Use new amount</label>
+                    <label class="court-price-confirm-ack" data-move-price-ack hidden><input type="checkbox"> I acknowledge this price change</label>
+                </div>
+                ${qrPaid ? '<p class="court-price-confirm-note">Paid by QR. The amount can’t change.</p>' : ''}` : ''}
+            ${notes.map((note) => `<p class="court-price-confirm-note">${escapeHtml(note)}</p>`).join('')}
+            <p class="court-price-confirm-error" data-move-error role="alert" hidden></p>
+            <div class="court-price-confirm-actions">
+                <button type="button" class="btn-ghost-danger" data-move-cancel>Cancel</button>
+                <button type="button" data-move-confirm disabled>Confirm move</button>
+            </div>
+            <button type="button" class="court-price-confirm-retry" data-move-retry hidden>Retry price check</button>
+        </section>`;
+        document.body.append(wrap);
+
+        let resolveModal;
+        let retryResolver = null;
+        let retryHandler = null;
+        let settled = false;
+        let quoteReady = !quoteRequired;
+        let activeQuote = null;
+        const promise = new Promise((resolve) => { resolveModal = resolve; });
+        const confirm = wrap.querySelector('[data-move-confirm]');
+        const choices = wrap.querySelector('[data-move-price-choices]');
+        const newChoice = wrap.querySelector('[data-move-new-choice]');
+        const ackLabel = wrap.querySelector('[data-move-price-ack]');
+        const ack = ackLabel?.querySelector('input');
+        const errorMessage = wrap.querySelector('[data-move-error]');
+        const retryButton = wrap.querySelector('[data-move-retry]');
+        const updateConfirm = () => {
+            const useNew = wrap.querySelector(`input[name="${groupName}"]:checked`)?.value === 'new';
+            confirm.disabled = !quoteReady || Boolean(useNew && ack && !ack.checked);
+        };
+        const finish = (value) => {
+            if (settled) return;
+            settled = true;
+            wrap.remove();
+            document.removeEventListener('keydown', onKey);
+            retryResolver?.(false);
+            retryResolver = null;
+            resolveModal(value);
+        };
+        const onKey = (event) => {
+            if (event.key === 'Escape') {
+                event.preventDefault();
+                finish(null);
+            }
+        };
+        confirm.addEventListener('click', () => {
+            if (!quoteReady) return;
+            finish({
+                decision: wrap.querySelector(`input[name="${groupName}"]:checked`)?.value || 'keep',
+                quote: activeQuote,
+            });
+        });
+        wrap.querySelectorAll(`input[name="${groupName}"]`).forEach((input) => input.addEventListener('change', updateConfirm));
+        ack?.addEventListener('change', updateConfirm);
+        wrap.querySelector('[data-move-cancel]').addEventListener('click', () => finish(null));
+        wrap.addEventListener('click', (event) => { if (event.target === wrap) finish(null); });
+        retryButton.addEventListener('click', () => {
+            if (!retryHandler || settled) return;
+            retryHandler();
+            retryResolver?.(true);
+            retryResolver = null;
+        });
+        document.addEventListener('keydown', onKey);
+        updateConfirm();
+        wrap.querySelector('[data-move-cancel]').focus();
+
+        const modal = {
+            promise,
+            setLoading() {
+                quoteReady = false;
+                errorMessage.hidden = true;
+                retryButton.hidden = true;
+                const status = wrap.querySelector('[data-move-price-status]');
+                if (status) status.textContent = 'Checking with server';
+                updateConfirm();
+            },
+            setQuote(quote) {
+                activeQuote = quote;
+                quoteReady = true;
+                if (hasPrice) {
+                    wrap.querySelector('[data-move-new-amount]').textContent = formatCurrency(quote.new_amount);
+                    wrap.querySelector('[data-move-price-status]').textContent = 'Server quote';
+                    const changed = Boolean(quote.amount_changed);
+                    choices.hidden = !changed;
+                    if (changed) {
+                        const mayChooseNew = canChangeAmount && !qrPaid && quote.can_change_amount !== false;
+                        newChoice.hidden = !mayChooseNew;
+                        ackLabel.hidden = !mayChooseNew;
+                        if (!mayChooseNew) ack.checked = false;
+                    }
+                }
+                updateConfirm();
+            },
+            setError(message) {
+                quoteReady = false;
+                errorMessage.textContent = message;
+                errorMessage.hidden = false;
+                retryButton.hidden = false;
+                const status = wrap.querySelector('[data-move-price-status]');
+                if (status) status.textContent = 'Price check failed';
+                updateConfirm();
+            },
+            setRetryHandler(handler) { retryHandler = handler; },
+            waitForRetry() {
+                return new Promise((resolve) => { retryResolver = resolve; });
+            },
+            autoConfirm() {
+                finish({ decision: 'keep', quote: activeQuote, automatic: true });
+            },
+        };
+        return modal;
+    };
     const csrfToken = () => document.querySelector('meta[name="csrf-token"]')?.content || '';
     const itemPosition = (kind, item) => ({
         date: kind === 'block' ? item.block_date : item.date,
@@ -428,6 +560,16 @@
         end: normalizeTime(kind === 'block' ? item.end_time : item.end),
         court_id: item.court_id ?? null,
     });
+    const itemCalendarDates = (kind, item) => {
+        const date = kind === 'block' ? item.block_date : item.date;
+        const start = toMinutes(kind === 'block' ? item.start_time : item.start);
+        const end = toMinutes(kind === 'block' ? item.end_time : item.end);
+        const dates = kind === 'booking' && item.slots?.length
+            ? item.slots.map((slot) => slot.date)
+            : [date];
+        if (end <= start) dates.push(addDays(date, 1));
+        return [...new Set(dates.filter(Boolean))];
+    };
     const samePosition = (a, b) => a && b && a.date === b.date && a.start === b.start && a.end === b.end
         && String(a.court_id ?? '') === String(b.court_id ?? '');
     const moveList = (kind) => kind === 'block' ? blocks : bookings;
@@ -443,9 +585,11 @@
             changedDates.push(current.date, moved.date);
             bookings[index] = {
                 ...current, court_id: moved.court_id, date: moved.date,
-                start: moved.start, end: moved.end, slots: moved.slots,
+                start: moved.start, end: moved.end,
+                slots: moved.slots?.map((slot, slotIndex) => ({ ...current.slots?.[slotIndex], ...slot })) ?? current.slots,
                 updated_at: moved.updated_at,
             };
+            delete bookings[index]._saving;
         });
         return changedDates.filter(Boolean);
     };
@@ -464,6 +608,28 @@
             };
         });
     };
+    const shiftLocalDateTime = (date, minutes) => {
+        const dayOffset = Math.floor(minutes / 1440);
+        const shiftedDate = parseLocalDate(date);
+        shiftedDate.setDate(shiftedDate.getDate() + dayOffset);
+        return { date: dateKey(shiftedDate), time: formatTimeInput(minutes) };
+    };
+    const shiftScheduleByMinutes = (date, start, end, minutes) => {
+        const startMinutes = toMinutes(start);
+        let endMinutes = toMinutes(end);
+        if (endMinutes <= startMinutes) endMinutes += 1440;
+        const shiftedStart = shiftLocalDateTime(date, startMinutes + minutes);
+        const shiftedEnd = shiftLocalDateTime(date, endMinutes + minutes);
+        return { date: shiftedStart.date, start: shiftedStart.time, end: shiftedEnd.time };
+    };
+    const shiftBookingByMinutes = (booking, minutes) => ({
+        ...booking,
+        ...shiftScheduleByMinutes(booking.date, booking.start, booking.end, minutes),
+        slots: (booking.slots || []).map((slot) => ({
+            ...slot,
+            ...shiftScheduleByMinutes(slot.date, slot.start, slot.end, minutes),
+        })),
+    });
     const moveItemExists = (queue) => moveList(queue.kind).some((item) =>
         String(item.id) === String(queue.id) && !(queue.kind === 'booking' && ['cancelled', 'expired'].includes(item.status))
     );
@@ -485,11 +651,25 @@
         }
         const remainingIndex = list.findIndex((item) => String(item.id) === String(queue.id));
         if (remainingIndex >= 0) delete list[remainingIndex]._saving;
+        (queue.relatedBookingKeys || []).forEach((key) => {
+            protectedItems.delete(`booking:${key}`);
+            const relatedIndex = bookings.findIndex((item) => String(item.id) === String(key));
+            if (relatedIndex >= 0) delete bookings[relatedIndex]._saving;
+        });
         if (!skipRender || deferredChanged || calendarDataDirty) {
             affectedCalendarDates = queue.changedDates || null;
             renderCalendar();
         }
     };
+    const requestFailureMessage = (error) => {
+        if (error?.name === 'AbortError' || error instanceof TypeError || navigator.onLine === false) {
+            return 'No connection or the request timed out. Check your connection and try again.';
+        }
+        return error?.message || 'Could not move this calendar item.';
+    };
+    const responseFailureMessage = (result, fallback) => result.message
+        || Object.values(result.errors || {}).flat().find((message) => typeof message === 'string')
+        || fallback;
     const pumpMoveQueue = async (queue) => {
         if (moveQueues.get(queue.key) !== queue || queue.inFlight || !queue.wanted) return;
         if (!moveItemExists(queue)) { finishMoveQueue(queue, false); return; }
@@ -497,100 +677,239 @@
         if (!token) {
             const list = moveList(queue.kind), index = list.findIndex((item) => String(item.id) === String(queue.id));
             if (index >= 0) list[index] = { ...queue.confirmed };
+            (queue.relatedBookings || []).forEach(({ id, original }) => {
+                const relatedIndex = bookings.findIndex((item) => String(item.id) === String(id));
+                if (relatedIndex >= 0) bookings[relatedIndex] = { ...original };
+            });
             finishMoveQueue(queue);
             notify('Your security token is missing. Reload the page and try again.', 'error');
             return;
         }
+
         const sent = { ...queue.wanted, position: { ...queue.wanted.position }, payload: { ...queue.wanted.payload } };
         queue.inFlight = sent;
+        const url = `/admin/${queue.kind === 'block' ? 'blocks' : 'bookings'}/${encodeURIComponent(queue.id)}`;
+        const headers = { Accept: 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': token };
+        const isCurrent = () => moveQueues.get(queue.key) === queue
+            && queue.wanted?.sequence === sent.sequence && samePosition(queue.wanted.position, sent.position);
+        const fetchWithTimeout = async (options, controllerKey) => {
+            const controller = new AbortController();
+            const timer = window.setTimeout(() => controller.abort(), 60000);
+            queue[controllerKey] = controller;
+            try {
+                return await fetch(url, { ...options, signal: controller.signal });
+            } finally {
+                window.clearTimeout(timer);
+                if (queue[controllerKey] === controller) queue[controllerKey] = null;
+            }
+        };
+        const rollback = (message) => {
+            if (moveQueues.get(queue.key) !== queue) return;
+            queue.quoteController?.abort();
+            const list = moveList(queue.kind);
+            const index = list.findIndex((item) => String(item.id) === String(queue.id));
+            if (index >= 0) list[index] = { ...queue.confirmed };
+            (queue.relatedBookings || []).forEach(({ id, original }) => {
+                const relatedIndex = bookings.findIndex((item) => String(item.id) === String(id));
+                if (relatedIndex >= 0) bookings[relatedIndex] = { ...original };
+            });
+            finishMoveQueue(queue, false);
+            notify(message, 'error');
+        };
+        const setSavingState = (saving) => {
+            const list = moveList(queue.kind);
+            const index = list.findIndex((item) => String(item.id) === String(queue.id));
+            if (index >= 0) {
+                list[index] = { ...list[index] };
+                if (saving) list[index]._saving = true;
+                else delete list[index]._saving;
+            }
+            (queue.relatedBookingKeys || []).forEach((key) => {
+                const relatedIndex = bookings.findIndex((item) => String(item.id) === String(key));
+                if (relatedIndex >= 0) {
+                    bookings[relatedIndex] = { ...bookings[relatedIndex] };
+                    if (saving) bookings[relatedIndex]._saving = true;
+                    else delete bookings[relatedIndex]._saving;
+                }
+            });
+            affectedCalendarDates = queue.changedDates;
+            renderCalendar();
+        };
+        const markSaving = () => setSavingState(true);
+        const saveBody = (payload) => ({
+            ...payload,
+            expected_updated_at: queue.version,
+            client_token: { itemKey: queue.key, sequence: sent.sequence, targetPosition: sent.position },
+        });
+        const save = async (payload) => {
+            const response = await fetchWithTimeout({
+                method: 'PATCH', credentials: 'same-origin', headers,
+                body: JSON.stringify(saveBody(payload)),
+            }, 'saveController');
+            return { response, result: await response.json().catch(() => ({})) };
+        };
+
+        let modal = null;
+        let quote = null;
+        let priceDecision = 'keep';
+        let savePayload = { ...sent.payload };
+        let skipConfirmation = false;
+        let lastQuoteError = '';
+
         try {
-            const url = `/admin/${queue.kind === 'block' ? 'blocks' : 'bookings'}/${encodeURIComponent(queue.id)}`;
-            const headers = { Accept: 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': token };
             if (queue.kind === 'booking') {
-                const current = queue.confirmed || moveList(queue.kind).find((item) => String(item.id) === String(queue.id)) || {};
-                const target = { court_id: current.court_id, date: sent.payload.date,
-                    start: sent.payload.start_time, end: sent.payload.end_time };
+                const current = queue.confirmed;
+                const target = {
+                    court_id: current.court_id, date: sent.payload.date,
+                    start: sent.payload.start_time, end: sent.payload.end_time,
+                };
                 const canChangeAmount = hasPermission('bookings.create');
                 const localAmount = canChangeAmount && priceCalculator
                     ? priceCalculator.calculateMove(priceRules, current, target) : null;
-                let quote = queue.correctedQuote || (localAmount === null ? null : {
-                    old_amount: Number(current.amount), new_amount: localAmount,
-                    amount_changed: Math.abs(localAmount - Number(current.amount)) >= 0.005,
-                    old_date: current.date, old_start: current.start, old_end: current.end,
-                    date: target.date, start: target.start, end: target.end,
-                    rules_version: priceRules.version, can_change_amount: canChangeAmount,
-                    qr_paid: Boolean(current.qr_paid),
-                });
-                queue.correctedQuote = null;
-                if (!quote) {
-                    const quoteResponse = await fetch(url, { method: 'PATCH', credentials: 'same-origin', headers,
-                        body: JSON.stringify({ ...sent.payload, expected_updated_at: queue.version, dry_run: true }) });
-                    const quoteResult = await quoteResponse.json().catch(() => ({}));
-                    if (quoteResponse.status === 409 && quoteResult.booking) {
-                        queue.confirmed = quoteResult.booking;
-                        queue.version = quoteResult.booking.updated_at || queue.version;
-                        queue.inFlight = null;
-                        if (queue.wanted.sequence !== sent.sequence) { void pumpMoveQueue(queue); return; }
-                        if (queue.staleRetrySequence !== sent.sequence) {
-                            queue.staleRetrySequence = sent.sequence;
-                            void pumpMoveQueue(queue);
-                            return;
-                        }
-                        const staleIndex = moveList(queue.kind).findIndex((item) => String(item.id) === String(queue.id));
-                        if (staleIndex >= 0) moveList(queue.kind)[staleIndex] = { ...queue.confirmed };
-                        finishMoveQueue(queue);
-                        notify(quoteResult.message || 'This booking changed on the server. The latest position was restored.', 'error');
-                        return;
-                    }
-                    if (!quoteResponse.ok) throw new Error(quoteResult.message || 'Could not check the new booking price.');
-                    quote = quoteResult.quote;
-                    if (quote) quote.can_change_amount = Boolean(quote.can_change_amount);
+                const amountChanged = localAmount !== null
+                    && Math.abs(localAmount - Number(current.amount)) >= 0.005;
+                const notes = [];
+                if (current.status === 'paid' && itemIsPast('booking', current)) {
+                    notes.push("This paid booking is in the past. Moving it won't change its payment status.");
                 }
-                if (quote?.amount_changed) {
-                    if (queue.wanted.sequence !== sent.sequence) { queue.inFlight = null; void pumpMoveQueue(queue); return; }
-                    const choice = await confirmDragPrice(quote, current, {
-                        canChangeAmount: Boolean(quote.can_change_amount), qrPaid: Boolean(quote.qr_paid || current.qr_paid),
+                const needsConfirmation = notes.length > 0 || localAmount === null || amountChanged;
+                skipConfirmation = !needsConfirmation;
+                if (!needsConfirmation) {
+                    savePayload.price_decision = 'keep';
+                } else {
+                    modal = openMoveConfirmModal({
+                        title: 'Confirm booking move',
+                        label: current.customer || 'Booking',
+                        previous: itemPosition('booking', current),
+                        target,
+                        amount: current.amount,
+                        estimate: localAmount,
+                        notes,
+                        quoteRequired: true,
+                        canChangeAmount,
+                        qrPaid: Boolean(current.qr_paid),
                     });
+                    modal.setRetryHandler(() => {});
+                    const checkQuote = async () => {
+                        while (isCurrent()) {
+                            modal.setLoading();
+                            try {
+                                const response = await fetchWithTimeout({
+                                    method: 'PATCH', credentials: 'same-origin', headers,
+                                    body: JSON.stringify({
+                                        ...sent.payload, expected_updated_at: queue.version, dry_run: true,
+                                    }),
+                                }, 'quoteController');
+                                const result = await response.json().catch(() => ({}));
+                                if (moveQueues.get(queue.key) !== queue || !isCurrent()) return;
+                                if (!response.ok || !result.quote) {
+                                    throw new Error(responseFailureMessage(result, 'Could not check the new booking price.'));
+                                }
+                                quote = { ...result.quote, can_change_amount: Boolean(result.quote.can_change_amount) };
+                                modal.setQuote(quote);
+                                if (notes.length === 0 && !quote.amount_changed) modal.autoConfirm();
+                                return;
+                            } catch (error) {
+                                if (moveQueues.get(queue.key) !== queue || !isCurrent()) return;
+                                lastQuoteError = requestFailureMessage(error);
+                                modal.setError(lastQuoteError);
+                                if (!await modal.waitForRetry()) return;
+                            }
+                        }
+                    };
+                    void checkQuote();
+                    const choice = await modal.promise;
                     if (!choice) {
-                        queue.inFlight = null;
-                        if (queue.wanted.sequence !== sent.sequence) { void pumpMoveQueue(queue); return; }
-                        const index = moveList(queue.kind).findIndex((item) => String(item.id) === String(queue.id));
-                        if (index >= 0) moveList(queue.kind)[index] = { ...queue.confirmed };
-                        finishMoveQueue(queue);
+                        rollback(lastQuoteError || 'Move cancelled. The original schedule was restored.');
                         return;
                     }
-                    if (moveQueues.get(queue.key) !== queue || !moveItemExists(queue)) { finishMoveQueue(queue, false); return; }
-                    if (queue.wanted.sequence !== sent.sequence) { queue.inFlight = null; void pumpMoveQueue(queue); return; }
-                    sent.payload.price_decision = choice.decision;
-                    sent.payload.acknowledge_price_change = choice.decision === 'new';
-                    if (choice.decision === 'new') {
-                        sent.payload.expected_amount = Number(quote.new_amount);
-                        sent.payload.price_rules_version = quote.rules_version || priceRules.version;
+                    quote = choice.quote;
+                    priceDecision = choice.decision || 'keep';
+                    if (!quote || !isCurrent()) {
+                        rollback('The booking quote is no longer current. The original schedule was restored.');
+                        return;
                     }
-                } else sent.payload.price_decision = 'keep';
-            }
-            if (queue.kind === 'booking') {
-                const list = moveList(queue.kind);
-                const index = list.findIndex((item) => String(item.id) === String(queue.id));
-                if (index >= 0) {
-                    list[index] = { ...queue.confirmed, date: sent.payload.date, start: sent.payload.start_time,
-                        end: sent.payload.end_time,
-                        slots: movedBookingSlots(sent.payload.date, sent.payload.start_time, sent.payload.end_time), _saving: true };
-                    affectedCalendarDates = queue.changedDates;
-                    renderCalendar();
+                    savePayload.price_decision = priceDecision;
+                    savePayload.acknowledge_price_change = priceDecision === 'new';
+                    if (priceDecision === 'new') {
+                        savePayload.expected_amount = Number(quote.new_amount);
+                        savePayload.price_rules_version = quote.rules_version || priceRules.version;
+                    }
+                }
+            } else if (queue.confirmationNotes?.length) {
+                modal = openMoveConfirmModal({
+                    title: 'Confirm calendar move',
+                    label: queue.confirmationLabel || 'Open Play',
+                    previous: itemPosition('block', queue.confirmed),
+                    target: itemPosition('block', moveList('block').find((item) => String(item.id) === String(queue.id))),
+                    notes: queue.confirmationNotes,
+                    hasPrice: false,
+                    quoteRequired: false,
+                });
+                const choice = await modal.promise;
+                if (!choice) {
+                    rollback('Move cancelled. The event and joined bookings were restored.');
+                    return;
                 }
             }
-            const response = await fetch(url, {
-                method: 'PATCH', credentials: 'same-origin',
-                headers,
-                body: JSON.stringify({
-                    ...sent.payload, expected_updated_at: queue.version,
-                    client_token: { itemKey: queue.key, sequence: sent.sequence, targetPosition: sent.position },
-                }),
-            });
-            const result = await response.json().catch(() => ({}));
-            if (moveQueues.get(queue.key) !== queue || !moveItemExists(queue)) { finishMoveQueue(queue, false); return; }
-            let serverItem = queue.kind === 'block' ? (result.block && normalizeBlock(result.block)) : result.booking;
+
+            if (!isCurrent()) { finishMoveQueue(queue, false); return; }
+            markSaving();
+            let saved = await save(savePayload);
+
+            if (saved.response.status === 409 && saved.result.quote && skipConfirmation && isCurrent()) {
+                setSavingState(false);
+                const freshQuote = {
+                    ...saved.result.quote,
+                    old_date: queue.confirmed.date,
+                    old_start: queue.confirmed.start,
+                    old_end: queue.confirmed.end,
+                    date: sent.position.date,
+                    start: sent.position.start,
+                    end: sent.position.end,
+                    can_change_amount: Boolean(saved.result.quote.can_change_amount),
+                    qr_paid: Boolean(queue.confirmed.qr_paid),
+                };
+                modal = openMoveConfirmModal({
+                    title: 'Confirm booking move',
+                    label: queue.confirmed.customer || 'Booking',
+                    previous: itemPosition('booking', queue.confirmed),
+                    target: sent.position,
+                    amount: queue.confirmed.amount,
+                    estimate: null,
+                    quoteRequired: false,
+                    canChangeAmount: hasPermission('bookings.create'),
+                    qrPaid: Boolean(queue.confirmed.qr_paid),
+                });
+                modal.setQuote(freshQuote);
+                const choice = await modal.promise;
+                if (!choice) {
+                    rollback('Move cancelled. The original schedule was restored.');
+                    return;
+                }
+                priceDecision = choice.decision || 'keep';
+                savePayload = { ...sent.payload, price_decision: priceDecision,
+                    acknowledge_price_change: priceDecision === 'new' };
+                if (priceDecision === 'new') {
+                    savePayload.expected_amount = Number(freshQuote.new_amount);
+                    savePayload.price_rules_version = freshQuote.rules_version || priceRules.version;
+                }
+                markSaving();
+                saved = await save(savePayload);
+            }
+
+            if (!isCurrent()) { finishMoveQueue(queue, false); return; }
+            if (!saved.response.ok) {
+                const staleMessage = saved.response.status === 409
+                    ? 'This calendar item changed on the server. Reload the board and try again.'
+                    : 'The server rejected this calendar move.';
+                rollback(responseFailureMessage(saved.result, staleMessage));
+                return;
+            }
+
+            let serverItem = queue.kind === 'block'
+                ? (saved.result.block && normalizeBlock(saved.result.block))
+                : saved.result.booking;
             if (queue.kind === 'block' && serverItem) {
                 serverItem = {
                     ...serverItem,
@@ -598,67 +917,30 @@
                     participant_count: serverItem.participant_count ?? queue.confirmed.participant_count,
                 };
             }
-            const latest = queue.wanted.sequence === sent.sequence && samePosition(queue.wanted.position, sent.position);
-            if (response.status === 409 && result.quote && latest) {
-                queue.correctedQuote = { ...result.quote, old_date: queue.confirmed.date, old_start: queue.confirmed.start,
-                    old_end: queue.confirmed.end, date: sent.position.date, start: sent.position.start,
-                    end: sent.position.end, can_change_amount: Boolean(result.quote.can_change_amount),
-                    qr_paid: Boolean(queue.confirmed.qr_paid) };
-                queue.inFlight = null;
-                void pumpMoveQueue(queue);
-                return;
+            if (!serverItem || !serverItem.updated_at) {
+                throw new Error('The server response did not include the updated calendar item.');
             }
-            if (response.ok) {
-                if (!serverItem || !serverItem.updated_at) throw new Error('Updated item version missing from response.');
-                if (queue.kind === 'block') queue.changedDates.push(...applyMovedBookings(result.moved_bookings));
-                queue.confirmed = serverItem;
-                queue.version = serverItem.updated_at;
-                queue.inFlight = null;
-                if (latest) {
-                    const list = moveList(queue.kind), index = list.findIndex((item) => String(item.id) === String(queue.id));
-                    if (index >= 0) {
-                        const shown = list[index];
-                        list[index] = serverItem;
-                        delete list[index]._saving;
-                        if (samePosition(itemPosition(queue.kind, shown), itemPosition(queue.kind, serverItem))) {
-                            const bar = activeCalendarGrid?.querySelector(`[data-calendar-kind="${queue.kind}"][data-calendar-id="${CSS.escape(String(queue.id))}"]`);
-                            bar?.classList.remove('is-saving');
-                            queue.changedDates = [];
-                            finishMoveQueue(queue, true, true);
-                        } else finishMoveQueue(queue);
-                    } else finishMoveQueue(queue, false);
-                    notify(result.message || 'Calendar item moved.', 'success');
-                } else void pumpMoveQueue(queue);
-                return;
+            if (queue.kind === 'block') {
+                queue.changedDates.push(...applyMovedBookings(saved.result.moved_bookings));
             }
-            if (response.status === 409 && serverItem) {
-                queue.confirmed = serverItem;
-                queue.version = serverItem.updated_at || result.updated_at || queue.version;
-                queue.inFlight = null;
-                if (queue.staleRetrySequence !== sent.sequence) {
-                    queue.staleRetrySequence = sent.sequence;
-                    void pumpMoveQueue(queue);
-                    return;
-                }
-            } else if (!latest) {
-                queue.inFlight = null;
-                void pumpMoveQueue(queue);
-                return;
-            } else queue.inFlight = null;
-            const failedWanted = queue.wanted;
-            const list = moveList(queue.kind), index = list.findIndex((item) => String(item.id) === String(queue.id));
-            if (index >= 0) list[index] = { ...queue.confirmed };
-            finishMoveQueue(queue);
-            notify(result.message || 'Could not move this calendar item.', 'error');
-        } catch (error) {
-            if (moveQueues.get(queue.key) !== queue || !moveItemExists(queue)) { finishMoveQueue(queue, false); return; }
-            const latest = queue.wanted.sequence === queue.inFlight?.sequence && samePosition(queue.wanted.position, queue.inFlight?.position);
+            queue.changedDates.push(itemPosition(queue.kind, serverItem).date);
+            if (queue.kind === 'booking') {
+                queue.changedDates.push(...(serverItem.slots || []).map((slot) => slot.date));
+            }
+            const list = moveList(queue.kind);
+            const index = list.findIndex((item) => String(item.id) === String(queue.id));
+            if (index >= 0) list[index] = serverItem;
+            queue.confirmed = serverItem;
+            queue.version = serverItem.updated_at;
             queue.inFlight = null;
-            if (!latest) { void pumpMoveQueue(queue); return; }
-            const list = moveList(queue.kind), index = list.findIndex((item) => String(item.id) === String(queue.id));
-            if (index >= 0) list[index] = { ...queue.confirmed };
+            notify(saved.result.message || 'Calendar item moved.', 'success');
             finishMoveQueue(queue);
-            notify('Could not move this calendar item. Please try again.', 'error');
+        } catch (error) {
+            if (moveQueues.get(queue.key) !== queue || !moveItemExists(queue)) {
+                finishMoveQueue(queue, false);
+                return;
+            }
+            rollback(requestFailureMessage(error));
         }
     };
     const formatTimeInput = (minutes) => {
@@ -1943,6 +2225,7 @@
         let end = kind === 'booking' ? toMinutes(item.end) : toMinutes(item.end_time);
         if (end <= start) end += 1440;
         const key = `${kind}:${id}`;
+        if (protectedItems.has(key) || moveQueues.has(key) || item._saving) return;
         activeCalendarGrid = grid;
         activeDragKey = key;
         protectedItems.add(key);
@@ -2039,18 +2322,6 @@
             notify('That time overlaps a booking, closure, or another calendar event.', 'error');
             return;
         }
-        if (drag.kind === 'block') {
-            const joined = Number(drag.item.participant_count ?? drag.item.participants?.length ?? 0);
-            if (joined > 0 && !window.confirm(`${joined} ${joined === 1 ? 'player has' : 'players have'} joined. Move anyway?`)) {
-                releaseDragVisuals(drag);
-                return;
-            }
-        } else if (drag.item.status === 'paid' && itemIsPast('booking', drag.item)) {
-            if (!window.confirm('This paid booking is in the past. Move it anyway?')) {
-                releaseDragVisuals(drag);
-                return;
-            }
-        }
         const payload = drag.kind === 'block'
             ? { block_date: target.date, start_time: formatTimeInput(target.startMinutes), end_time: formatTimeInput(target.endMinutes) }
             : { date: target.date, start_time: formatTimeInput(target.startMinutes), end_time: formatTimeInput(target.endMinutes) };
@@ -2059,9 +2330,25 @@
         if (index < 0) { releaseDragVisuals(drag); return; }
         const queue = moveQueues.get(drag.key) || {
             key: drag.key, kind: drag.kind, id: drag.id, confirmed: { ...list[index] },
-            version: list[index].updated_at, wanted: null, inFlight: null, changedDates: [],
+            version: list[index].updated_at, wanted: null, inFlight: null, changedDates: [], relatedBookings: [],
         };
         const currentDisplayed = { ...list[index] };
+        const joinedCount = drag.kind === 'block'
+            ? Number(currentDisplayed.participant_count ?? currentDisplayed.participants?.length ?? 0)
+            : 0;
+        const joinedIds = drag.kind === 'block' && currentDisplayed.type === 'open_play' && joinedCount > 0
+            ? participantBookingIds(currentDisplayed) : [];
+        const joinedBookings = joinedIds
+            .map((id) => bookings.find((booking) => String(booking.id) === id))
+            .filter(Boolean);
+        const movableJoinedBookings = joinedBookings.length === joinedCount ? joinedBookings : [];
+        if (movableJoinedBookings.some((booking) =>
+            protectedItems.has(`booking:${booking.id}`) || moveQueues.has(`booking:${booking.id}`) || booking._saving
+        )) {
+            releaseDragVisuals(drag);
+            notify('A joined booking is already being moved. Try again when it finishes.', 'error');
+            return;
+        }
         const sequence = (moveSequences.get(drag.key) || 0) + 1;
         moveSequences.set(drag.key, sequence);
         const position = {
@@ -2069,19 +2356,46 @@
             court_id: currentDisplayed.court_id ?? null,
         };
         queue.wanted = { sequence, position, payload };
-        queue.changedDates = [...new Set([...(queue.changedDates || []),
-            drag.kind === 'block' ? currentDisplayed.block_date : currentDisplayed.date, target.date])];
+        queue.relatedBookings = movableJoinedBookings.map((booking) => ({
+            id: String(booking.id), original: { ...booking },
+        }));
+        queue.relatedBookingKeys = queue.relatedBookings.map(({ id }) => id);
+        queue.confirmationNotes = drag.kind === 'block' && joinedCount > 0
+            ? [`${joinedCount} ${joinedCount === 1 ? 'player has' : 'players have'} joined. Their bookings will move with this event.`]
+            : [];
+        queue.confirmationLabel = currentDisplayed.title || 'Open Play';
         moveQueues.set(drag.key, queue);
         protectedItems.add(drag.key);
         const optimistic = drag.kind === 'block'
-            ? { ...currentDisplayed, ...payload, _saving: true }
+            ? {
+                ...currentDisplayed, ...payload,
+                ...(joinedCount > 0 && movableJoinedBookings.length === 0 ? { _saving: true } : {}),
+            }
             : { ...currentDisplayed, date: payload.date, start: payload.start_time, end: payload.end_time,
-                slots: movedBookingSlots(payload.date, payload.start_time, payload.end_time), _saving: true };
-        affectedCalendarDates = queue.changedDates;
-        if (drag.kind === 'block') {
-            list[index] = optimistic;
-            renderCalendar();
+                slots: movedBookingSlots(payload.date, payload.start_time, payload.end_time) };
+        queue.changedDates = [...new Set([
+            ...(queue.changedDates || []),
+            ...itemCalendarDates(drag.kind, currentDisplayed),
+            ...itemCalendarDates(drag.kind, optimistic),
+            ...queue.relatedBookings.flatMap(({ original }) => itemCalendarDates('booking', original)),
+        ])];
+        if (drag.kind === 'block' && movableJoinedBookings.length) {
+            const dateDelta = Math.round((parseLocalDate(target.date).getTime()
+                - parseLocalDate(currentDisplayed.block_date).getTime()) / 86400000);
+            const shiftMinutes = dateDelta * 1440 + toMinutes(payload.start_time) - toMinutes(currentDisplayed.start_time);
+            queue.relatedBookings.forEach(({ id }) => {
+                const bookingIndex = bookings.findIndex((booking) => String(booking.id) === id);
+                if (bookingIndex < 0) return;
+                const moved = shiftBookingByMinutes(bookings[bookingIndex], shiftMinutes);
+                bookings[bookingIndex] = { ...moved, _saving: false };
+                queue.changedDates.push(...itemCalendarDates('booking', moved));
+                protectedItems.add(`booking:${id}`);
+            });
         }
+        queue.changedDates = [...new Set(queue.changedDates)];
+        affectedCalendarDates = queue.changedDates;
+        list[index] = optimistic;
+        renderCalendar();
         const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
         const settle = drag.grid.querySelector(`[data-calendar-kind="${drag.kind}"][data-calendar-id="${CSS.escape(drag.id)}"]`);
         if (drag.animationFrame) cancelAnimationFrame(drag.animationFrame);

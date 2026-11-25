@@ -17,6 +17,25 @@ for (const testCase of fixture.cases) {
     }
     assert.equal(result.total, testCase.expected, testCase.name);
 }
+for (const testCase of fixture.cases) {
+    const oldSlot = calculator.interval(fixture.rules, 1, testCase.date, '09:00', '10:00');
+    assert.ok(oldSlot, `${testCase.name} needs a verifiable existing slot`);
+    const booking = {
+        amount: oldSlot.total,
+        court_id: 1,
+        date: testCase.date,
+        slots: [{ date: testCase.date, start: '09:00', end: '10:00', price: oldSlot.total }],
+        equipment: [],
+    };
+    const estimate = calculator.calculateMove(fixture.rules, booking, {
+        court_id: 1, date: testCase.date, start: testCase.start, end: testCase.end,
+    });
+    if (testCase.client_fallback) {
+        assert.equal(estimate, null, `${testCase.name} should defer to the server quote`);
+    } else {
+        assert.equal(estimate, testCase.expected, `${testCase.name} move estimate`);
+    }
+}
 const move = fixture.move_case;
 const moved = Math.round((move.current_amount - move.old_slot_total + move.target_slot_total + Number.EPSILON) * 100) / 100;
 assert.equal(moved, move.expected_amount, 'move total keeps the existing equipment add-on');
