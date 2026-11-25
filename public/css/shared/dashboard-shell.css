@@ -146,11 +146,7 @@ html.admin-layout-shell .sidebar-nav a.active {
     font-weight: 700;
 }
 
-html.admin-layout-shell .sidebar-nav-icon {
-    display: block;
-    flex: 0 0 20px;
-    width: 20px;
-    height: 20px;
+:is(html.admin-layout-shell, html.user-layout-shell) .sidebar-nav a > svg {
     color: currentColor;
     transform: translateY(0) scale(1);
     transform-origin: center;
@@ -159,7 +155,14 @@ html.admin-layout-shell .sidebar-nav-icon {
         color var(--sidebar-icon-duration, 200ms) var(--sidebar-icon-easing, ease-out);
 }
 
-html.admin-layout-shell {
+html.admin-layout-shell .sidebar-nav-icon {
+    display: block;
+    flex: 0 0 20px;
+    width: 20px;
+    height: 20px;
+}
+
+:is(html.admin-layout-shell, html.user-layout-shell) {
     --sidebar-icon-duration: 200ms;
     --sidebar-icon-easing: ease-out;
     --sidebar-icon-spring-easing: cubic-bezier(.2, .75, .35, 1.25);
@@ -178,45 +181,81 @@ html.admin-layout-shell {
 }
 
 @media (hover: hover) {
-    html.admin-layout-shell .sidebar-nav a:hover .sidebar-nav-icon,
-    html.admin-layout-shell .switch-access-trigger:hover .switch-access-icon {
+    :is(html.admin-layout-shell, html.user-layout-shell) .sidebar-nav a:hover > svg,
+    :is(html.admin-layout-shell, html.user-layout-shell) .switch-access-trigger:hover .switch-access-icon {
         color: var(--brand-hover);
         transform: translateY(-2px) scale(1.1);
     }
 
-    html.admin-layout-shell .sidebar-nav a:hover .sidebar-nav-icon[data-sidebar-icon="bookings"] {
+    :is(html.admin-layout-shell, html.user-layout-shell) .sidebar-nav a:hover > .sidebar-nav-icon[data-sidebar-icon="bookings"] {
         transform: translateY(-2px) scale(1.1) rotate(-8deg);
     }
 
-    html.admin-layout-shell .sidebar-nav a:hover .sidebar-nav-icon[data-sidebar-icon="configuration"] {
+    :is(html.admin-layout-shell, html.user-layout-shell) .sidebar-nav a:hover > .sidebar-nav-icon[data-sidebar-icon="configuration"] {
         transform: translateY(-2px) scale(1.1) rotate(45deg);
     }
 
-    html.admin-layout-shell .sidebar-nav a:hover .sidebar-nav-icon[data-sidebar-icon="customers"],
-    html.admin-layout-shell .sidebar-nav a:hover .sidebar-nav-icon[data-sidebar-icon="access"] {
+    :is(html.admin-layout-shell, html.user-layout-shell) .sidebar-nav a:hover > .sidebar-nav-icon[data-sidebar-icon="customers"],
+    :is(html.admin-layout-shell, html.user-layout-shell) .sidebar-nav a:hover > .sidebar-nav-icon[data-sidebar-icon="access"] {
         animation: sidebar-icon-bounce var(--sidebar-icon-duration) var(--sidebar-icon-easing);
     }
 
-    html.admin-layout-shell .switch-access-trigger:hover .switch-access-icon {
+    :is(html.admin-layout-shell, html.user-layout-shell) .switch-access-trigger:hover .switch-access-icon {
         transform: translateY(-2px) scale(1.1) rotate(180deg);
     }
 }
 
-html.admin-layout-shell .sidebar-nav a:active .sidebar-nav-icon,
-html.admin-layout-shell .switch-access-trigger:active .switch-access-icon {
+html.admin-layout-shell .sidebar-nav a:focus-visible > svg,
+html.user-layout-shell .sidebar-nav a:focus-visible > svg,
+html.admin-layout-shell .switch-access-trigger:focus-visible .switch-access-icon,
+html.user-layout-shell .switch-access-trigger:focus-visible .switch-access-icon {
+    color: var(--brand-hover);
+    transform: translateY(-2px) scale(1.1);
+}
+
+html.admin-layout-shell .sidebar-nav a:focus-visible > .sidebar-nav-icon[data-sidebar-icon="bookings"],
+html.user-layout-shell .sidebar-nav a:focus-visible > .sidebar-nav-icon[data-sidebar-icon="bookings"] {
+    transform: translateY(-2px) scale(1.1) rotate(-8deg);
+}
+
+html.admin-layout-shell .sidebar-nav a:focus-visible > .sidebar-nav-icon[data-sidebar-icon="configuration"],
+html.user-layout-shell .sidebar-nav a:focus-visible > .sidebar-nav-icon[data-sidebar-icon="configuration"] {
+    transform: translateY(-2px) scale(1.1) rotate(45deg);
+}
+
+html.admin-layout-shell .sidebar-nav a:focus-visible > .sidebar-nav-icon[data-sidebar-icon="customers"],
+html.admin-layout-shell .sidebar-nav a:focus-visible > .sidebar-nav-icon[data-sidebar-icon="access"],
+html.user-layout-shell .sidebar-nav a:focus-visible > .sidebar-nav-icon[data-sidebar-icon="customers"],
+html.user-layout-shell .sidebar-nav a:focus-visible > .sidebar-nav-icon[data-sidebar-icon="access"] {
+    animation: sidebar-icon-bounce var(--sidebar-icon-duration) var(--sidebar-icon-easing);
+}
+
+:is(html.admin-layout-shell, html.user-layout-shell) .switch-access-trigger:focus-visible .switch-access-icon {
+    transform: translateY(-2px) scale(1.1) rotate(180deg);
+}
+
+html.admin-layout-shell .sidebar-nav a:active > svg,
+html.user-layout-shell .sidebar-nav a:active > svg,
+html.admin-layout-shell .switch-access-trigger:active .switch-access-icon,
+html.user-layout-shell .switch-access-trigger:active .switch-access-icon {
     color: var(--brand-hover);
     transform: translateY(0) scale(.9);
     transition-timing-function: var(--sidebar-icon-spring-easing);
 }
 
-html.admin-layout-shell .sidebar-nav a.active .sidebar-nav-icon {
+html.admin-layout-shell .sidebar-nav a.active > svg,
+html.user-layout-shell .sidebar-nav a.active > svg {
     animation: sidebar-icon-pop 300ms var(--sidebar-icon-spring-easing) 1;
 }
 
-html.admin-layout-shell .switch-access-icon {
+html.admin-layout-shell .switch-access-icon,
+html.user-layout-shell .switch-access-icon {
     transition:
         transform var(--sidebar-icon-duration) var(--sidebar-icon-easing),
         color var(--sidebar-icon-duration) var(--sidebar-icon-easing);
+}
+
+html.admin-layout-shell .switch-access-icon {
     color: currentColor;
 }
 
@@ -774,15 +813,16 @@ html.admin-layout-shell.is-admin-sidebar-collapsed .admin-sidebar-collapse-toggl
     html.admin-layout-shell .main,
     html.admin-layout-shell .sidebar-nav a,
     html.admin-layout-shell .admin-sidebar-collapse-toggle,
-    html.admin-layout-shell .sidebar-nav-icon,
-    html.admin-layout-shell .switch-access-icon {
+    :is(html.admin-layout-shell, html.user-layout-shell) .sidebar-nav a > svg,
+    :is(html.admin-layout-shell, html.user-layout-shell) .switch-access-icon {
         transition: none;
     }
 
-    html.admin-layout-shell .sidebar-nav-icon,
-    html.admin-layout-shell .switch-access-icon {
-        animation: none !important;
-        transform: none !important;
+    :is(html.admin-layout-shell, html.user-layout-shell) .sidebar-nav a:is(:hover, :focus-visible, :active, .active) > :is(svg.sidebar-nav-icon, svg),
+    :is(html.admin-layout-shell, html.user-layout-shell) .switch-access-trigger:is(:hover, :focus-visible, :active) .switch-access-icon {
+        animation: none;
+        transform: none;
+        transition: none;
     }
 }
 
