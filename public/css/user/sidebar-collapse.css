@@ -243,3 +243,9 @@
         transition: none;
     }
 }
+
+@media (max-width: 420px) {
+    .topbar-logo-name {
+        display: none;
+    }
+}

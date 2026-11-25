@@ -112,7 +112,7 @@
                 </button>
                 <a href="{{ route('user.dashboard') }}" class="user-mobile-brand" aria-label="Side House home">
                     <img src="{{ asset('images/logo.png') }}" alt="" class="user-mobile-brand-logo">
-                    <span>Side House</span>
+                    <span class="topbar-logo-name">Side House</span>
                 </a>
             </div>
             <h1>@yield('page-title', 'Dashboard')</h1>

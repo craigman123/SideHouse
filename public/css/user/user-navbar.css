@@ -411,11 +411,13 @@ svg {
         inset: 0 auto 0 0;
         display: flex;
         flex-direction: column;
+        flex-wrap: nowrap;
         align-items: stretch;
         justify-content: flex-start;
         width: min(320px, 85vw);
         height: 100vh;
         height: 100dvh;
+        max-height: 100vh;
         max-height: 100dvh;
         padding-top: env(safe-area-inset-top, 0px);
         padding-bottom: env(safe-area-inset-bottom, 0px);
@@ -430,6 +432,7 @@ svg {
     html.user-layout-shell.is-user-mobile-drawer-open .sidebar { transform: translateX(0); }
 
     html.user-layout-shell .sidebar-logo {
+        flex: 0 0 auto;
         width: auto;
         height: auto;
         padding: var(--s4);
@@ -476,8 +479,10 @@ svg {
         flex: 1 1 auto;
         min-height: 0;
         padding: var(--s3);
+        padding-bottom: calc(var(--s3) + env(safe-area-inset-bottom, 0px));
         overflow-x: hidden;
         overflow-y: auto;
+        overscroll-behavior: contain;
         white-space: normal;
         scrollbar-width: thin;
     }
@@ -1033,7 +1038,7 @@ svg {
 /* Mobile: keep the badge compact — show icon only below 480 px */
 @media (max-width: 480px) {
     .user-credit-badge-amount { display: none; }
-    .user-credit-badge { padding: 0 var(--s1); }
+    .user-credit-badge { padding: var(--s3); }
 }
 
 @media (max-width: 800px) {
