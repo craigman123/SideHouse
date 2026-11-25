@@ -7,6 +7,6 @@ return [
     'max_suggestions' => 3,
     'dismissal_cooldown_days' => 7,
     'availability_search_days' => 30,
-    'cache_seconds' => 120,
+    'cache_seconds' => 60,
     'timezone' => 'Asia/Manila',
 ];

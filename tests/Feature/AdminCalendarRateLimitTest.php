@@ -224,6 +224,15 @@ class AdminCalendarRateLimitTest extends TestCase
             ->assertHeader('Retry-After');
     }
 
+    public function test_register_limiter_remains_five_attempts_per_minute(): void
+    {
+        for ($attempt = 0; $attempt < 5; $attempt++) {
+            $this->postJson('/register', [])->assertUnprocessable();
+        }
+
+        $this->postJson('/register', [])->assertTooManyRequests();
+    }
+
     private function authenticateAdmin(): void
     {
         $this->actingAs($this->admin)->withSession([
@@ -250,5 +259,6 @@ class AdminCalendarRateLimitTest extends TestCase
         RateLimiter::clear(sha1((string) $this->admin->getAuthIdentifier()));
         RateLimiter::clear(sha1('admin-mgmt:'.sha1((string) $this->admin->getAuthIdentifier())));
         RateLimiter::clear(md5('login'.Str::lower($this->loginUsername).'|127.0.0.1'));
+        RateLimiter::clear(md5('register127.0.0.1'));
     }
 }

@@ -6,6 +6,7 @@ use App\Models\User;
 use App\Models\BusinessSetting;
 use App\Models\Court;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\RateLimiter;
 use Tests\TestCase;
 
 class UserLumiPagesTest extends TestCase
@@ -78,6 +79,40 @@ class UserLumiPagesTest extends TestCase
         $this->get('/lumi')->assertOk();
         $this->getJson('/lumi/suggestions')->assertOk()->assertJsonPath('has_unseen', false);
         $this->postJson('/lumi/message', ['message' => 'How do I book a court?'])->assertNotFound();
+    }
+
+    public function test_lumi_suggestions_uses_its_own_rate_limit_bucket(): void
+    {
+        $user = $this->makeCustomer();
+        $sharedKey = sha1((string) $user->getAuthIdentifier());
+        $lumiKey = 'lumi-suggestions'.$sharedKey;
+        RateLimiter::clear($sharedKey);
+        RateLimiter::clear($lumiKey);
+
+        $this->signIn($user)->getJson('/lumi/suggestions')
+            ->assertOk()
+            ->assertHeader('X-RateLimit-Limit', '30');
+
+        $this->assertSame(0, RateLimiter::attempts($sharedKey));
+        $this->assertSame(1, RateLimiter::attempts($lumiKey));
+    }
+
+    public function test_logout_has_its_own_bucket_after_customer_polling_exhausts_the_shared_limit(): void
+    {
+        $user = $this->makeCustomer();
+        $sharedKey = sha1((string) $user->getAuthIdentifier());
+        RateLimiter::clear($sharedKey);
+        RateLimiter::clear('logout'.$sharedKey);
+        $this->signIn($user);
+
+        for ($attempt = 0; $attempt < 120; $attempt++) {
+            $this->getJson('/notifications/unread-count')->assertOk();
+        }
+
+        $this->get('/my-dashboard')->assertTooManyRequests();
+        $this->post('/logout')
+            ->assertRedirect(route('login'))
+            ->assertHeader('X-RateLimit-Limit', '10');
     }
 
     public function test_dashboard_uses_the_topbar_popover_and_has_no_suggestion_card(): void

@@ -63,10 +63,10 @@ Route::post('/maintenance/bypass', [MaintenanceController::class, 'bypass'])
     ->name('maintenance.bypass')
     ->middleware('throttle:5,1');
 
-// THROTTLE NOTE: plain "throttle:N,M" shares ONE counter per IP across every
-// route that uses it, so page loads and polling ate the QR route's tiny
-// limit and caused 429s. The third value ("guestbook-store", "qrph-create",
-// ...) is a bucket name that gives each route its own separate counter.
+// THROTTLE NOTE: plain "throttle:N,M" shares ONE counter per authenticated
+// user (or IP when unauthenticated) across every route that uses it. The
+// third value ("guestbook-store", "qrph-create", ...) gives a route its own
+// separate counter.
 Route::post('/guest-book', [GuestBookingController::class, 'store'])
     ->middleware('throttle:30,1,guestbook-store')
     ->name('guest.book.store');
@@ -173,7 +173,7 @@ Route::post('/register', [AuthController::class, 'register'])
 Route::post('/auth/google', [AuthController::class, 'googleAuth'])->middleware('throttle:15,1')->name('auth.google');
 
 Route::post('/logout', [AuthController::class, 'logout'])
-    ->middleware('throttle:10,1')
+    ->middleware('throttle:10,1,logout')
     ->name('logout');
 
 Route::middleware(['auth', 'real-admin.view-as', 'admin.mfa', 'throttle:20,1'])->group(function () {
@@ -357,7 +357,10 @@ Route::middleware(['auth', 'admin.mfa', 'customer.only', 'throttle:120,1'])->gro
     Route::get('/my-dashboard', [UserDashboardController::class, 'index'])->name('user.dashboard');
     Route::get('/user/dashboard', [UserDashboardController::class, 'index'])->name('user.dashboard.view-as');
     Route::get('/lumi', [LumiController::class, 'show'])->name('user.lumi');
-    Route::get('/lumi/suggestions', [LumiController::class, 'suggestions'])->name('user.lumi.suggestions');
+    Route::get('/lumi/suggestions', [LumiController::class, 'suggestions'])
+        ->withoutMiddleware('throttle:120,1')
+        ->middleware('throttle:30,1,lumi-suggestions')
+        ->name('user.lumi.suggestions');
     Route::post('/lumi/dismiss', [LumiController::class, 'dismiss'])->name('user.lumi.dismiss');
     Route::get('/whats-new', [LumiController::class, 'whatsNew'])->name('user.whats-new');
 
