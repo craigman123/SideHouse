@@ -762,8 +762,48 @@ svg {
     font-weight: var(--font-weight-button);
 }
 
+.topbar .date button.user-lumi-topbar-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--s2);
+    min-width: 44px;
+    min-height: 44px;
+    padding: 0 var(--s3);
+    border: 1px solid var(--border);
+    border-radius: var(--r-pill);
+    background: transparent;
+    color: var(--text);
+    cursor: pointer;
+    font-family: var(--font-family);
+    font-size: var(--font-size-small);
+    font-weight: var(--font-weight-button);
+    text-decoration: none;
+    white-space: nowrap;
+    transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease;
+}
+
+.topbar .date button.user-lumi-topbar-button:hover,
+.topbar .date button.user-lumi-topbar-button.active {
+    border-color: var(--brand);
+    background: color-mix(in srgb, var(--brand) 12%, var(--surface));
+    color: var(--brand-hover);
+}
+
+.topbar .date button.user-lumi-topbar-button:focus-visible {
+    outline: 2px solid var(--brand-hover);
+    outline-offset: 2px;
+}
+
+.user-lumi-topbar-button svg { flex: 0 0 auto; }
+
 /* Mobile: keep the badge compact — show icon only below 480 px */
 @media (max-width: 480px) {
     .user-credit-badge-amount { display: none; }
     .user-credit-badge { padding: 0 var(--s1); }
+}
+
+@media (max-width: 800px) {
+    .user-lumi-topbar-label { display: none; }
+    .topbar .date button.user-lumi-topbar-button { padding: 0; }
 }

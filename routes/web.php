@@ -22,6 +22,7 @@ use App\Http\Controllers\Guest\GuestBookingSearchController;
 use App\Http\Controllers\Guest\PaymongoQrPhController;
 use App\Http\Controllers\Guest\PaymentReceiptController;
 use App\Http\Controllers\User\FeedbackController;
+use App\Http\Controllers\User\LumiController;
 use App\Http\Controllers\User\NotificationController;
 use App\Http\Controllers\User\User_UserController;
 use App\Http\Controllers\User\UserDashboardController;
@@ -355,6 +356,11 @@ Route::middleware(['auth', 'admin', 'admin.mfa', 'throttle.admin-management:120,
 Route::middleware(['auth', 'admin.mfa', 'customer.only', 'throttle:120,1'])->group(function () {
     Route::get('/my-dashboard', [UserDashboardController::class, 'index'])->name('user.dashboard');
     Route::get('/user/dashboard', [UserDashboardController::class, 'index'])->name('user.dashboard.view-as');
+    Route::get('/lumi', [LumiController::class, 'show'])->name('user.lumi');
+    Route::post('/lumi/message', [LumiController::class, 'reply'])
+        ->middleware('throttle:20,1')
+        ->name('user.lumi.message');
+    Route::get('/whats-new', [LumiController::class, 'whatsNew'])->name('user.whats-new');
 
     // Book a court
     Route::get('/book', [User_UserController::class, 'createBooking'])->name('book.index');

@@ -2,9 +2,15 @@
     const shell = document.documentElement;
     const sidebar = document.getElementById('userSidebar');
     const menuButton = document.querySelector('[data-user-mobile-menu-toggle]');
+    const lumiButton = document.querySelector('[data-user-lumi-button]');
     const backdrop = document.querySelector('[data-user-sidebar-backdrop]');
     const main = document.querySelector('.user-layout-shell .main');
     const mobileQuery = window.matchMedia('(max-width: 800px)');
+
+    lumiButton?.addEventListener('click', () => {
+        const destination = lumiButton.dataset.href;
+        if (destination) window.location.assign(destination);
+    });
 
     if (!sidebar || !menuButton || !backdrop || !main) return;
 

@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -41,6 +42,10 @@
             <a href="{{ route('user.dashboard') }}" class="{{ request()->routeIs('user.dashboard') ? 'active' : '' }}" aria-label="Overview" title="Overview">
                 <svg class="sidebar-nav-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>
                 <span>Overview</span>
+            </a>
+            <a href="{{ route('user.whats-new') }}" class="{{ request()->routeIs('user.whats-new') ? 'active' : '' }}" aria-label="What's New?" title="What's New?">
+                <svg class="sidebar-nav-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 3 1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8L12 3Z"/><path d="m19 14 .9 2.1L22 17l-2.1.9L19 20l-.9-2.1L16 17l2.1-.9L19 14Z"/></svg>
+                <span>What's New?</span>
             </a>
 
             <label class="nav-label">Bookings</label>
@@ -113,6 +118,16 @@
             <h1>@yield('page-title', 'Dashboard')</h1>
             <div class="date">
                 @include('partials.guest.theme-toggle', ['placement' => 'toolbar'])
+                <button type="button"
+                   class="user-lumi-topbar-button {{ request()->routeIs('user.lumi') ? 'active' : '' }}"
+                   data-user-lumi-button
+                   data-href="{{ route('user.lumi', [], false) }}"
+                   aria-label="Open Lumi"
+                   title="Lumi"
+                   @if (request()->routeIs('user.lumi')) aria-current="page" @endif>
+                    <x-lumi-icon size="20" aria-hidden="true" />
+                    <span class="user-lumi-topbar-label">Lumi</span>
+                </button>
                 {{-- Credit balance badge — links to the booking page --}}
                 <a href="{{ route('book.index') }}"
                    class="user-credit-badge"
