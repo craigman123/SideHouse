@@ -917,6 +917,8 @@ html[data-theme="light"] .admin-bookings-page .btn-filter {
 .court-block-modal-overlay.is-details .court-block-modal { width: min(100%, 440px); }
 .court-block-modal h2 { margin: 0 0 var(--s2); color: var(--text); font-size: var(--font-size-h2); }
 .court-block-modal-intro { margin: 0 0 var(--s4); color: var(--text-muted); }
+.court-block-required-legend { margin: 0 0 var(--s3); color: var(--text-muted); font-size: var(--font-size-small); }
+.required-mark { color: var(--danger); }
 .court-block-modal-close { position: absolute; top: var(--s3); right: var(--s3); display: grid; width: 44px; height: 44px; place-items: center; border: 1px solid var(--border); border-radius: var(--r-pill); background: var(--surface-2); color: var(--text); font-size: 1.5rem; cursor: pointer; }
 .court-block-form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s3); }
 .court-block-form-grid label { display: grid; min-width: 0; gap: var(--s2); color: var(--text); font-size: var(--font-size-small); font-weight: var(--font-weight-small); }

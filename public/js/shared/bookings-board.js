@@ -145,31 +145,45 @@
     const blockTitleLabel = document.getElementById('courtBlockTitle').closest('label');
     const blockNotesLabel = blockForm.querySelector('[data-block-field]');
     const walkInType = document.getElementById('courtBlockType');
+    const setRequiredField = (field, required) => {
+        field.required = required;
+        field.setAttribute('aria-required', required ? 'true' : 'false');
+        const marker = field.closest('label')?.querySelector('.required-mark');
+        if (marker) marker.hidden = !required;
+    };
     const updateTypeFields = () => {
         const walkIn = walkInType.value === 'walk_in';
         const openPlay = walkInType.value === 'open_play';
         walkInFields.forEach((field) => { field.hidden = !walkIn; });
         openPlayFields.forEach((field) => { field.hidden = !openPlay; });
-        blockForm.elements.max_players.required = openPlay;
-        blockForm.elements.price_per_player.required = openPlay;
+        setRequiredField(blockForm.elements.type, true);
+        setRequiredField(blockCourtSelect, walkIn);
+        setRequiredField(document.getElementById('courtBlockTitle'), !walkIn);
+        setRequiredField(document.getElementById('courtWalkInCustomer'), walkIn);
+        setRequiredField(document.getElementById('courtWalkInContact'), false);
+        setRequiredField(document.getElementById('courtBlockDate'), true);
+        setRequiredField(document.getElementById('courtBlockStart'), true);
+        setRequiredField(document.getElementById('courtBlockEnd'), true);
+        setRequiredField(blockForm.elements.max_players, openPlay);
+        setRequiredField(blockForm.elements.price_per_player, openPlay);
+        setRequiredField(document.getElementById('courtWalkInAmount'), walkIn);
+        setRequiredField(document.getElementById('courtWalkInPayment'), walkIn);
         blockTitleLabel.hidden = walkIn;
         blockNotesLabel.hidden = walkIn;
         document.getElementById('courtWalkInNotes').closest('label').hidden = !walkIn;
-        document.getElementById('courtBlockTitle').required = !walkIn;
-        document.getElementById('courtWalkInCustomer').required = walkIn;
-        document.getElementById('courtWalkInContact').required = walkIn;
         blockCourtSelect.querySelector('option[value="all"]')?.toggleAttribute('hidden', walkIn);
         if (walkIn && blockCourtSelect.value === 'all') blockCourtSelect.value = courts.length ? String(courts[0].id) : '';
         if (walkIn) updateWalkInAmount();
     };
     const updateWalkInAmount = () => {
+        if (walkInType.value !== 'walk_in') return;
         const court = courts.find((item) => String(item.id) === blockCourtSelect.value);
         const amountInput = document.getElementById('courtWalkInAmount');
         const startValue = document.getElementById('courtBlockStart').value;
         const endValue = document.getElementById('courtBlockEnd').value;
         if (!court || court.hourly_rate == null || !startValue || !endValue) {
             amountInput.value = '';
-            amountInput.required = true;
+            setRequiredField(amountInput, true);
             return;
         }
         const toMinutes = (value) => Number(value.slice(0, 2)) * 60 + Number(value.slice(3, 5));
@@ -177,7 +191,11 @@
         let end = toMinutes(endValue);
         if (end <= start) end += 1440;
         const step = stepMinutes;
-        if ((start % step) || (end % step) || end <= start) { amountInput.value = ''; amountInput.required = true; return; }
+        if ((start % step) || (end % step) || end <= start) {
+            amountInput.value = '';
+            setRequiredField(amountInput, true);
+            return;
+        }
         let total = 0;
         for (let minute = start; minute < end; minute += step) {
             const hour = Math.floor((minute % 1440) / 60);
@@ -193,7 +211,7 @@
             total += rate * step / 60;
         }
         amountInput.value = total.toFixed(2);
-        amountInput.required = false;
+        setRequiredField(amountInput, true);
     };
 
     const normalizeTime = (time) => String(time || '').slice(0, 5);
@@ -714,6 +732,7 @@
         document.getElementById('courtBlockStart').step = stepMinutes * 60;
         document.getElementById('courtBlockEnd').step = stepMinutes * 60;
         blockCourtSelect.value = courts.length ? String(courts[0].id) : 'all';
+        updateWalkInAmount();
         validateCalendarForm(blockForm);
         blockModal.hidden = false;
         document.getElementById('courtBlockType').focus();
@@ -813,9 +832,7 @@
         form.elements.end_time.value = selectedBlock.end_time;
         form.elements.max_players.value = selectedBlock.max_players ?? '';
         form.elements.price_per_player.value = selectedBlock.price_per_player ?? '';
-        form.querySelectorAll('.open-play-edit-field').forEach((field) => { field.hidden = selectedBlock.type !== 'open_play'; });
-        form.elements.max_players.required = selectedBlock.type === 'open_play';
-        form.elements.price_per_player.required = selectedBlock.type === 'open_play';
+        updateBlockEditRequirements();
         const past = itemIsPast('block', selectedBlock);
         form.elements.block_date.disabled = past;
         form.elements.start_time.disabled = past;
@@ -865,6 +882,8 @@
         fillCourtOptions(form.elements.court_id);
         form.elements.customer_name.value = booking.customer || '';
         form.elements.contact_number.value = booking.contact_number || '';
+        setRequiredField(form.elements.contact_number, booking.source !== 'walk_in');
+        form.querySelector('.contact-optional-note').hidden = booking.source !== 'walk_in';
         form.elements.email.value = booking.email || '';
         form.elements.court_id.value = String(booking.court_id);
         form.elements.date.value = booking.date;
@@ -1166,7 +1185,7 @@
         const acknowledgement = bookingEditForm.elements.acknowledge_price_change;
         const eligible = ['paid', 'confirmed'].includes(selectedBooking?.status);
         bookingEditForm.querySelector('.court-booking-price-ack-field').hidden = !eligible || !amountChanged;
-        acknowledgement.required = eligible && amountChanged;
+        setRequiredField(acknowledgement, eligible && amountChanged);
         if (!amountChanged) acknowledgement.checked = false;
         const save = bookingEditForm.querySelector('[type="submit"]');
         if (save) save.disabled = !validateCalendarForm(bookingEditForm) || (eligible && amountChanged && !acknowledgement.checked);
@@ -1331,12 +1350,19 @@
 
     const blockEditForm = document.getElementById('courtBlockEditForm');
     const blockEditMessage = document.getElementById('courtBlockEditMessage');
-    blockEditForm.elements.type.addEventListener('change', () => {
+    const updateBlockEditRequirements = () => {
         const open = blockEditForm.elements.type.value === 'open_play';
         blockEditForm.querySelectorAll('.open-play-edit-field').forEach((field) => { field.hidden = !open; });
-        blockEditForm.elements.max_players.required = open;
-        blockEditForm.elements.price_per_player.required = open;
-    });
+        setRequiredField(blockEditForm.elements.type, true);
+        setRequiredField(blockEditForm.elements.court_id, false);
+        setRequiredField(blockEditForm.elements.title, true);
+        setRequiredField(blockEditForm.elements.block_date, true);
+        setRequiredField(blockEditForm.elements.start_time, true);
+        setRequiredField(blockEditForm.elements.end_time, true);
+        setRequiredField(blockEditForm.elements.max_players, open);
+        setRequiredField(blockEditForm.elements.price_per_player, open);
+    };
+    blockEditForm.elements.type.addEventListener('change', updateBlockEditRequirements);
     blockEditForm.addEventListener('submit', async (event) => {
         event.preventDefault();
         if (!selectedBlock || !canManageBlock(selectedBlock)) return;

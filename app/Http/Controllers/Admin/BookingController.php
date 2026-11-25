@@ -91,7 +91,13 @@ class BookingController extends Controller
     {
         $validated = $request->validate([
             'customer_name' => ['sometimes', 'required', 'string', 'max:255'],
-            'contact_number' => ['sometimes', 'required', 'string', 'max:30', 'regex:/^[0-9+\\-\\s()]{7,30}$/'],
+            'contact_number' => [
+                'sometimes',
+                $booking->source === 'walk_in' ? 'nullable' : 'required',
+                'string',
+                'max:30',
+                'regex:/^[0-9+\\-\\s()]{7,30}$/',
+            ],
             'email' => ['sometimes', 'nullable', 'email', 'max:255'],
             'notes' => ['sometimes', 'nullable', 'string', 'max:5000'],
             'court_id' => ['sometimes', 'required', 'integer', 'exists:courts,id'],

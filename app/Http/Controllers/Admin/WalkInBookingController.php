@@ -24,15 +24,15 @@ class WalkInBookingController extends Controller
 
         $validated = $request->validate([
             'customer_name' => ['required', 'string', 'max:255'],
-            'contact_number' => ['required', 'string', 'max:30', 'regex:/^[0-9+\-\s()]{7,30}$/'],
+            'contact_number' => ['nullable', 'string', 'max:30', 'regex:/^[0-9+\-\s()]{7,30}$/'],
             'email' => ['nullable', 'email', 'max:255'],
             'court_id' => ['required', 'integer', 'exists:courts,id'],
             'date' => ['required', 'date_format:Y-m-d', 'after_or_equal:'.CarbonImmutable::now('Asia/Manila')->toDateString()],
             'start_time' => ['required', 'date_format:H:i'],
             'end_time' => ['required', 'date_format:H:i', 'different:start_time'],
             'notes' => ['nullable', 'string', 'max:5000'],
-            'amount' => ['nullable', 'numeric', 'decimal:0,2', 'min:0', 'max:999999.99'],
-            'payment_method' => ['nullable', 'in:cash,gcash'],
+            'amount' => ['required', 'numeric', 'decimal:0,2', 'min:0', 'max:999999.99'],
+            'payment_method' => ['required', 'in:cash,gcash'],
         ]);
 
         $start = CarbonImmutable::createFromFormat('!Y-m-d H:i', $validated['date'].' '.$validated['start_time'], config('app.timezone'));
@@ -89,7 +89,7 @@ class WalkInBookingController extends Controller
             $booking = Booking::create([
                 'user_id' => null,
                 'customer_name' => $validated['customer_name'],
-                'contact_number' => $validated['contact_number'],
+                'contact_number' => $validated['contact_number'] ?? null,
                 'email' => $validated['email'] ?? null,
                 'court_id' => $court->id,
                 'date' => $validated['date'],
@@ -148,6 +148,8 @@ class WalkInBookingController extends Controller
             'booking' => [
                 'id' => $booking->id,
                 'customer' => $booking->customer_name,
+                'contact_number' => $booking->contact_number,
+                'email' => $booking->email,
                 'court_id' => $booking->court_id,
                 'court' => $booking->court?->name,
                 'date' => $booking->date->toDateString(),

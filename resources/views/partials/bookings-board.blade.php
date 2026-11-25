@@ -201,50 +201,51 @@
                 <h2 id="courtBlockModalTitle">Add calendar event</h2>
                 <p class="court-block-modal-intro">Choose what to apply to this time range.</p>
                 <form id="courtBlockForm">
+                    <p class="court-block-required-legend"><span class="required-mark" aria-hidden="true">*</span> required</p>
                     <div class="court-block-form-grid">
-                        <label>Type
-                            <select name="type" id="courtBlockType" required>
+                        <label><span>Type <span class="required-mark" aria-hidden="true">*</span></span>
+                            <select name="type" id="courtBlockType" required aria-required="true">
                                 <option value="closed" data-event-permission="calendar_events.manage">Closed</option>
                                 <option value="maintenance" data-event-permission="calendar_events.manage">Maintenance</option>
                                 <option value="open_play" data-event-permission="calendar_events.open_play">Open play</option>
                                 <option value="walk_in" data-permission="bookings.create">Walk-in</option>
                             </select>
                         </label>
-                        <label>Court
-                            <select name="court_id" id="courtBlockCourt" required></select>
+                        <label><span>Court <span class="required-mark" aria-hidden="true" hidden>*</span></span>
+                            <select name="court_id" id="courtBlockCourt" aria-required="false"></select>
                         </label>
-                        <label>Title
-                            <input name="title" id="courtBlockTitle" type="text" maxlength="255" required>
+                        <label><span>Title <span class="required-mark" aria-hidden="true">*</span></span>
+                            <input name="title" id="courtBlockTitle" type="text" maxlength="255" required aria-required="true">
                         </label>
-                        <label class="walk-in-field" hidden>Customer name
-                            <input name="customer_name" id="courtWalkInCustomer" type="text" maxlength="255">
+                        <label class="walk-in-field" hidden><span>Customer name <span class="required-mark" aria-hidden="true">*</span></span>
+                            <input name="customer_name" id="courtWalkInCustomer" type="text" maxlength="255" aria-required="false">
                         </label>
-                        <label class="walk-in-field" hidden>Contact number
+                        <label class="walk-in-field" hidden>Contact number (optional)
                             <input name="contact_number" id="courtWalkInContact" type="tel" maxlength="30">
                         </label>
                         <label class="walk-in-field" hidden>Email (optional)
                             <input name="email" id="courtWalkInEmail" type="email" maxlength="255">
                         </label>
-                        <label>Date
-                            <input name="block_date" id="courtBlockDate" type="date" required>
+                        <label><span>Date <span class="required-mark" aria-hidden="true">*</span></span>
+                            <input name="block_date" id="courtBlockDate" type="date" required aria-required="true">
                         </label>
-                        <label>Start time
-                            <input name="start_time" id="courtBlockStart" type="time" required>
+                        <label><span>Start time <span class="required-mark" aria-hidden="true">*</span></span>
+                            <input name="start_time" id="courtBlockStart" type="time" required aria-required="true">
                         </label>
-                        <label>End time
-                            <input name="end_time" id="courtBlockEnd" type="time" required>
+                        <label><span>End time <span class="required-mark" aria-hidden="true">*</span></span>
+                            <input name="end_time" id="courtBlockEnd" type="time" required aria-required="true">
                         </label>
-                        <label class="open-play-field" hidden>Max players
-                            <input name="max_players" id="courtBlockMaxPlayers" type="number" min="1" step="1">
+                        <label class="open-play-field" hidden><span>Max players <span class="required-mark" aria-hidden="true">*</span></span>
+                            <input name="max_players" id="courtBlockMaxPlayers" type="number" min="1" step="1" aria-required="false">
                         </label>
-                        <label class="open-play-field" hidden>Price per player (PHP)
-                            <input name="price_per_player" id="courtBlockPricePerPlayer" type="number" min="0" step="0.01">
+                        <label class="open-play-field" hidden><span>Price per player (PHP) <span class="required-mark" aria-hidden="true">*</span></span>
+                            <input name="price_per_player" id="courtBlockPricePerPlayer" type="number" min="0" step="0.01" aria-required="false">
                         </label>
-                        <label class="walk-in-field" hidden>Amount
-                            <input name="amount" id="courtWalkInAmount" type="number" min="0" step="0.01">
+                        <label class="walk-in-field" hidden><span>Amount <span class="required-mark" aria-hidden="true">*</span></span>
+                            <input name="amount" id="courtWalkInAmount" type="number" min="0" step="0.01" aria-required="false">
                         </label>
-                        <label class="walk-in-field" hidden>Payment method
-                            <select name="payment_method" id="courtWalkInPayment"><option value="cash">Cash</option><option value="gcash">GCash</option></select>
+                        <label class="walk-in-field" hidden><span>Payment method <span class="required-mark" aria-hidden="true">*</span></span>
+                            <select name="payment_method" id="courtWalkInPayment" aria-required="false"><option value="cash">Cash</option><option value="gcash">GCash</option></select>
                         </label>
                         <label class="court-block-notes-field" data-block-field>Notes
                             <textarea name="notes" id="courtBlockNotes" rows="3" maxlength="5000"></textarea>
@@ -283,15 +284,16 @@
                 <h2 id="courtBlockEditTitle">Edit calendar event</h2>
                 <form id="courtBlockEditForm">
                     <p class="court-past-edit-note" data-past-edit-note hidden>Past calendar events are read-only except for notes.</p>
+                    <p class="court-block-required-legend"><span class="required-mark" aria-hidden="true">*</span> required</p>
                     <div class="court-block-form-grid">
-                        <label>Type<select name="type" required><option value="closed" data-event-permission="calendar_events.manage">Closed</option><option value="maintenance" data-event-permission="calendar_events.manage">Maintenance</option><option value="open_play" data-event-permission="calendar_events.open_play">Open play</option></select></label>
-                        <label>Court<select name="court_id" required></select></label>
-                        <label>Title<input name="title" type="text" maxlength="255" required></label>
-                        <label>Date<input name="block_date" type="date" required></label>
-                        <label>Start time<input name="start_time" type="time" required></label>
-                        <label>End time<input name="end_time" type="time" required></label>
-                        <label class="open-play-edit-field" hidden>Max players<input name="max_players" type="number" min="1" step="1"></label>
-                        <label class="open-play-edit-field" hidden>Price per player (PHP)<input name="price_per_player" type="number" min="0" step="0.01"></label>
+                        <label><span>Type <span class="required-mark" aria-hidden="true">*</span></span><select name="type" required aria-required="true"><option value="closed" data-event-permission="calendar_events.manage">Closed</option><option value="maintenance" data-event-permission="calendar_events.manage">Maintenance</option><option value="open_play" data-event-permission="calendar_events.open_play">Open play</option></select></label>
+                        <label><span>Court</span><select name="court_id" aria-required="false"></select></label>
+                        <label><span>Title <span class="required-mark" aria-hidden="true">*</span></span><input name="title" type="text" maxlength="255" required aria-required="true"></label>
+                        <label><span>Date <span class="required-mark" aria-hidden="true">*</span></span><input name="block_date" type="date" required aria-required="true"></label>
+                        <label><span>Start time <span class="required-mark" aria-hidden="true">*</span></span><input name="start_time" type="time" required aria-required="true"></label>
+                        <label><span>End time <span class="required-mark" aria-hidden="true">*</span></span><input name="end_time" type="time" required aria-required="true"></label>
+                        <label class="open-play-edit-field" hidden><span>Max players <span class="required-mark" aria-hidden="true">*</span></span><input name="max_players" type="number" min="1" step="1" aria-required="false"></label>
+                        <label class="open-play-edit-field" hidden><span>Price per player (PHP) <span class="required-mark" aria-hidden="true">*</span></span><input name="price_per_player" type="number" min="0" step="0.01" aria-required="false"></label>
                         <label class="court-block-notes-field">Notes<textarea name="notes" rows="3" maxlength="5000"></textarea></label>
                     </div>
                     <p class="court-block-modal-message" id="courtBlockEditMessage" role="status" aria-live="polite"></p>
@@ -318,16 +320,17 @@
                 <h2 id="courtBookingEditTitle">Edit booking</h2>
                 <form id="courtBookingEditForm">
                     <p class="court-past-edit-note" data-past-edit-note hidden>Past bookings can't be edited.</p>
+                    <p class="court-block-required-legend"><span class="required-mark" aria-hidden="true">*</span> required</p>
                     <div class="court-block-form-grid">
-                        <label>Customer name<input name="customer_name" type="text" maxlength="255" required></label>
-                        <label>Contact number<input name="contact_number" type="tel" maxlength="30" required></label>
-                        <label>Email<input name="email" type="email" maxlength="255"></label>
-                        <label>Court<select name="court_id" required></select></label>
-                        <label>Date<input name="date" type="date" required></label>
-                        <label>Start time<input name="start_time" type="time" required></label>
-                        <label>End time<input name="end_time" type="time" required></label>
+                        <label><span>Customer name <span class="required-mark" aria-hidden="true">*</span></span><input name="customer_name" type="text" maxlength="255" required aria-required="true"></label>
+                        <label><span>Contact number <span class="required-mark" aria-hidden="true">*</span><span class="contact-optional-note" hidden>(optional)</span></span><input name="contact_number" type="tel" maxlength="30" required aria-required="true"></label>
+                        <label><span>Email (optional)</span><input name="email" type="email" maxlength="255"></label>
+                        <label><span>Court <span class="required-mark" aria-hidden="true">*</span></span><select name="court_id" required aria-required="true"></select></label>
+                        <label><span>Date <span class="required-mark" aria-hidden="true">*</span></span><input name="date" type="date" required aria-required="true"></label>
+                        <label><span>Start time <span class="required-mark" aria-hidden="true">*</span></span><input name="start_time" type="time" required aria-required="true"></label>
+                        <label><span>End time <span class="required-mark" aria-hidden="true">*</span></span><input name="end_time" type="time" required aria-required="true"></label>
                         <label>Amount<input name="amount" type="number" min="0" step="0.01" readonly></label>
-                        <label class="court-booking-price-ack-field" hidden><span><input name="acknowledge_price_change" type="checkbox" value="1"> I acknowledge the booking price change</span></label>
+                        <label class="court-booking-price-ack-field" hidden><span><input name="acknowledge_price_change" type="checkbox" value="1"> I acknowledge the booking price change <span class="required-mark" aria-hidden="true" hidden>*</span></span></label>
                         <label class="court-block-notes-field">Notes<textarea name="notes" rows="3" maxlength="5000"></textarea></label>
                     </div>
                     <p class="court-block-modal-message" id="courtBookingEditMessage" role="status" aria-live="polite"></p>

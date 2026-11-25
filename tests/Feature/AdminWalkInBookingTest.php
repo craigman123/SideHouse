@@ -44,15 +44,69 @@ class AdminWalkInBookingTest extends TestCase
 
     public function test_admin_can_create_a_priced_walk_in_booking(): void
     {
-        $response = $this->postJson('/admin/bookings', $this->payload());
+        $response = $this->postJson('/admin/bookings', $this->payload([
+            'contact_number' => '09171234567',
+            'email' => 'walkin-player@example.test',
+        ]));
 
-        $response->assertCreated()->assertJsonPath('booking.source', 'walk_in');
+        $response->assertCreated()
+            ->assertJsonPath('booking.source', 'walk_in')
+            ->assertJsonPath('booking.contact_number', '09171234567')
+            ->assertJsonPath('booking.email', 'walkin-player@example.test');
         $booking = Booking::with('slots')->firstOrFail();
         $this->assertSame('confirmed', $booking->status);
         $this->assertSame('cash', $booking->payment_method);
         $this->assertSame('1000.00', $booking->amount);
+        $this->assertSame('09171234567', $booking->contact_number);
+        $this->assertSame('walkin-player@example.test', $booking->email);
         $this->assertCount(4, $booking->slots);
         $this->assertDatabaseCount('payment_reference', 0);
+        $this->getJson('/admin/bookings/calendar?from=2030-05-15&to=2030-05-15')->assertOk()
+            ->assertJsonPath('bookings.0.contact_number', '09171234567')
+            ->assertJsonPath('bookings.0.email', 'walkin-player@example.test');
+    }
+
+    public function test_booking_board_renders_required_field_markers_and_optional_walk_in_contact_label(): void
+    {
+        $this->get('/bookings')->assertOk()
+            ->assertSee('class="required-mark"', false)
+            ->assertSee('Contact number (optional)', false);
+    }
+
+    public function test_walk_in_contact_number_is_optional_and_validated_when_present(): void
+    {
+        $response = $this->postJson('/admin/bookings', $this->payload([
+            'contact_number' => null,
+        ]))->assertCreated()->assertJsonPath('booking.contact_number', null);
+
+        $booking = Booking::findOrFail($response->json('booking.id'));
+        $this->assertNull($booking->contact_number);
+
+        $this->postJson('/admin/bookings', $this->payload([
+            'contact_number' => 'not a phone',
+        ]))->assertUnprocessable()->assertJsonValidationErrors('contact_number');
+    }
+
+    public function test_walk_in_contact_and_email_can_be_edited_and_cleared(): void
+    {
+        $response = $this->postJson('/admin/bookings', $this->payload())->assertCreated();
+        $bookingId = $response->json('booking.id');
+
+        $this->patchJson("/admin/bookings/{$bookingId}", [
+            'contact_number' => null,
+            'email' => 'updated-walkin@example.test',
+        ])->assertOk()
+            ->assertJsonPath('booking.contact_number', null)
+            ->assertJsonPath('booking.email', 'updated-walkin@example.test');
+
+        $this->assertDatabaseHas('bookings', [
+            'id' => $bookingId,
+            'contact_number' => null,
+            'email' => 'updated-walkin@example.test',
+        ]);
+        $this->getJson('/admin/bookings/calendar?from=2030-05-15&to=2030-05-15')->assertOk()
+            ->assertJsonPath('bookings.0.contact_number', null)
+            ->assertJsonPath('bookings.0.email', 'updated-walkin@example.test');
     }
 
     public function test_conflicting_walk_in_is_rejected_with_conflict_details(): void
@@ -78,10 +132,12 @@ class AdminWalkInBookingTest extends TestCase
         $this->assertSame(['2030-05-15', '2030-05-15', '2030-05-16', '2030-05-16'], $booking->slots->pluck('date')->map->toDateString()->all());
     }
 
-    public function test_walk_in_requires_customer_name_and_contact_number(): void
+    public function test_walk_in_requires_customer_name_amount_and_payment_method_but_not_contact_number(): void
     {
         $this->postJson('/admin/bookings', [])->assertUnprocessable()
-            ->assertJsonValidationErrors(['customer_name', 'contact_number', 'court_id', 'date', 'start_time', 'end_time']);
+            ->assertJsonValidationErrors([
+                'customer_name', 'court_id', 'date', 'start_time', 'end_time', 'amount', 'payment_method',
+            ]);
     }
 
     public function test_past_walk_in_date_is_rejected_but_a_walk_in_already_in_progress_today_is_allowed(): void
@@ -129,7 +185,7 @@ class AdminWalkInBookingTest extends TestCase
     private function payload(array $overrides = []): array
     {
         return array_merge([
-            'customer_name' => 'Walk-in Player', 'contact_number' => '09171234567',
+            'customer_name' => 'Walk-in Player', 'contact_number' => '09171234567', 'amount' => 1000,
             'court_id' => $this->court->id, 'date' => '2030-05-15',
             'start_time' => '09:00', 'end_time' => '11:00', 'payment_method' => 'cash',
         ], $overrides);
