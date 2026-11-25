@@ -7,12 +7,9 @@ use App\Http\Controllers\Admin\AnnouncementController;
 use App\Http\Controllers\Admin\BookingController;
 use App\Http\Controllers\Admin\ConfigurationController;
 use App\Http\Controllers\Admin\CourtController;
-use App\Http\Controllers\Admin\CourtBlockController;
 use App\Http\Controllers\Admin\CustomerController;
-use App\Http\Controllers\Admin\UserAccessController;
 use App\Http\Controllers\Admin\EquipmentAvailabilityController;
 use App\Http\Controllers\Admin\ReportController;
-use App\Http\Controllers\Admin\SpecificDateClosureController;
 use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\Auth\ViewAsController;
 use App\Http\Controllers\Auth\MfaController;
@@ -30,7 +27,6 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Maintenance\MaintenanceController;
 use App\Http\Controllers\Guest\GuestBookingLookupController;
 use App\Http\Controllers\Admin\MetricsController;
-use App\Http\Controllers\Admin\CustomerCreditController;
 use App\Http\Controllers\Guest\GuestCreditController;
 
 Route::get('/guest/booking/latest', [GuestBookingLookupController::class, 'latest'])
@@ -203,79 +199,49 @@ Route::middleware('auth')->group(function () {
         ->name('mfa.verify');
 });
 
-// Shared admin implementations are also available to staff with the matching
-// capability. Owner/admin access remains unchanged through UserAccessService.
-Route::middleware(['auth', 'admin.mfa'])->group(function () {
-    Route::middleware('throttle.admin-management:120,1')->group(function () {
-        Route::get('/admin/specific-closures', [SpecificDateClosureController::class, 'index'])->middleware('throttle.admin-management:30,1')->name('admin.specific-closures.index');
-        Route::get('/admin/specific-closures/operating-hours', [SpecificDateClosureController::class, 'operatingHours'])->middleware('throttle.admin-management:30,1')->name('admin.specific-closures.hours');
-        Route::post('/admin/bookings', [App\Http\Controllers\Admin\WalkInBookingController::class, 'store'])
-            ->middleware(['can.access:bookings.create', 'staff.redact', 'throttle.admin-management:20,1'])
-            ->name('admin.bookings.walk-in.store');
-        Route::post('/admin/blocks', [CourtBlockController::class, 'store'])
-            ->middleware(['can.access:calendar_events.manage,calendar_events.open_play', 'throttle.admin-management:20,1'])
-            ->name('admin.blocks.store');
-        Route::get('/customers/data', [CustomerController::class, 'data'])
-            ->middleware(['can.access:customers.view', 'staff.redact'])
-            ->name('admin.customers.data');
-    });
+// These controller actions are shared; the route table preserves the legacy
+// middleware in flag-off mode and scopes copies when multi-guard is enabled.
+$sharedAdminRoutes = require __DIR__.'/shared_admin.php';
+$registerSharedAdminRoute = static function (array $definition, string $uri, string $name, ?string $guard = null): void {
+    $route = match ($definition['method']) {
+        'GET' => Route::get($uri, $definition['action']),
+        'POST' => Route::post($uri, $definition['action']),
+        'PATCH' => Route::patch($uri, $definition['action']),
+        'DELETE' => Route::delete($uri, $definition['action']),
+    };
 
-    Route::post('/admin/specific-closures', [SpecificDateClosureController::class, 'store'])
-        ->middleware('throttle:admin-closures')->name('admin.specific-closures.store');
-    Route::patch('/admin/specific-closures/{closure}', [SpecificDateClosureController::class, 'update'])
-        ->middleware('throttle:admin-closures')->name('admin.specific-closures.update');
-    Route::delete('/admin/specific-closures/{closure}', [SpecificDateClosureController::class, 'destroy'])
-        ->middleware('throttle:admin-calendar-delete')->name('admin.specific-closures.destroy');
+    $route->middleware($definition['middleware'])->name($name);
+    if ($guard !== null) {
+        $route->defaults('_role_guard', $guard);
+    }
+};
 
-    Route::get('/admin/bookings/calendar', [BookingController::class, 'calendar'])
-        ->middleware(['can.access:bookings.view,calendar_events.open_play', 'staff.redact', 'throttle:admin-calendar-read'])
-        ->name('admin.bookings.calendar');
-    Route::patch('/admin/bookings/{booking}', [BookingController::class, 'update'])
-        ->middleware(['can.access:bookings.edit', 'staff.redact', 'throttle:admin-calendar-quote', 'throttle:admin-calendar-save'])
-        ->name('admin.bookings.update');
-    Route::patch('/admin/blocks/{block}', [CourtBlockController::class, 'update'])
-        ->middleware(['can.access:calendar_events.manage,calendar_events.open_play', 'throttle:admin-calendar-save'])
-        ->name('admin.blocks.update');
-    Route::delete('/admin/blocks/{block}', [CourtBlockController::class, 'destroy'])
-        ->middleware(['can.access:calendar_events.manage,calendar_events.open_play', 'throttle:admin-calendar-delete'])
-        ->name('admin.blocks.destroy');
-});
+if (config('auth.multi_guard')) {
+    foreach (['admin', 'owner', 'staff'] as $roleGuard) {
+        foreach ($sharedAdminRoutes as $definition) {
+            if (! in_array($roleGuard, $definition['roles'], true)) {
+                continue;
+            }
+
+            $nameSuffix = substr($definition['name'], strlen('admin.'));
+            $legacyUri = $definition['legacy_uri'];
+            $roleUri = $roleGuard === 'admin' && str_starts_with($legacyUri, 'admin/')
+                ? $legacyUri
+                : $roleGuard.'/'.$legacyUri;
+            $registerSharedAdminRoute($definition, $roleUri, $roleGuard.'.'.$nameSuffix, $roleGuard);
+        }
+    }
+} else {
+    foreach ($sharedAdminRoutes as $definition) {
+        $registerSharedAdminRoute($definition, $definition['legacy_uri'], $definition['name']);
+    }
+}
 
 Route::middleware(['auth', 'admin.mfa', 'real-admin', 'throttle.admin-management:30,1'])
     ->get('/admin/widgets/metrics', [MetricsController::class, 'index'])
     ->name('admin.widgets.metrics');
 
 // =================================== ADMIN ROUTES =====================================
-// Admin/owner management limits are scaled per middleware layer. Password-
-// confirmed user-access mutations retain their existing throttles.
-Route::middleware(['auth', 'admin.mfa', 'admin.or.owner', 'throttle.admin-management:120,1'])->group(function () {
-    Route::middleware(['can.access:user_access.manage', 'throttle.admin-management:20,1'])->group(function () {
-        Route::get('/admin/user-access', [UserAccessController::class, 'page'])->middleware('owner.page.redirect')->name('admin.user-access.page');
-        Route::get('/admin/users', [UserAccessController::class, 'index'])->name('admin.users.index');
-        Route::get('/admin/users/candidates', [UserAccessController::class, 'candidates'])->name('admin.users.candidates');
-        Route::post('/admin/users', [UserAccessController::class, 'store'])->name('admin.users.store');
-        Route::patch('/admin/users/{user}', [UserAccessController::class, 'update'])->name('admin.users.update');
-        Route::post('/admin/users/{user}/remove-access', [UserAccessController::class, 'removeAccess'])->name('admin.users.remove-access');
-        Route::middleware(['can.access:user_details.edit'])->group(function () {
-            Route::get('/admin/users/{user}/details', [UserAccessController::class, 'details'])->name('admin.users.details');
-            Route::patch('/admin/users/{user}/details', [UserAccessController::class, 'updateDetails'])->name('admin.users.details.update');
-        });
-    });
-});
-
-Route::middleware(['auth', 'admin.mfa', 'admin.or.owner', 'throttle.admin-management:120,1'])
-    ->get('/reports/data', [ReportController::class, 'data'])
-    ->name('admin.reports.data');
-
-Route::middleware(['auth', 'admin.mfa', 'credit.giver', 'throttle.admin-management:120,1'])->group(function () {
-    Route::get('/customers/credits/lookup', [CustomerCreditController::class, 'lookup'])
-        ->middleware('throttle.admin-management:20,1')
-        ->name('admin.customer-credits.lookup');
-    Route::post('/customers/credits', [CustomerCreditController::class, 'store'])
-        ->middleware('throttle.admin-management:10,1')
-        ->name('admin.customer-credits.store');
-});
-
 Route::middleware(['auth', 'admin', 'admin.mfa', 'throttle.admin-management:120,1'])->group(function () {
     Route::get('/dashboard', [Admin_DashboardController::class, 'index'])->middleware('owner.page.redirect')->name('admin.dashboard');
     Route::get('/admin/dashboard', [Admin_DashboardController::class, 'index'])->name('admin.dashboard.view-as');

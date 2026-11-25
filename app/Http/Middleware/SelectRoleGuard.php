@@ -60,6 +60,16 @@ class SelectRoleGuard
     {
         $guards = [];
 
+        $roleGuard = $route->defaults['_role_guard'] ?? null;
+        if ($roleGuard !== null) {
+            if (! in_array($roleGuard, ['admin', 'owner', 'staff', 'customer'], true)) {
+                $routeName = $route->getName() ?: $route->uri();
+                throw new LogicException("Route [{$routeName}] has an invalid role guard marker.");
+            }
+
+            $guards[] = $roleGuard;
+        }
+
         foreach ($this->middlewareNames($route->gatherMiddleware()) as $middleware) {
             if (isset(self::ROLE_GUARDS[$middleware])) {
                 $guards[] = self::ROLE_GUARDS[$middleware];

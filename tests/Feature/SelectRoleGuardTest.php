@@ -8,34 +8,14 @@ use Illuminate\Contracts\Http\Kernel;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use LogicException;
+use Tests\Feature\Concerns\UsesMultiGuardEnvironment;
 use Tests\TestCase;
 
 class SelectRoleGuardTest extends TestCase
 {
-    private const SHARED_AUTHENTICATED_ROUTES = [
-        'admin.blocks.destroy',
-        'admin.blocks.store',
-        'admin.blocks.update',
-        'admin.bookings.calendar',
-        'admin.bookings.update',
-        'admin.bookings.walk-in.store',
-        'admin.customer-credits.lookup',
-        'admin.customer-credits.store',
-        'admin.customers.data',
-        'admin.reports.data',
-        'admin.specific-closures.destroy',
-        'admin.specific-closures.hours',
-        'admin.specific-closures.index',
-        'admin.specific-closures.store',
-        'admin.specific-closures.update',
-        'admin.user-access.page',
-        'admin.users.candidates',
-        'admin.users.details',
-        'admin.users.details.update',
-        'admin.users.index',
-        'admin.users.remove-access',
-        'admin.users.store',
-        'admin.users.update',
+    use UsesMultiGuardEnvironment;
+
+    private const UNMAPPED_AUTHENTICATED_ROUTES = [
         'mfa.challenge',
         'mfa.enable',
         'mfa.setup',
@@ -43,10 +23,17 @@ class SelectRoleGuardTest extends TestCase
         'mfa.verify',
     ];
 
+    protected function setUp(): void
+    {
+        $this->setMultiGuardEnvironment(true);
+        parent::setUp();
+    }
+
     protected function tearDown(): void
     {
         Auth::shouldUse('web');
         parent::tearDown();
+        $this->restoreMultiGuardEnvironment();
     }
 
     public function test_feature_flag_off_preserves_the_default_web_guard(): void
@@ -105,14 +92,31 @@ class SelectRoleGuardTest extends TestCase
         }
 
         sort($unmapped);
-        $expectedShared = self::SHARED_AUTHENTICATED_ROUTES;
-        sort($expectedShared);
+        $expectedUnmapped = self::UNMAPPED_AUTHENTICATED_ROUTES;
+        sort($expectedUnmapped);
 
         $this->assertSame(
-            $expectedShared,
+            $expectedUnmapped,
             $unmapped,
-            'Update the explicit shared-route list or assign a role guard. Unmapped routes: '.implode(', ', $unmapped),
+            'Only MFA routes may remain unmapped in this checkpoint. Unmapped routes: '.implode(', ', $unmapped),
         );
+    }
+
+    public function test_shared_auth_and_mfa_routes_remain_unmapped_for_checkpoint_five(): void
+    {
+        foreach ([
+            'login',
+            'login.submit',
+            'register',
+            'register.submit',
+            'auth.google',
+            'logout',
+            ...self::UNMAPPED_AUTHENTICATED_ROUTES,
+        ] as $routeName) {
+            $route = app('router')->getRoutes()->getByName($routeName);
+            $this->assertNotNull($route, $routeName);
+            $this->assertNull((new SelectRoleGuard)->guardForRoute($route), $routeName);
+        }
     }
 
     public function test_unmapped_authenticated_route_fails_with_its_route_name(): void
