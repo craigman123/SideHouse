@@ -11,8 +11,21 @@ document.addEventListener('DOMContentLoaded', async () => {
     const suggestionsUrl = badge?.dataset.suggestionsUrl;
     const dismissUrl = popover?.dataset.dismissUrl || badge?.dataset.dismissUrl;
     const svgNamespace = 'http://www.w3.org/2000/svg';
+    const refreshIntervalMs = 5 * 60 * 1000;
+    const hoverAvailable = window.matchMedia('(hover: hover)');
+    const touchOnly = window.matchMedia('(hover: none)');
     let currentSuggestions = [];
-    let openTimer = null;
+    let lastRequestAt = 0;
+    let lastLoadedAt = 0;
+    let suggestionsRequest = null;
+    let loginOpenTimer = null;
+    let hoverOpenTimer = null;
+    let hoverCloseTimer = null;
+    let popoverMode = null;
+    let pointerOnButton = false;
+    let pointerOnPopover = false;
+    let suppressKeyboardFocusOpen = false;
+    const dismissedSuggestionKeys = new Set();
 
     const iconPaths = {
         free_slot_same_day: ['M16 2v4M8 2v4M3 9h18M12 12v4l2 1'],
@@ -174,7 +187,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const caretX = Math.max(20, Math.min(anchor.left + anchor.width / 2 - left, width - 20));
         const popupHeight = Math.min(popover.scrollHeight, window.innerHeight * 0.8, 560);
         const top = Math.max(8, Math.min(
-            anchor.bottom + 10,
+            anchor.bottom,
             window.innerHeight - popupHeight - 8,
         ));
 
@@ -184,8 +197,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         popover.style.setProperty('--lumi-caret-left', `${caretX}px`);
     }
 
-    function openPopover() {
+    function openPopover(mode) {
         if (!popover || currentSuggestions.length === 0) return;
+        if (!popover.hidden) return;
+        window.clearTimeout(hoverCloseTimer);
+        hoverCloseTimer = null;
+        popoverMode = mode;
         popover.hidden = false;
         popover.setAttribute('aria-hidden', 'false');
         lumiButton?.setAttribute('aria-expanded', 'true');
@@ -196,26 +213,42 @@ document.addEventListener('DOMContentLoaded', async () => {
         window.addEventListener('scroll', positionPopover, true);
     }
 
-    function closePopover(returnFocus = false) {
-        window.clearTimeout(openTimer);
-        openTimer = null;
+    function closePopover(returnFocus = false, cancelLoginTimer = true) {
+        if (cancelLoginTimer) {
+            window.clearTimeout(loginOpenTimer);
+            loginOpenTimer = null;
+        }
+        window.clearTimeout(hoverOpenTimer);
+        hoverOpenTimer = null;
+        window.clearTimeout(hoverCloseTimer);
+        hoverCloseTimer = null;
         if (!popover || popover.hidden) return;
         popover.classList.remove('is-open');
         popover.hidden = true;
         popover.setAttribute('aria-hidden', 'true');
         lumiButton?.setAttribute('aria-expanded', 'false');
+        popoverMode = null;
         window.removeEventListener('resize', positionPopover);
         window.removeEventListener('scroll', positionPopover, true);
-        if (returnFocus) lumiButton?.focus();
+        if (returnFocus) {
+            suppressKeyboardFocusOpen = true;
+            lumiButton?.focus();
+            suppressKeyboardFocusOpen = false;
+        }
     }
 
     function renderPopover(suggestions) {
         if (!popover || !primaryContainer || !secondaryContainer) return false;
-        currentSuggestions = suggestions.filter((suggestion) => safeBookingUrl(suggestion.cta_url)).slice(0, 3);
+        currentSuggestions = suggestions
+            .filter((suggestion) => !dismissedSuggestionKeys.has(suggestion.key)
+                && safeBookingUrl(suggestion.cta_url))
+            .slice(0, 3);
         const primary = currentSuggestions[0];
         const primaryElement = primary ? createPrimary(primary) : null;
         if (!primaryElement) {
             currentSuggestions = [];
+            primaryContainer.replaceChildren();
+            secondaryContainer.replaceChildren();
             return false;
         }
 
@@ -242,6 +275,87 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!response.ok) throw new Error('Dismissal failed.');
     }
 
+    function renderCurrentSuggestions(suggestions) {
+        const hasSuggestions = renderPopover(suggestions);
+        if (popover && !popover.hidden) {
+            if (!hasSuggestions) closePopover(false);
+            else positionPopover();
+        }
+        return hasSuggestions;
+    }
+
+    function updateBadge(payload, initialLoad = false) {
+        if (!badge) return;
+        if (window.location.pathname === '/lumi') {
+            badge.hidden = true;
+        } else if (payload.has_unseen) {
+            badge.hidden = false;
+        } else if (initialLoad) {
+            badge.hidden = true;
+        }
+    }
+
+    async function requestSuggestions(force = false) {
+        if (!suggestionsUrl || !popover) return null;
+        if (suggestionsRequest) return suggestionsRequest;
+        if (!force && Date.now() - lastRequestAt < refreshIntervalMs) return null;
+
+        lastRequestAt = Date.now();
+        const request = (async () => {
+            try {
+                const response = await fetch(suggestionsUrl, {
+                    headers: { Accept: 'application/json' },
+                });
+                if (!response.ok) return null;
+
+                const payload = await response.json();
+                const suggestions = Array.isArray(payload.suggestions) ? payload.suggestions : [];
+                renderCurrentSuggestions(suggestions);
+                updateBadge(payload, force);
+                lastLoadedAt = Date.now();
+                return payload;
+            } catch (_) {
+                if (!lastLoadedAt && badge) badge.hidden = true;
+                return null;
+            }
+        })();
+        suggestionsRequest = request;
+
+        try {
+            return await request;
+        } finally {
+            if (suggestionsRequest === request) suggestionsRequest = null;
+        }
+    }
+
+    async function openAfterHoverIntent() {
+        if (!lastLoadedAt || Date.now() - lastLoadedAt >= refreshIntervalMs) {
+            const payload = await requestSuggestions();
+            if (!payload) return;
+        }
+        if (pointerOnButton || pointerOnPopover) openPopover('hover');
+    }
+
+    function scheduleHoverClose() {
+        if (!hoverAvailable.matches || popover?.hidden || popoverMode !== 'hover') return;
+        window.clearTimeout(hoverCloseTimer);
+        hoverCloseTimer = window.setTimeout(() => {
+            hoverCloseTimer = null;
+            if (!pointerOnButton && !pointerOnPopover) closePopover(false, false);
+        }, 250);
+    }
+
+    function scheduleHoverOpen() {
+        if (!hoverAvailable.matches || !popover?.hidden) return;
+        const suggestionsAreFresh = lastLoadedAt && Date.now() - lastLoadedAt < refreshIntervalMs;
+        if (currentSuggestions.length === 0 && suggestionsAreFresh) return;
+        window.clearTimeout(hoverOpenTimer);
+        hoverOpenTimer = window.setTimeout(() => {
+            hoverOpenTimer = null;
+            void openAfterHoverIntent();
+        }, 200);
+    }
+
     async function dismissPrimarySuggestion() {
         const suggestion = currentSuggestions[0];
         if (!suggestion || !dismissButton) return;
@@ -250,13 +364,14 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         try {
             await sendDismissal(suggestion.key);
-            const remaining = currentSuggestions.slice(1);
-            if (remaining.length === 0 || !renderPopover(remaining)) {
-                if (badge) badge.hidden = true;
+            dismissedSuggestionKeys.add(suggestion.key);
+            const remaining = currentSuggestions.filter((item) => item.key !== suggestion.key);
+            if (!renderPopover(remaining)) {
                 closePopover(true);
-                return;
+            } else {
+                positionPopover();
             }
-            positionPopover();
+            void requestSuggestions();
         } catch (_) {
             if (errorMessage) {
                 errorMessage.textContent = 'Could not hide this suggestion. Please try again.';
@@ -287,8 +402,15 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         try {
             await sendDismissal(card.dataset.suggestionKey);
+            dismissedSuggestionKeys.add(card.dataset.suggestionKey);
             card.remove();
             if (!feed.querySelector('[data-suggestion-key]')) addEmptyState();
+            const remaining = currentSuggestions.filter((item) => item.key !== card.dataset.suggestionKey);
+            if (remaining.length !== currentSuggestions.length) {
+                if (!renderPopover(remaining)) closePopover(false);
+                else if (popover && !popover.hidden) positionPopover();
+            }
+            void requestSuggestions();
         } catch (_) {
             if (error) {
                 error.textContent = 'Could not hide this suggestion. Please try again.';
@@ -300,6 +422,41 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     closeButton?.addEventListener('click', () => closePopover(true));
     dismissButton?.addEventListener('click', dismissPrimarySuggestion);
+
+    lumiButton?.addEventListener('pointerenter', (event) => {
+        if (!hoverAvailable.matches || event.pointerType === 'touch') return;
+        pointerOnButton = true;
+        window.clearTimeout(hoverCloseTimer);
+        hoverCloseTimer = null;
+        scheduleHoverOpen();
+    });
+
+    lumiButton?.addEventListener('pointerleave', (event) => {
+        if (!hoverAvailable.matches || event.pointerType === 'touch') return;
+        pointerOnButton = false;
+        window.clearTimeout(hoverOpenTimer);
+        hoverOpenTimer = null;
+        scheduleHoverClose();
+    });
+
+    popover?.addEventListener('pointerenter', (event) => {
+        if (!hoverAvailable.matches || event.pointerType === 'touch') return;
+        pointerOnPopover = true;
+        window.clearTimeout(hoverCloseTimer);
+        hoverCloseTimer = null;
+    });
+
+    popover?.addEventListener('pointerleave', (event) => {
+        if (!hoverAvailable.matches || event.pointerType === 'touch') return;
+        pointerOnPopover = false;
+        scheduleHoverClose();
+    });
+
+    lumiButton?.addEventListener('focus', () => {
+        if (!suppressKeyboardFocusOpen && lumiButton.matches(':focus-visible')) {
+            openPopover('keyboard');
+        }
+    });
 
     popover?.addEventListener('click', (event) => {
         const target = event.target instanceof Element ? event.target : null;
@@ -313,6 +470,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         const target = event.target instanceof Element ? event.target : null;
         if (!target) return;
         if (target.closest('[data-user-lumi-button]')) {
+            if (touchOnly.matches && event.detail > 0) {
+                event.preventDefault();
+                event.stopPropagation();
+                if (popover && !popover.hidden) closePopover(false);
+                else openPopover('touch');
+                return;
+            }
             closePopover(false);
         } else if (popover && !popover.hidden && !popover.contains(target)) {
             closePopover(false);
@@ -328,20 +492,16 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     if (!suggestionsUrl || !popover) return;
 
-    try {
-        const response = await fetch(suggestionsUrl, { headers: { Accept: 'application/json' } });
-        if (!response.ok) return;
-        const payload = await response.json();
-        const suggestions = Array.isArray(payload.suggestions) ? payload.suggestions : [];
-        if (badge) badge.hidden = !payload.has_unseen || window.location.pathname === '/lumi';
+    const payload = await requestSuggestions(true);
+    if (!payload) return;
 
-        if (payload.show_login_popover === true
-            && suggestions.length > 0
-            && window.location.pathname !== '/lumi'
-            && renderPopover(suggestions)) {
-            openTimer = window.setTimeout(openPopover, 600);
-        }
-    } catch (_) {
-        if (badge) badge.hidden = true;
+    if (lumiButton?.matches(':focus-visible')) openPopover('keyboard');
+    if (payload.show_login_popover === true
+        && currentSuggestions.length > 0
+        && window.location.pathname !== '/lumi') {
+        loginOpenTimer = window.setTimeout(() => {
+            loginOpenTimer = null;
+            openPopover('login');
+        }, 600);
     }
 });

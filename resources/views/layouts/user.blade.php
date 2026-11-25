@@ -125,6 +125,7 @@
                        data-href="{{ route('user.lumi', [], false) }}"
                        aria-label="Open Lumi"
                        aria-controls="userLumiPopover"
+                       aria-haspopup="dialog"
                        aria-expanded="false"
                        title="Lumi"
                        @if (request()->routeIs('user.lumi')) aria-current="page" @endif>
