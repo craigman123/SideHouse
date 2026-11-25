@@ -2,9 +2,13 @@
 
 namespace Tests\Feature;
 
+use App\Models\Booking;
+use App\Models\BookingSlot;
 use App\Models\BusinessSetting;
 use App\Models\Court;
 use App\Models\CourtBlock;
+use App\Models\CourtClosure;
+use App\Models\SpecificDateTimeClosure;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -12,6 +16,17 @@ use Tests\TestCase;
 class AdminBookingsCalendarDataTest extends TestCase
 {
     use RefreshDatabase;
+
+    public function test_date_only_models_serialize_dates_without_utc_timestamps(): void
+    {
+        $date = '2026-11-28';
+
+        $this->assertSame($date, (new Booking(['date' => $date]))->toArray()['date']);
+        $this->assertSame($date, (new BookingSlot(['date' => $date]))->toArray()['date']);
+        $this->assertSame($date, (new CourtBlock(['block_date' => $date]))->toArray()['block_date']);
+        $this->assertSame($date, (new CourtClosure(['date' => $date]))->toArray()['date']);
+        $this->assertSame($date, (new SpecificDateTimeClosure(['date' => $date]))->toArray()['date']);
+    }
 
     public function test_bookings_page_embeds_blocks_and_configured_step_size(): void
     {
@@ -61,6 +76,7 @@ class AdminBookingsCalendarDataTest extends TestCase
         $this->assertSame(now('Asia/Manila')->toDateString(), $data['businessSettings']['today']);
         $this->assertStringContainsString('+08:00', $data['businessSettings']['server_time']);
         $this->assertSame($block->id, $data['blocks'][0]['id']);
+        $this->assertSame(today()->toDateString(), $data['blocks'][0]['block_date']);
         $this->assertSame('maintenance', $data['blocks'][0]['type']);
         $this->assertSame('09:00', $data['blocks'][0]['start_time']);
     }

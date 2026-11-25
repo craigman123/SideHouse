@@ -320,6 +320,7 @@ class AdminCalendarEditTest extends TestCase
             'max_players' => 8, 'price_per_player' => 125,
         ];
         $this->postJson('/admin/blocks', $payload)->assertCreated()
+            ->assertJsonPath('block.block_date', '2030-05-15')
             ->assertJsonPath('block.max_players', 8)->assertJsonPath('block.price_per_player', '125.00');
         $this->postJson('/admin/blocks', [...$payload, 'max_players' => 0])
             ->assertUnprocessable()->assertJsonValidationErrors('max_players');

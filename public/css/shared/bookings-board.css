@@ -467,8 +467,8 @@ html[data-theme="light"] .admin-bookings-page .btn-filter {
 .admin-bookings-page .court-board-legend > span { min-width: 0; }
 .admin-bookings-page .court-board-legend .legend-booking { color: var(--calendar-booking-border); }
 .admin-bookings-page .court-board-legend .legend-closed { color: var(--calendar-closed-border); }
-.admin-bookings-page .court-board-legend .legend-maintenance { color: var(--calendar-maintenance-border); }
-.admin-bookings-page .court-board-legend .legend-open-play { color: var(--calendar-open-border); }
+.admin-bookings-page .court-board-legend .legend-maintenance { color: var(--info); padding: var(--s1);}
+.admin-bookings-page .court-board-legend .legend-open-play { color: var(--warning); padding: var(--s1);}
 .admin-bookings-page .court-board-legend svg { width: 14px; height: 14px; flex: 0 0 14px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 
 .admin-bookings-page .legend-dot {
@@ -483,8 +483,8 @@ html[data-theme="light"] .admin-bookings-page .btn-filter {
 .admin-bookings-page .legend-cancelled { color: var(--danger); background: var(--danger); }
 .admin-bookings-page .legend-closure { color: var(--text-muted); background: var(--surface-2); }
 .admin-bookings-page .legend-walk-in { color: var(--brand); background: var(--brand); }
-.admin-bookings-page .legend-maintenance { color: var(--warning); background: var(--warning); }
-.admin-bookings-page .legend-open-play { color: var(--info); background: var(--info); }
+.admin-bookings-page .legend-maintenance { color: var(--info); background: transparent; border: 1px solid var(--info); border-radius: 5px;}
+.admin-bookings-page .legend-open-play { color: var(--warning); background: transparent; border: 1px solid var(--warning); border-radius: 5px;}
 .court-month-bar.source-walk-in { border-style: dashed !important; font-size: var(--font-size-small); }
 .admin-bookings-page .court-block-form-grid label[hidden] { display: none; }
 

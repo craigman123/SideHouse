@@ -20,7 +20,7 @@ class CourtBlock extends Model
     ];
 
     protected $casts = [
-        'block_date' => 'date',
+        'block_date' => 'date:Y-m-d',
         'max_players' => 'integer',
         'price_per_player' => 'decimal:2',
     ];

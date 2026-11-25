@@ -2963,10 +2963,10 @@
     };
     const updateWeekPastSlots = () => {
         if (!weekGrid) return;
-        const now = new Date();
-        const today = dateKey(now);
-        const currentHour = now.getHours();
-        const currentMinute = now.getMinutes();
+        const today = venueToday;
+        const currentMinutes = venueNowMinutes();
+        const currentHour = Math.floor(currentMinutes / 60);
+        const currentMinute = currentMinutes % 60;
 
         weekGrid.querySelectorAll('.court-month-date-col').forEach((column) => {
             const date = column.dataset.date || '';
