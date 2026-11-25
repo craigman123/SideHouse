@@ -101,7 +101,7 @@ class BookingController extends Controller
             'email' => ['sometimes', 'nullable', 'email', 'max:255'],
             'notes' => ['sometimes', 'nullable', 'string', 'max:5000'],
             'court_id' => ['sometimes', 'required', 'integer', 'exists:courts,id'],
-            'date' => ['sometimes', 'required', 'date_format:Y-m-d', 'after_or_equal:'.CarbonImmutable::now('Asia/Manila')->toDateString()],
+            'date' => ['sometimes', 'required', 'date_format:Y-m-d'],
             'start_time' => ['sometimes', 'required', 'date_format:H:i'],
             'end_time' => ['sometimes', 'required', 'date_format:H:i'],
             'amount' => ['sometimes', 'nullable', 'numeric', 'decimal:0,2', 'min:0', 'max:999999.99'],
@@ -177,13 +177,9 @@ class BookingController extends Controller
             $oldIsPast = $locked->date->toDateString() < $venueNow->toDateString()
                 || ($locked->date->toDateString() === $venueNow->toDateString()
                     && ! $oldIsOvernight && $oldEndTime <= $venueNow->format('H:i'));
-            if ($oldIsPast && ($scheduleChanged || (array_key_exists('amount', $validated)
-                && $validated['amount'] !== null && abs((float) $validated['amount'] - (float) $locked->amount) >= 0.005))) {
-                return ['rejected' => 'Past bookings cannot have their date, time, court, or amount changed.'];
-            }
-            $startMoved = $date !== $locked->date->toDateString() || $startTime !== $oldStart;
-            if ($startMoved && "{$date} {$startTime}" < $venueNow->format('Y-m-d H:i')) {
-                return ['rejected' => 'Bookings cannot be moved to a start time that has already passed.'];
+            if ($oldIsPast && array_key_exists('amount', $validated)
+                && $validated['amount'] !== null && abs((float) $validated['amount'] - (float) $locked->amount) >= 0.005) {
+                return ['rejected' => 'Past bookings cannot have their amount changed.'];
             }
 
             $courtIds = array_values(array_unique(array_filter([$oldCourtId, $courtId], fn ($id) => $id > 0)));

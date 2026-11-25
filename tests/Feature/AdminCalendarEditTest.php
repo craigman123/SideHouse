@@ -273,7 +273,7 @@ class AdminCalendarEditTest extends TestCase
         $this->assertSame('1000.00', $booking->fresh()->amount);
     }
 
-    public function test_editing_a_block_into_a_booking_conflict_is_rejected(): void
+    public function test_fixed_maintenance_block_cannot_be_rescheduled_into_a_booking_conflict(): void
     {
         $booking = $this->booking();
         $block = CourtBlock::create([
@@ -282,14 +282,14 @@ class AdminCalendarEditTest extends TestCase
             'created_by' => $this->admin->user_id,
         ]);
 
-        // around line 282 (block into a booking)
         $this->patchJson("/admin/blocks/{$block->id}", [
             'block_date' => '2030-05-15', 'start_time' => '09:00', 'end_time' => '10:00',
-        ])->assertOk();
-        $this->assertSame('09:00', substr((string) $block->fresh()->start_time, 0, 5));
+        ])->assertUnprocessable()
+            ->assertJsonPath('message', 'Closed and maintenance blocks cannot be rescheduled.');
+        $this->assertSame('14:00', substr((string) $block->fresh()->start_time, 0, 5));
     }
 
-    public function test_booking_on_past_date_allows_contact_notes_but_rejects_schedule_edits(): void
+    public function test_booking_on_past_date_allows_contact_notes_and_schedule_edits_but_not_amount_changes(): void
     {
         $this->freezeVenueTime('2030-05-16 12:00:00');
         $past = $this->booking(['date' => '2030-05-15']);
@@ -297,18 +297,20 @@ class AdminCalendarEditTest extends TestCase
             'contact_number' => '09179998888', 'notes' => 'Updated note',
         ])->assertOk()->assertJsonPath('booking.contact_number', '09179998888');
 
-        $this->patchJson("/admin/bookings/{$past->id}", ['date' => '2030-05-17'])
-            ->assertUnprocessable()->assertJsonPath('message', 'Past bookings cannot have their date, time, court, or amount changed.');
-        $this->patchJson("/admin/bookings/{$past->id}", ['start_time' => '10:00'])
-            ->assertUnprocessable()->assertJsonPath('message', 'Past bookings cannot have their date, time, court, or amount changed.');
+        $this->patchJson("/admin/bookings/{$past->id}", ['date' => '2030-05-14'])
+            ->assertOk()->assertJsonPath('booking.date', '2030-05-14')->assertJsonPath('booking.status', 'paid');
+        $this->patchJson("/admin/bookings/{$past->id}", ['amount' => 999])
+            ->assertUnprocessable()->assertJsonPath('message', 'Past bookings cannot have their amount changed.');
     }
 
-    public function test_booking_cannot_be_moved_to_yesterday(): void
+    public function test_booking_can_be_moved_to_a_past_date_and_back_to_the_future(): void
     {
         $this->freezeVenueTime('2030-05-15 12:00:00');
-        $booking = $this->booking();
+        $booking = $this->booking(['date' => '2030-05-16']);
         $this->patchJson("/admin/bookings/{$booking->id}", ['date' => '2030-05-14'])
-            ->assertUnprocessable()->assertJsonValidationErrors('date');
+            ->assertOk()->assertJsonPath('booking.date', '2030-05-14')->assertJsonPath('booking.status', 'paid');
+        $this->patchJson("/admin/bookings/{$booking->id}", ['date' => '2030-05-17'])
+            ->assertOk()->assertJsonPath('booking.date', '2030-05-17')->assertJsonPath('booking.status', 'paid');
     }
 
     public function test_block_create_and_open_play_use_manila_today_and_reject_past_dates(): void
@@ -353,7 +355,7 @@ class AdminCalendarEditTest extends TestCase
         $booking = $this->booking(['start_time' => '13:00', 'end_time' => '15:00']);
         $this->patchJson("/admin/bookings/{$booking->id}", [
             'date' => '2030-05-15', 'start_time' => '11:30', 'end_time' => '13:30',
-        ])->assertUnprocessable();
+        ])->assertOk()->assertJsonPath('booking.start', '11:30');
     }
 
     public function test_past_block_allows_notes_but_rejects_court_or_time_changes(): void
@@ -367,9 +369,54 @@ class AdminCalendarEditTest extends TestCase
         $this->patchJson("/admin/blocks/{$block->id}", ['notes' => 'Keep this note'])
             ->assertOk();
         $this->patchJson("/admin/blocks/{$block->id}", ['start_time' => '09:30'])
-            ->assertUnprocessable();
+            ->assertUnprocessable()->assertJsonPath('message', 'Closed and maintenance blocks cannot be rescheduled.');
         $this->patchJson("/admin/blocks/{$block->id}", ['court_id' => null])
-            ->assertUnprocessable();
+            ->assertUnprocessable()->assertJsonPath('message', 'Closed and maintenance blocks cannot be rescheduled.');
+    }
+
+    public function test_moving_open_play_shifts_joined_booking_and_active_slots_without_changing_payment(): void
+    {
+        $this->freezeVenueTime('2030-05-16 12:00:00');
+        $block = CourtBlock::create([
+            'court_id' => $this->court->id, 'type' => 'open_play', 'title' => 'Giving',
+            'block_date' => '2030-05-15', 'start_time' => '09:00', 'end_time' => '11:00',
+            'max_players' => 8, 'price_per_player' => 100, 'created_by' => $this->admin->user_id,
+        ]);
+        $participant = $this->booking(['date' => '2030-05-15', 'start_time' => '09:00', 'end_time' => '10:00', 'amount' => 500]);
+        $this->patchJson("/admin/blocks/{$block->id}", [
+            'block_date' => '2030-05-14', 'start_time' => '13:00', 'end_time' => '15:00',
+        ])->assertOk()->assertJsonPath('moved_bookings.0.id', $participant->id);
+
+        $moved = $participant->fresh();
+        $this->assertSame('2030-05-14', $moved->date->toDateString());
+        $this->assertSame('13:00', substr((string) $moved->start_time, 0, 5));
+        $this->assertSame('paid', $moved->status);
+        $this->assertSame('500.00', $moved->amount);
+        $this->assertDatabaseHas('booking_slots', [
+            'booking_id' => $participant->id, 'date' => '2030-05-14',
+            'start_time' => '13:00:00', 'end_time' => '14:00:00', 'is_active' => true,
+        ]);
+        $this->assertDatabaseHas('activity_logs', [
+            'action' => 'calendar.admin_override', 'subject_id' => $block->id,
+        ]);
+    }
+
+    public function test_open_play_move_rolls_back_when_a_joined_booking_would_conflict(): void
+    {
+        $block = CourtBlock::create([
+            'court_id' => $this->court->id, 'type' => 'open_play', 'title' => 'Open Play',
+            'block_date' => '2030-05-15', 'start_time' => '09:00', 'end_time' => '11:00',
+            'max_players' => 8, 'price_per_player' => 100, 'created_by' => $this->admin->user_id,
+        ]);
+        $participant = $this->booking(['date' => '2030-05-15', 'start_time' => '09:00', 'end_time' => '10:00']);
+        $this->booking(['date' => '2030-05-16', 'start_time' => '13:30', 'end_time' => '14:30']);
+
+        $this->patchJson("/admin/blocks/{$block->id}", [
+            'block_date' => '2030-05-16', 'start_time' => '13:00', 'end_time' => '15:00',
+        ])->assertUnprocessable()->assertJsonPath('message', 'The move would conflict with 1 joined player.');
+
+        $this->assertSame('2030-05-15', $block->fresh()->block_date->toDateString());
+        $this->assertSame('2030-05-15', $participant->fresh()->date->toDateString());
     }
 
     protected function tearDown(): void

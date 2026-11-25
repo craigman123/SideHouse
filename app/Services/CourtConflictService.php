@@ -23,8 +23,11 @@ class CourtConflictService
         string $endTime,
         ?int $ignoreBookingId = null,
         ?int $ignoreBlockId = null,
-        bool $includeBookingConflicts = true
+        bool $includeBookingConflicts = true,
+        array $ignoreBookingIds = []
     ): ?array {
+        if ($ignoreBookingId !== null) $ignoreBookingIds[] = $ignoreBookingId;
+        $ignoreBookingIds = array_values(array_unique(array_map('intval', $ignoreBookingIds)));
         $timezone = config('app.timezone');
         $start = CarbonImmutable::parse("{$date} {$startTime}", $timezone);
         $end = CarbonImmutable::parse("{$date} {$endTime}", $timezone);
@@ -115,11 +118,9 @@ class CourtConflictService
                 ->where('is_active', true)
                 ->where('start_time', '<', $segment['end'])
                 ->where('end_time', '>', $segment['start'])
-                ->whereHas('booking', function ($query) use ($ignoreBookingId) {
+                ->whereHas('booking', function ($query) use ($ignoreBookingIds) {
                     $query->whereNotIn('status', ['cancelled', 'expired']);
-                    if ($ignoreBookingId !== null) {
-                        $query->where('id', '!=', $ignoreBookingId);
-                    }
+                    if ($ignoreBookingIds !== []) $query->whereNotIn('id', $ignoreBookingIds);
                 })
                 ->with('booking')
                 ->first() : null;
@@ -147,7 +148,7 @@ class CourtConflictService
                 ->whereDate('date', '<=', $segment['date'])
                 ->whereNotIn('status', ['cancelled', 'expired'])
                 ->whereDoesntHave('slots')
-                ->when($ignoreBookingId !== null, fn ($query) => $query->where('id', '!=', $ignoreBookingId))
+                ->when($ignoreBookingIds !== [], fn ($query) => $query->whereNotIn('id', $ignoreBookingIds))
                 ->get() : collect();
 
             foreach ($legacyBookings as $legacyBooking) {

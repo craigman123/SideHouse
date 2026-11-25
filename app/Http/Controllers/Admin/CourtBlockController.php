@@ -3,10 +3,12 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Booking;
 use App\Models\Court;
 use App\Models\CourtBlock;
 use App\Services\CourtConflictService;
 use App\Services\AdminCalendarOverrideWarnings;
+use App\Services\OpenPlayAvailability;
 use App\Services\UserAccessService;
 use App\Support\ActivityLogger;
 use Carbon\CarbonImmutable;
@@ -152,7 +154,7 @@ class CourtBlockController extends Controller
             'title' => ['sometimes', 'required', 'string', 'max:255'],
             'notes' => ['sometimes', 'nullable', 'string', 'max:5000'],
             'court_id' => ['sometimes', 'nullable', 'integer', 'exists:courts,id'],
-            'block_date' => ['sometimes', 'required', 'date_format:Y-m-d', 'after_or_equal:'.CarbonImmutable::now('Asia/Manila')->toDateString()],
+            'block_date' => ['sometimes', 'required', 'date_format:Y-m-d'],
             'start_time' => ['sometimes', 'required', 'date_format:H:i'],
             'end_time' => ['sometimes', 'required', 'date_format:H:i', 'different:start_time'],
             'max_players' => ['required_if:type,open_play', 'nullable', 'integer', 'min:1'],
@@ -177,16 +179,10 @@ class CourtBlockController extends Controller
                 || $date !== $locked->block_date->toDateString()
                 || $startTime !== substr((string) $locked->start_time, 0, 5)
                 || $endTime !== substr((string) $locked->end_time, 0, 5);
-            $venueNow = CarbonImmutable::now('Asia/Manila');
-            $oldStart = substr((string) $locked->start_time, 0, 5);
-            $oldEnd = substr((string) $locked->end_time, 0, 5);
-            $oldIsPast = $locked->block_date->toDateString() < $venueNow->toDateString()
-                || ($locked->block_date->toDateString() === $venueNow->toDateString()
-                    && $oldEnd > $oldStart && $oldEnd <= $venueNow->format('H:i'));
-            if ($oldIsPast && ($date !== $locked->block_date->toDateString()
-                || $startTime !== $oldStart || $endTime !== $oldEnd || $courtId !== $locked->court_id)) {
-                return ['rejected' => 'Past calendar events cannot have their date, time, or court changed.'];
+            if ($scheduleChanged && $locked->type !== 'open_play') {
+                return ['rejected' => 'Closed and maintenance blocks cannot be rescheduled.'];
             }
+            $oldStart = substr((string) $locked->start_time, 0, 5);
             $duration = $this->minutes($endTime) <= $this->minutes($startTime)
                 ? (1440 - $this->minutes($startTime)) + $this->minutes($endTime)
                 : $this->minutes($endTime) - $this->minutes($startTime);
@@ -224,6 +220,85 @@ class CourtBlockController extends Controller
             }
             $warnings = collect($warnings)->unique(fn ($warning) => $warning['code'].':'.implode(',', $warning['item_ids']))->values()->all();
 
+            $participantBookings = collect();
+            $movedBookings = collect();
+            if ($scheduleChanged && $locked->type === 'open_play') {
+                $participantIds = app(OpenPlayAvailability::class)->participantBookings($locked)->pluck('id')->all();
+                if ($participantIds !== []) {
+                    $participantBookings = Booking::query()->whereIn('id', $participantIds)
+                        ->whereNotIn('status', ['cancelled', 'expired'])
+                        ->orderBy('id')->lockForUpdate()->get();
+                    $participantIds = $participantBookings->pluck('id')->all();
+                    $oldStartDateTime = CarbonImmutable::parse(
+                        $locked->block_date->toDateString().' '.$oldStart,
+                        'Asia/Manila',
+                    );
+                    $newStartDateTime = CarbonImmutable::parse("{$date} {$startTime}", 'Asia/Manila');
+                    $shiftMinutes = intdiv($newStartDateTime->getTimestamp() - $oldStartDateTime->getTimestamp(), 60);
+                    $conflictingPlayerIds = [];
+
+                    foreach ($participantBookings as $participant) {
+                        $targetCourtId = $courtId ?? (int) $participant->court_id;
+                        $bookingSchedule = $this->shiftSchedule(
+                            $participant->date->toDateString(),
+                            substr((string) $participant->start_time, 0, 8),
+                            substr((string) $participant->end_time, 0, 8),
+                            $shiftMinutes,
+                        );
+                        $conflict = app(CourtConflictService::class)->findConflict(
+                            $targetCourtId,
+                            $bookingSchedule['date'],
+                            $bookingSchedule['start_time'],
+                            $bookingSchedule['end_time'],
+                            null,
+                            (int) $locked->id,
+                            true,
+                            $participantIds,
+                        );
+                        if ($conflict !== null) {
+                            $conflictingPlayerIds[] = (int) $participant->id;
+                        }
+                    }
+
+                    $conflictingPlayerIds = array_values(array_unique($conflictingPlayerIds));
+                    if ($conflictingPlayerIds !== []) {
+                        $count = count($conflictingPlayerIds);
+                        return ['rejected' => "The move would conflict with {$count} joined ".($count === 1 ? 'player.' : 'players.')];
+                    }
+
+                    foreach ($participantBookings as $participant) {
+                        $targetCourtId = $courtId ?? (int) $participant->court_id;
+                        $bookingSchedule = $this->shiftSchedule(
+                            $participant->date->toDateString(),
+                            substr((string) $participant->start_time, 0, 8),
+                            substr((string) $participant->end_time, 0, 8),
+                            $shiftMinutes,
+                        );
+                        $participant->court_id = $targetCourtId;
+                        $participant->date = $bookingSchedule['date'];
+                        $participant->start_time = $bookingSchedule['start_time'];
+                        $participant->end_time = $bookingSchedule['end_time'];
+                        $participant->save();
+
+                        $activeSlots = $participant->slots()->where('is_active', true)->orderBy('id')->lockForUpdate()->get();
+                        foreach ($activeSlots as $slot) {
+                            $slotSchedule = $this->shiftSchedule(
+                                $slot->date->toDateString(),
+                                substr((string) $slot->start_time, 0, 8),
+                                substr((string) $slot->end_time, 0, 8),
+                                $shiftMinutes,
+                            );
+                            $slot->court_id = $targetCourtId;
+                            $slot->date = $slotSchedule['date'];
+                            $slot->start_time = $slotSchedule['start_time'];
+                            $slot->end_time = $slotSchedule['end_time'];
+                            $slot->save();
+                        }
+                        $movedBookings->push($participant->load(['court', 'slots', 'equipment.equipment']));
+                    }
+                }
+            }
+
             $locked->fill([
                 'type' => $validated['type'] ?? $locked->type,
                 'title' => $validated['title'] ?? $locked->title,
@@ -238,7 +313,14 @@ class CourtBlockController extends Controller
                     ? ($validated['price_per_player'] ?? $locked->price_per_player) : null,
             ])->save();
 
-            return ['block' => $locked->load('court'), 'warnings' => $warnings];
+            return [
+                'block' => $locked->load('court'),
+                'warnings' => $warnings,
+                'moved_bookings' => $movedBookings,
+                'participant_count' => $locked->type === 'open_play'
+                    ? app(OpenPlayAvailability::class)->participantBookings($locked)->count()
+                    : null,
+            ];
         });
 
         if (isset($result['stale'])) {
@@ -272,6 +354,7 @@ class CourtBlockController extends Controller
                 'old_time' => ['date' => $block->block_date->toDateString(), 'start' => substr((string) $block->start_time, 0, 5), 'end' => substr((string) $block->end_time, 0, 5)],
                 'new_time' => ['date' => $updated->block_date->toDateString(), 'start' => substr((string) $updated->start_time, 0, 5), 'end' => substr((string) $updated->end_time, 0, 5)],
                 'old_amount' => null, 'new_amount' => null, 'overlapped_item_ids' => $overlappedItemIds,
+                'moved_booking_ids' => collect($result['moved_bookings'])->pluck('id')->values()->all(),
             ],
         );
         ActivityLogger::log(
@@ -297,8 +380,37 @@ class CourtBlockController extends Controller
                 'end_time' => substr((string) $updated->end_time, 0, 5),
                 'max_players' => $updated->max_players,
                 'price_per_player' => $updated->price_per_player,
+                'participant_count' => $result['participant_count'],
             ],
+            'moved_bookings' => collect($result['moved_bookings'])->map(fn (Booking $booking) => [
+                'id' => $booking->id,
+                'updated_at' => $booking->updated_at?->format('Y-m-d\\TH:i:s.uP'),
+                'court_id' => $booking->court_id,
+                'date' => $booking->date->toDateString(),
+                'start' => substr((string) $booking->start_time, 0, 5),
+                'end' => substr((string) $booking->end_time, 0, 5),
+                'slots' => $booking->slots->where('is_active', true)->map(fn ($slot) => [
+                    'date' => $slot->date->toDateString(),
+                    'start' => substr((string) $slot->start_time, 0, 5),
+                    'end' => substr((string) $slot->end_time, 0, 5),
+                ])->values(),
+            ])->values(),
         ]);
+    }
+
+    private function shiftSchedule(string $date, string $startTime, string $endTime, int $minutes): array
+    {
+        $start = CarbonImmutable::parse("{$date} {$startTime}", 'Asia/Manila');
+        $end = CarbonImmutable::parse("{$date} {$endTime}", 'Asia/Manila');
+        if ($end->lessThanOrEqualTo($start)) $end = $end->addDay();
+        $start = $start->addMinutes($minutes);
+        $end = $end->addMinutes($minutes);
+
+        return [
+            'date' => $start->toDateString(),
+            'start_time' => $start->format('H:i:s'),
+            'end_time' => $end->format('H:i:s'),
+        ];
     }
 
     private function minutes(string $time): int

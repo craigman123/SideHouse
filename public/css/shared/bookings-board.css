@@ -591,6 +591,13 @@ html[data-theme="light"] .admin-bookings-page .btn-filter {
     inset: 0 0 auto;
     height: var(--past-progress);
 }
+.admin-bookings-page .court-week-grid .court-month-bar { z-index: 2; }
+.admin-bookings-page .court-month-bar.is-calendar-movable,
+.admin-bookings-page .court-month-block.is-calendar-movable { cursor: grab; }
+.admin-bookings-page .court-month-bar.is-calendar-movable:active,
+.admin-bookings-page .court-month-block.is-calendar-movable:active { cursor: grabbing; }
+.admin-bookings-page .court-month-date-col.is-past .court-month-bar.is-calendar-movable,
+.admin-bookings-page .court-month-date-col.is-past .court-month-block.is-calendar-movable { cursor: grab; }
 .admin-bookings-page .court-week-grid .court-month-bar {
     display: flex;
     flex-direction: column;
