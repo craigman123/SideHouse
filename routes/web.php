@@ -197,15 +197,23 @@ if (! config('auth.multi_guard')) {
         $path = static fn (string $uri): string => trim($lane['prefix'].'/'.$uri, '/');
         $name = static fn (string $suffix): string => $lane['name'].$suffix;
 
-        $registerLaneRoute('GET', $path('login'), [AuthController::class, 'showLogin'], ['throttle:30,1'], $name('login'), $guard);
-        $registerLaneRoute('POST', $path('login'), [AuthController::class, 'login'], ['throttle:login'], $name('login.submit'), $guard);
-
         if ($guard === 'customer') {
+            $registerLaneRoute('GET', $path('login'), [AuthController::class, 'showLogin'], ['throttle:30,1'], $name('login'), $guard);
+            $registerLaneRoute('POST', $path('login'), [AuthController::class, 'login'], ['throttle:login'], $name('login.submit'), $guard);
+            $registerLaneRoute('POST', $path('auth/google'), [AuthController::class, 'googleAuth'], ['throttle:15,1'], $name('auth.google'), $guard);
             $registerLaneRoute('GET', 'register', [AuthController::class, 'showRegister'], ['throttle:30,1'], 'register', $guard);
             $registerLaneRoute('POST', 'register', [AuthController::class, 'register'], ['throttle:register'], 'register.submit', $guard);
+        } else {
+            $registerLaneRoute(
+                'GET',
+                $path('login'),
+                static fn () => redirect()->route('login'),
+                ['throttle:30,1'],
+                $name('login'),
+                $guard,
+            );
         }
 
-        $registerLaneRoute('POST', $path('auth/google'), [AuthController::class, 'googleAuth'], ['throttle:15,1'], $name('auth.google'), $guard);
         $registerLaneRoute('POST', $path('logout'), [AuthController::class, 'logout'], ['throttle:10,1,logout'], $name('logout'), $guard);
 
         foreach ([

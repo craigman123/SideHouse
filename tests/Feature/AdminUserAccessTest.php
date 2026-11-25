@@ -401,8 +401,7 @@ class AdminUserAccessTest extends TestCase
         }
 
         $passwordUser = $this->makeUser('staff', null, ['username' => 'mfa-staff-login']);
-        $loginPath = config('auth.multi_guard') ? '/staff/login' : '/login';
-        $response = $this->postJson($loginPath, ['username' => $passwordUser->username, 'password' => 'password']);
+        $response = $this->postJson('/login', ['username' => $passwordUser->username, 'password' => 'password']);
         $response->assertOk()->assertJsonPath('mfa_required', true)->assertJsonPath('mfa_type', 'setup');
         $this->assertNotNull($passwordUser->fresh()->last_login_at);
         $response->assertSessionHas(GuardSessionState::key('access_version', config('auth.multi_guard') ? 'staff' : null), 1);

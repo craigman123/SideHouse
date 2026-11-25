@@ -95,9 +95,9 @@ class SelectRoleGuardTest extends TestCase
     {
         foreach ([
             'customer' => ['login', 'login.submit', 'register', 'register.submit', 'auth.google', 'logout', 'mfa.setup', 'mfa.setup.init', 'mfa.enable', 'mfa.challenge', 'mfa.verify'],
-            'admin' => ['admin.login', 'admin.login.submit', 'admin.auth.google', 'admin.logout', 'admin.mfa.setup', 'admin.mfa.setup.init', 'admin.mfa.enable', 'admin.mfa.challenge', 'admin.mfa.verify'],
-            'owner' => ['owner.login', 'owner.login.submit', 'owner.auth.google', 'owner.logout', 'owner.mfa.setup', 'owner.mfa.setup.init', 'owner.mfa.enable', 'owner.mfa.challenge', 'owner.mfa.verify'],
-            'staff' => ['staff.login', 'staff.login.submit', 'staff.auth.google', 'staff.logout', 'staff.mfa.setup', 'staff.mfa.setup.init', 'staff.mfa.enable', 'staff.mfa.challenge', 'staff.mfa.verify'],
+            'admin' => ['admin.login', 'admin.logout', 'admin.mfa.setup', 'admin.mfa.setup.init', 'admin.mfa.enable', 'admin.mfa.challenge', 'admin.mfa.verify'],
+            'owner' => ['owner.login', 'owner.logout', 'owner.mfa.setup', 'owner.mfa.setup.init', 'owner.mfa.enable', 'owner.mfa.challenge', 'owner.mfa.verify'],
+            'staff' => ['staff.login', 'staff.logout', 'staff.mfa.setup', 'staff.mfa.setup.init', 'staff.mfa.enable', 'staff.mfa.challenge', 'staff.mfa.verify'],
         ] as $guard => $routeNames) {
             foreach ($routeNames as $name) {
                 $route = app('router')->getRoutes()->getByName($name);

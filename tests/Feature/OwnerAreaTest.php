@@ -7,6 +7,8 @@ use App\Models\Booking;
 use App\Models\BusinessSetting;
 use App\Models\Court;
 use App\Services\UserAccessService;
+use Carbon\Carbon;
+use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use PragmaRX\Google2FA\Google2FA;
@@ -15,6 +17,13 @@ use Tests\TestCase;
 class OwnerAreaTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function tearDown(): void
+    {
+        Carbon::setTestNow();
+        CarbonImmutable::setTestNow();
+        parent::tearDown();
+    }
 
     private function user(string $role, array|null $permissions = null, array $overrides = []): User
     {
@@ -165,8 +174,7 @@ class OwnerAreaTest extends TestCase
     {
         $secret = (new Google2FA())->generateSecretKey();
         $owner = $this->user('owner', null, ['mfa_enabled' => true, 'mfa_secret' => $secret]);
-        $loginPath = config('auth.multi_guard') ? '/owner/login' : '/login';
-        $login = $this->postJson($loginPath, ['username' => $owner->username, 'password' => 'password'])
+        $login = $this->postJson('/login', ['username' => $owner->username, 'password' => 'password'])
             ->assertOk()->assertJsonPath('mfa_required', true)->assertJsonPath('mfa_type', 'challenge');
         $otp = (new Google2FA())->getCurrentOtp($secret);
         $verifyPath = config('auth.multi_guard') ? '/owner/mfa/verify' : '/mfa/verify';
@@ -174,8 +182,7 @@ class OwnerAreaTest extends TestCase
 
         config(['services.google.client_id' => 'owner-area-client']);
         $token = $this->fakeGoogleToken($owner->email, $owner->name, 'owner-area-client');
-        $googlePath = config('auth.multi_guard') ? '/owner/auth/google' : '/auth/google';
-        $this->postJson($googlePath, ['id_token' => $token])
+        $this->postJson('/auth/google', ['id_token' => $token])
             ->assertOk()->assertJsonPath('redirect', '/owner/dashboard');
     }
 
@@ -204,6 +211,10 @@ class OwnerAreaTest extends TestCase
 
     public function test_staff_admin_and_owner_overview_counts_exclude_cancelled_and_expired_bookings(): void
     {
+        $testNow = CarbonImmutable::parse(now('Asia/Manila')->toDateString().' 12:00:00', 'Asia/Manila');
+        Carbon::setTestNow($testNow);
+        CarbonImmutable::setTestNow($testNow);
+
         $staff = $this->user('staff', ['bookings.view']);
         $admin = $this->user('admin');
         $owner = $this->user('owner');
@@ -281,8 +292,7 @@ class OwnerAreaTest extends TestCase
 
         config(['services.google.client_id' => 'owner-area-client']);
         $token = $this->fakeGoogleToken($owner->email, $owner->name, 'owner-area-client');
-        $googlePath = config('auth.multi_guard') ? '/owner/auth/google' : '/auth/google';
-        $this->postJson($googlePath, ['id_token' => $token])->assertOk();
+        $this->postJson('/auth/google', ['id_token' => $token])->assertOk();
 
         $response = $this->get('/owner/dashboard');
         $this->assertContains($response->getStatusCode(), [302, 403], 'Unexpected status: '.$response->getStatusCode());

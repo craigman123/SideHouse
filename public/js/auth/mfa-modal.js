@@ -47,6 +47,18 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             if (data.mfa_required) {
+                if (data.mfa_urls) {
+                    if (typeof data.mfa_urls.setup_init === 'string') {
+                        loginForm.dataset.mfaSetupInitUrl = data.mfa_urls.setup_init;
+                    }
+                    if (typeof data.mfa_urls.enable === 'string') {
+                        loginForm.dataset.mfaEnableUrl = data.mfa_urls.enable;
+                    }
+                    if (typeof data.mfa_urls.verify === 'string') {
+                        loginForm.dataset.mfaVerifyUrl = data.mfa_urls.verify;
+                    }
+                }
+
                 if (data.mfa_type === 'setup') {
                     await openSetupModal();
                 } else {

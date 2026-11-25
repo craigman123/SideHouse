@@ -6,6 +6,7 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Http;
+use PragmaRX\Google2FA\Google2FA;
 use Tests\Feature\Concerns\UsesMultiGuardEnvironment;
 use Tests\TestCase;
 
@@ -31,91 +32,157 @@ class MultiGuardAuthLanesTest extends TestCase
         $this->restoreMultiGuardEnvironment();
     }
 
-    public function test_password_login_lanes_accept_only_their_stored_role(): void
+    public function test_password_login_selects_the_stored_role_and_completes_that_roles_mfa(): void
     {
-        foreach ([
-            'customer' => ['/login', 'user'],
-            'admin' => ['/admin/login', 'admin'],
-            'owner' => ['/owner/login', 'owner'],
-            'staff' => ['/staff/login', 'staff'],
-        ] as $guard => [$path, $role]) {
+        $google2fa = new Google2FA();
+        $homePaths = [
+            'customer' => '/my-dashboard',
+            'admin' => '/dashboard',
+            'owner' => '/owner/dashboard',
+            'staff' => '/staff/dashboard',
+        ];
+
+        foreach (['user', 'admin', 'owner', 'staff'] as $role) {
+            $guard = $role === 'user' ? 'customer' : $role;
             $user = $this->user($role);
-            $response = $this->postJson($path, [
+            $secret = $google2fa->generateSecretKey();
+            if ($role !== 'user') {
+                $user->forceFill([
+                    'mfa_enabled' => true,
+                    'mfa_secret' => $secret,
+                ])->save();
+            }
+
+            $response = $this->postJson('/login', [
                 'username' => $user->username,
                 'password' => 'password',
             ])->assertOk();
 
             if ($guard === 'customer') {
-                $response->assertJsonPath('redirect', '/my-dashboard');
+                $response->assertJsonPath('redirect', $homePaths[$guard]);
             } else {
-                $response->assertJsonPath('mfa_required', true);
+                $response->assertJsonPath('mfa_required', true)
+                    ->assertJsonPath('mfa_type', 'challenge')
+                    ->assertJsonPath('mfa_urls.verify', '/'.$guard.'/mfa/verify');
+
+                $this->postJson('/'.$guard.'/mfa/verify', [
+                    'code' => $google2fa->getCurrentOtp($secret),
+                ])->assertOk()->assertJsonPath('redirect', $homePaths[$guard]);
             }
 
-            $this->assertSame($user->user_id, Auth::guard($guard)->user()?->user_id, $path);
+            $this->assertSame($user->user_id, Auth::guard($guard)->user()?->user_id, $guard);
         }
     }
 
-    public function test_wrong_role_credentials_return_the_generic_login_error(): void
+    public function test_wrong_username_and_password_return_the_same_generic_error(): void
     {
-        $owner = $this->user('owner');
+        $user = $this->user('owner');
 
-        $this->postJson('/admin/login', [
-            'username' => $owner->username,
-            'password' => 'password',
-        ])->assertUnprocessable()
-            ->assertExactJson(['message' => 'Invalid username or password.']);
-
-        $this->assertGuest('admin');
-        $this->postJson('/login', [
-            'username' => $owner->username,
+        $wrongPassword = $this->postJson('/login', [
+            'username' => $user->username,
             'password' => 'wrong-password',
-        ])->assertUnprocessable()
-            ->assertExactJson(['message' => 'Invalid username or password.']);
+        ])->assertUnprocessable()->assertExactJson(['message' => 'Invalid username or password.']);
+
+        $wrongUsername = $this->postJson('/login', [
+            'username' => 'no-such-user',
+            'password' => 'password',
+        ])->assertUnprocessable()->assertExactJson(['message' => 'Invalid username or password.']);
+
+        $this->assertSame($wrongPassword->json(), $wrongUsername->json());
+        $this->assertGuest('owner');
     }
 
-    public function test_google_lanes_check_roles_and_only_customer_lane_creates_accounts(): void
+    public function test_admin_staff_and_customer_can_log_in_via_the_same_endpoint(): void
+    {
+        $admin = $this->user('admin');
+        $staff = $this->user('staff');
+        $customer = $this->user('user');
+
+        foreach ([$admin, $staff, $customer] as $user) {
+            $response = $this->postJson('/login', [
+                'username' => $user->username,
+                'password' => 'password',
+            ])->assertOk();
+
+            if ($user->role !== 'user') {
+                $response->assertJsonPath('mfa_required', true);
+            }
+        }
+
+        $this->assertSame($admin->user_id, Auth::guard('admin')->user()?->user_id);
+        $this->assertSame($staff->user_id, Auth::guard('staff')->user()?->user_id);
+        $this->assertSame($customer->user_id, Auth::guard('customer')->user()?->user_id);
+    }
+
+    public function test_relogging_the_same_account_redirects_without_restarting_mfa(): void
+    {
+        $user = $this->user('staff');
+
+        $this->postJson('/login', [
+            'username' => $user->username,
+            'password' => 'password',
+        ])->assertOk()->assertJsonPath('mfa_required', true);
+
+        $this->postJson('/login', [
+            'username' => $user->username,
+            'password' => 'password',
+        ])->assertOk()
+            ->assertJsonMissingPath('mfa_required')
+            ->assertJsonPath('redirect', '/staff/dashboard');
+    }
+
+    public function test_google_login_uses_the_matched_accounts_guard_and_creates_customers_only(): void
     {
         config(['services.google.client_id' => 'multi-guard-test-client']);
-        $staff = $this->user('staff');
-        $token = $this->fakeGoogleToken($staff->email, $staff->name);
+        $expectedUsers = [];
+        foreach (['admin', 'owner', 'staff', 'user'] as $role) {
+            $guard = $role === 'user' ? 'customer' : $role;
+            $user = $this->user($role);
+            $expectedUsers[$guard] = $user;
+            $token = $this->fakeGoogleToken($user->email, $user->name);
 
-        $this->postJson('/staff/auth/google', ['id_token' => $token])
-            ->assertOk()
-            ->assertJsonPath('redirect', '/staff/dashboard');
-        $this->assertSame($staff->user_id, Auth::guard('staff')->user()?->user_id);
+            $this->postJson('/auth/google', ['id_token' => $token])
+                ->assertOk()
+                ->assertJsonPath('redirect', match ($guard) {
+                    'admin' => '/dashboard',
+                    'owner' => '/owner/dashboard',
+                    'staff' => '/staff/dashboard',
+                    default => '/my-dashboard',
+                });
+            $this->assertSame($user->user_id, Auth::guard($guard)->user()?->user_id);
+        }
 
-        $admin = $this->user('admin');
-        $mismatchToken = $this->fakeGoogleToken($admin->email, $admin->name);
-        $this->postJson('/owner/auth/google', ['id_token' => $mismatchToken])
-            ->assertUnprocessable()
-            ->assertExactJson(["message" => "We couldn't verify that Google sign-in. Please try again."]);
-        $this->assertGuest('owner');
+        foreach ($expectedUsers as $guard => $user) {
+            $this->assertSame($user->user_id, Auth::guard($guard)->user()?->user_id, $guard);
+        }
 
         $newEmail = 'new-google-customer@example.test';
-        $privilegedToken = $this->fakeGoogleToken($newEmail, 'New Google Customer');
-        $this->postJson('/admin/auth/google', ['id_token' => $privilegedToken])
-            ->assertUnprocessable()
-            ->assertExactJson(["message" => "We couldn't verify that Google sign-in. Please try again."]);
-        $this->assertDatabaseMissing('users', ['email' => $newEmail]);
-
         $customerToken = $this->fakeGoogleToken($newEmail, 'New Google Customer');
         $customerResponse = $this->postJson('/auth/google', ['id_token' => $customerToken]);
         $this->assertSame(200, $customerResponse->getStatusCode(), $customerResponse->getContent());
-        $customerResponse
-            ->assertJsonPath('redirect', '/my-dashboard');
+        $customerResponse->assertJsonPath('redirect', '/my-dashboard');
         $this->assertDatabaseHas('users', ['email' => $newEmail, 'role' => 'user']);
+        $this->assertDatabaseMissing('users', ['email' => $newEmail, 'role' => 'admin']);
     }
 
-    public function test_login_page_uses_lane_urls_and_registration_is_customer_only(): void
+    public function test_public_login_page_has_one_form_and_login_and_google_endpoints(): void
     {
-        $this->get('/admin/login')
-            ->assertOk()
-            ->assertSee('action="'.route('admin.login.submit').'"', false)
-            ->assertSee('data-google-auth-url="'.route('admin.auth.google').'"', false)
-            ->assertSee('data-mfa-setup-init-url="'.route('admin.mfa.setup.init').'"', false)
-            ->assertSee('data-mfa-enable-url="'.route('admin.mfa.enable').'"', false)
-            ->assertSee('data-mfa-verify-url="'.route('admin.mfa.verify').'"', false)
-            ->assertDontSee('Register');
+        $page = $this->get('/login')->assertOk()
+            ->assertSee('action="'.route('login.submit').'"', false)
+            ->assertSee('data-google-auth-url="'.route('auth.google').'"', false)
+            ->assertSee('data-mfa-setup-init-url="'.route('mfa.setup.init').'"', false)
+            ->assertSee('data-mfa-enable-url="'.route('mfa.enable').'"', false)
+            ->assertSee('data-mfa-verify-url="'.route('mfa.verify').'"', false)
+            ->assertSee('Register');
+
+        $this->assertSame(1, substr_count($page->getContent(), 'id="login-form"'));
+        $this->assertSame(1, substr_count($page->getContent(), 'data-google-auth-url='));
+
+        foreach (['admin', 'owner', 'staff'] as $role) {
+            $this->get('/'.$role.'/login')->assertRedirect(route('login'));
+            $this->post('/'.$role.'/login')->assertMethodNotAllowed();
+            $this->post('/'.$role.'/auth/google')->assertNotFound();
+        }
 
         $this->get('/register')->assertOk();
         $this->get('/admin/register')->assertNotFound();
@@ -150,7 +217,7 @@ class MultiGuardAuthLanesTest extends TestCase
             ->assertSee('action="'.route('owner.mfa.verify').'"', false);
     }
 
-    public function test_login_attempt_limits_are_independent_per_lane(): void
+    public function test_login_attempt_limit_still_applies_to_the_public_login_endpoint(): void
     {
         $user = $this->user('user');
 
@@ -161,10 +228,10 @@ class MultiGuardAuthLanesTest extends TestCase
             ])->assertUnprocessable();
         }
 
-        $this->postJson('/admin/login', [
+        $this->postJson('/login', [
             'username' => $user->username,
             'password' => 'wrong-password',
-        ])->assertUnprocessable();
+        ])->assertStatus(429);
     }
 
     public function test_logout_ends_only_the_selected_guard_session(): void
@@ -176,7 +243,7 @@ class MultiGuardAuthLanesTest extends TestCase
             'username' => $customer->username,
             'password' => 'password',
         ])->assertOk();
-        $this->postJson('/admin/login', [
+        $this->postJson('/login', [
             'username' => $admin->username,
             'password' => 'password',
         ])->assertOk();

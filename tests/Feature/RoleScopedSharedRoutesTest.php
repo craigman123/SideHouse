@@ -129,8 +129,6 @@ class RoleScopedSharedRoutesTest extends TestCase
             ],
             'admin' => [
                 'login' => 'admin/login',
-                'login.submit' => 'admin/login',
-                'auth.google' => 'admin/auth/google',
                 'logout' => 'admin/logout',
                 'mfa.setup' => 'admin/mfa/setup',
                 'mfa.setup.init' => 'admin/mfa/setup/init',
@@ -140,8 +138,6 @@ class RoleScopedSharedRoutesTest extends TestCase
             ],
             'owner' => [
                 'login' => 'owner/login',
-                'login.submit' => 'owner/login',
-                'auth.google' => 'owner/auth/google',
                 'logout' => 'owner/logout',
                 'mfa.setup' => 'owner/mfa/setup',
                 'mfa.setup.init' => 'owner/mfa/setup/init',
@@ -151,8 +147,6 @@ class RoleScopedSharedRoutesTest extends TestCase
             ],
             'staff' => [
                 'login' => 'staff/login',
-                'login.submit' => 'staff/login',
-                'auth.google' => 'staff/auth/google',
                 'logout' => 'staff/logout',
                 'mfa.setup' => 'staff/mfa/setup',
                 'mfa.setup.init' => 'staff/mfa/setup/init',

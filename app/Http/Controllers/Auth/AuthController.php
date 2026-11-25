@@ -17,20 +17,13 @@ class AuthController extends Controller
 {
     public function showLogin()
     {
-        $guard = config('auth.multi_guard') ? GuardSessionState::currentGuard() : 'customer';
-        $routePrefix = $guard === 'customer' ? '' : $guard.'.';
-        $homeRoute = match ($guard) {
-            'admin' => 'admin.dashboard',
-            'owner' => 'owner.dashboard',
-            'staff' => 'staff.dashboard',
-            default => 'user.dashboard',
-        };
+        $guard = 'customer';
 
         return view('auth.login', [
             'loginLane' => $guard,
-            'loginSubmitUrl' => route($routePrefix.'login.submit'),
-            'googleAuthUrl' => route($routePrefix.'auth.google'),
-            'loginHomeUrl' => route($homeRoute),
+            'loginSubmitUrl' => route('login.submit'),
+            'googleAuthUrl' => route('auth.google'),
+            'loginHomeUrl' => route('user.dashboard'),
             'mfaSetupInitUrl' => route(mfa_route_name('mfa.setup.init', $guard)),
             'mfaEnableUrl' => route(mfa_route_name('mfa.enable', $guard)),
             'mfaVerifyUrl' => route(mfa_route_name('mfa.verify', $guard)),
@@ -217,14 +210,14 @@ class AuthController extends Controller
 
     private function loginOnRoleGuard(Request $request, array $credentials)
     {
-        $guard = GuardSessionState::currentGuard();
-        $provider = Auth::guard($guard)->getProvider();
+        $provider = Auth::guard('customer')->getProvider();
         $user = $provider->retrieveByCredentials($credentials);
+        $guard = $user instanceof User ? $this->guardForRole($user->role) : null;
 
         if (
             ! $user instanceof User
             || ! $provider->validateCredentials($user, $credentials)
-            || $user->role !== $this->roleForGuard($guard)
+            || $guard === null
         ) {
             ActivityLogger::log(
                 'user.login_failed',
@@ -238,6 +231,11 @@ class AuthController extends Controller
             return back()->withErrors(['username' => 'Invalid username or password.'])->onlyInput('username');
         }
 
+        if (Auth::guard($guard)->user()?->is($user)) {
+            return $this->loginRedirectResponse($request, $user);
+        }
+
+        Auth::shouldUse($guard);
         Auth::guard($guard)->login($user);
         $request->session()->forget(GuardSessionState::key('view_as'));
         $request->session()->regenerate();
@@ -256,6 +254,7 @@ class AuthController extends Controller
                     'mfa_required' => true,
                     'mfa_type' => $user->hasMfaEnabled() ? 'challenge' : 'setup',
                     'csrf_token' => csrf_token(),
+                    'mfa_urls' => $this->mfaUrls($guard),
                 ]);
             }
 
@@ -271,27 +270,12 @@ class AuthController extends Controller
             subject: $user,
         );
 
-        if ($request->expectsJson()) {
-            return response()->json([
-                'redirect' => $this->homePath($user),
-                'message' => 'Logged in successfully!',
-            ]);
-        }
-
-        return redirect($this->homePath($user))->with('success', 'Logged in successfully!');
+        return $this->loginRedirectResponse($request, $user);
     }
 
     private function googleLoginOnRoleGuard(Request $request, array $claims)
     {
-        $guard = GuardSessionState::currentGuard();
         $user = User::whereRaw('LOWER(email) = ?', [$claims['email']])->first();
-
-        if (($user !== null && $user->role !== $this->roleForGuard($guard))
-            || ($user === null && $guard !== 'customer')) {
-            return response()->json([
-                'message' => "We couldn't verify that Google sign-in. Please try again.",
-            ], 422);
-        }
 
         $isNewAccount = false;
         if ($user === null) {
@@ -306,6 +290,21 @@ class AuthController extends Controller
             $isNewAccount = true;
         }
 
+        $guard = $this->guardForRole($user->role);
+        if ($guard === null) {
+            return response()->json([
+                'message' => "We couldn't verify that Google sign-in. Please try again.",
+            ], 422);
+        }
+
+        if (Auth::guard($guard)->user()?->is($user)) {
+            return response()->json([
+                'message' => 'Logged in successfully!',
+                'redirect' => $this->homePath($user),
+            ]);
+        }
+
+        Auth::shouldUse($guard);
         Auth::guard($guard)->login($user);
         $request->session()->forget(GuardSessionState::key('view_as'));
         $request->session()->regenerate();
@@ -326,9 +325,34 @@ class AuthController extends Controller
         ]);
     }
 
-    private function roleForGuard(string $guard): string
+    private function guardForRole(string $role): ?string
     {
-        return $guard === 'customer' ? 'user' : $guard;
+        return match ($role) {
+            'user' => 'customer',
+            'admin', 'owner', 'staff' => $role,
+            default => null,
+        };
+    }
+
+    private function mfaUrls(string $guard): array
+    {
+        return [
+            'setup_init' => route(mfa_route_name('mfa.setup.init', $guard), absolute: false),
+            'enable' => route(mfa_route_name('mfa.enable', $guard), absolute: false),
+            'verify' => route(mfa_route_name('mfa.verify', $guard), absolute: false),
+        ];
+    }
+
+    private function loginRedirectResponse(Request $request, User $user)
+    {
+        if ($request->expectsJson()) {
+            return response()->json([
+                'redirect' => $this->homePath($user),
+                'message' => 'Logged in successfully!',
+            ]);
+        }
+
+        return redirect($this->homePath($user))->with('success', 'Logged in successfully!');
     }
 
     /**
