@@ -489,7 +489,7 @@ class UserAccessController extends Controller
         return $row;
     }
 
-    private function assertPassword(User $actor, string $password): void
+    private function assertPassword(User $actor, #[\SensitiveParameter] string $password): void
     {
         abort_unless(app(PasswordHasher::class)->check($actor, $password), 422, 'Password confirmation failed.');
     }

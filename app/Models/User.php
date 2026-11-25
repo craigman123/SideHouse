@@ -74,7 +74,7 @@ class User extends Authenticatable
         ];
     }
 
-    public function setPasswordAttribute(?string $password): void
+    public function setPasswordAttribute(#[\SensitiveParameter] ?string $password): void
     {
         if ($password === null) {
             $this->attributes['password'] = null;

@@ -13,9 +13,7 @@ class PasswordPepperBootGuard
         'horizon:work',
     ];
 
-    public function __construct(private readonly PasswordHasher $passwordHasher)
-    {
-    }
+    public function __construct(private readonly PasswordHasher $passwordHasher) {}
 
     public function assertConfiguredForRuntime(
         bool $isProduction,

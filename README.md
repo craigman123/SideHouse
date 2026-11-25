@@ -51,6 +51,18 @@ DB_USERNAME=root
 DB_PASSWORD=
 ```
 
+### Password hashing secrets
+
+Set `PASSWORD_PEPPER` to a random secret of at least 32 bytes. Generate a 256-bit value with:
+
+```bash
+php -r "echo bin2hex(random_bytes(32)), PHP_EOL;"
+```
+
+In Render, add the resulting value as `PASSWORD_PEPPER` on the web service and any queue-worker service before deploying the password-pepper code. Keep it identical across instances. Back it up in your secret manager: losing it prevents accounts using that pepper version from authenticating. During rotation, retain old peppers in the version map in `config/password_pepper.php` until users have logged in and their hashes have been upgraded.
+
+`SEED_ADMIN_PASSWORD` supplies the admin password when seeding production. Set it in Render before running `php artisan db:seed`. The seeder never prints it. Local and test seeding use a clearly named development-only default when the variable is empty; that default is rejected in production.
+
 Create the database itself (e.g. in phpMyAdmin, or via the MySQL CLI):
 
 ```sql

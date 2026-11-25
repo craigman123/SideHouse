@@ -12,7 +12,7 @@ class PasswordHasher
     /**
      * @return array{hash: string, version: string}
      */
-    public function make(string $password): array
+    public function make(#[\SensitiveParameter] string $password): array
     {
         $version = $this->currentVersion();
         $pepper = $this->pepperForVersion($version);
@@ -23,7 +23,7 @@ class PasswordHasher
         ];
     }
 
-    public function check(Authenticatable $user, string $password): bool
+    public function check(Authenticatable $user, #[\SensitiveParameter] string $password): bool
     {
         $storedHash = $user->getAuthPassword();
         if (! is_string($storedHash) || $storedHash === '') {
@@ -51,7 +51,7 @@ class PasswordHasher
             || Hash::needsRehash($storedHash);
     }
 
-    public function rehash(User $user, string $password): void
+    public function rehash(User $user, #[\SensitiveParameter] string $password): void
     {
         $newPassword = $this->make($password);
 

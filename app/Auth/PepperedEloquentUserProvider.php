@@ -6,11 +6,12 @@ use App\Models\User;
 use App\Support\PasswordHasher;
 use Illuminate\Auth\EloquentUserProvider;
 use Illuminate\Contracts\Auth\Authenticatable;
+use Illuminate\Contracts\Hashing\Hasher;
 
 class PepperedEloquentUserProvider extends EloquentUserProvider
 {
     public function __construct(
-        \Illuminate\Contracts\Hashing\Hasher $hasher,
+        Hasher $hasher,
         string $model,
         private readonly PasswordHasher $passwordHasher,
     ) {
