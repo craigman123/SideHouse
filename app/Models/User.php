@@ -4,6 +4,7 @@ namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Database\Factories\UserFactory;
+use App\Support\PasswordHasher;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -44,6 +45,7 @@ class User extends Authenticatable
      */
     protected $hidden = [
         'password',
+        'password_pepper_version',
         'remember_token',
     ];
 
@@ -62,7 +64,6 @@ class User extends Authenticatable
     {
         return [
             'email_verified_at'  => 'datetime',
-            'password'           => 'hashed',
             'mfa_enabled'        => 'boolean',
             'mfa_secret'         => 'encrypted',
             'mfa_recovery_codes' => 'array',
@@ -71,6 +72,20 @@ class User extends Authenticatable
             'promoted_at'        => 'datetime',
             'last_login_at'      => 'datetime',
         ];
+    }
+
+    public function setPasswordAttribute(?string $password): void
+    {
+        if ($password === null) {
+            $this->attributes['password'] = null;
+            $this->attributes['password_pepper_version'] = null;
+
+            return;
+        }
+
+        $pepperedPassword = app(PasswordHasher::class)->make($password);
+        $this->attributes['password'] = $pepperedPassword['hash'];
+        $this->attributes['password_pepper_version'] = $pepperedPassword['version'];
     }
 
     public function hasMfaEnabled(): bool

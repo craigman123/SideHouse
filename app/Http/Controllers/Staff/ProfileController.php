@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Staff;
 
 use App\Http\Controllers\Controller;
+use App\Rules\CurrentPassword;
 use App\Support\ActivityLogger;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -37,7 +38,7 @@ class ProfileController extends Controller
     public function changePassword(Request $request): RedirectResponse
     {
         $validated = $request->validate([
-            'current_password' => ['required', 'current_password:web'],
+            'current_password' => ['required', new CurrentPassword($request->user())],
             'password' => ['required', 'string', 'min:12', 'confirmed'],
         ]);
 
@@ -50,7 +51,7 @@ class ProfileController extends Controller
 
     public function regenerateRecoveryCodes(Request $request): RedirectResponse
     {
-        $request->validate(['current_password' => ['required', 'current_password:web']]);
+        $request->validate(['current_password' => ['required', new CurrentPassword($request->user())]]);
         $user = $request->user();
         abort_unless($user->hasMfaEnabled(), 409, 'Set up MFA before regenerating recovery codes.');
 
