@@ -400,10 +400,21 @@ body {
     font-size: var(--font-size-small);
 }
 
+#guestEmailSwitchDialog .guest-email-switch-status[data-state="loading"] {
+    color: var(--text-muted);
+}
+
 #guestEmailSwitchDialog .guest-email-switch-actions {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
     gap: var(--s2);
+}
+
+#guestEmailSwitchDialog #guestEmailSwitchGoogleButton {
+    display: flex;
+    justify-content: center;
+    min-height: 44px;
 }
 
 #guestEmailSwitchDialog .guest-email-switch-actions > button {
@@ -711,9 +722,7 @@ html:has(#guestEmailSwitchDialog[open]) body {
 }
 
 @media (max-width: 360px) {
-    #guestEmailSwitchDialog .guest-email-switch-actions {
-        grid-template-columns: minmax(0, 1fr);
-    }
+    #guestEmailSwitchDialog .guest-email-switch-actions > button { width: 100%; }
 }
 
 .guest-payment-page button:disabled,

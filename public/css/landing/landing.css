@@ -49,6 +49,107 @@ body {
     cursor: pointer;
 }
 
+.landing-credit-actions {
+    display: flex;
+    align-items: center;
+    gap: var(--s2);
+}
+
+.landing-credit-avatar {
+    box-sizing: border-box;
+    display: grid;
+    flex: 0 0 44px;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    overflow: hidden;
+    padding: 0;
+    border: 1px solid var(--border);
+    border-radius: var(--r-pill);
+    background: var(--surface);
+    color: var(--brand);
+    font: var(--font-weight-button) var(--font-size-small)/1 var(--font-family);
+    cursor: pointer;
+}
+
+.landing-credit-avatar img {
+    display: block;
+    width: 44px;
+    height: 44px;
+    object-fit: cover;
+    border-radius: inherit;
+}
+
+.landing-credit-avatar img[hidden],
+.landing-credit-avatar span[hidden] {
+    display: none;
+}
+
+.landing-credit-avatar:focus-visible,
+.landing-credit-total:focus-visible {
+    outline: 2px solid var(--brand);
+    outline-offset: 2px;
+}
+
+.landing-credit-popover p.landing-credit-account {
+    display: flex;
+    align-items: center;
+    gap: var(--s1);
+    margin-bottom: var(--s3);
+}
+
+.landing-credit-account strong,
+.landing-credit-account span {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.landing-credit-account strong {
+    flex: 0 1 45%;
+    color: var(--text);
+    font-weight: var(--font-weight-button);
+}
+
+.landing-credit-account span {
+    color: var(--text-muted);
+    font-size: var(--font-size-small);
+}
+
+.landing-credit-account > span[aria-hidden="true"] {
+    flex: 0 0 auto;
+}
+
+.landing-credit-account > span:not([aria-hidden="true"]) {
+    flex: 1 1 auto;
+}
+
+.landing-credit-switch-panel {
+    display: grid;
+    gap: var(--s2);
+}
+
+.landing-credit-switch-panel p {
+    margin: 0;
+    color: var(--text-muted);
+    font-size: var(--font-size-small);
+}
+
+.landing-credit-switch-panel p[data-state="error"] {
+    color: var(--danger);
+}
+
+.landing-credit-switch-panel #landingCreditSwitchGoogleButton {
+    display: flex;
+    justify-content: center;
+    min-height: 40px;
+}
+
+.landing-credit-switch-panel button {
+    color: var(--text-muted);
+}
+
 .landing-credit-popover {
     position: absolute;
     z-index: 20;
@@ -396,6 +497,11 @@ body {
     padding: 0 0 var(--s3);
 }
 #mobileCreditSlot .landing-credit-total {
+    flex: 1 1 auto;
+    width: auto;
+    min-width: 0;
+}
+#mobileCreditSlot .landing-credit-actions {
     width: 100%;
 }
 #mobileCreditSlot .landing-credit-popover {

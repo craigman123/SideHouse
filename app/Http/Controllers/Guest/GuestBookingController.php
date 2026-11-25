@@ -69,6 +69,7 @@ class GuestBookingController extends Controller
         $weeklySchedule = $this->buildWeeklyScheduleDays($settings, $primaryCourtId);
 
         $guestCredit = null;
+        $guestCreditEmail = null;
         $verified = $request->session()->get('guest_credit_verified');
         if (is_array($verified) && ! empty($verified['verified_at']) && ! empty($verified['email'])) {
             $hours = max(1, (int) config('credit.guest_verified_hours', 12));
@@ -81,6 +82,7 @@ class GuestBookingController extends Controller
                     $given = (int) ($wallet->given_balance ?? 0);
                     $reserved = (int) ($wallet->reserved_balance ?? 0);
                     $guestCredit = ['given' => $given, 'reserved' => $reserved, 'total' => $given + $reserved];
+                    $guestCreditEmail = $walletUser->email;
                 }
             }
         }
@@ -101,6 +103,7 @@ class GuestBookingController extends Controller
             'peakAdjustmentType'  => $settings->hasPeakPricing() ? $settings->peak_adjustment_type : null,
             'peakAdjustmentValue' => $settings->hasPeakPricing() ? $settings->peak_adjustment_value : null,
             'guestCredit'         => $guestCredit,
+            'guestCreditEmail'    => $guestCreditEmail,
         ]);
     }
 

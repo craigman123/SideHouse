@@ -19,7 +19,8 @@
     <link rel="stylesheet" href="{{ asset('css/skeleton.css') }}">
     <link rel="stylesheet" href="{{ asset('css/guest/guest-booking.css') }}">
     <link rel="stylesheet" href="{{ asset('css/guest/theme-toggle.css') }}">
-    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <script src="{{ asset('js/guest/google-credit-account.js') }}?v={{ filemtime(public_path('js/guest/google-credit-account.js')) }}"></script>
+    <script id="googleIdentityServicesScript" src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 <body class="guest-landing-page">
 
@@ -36,22 +37,43 @@
         {{-- Updated navigation with search bar --}}
         <div class="landing-nav-wrap">
 
-        @if (! empty($guestCredit))
-            <div class="landing-credit-wrap">
-                <button type="button" class="landing-credit-total" id="landingCreditToggle" aria-expanded="false" aria-controls="landingCreditPopover">
-                    {{ number_format($guestCredit['total'], 0) }} TC
-                </button>
+            <div class="landing-credit-wrap" id="landingCreditWrap"
+                 data-credit-state-url="{{ route('guest.credit.state') }}"
+                 data-account-email="{{ $guestCreditEmail ?? '' }}"
+                 @if (empty($guestCredit)) hidden @endif>
+                <div class="landing-credit-actions">
+                    <button type="button" class="landing-credit-avatar" id="landingCreditAvatar"
+                            aria-label="Account" aria-expanded="false" aria-controls="landingCreditPopover">
+                        <img id="landingCreditPicture" width="44" height="44" loading="lazy"
+                             referrerpolicy="no-referrer" alt="" hidden>
+                        <span id="landingCreditInitials" hidden></span>
+                    </button>
+                    <button type="button" class="landing-credit-total" id="landingCreditToggle"
+                            aria-expanded="false" aria-controls="landingCreditPopover">
+                        <span id="landingCreditTotal">{{ number_format($guestCredit['total'] ?? 0, 0) }}</span> TC
+                    </button>
+                </div>
                 <div class="landing-credit-popover" id="landingCreditPopover" hidden>
+                    <p class="landing-credit-account" id="landingCreditAccount" hidden>
+                        <strong id="landingCreditAccountName"></strong>
+                        <span id="landingCreditAccountSeparator" aria-hidden="true" hidden>·</span>
+                        <span id="landingCreditAccountEmail"></span>
+                    </p>
                     <div class="credit-format-symbol">
-                        <p><span>Given</span><strong><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16.5 8.5 A6.5 6.5 0 1 0 16.5 15.5"/><path d="M11 12 H18"/><path d="M11 2.5 V5.5"/><path d="M11 18.5 V21.5"/></svg>{{ number_format($guestCredit['given'], 0) }}</strong></p>
+                        <p><span>Given</span><strong><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16.5 8.5 A6.5 6.5 0 1 0 16.5 15.5"/><path d="M11 12 H18"/><path d="M11 2.5 V5.5"/><path d="M11 18.5 V21.5"/></svg><span id="landingCreditGiven">{{ number_format($guestCredit['given'] ?? 0, 0) }}</span></strong></p>
                     </div>
                     <div class="credit-format-symbol">
-                        <p><span>Reserved</span><strong><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 6 L18 12 L12 18 L6 12 Z"/><path d="M3.5 12 H20.5"/><path d="M12 2 V6"/><path d="M12 18 V22"/></svg>{{ number_format($guestCredit['reserved'], 0) }}</strong></p>
+                        <p><span>Reserved</span><strong><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 6 L18 12 L12 18 L6 12 Z"/><path d="M3.5 12 H20.5"/><path d="M12 2 V6"/><path d="M12 18 V22"/></svg><span id="landingCreditReserved">{{ number_format($guestCredit['reserved'] ?? 0, 0) }}</span></strong></p>
                     </div>
                     <button type="button" id="landingCreditSwitch">Not you? Switch email</button>
+                    <div class="landing-credit-switch-panel" id="landingCreditSwitchPanel" hidden>
+                        <p id="landingCreditSwitchStatus" role="status" aria-live="polite"></p>
+                        <div id="landingCreditSwitchGoogleButton" aria-label="Switch account with Google"></div>
+                        <button type="button" id="landingCreditSwitchRetry" hidden>Try again</button>
+                        <button type="button" id="landingCreditSwitchCancel" class="landing-credit-switch-cancel">Cancel</button>
+                    </div>
                  </div>
             </div>
-        @endif
             <nav class="landing-nav">
 
                 <div class="nav-left">
@@ -195,6 +217,8 @@
             data-max-duration="{{ $maxDuration }}"
             data-step-minutes="{{ $stepMinutes }}"
             data-closed-weekdays="{{ implode(',', $closedWeekdays) }}"
+            data-credit-nonce-url="{{ route('guest.credit.nonce') }}"
+            data-credit-verify-url="{{ route('guest.credit.verify') }}"
             {{-- Each entry: {"date": "2026-09-07", "reason": "Reserved for a private event"}.
                  `reason` is null when the admin didn't type one in on the
                  Schedule page, and guest-book.js falls back to a generic
@@ -836,9 +860,10 @@
 
             function place() {
                 const popover = wrap.querySelector('.landing-credit-popover');
-                const toggle = wrap.querySelector('.landing-credit-total');
                 if (popover) popover.hidden = true;
-                if (toggle) toggle.setAttribute('aria-expanded', 'false');
+                wrap.querySelectorAll('.landing-credit-total, .landing-credit-avatar').forEach((button) => {
+                    button.setAttribute('aria-expanded', 'false');
+                });
 
                 if (mq.matches) slot.appendChild(wrap);
                 else navWrap.insertBefore(wrap, navWrap.firstChild);

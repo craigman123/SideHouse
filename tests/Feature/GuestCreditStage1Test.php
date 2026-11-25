@@ -248,6 +248,51 @@ class GuestCreditStage1Test extends TestCase
         $this->assertIsInt($split['reserved_used']);
     }
 
+    public function test_google_account_switch_is_available_on_landing_and_payment_views(): void
+    {
+        config(['services.google.client_id' => 'sidehouse-test-client-id']);
+
+        $user = $this->createUser();
+        CreditWallet::create([
+            'user_id' => $user->user_id,
+            'given_balance' => 25,
+            'reserved_balance' => 10,
+        ]);
+        $court = Court::create([
+            'name' => 'Google Switch Court',
+            'width' => 10,
+            'length' => 20,
+            'hourly_rate' => 100,
+            'status' => 'active',
+        ]);
+        $date = now()->addDay()->toDateString();
+        $session = [
+            'guest_credit_verified' => [
+                'user_id' => $user->user_id,
+                'email' => $user->email,
+                'verified_at' => now()->timestamp,
+                'matched' => true,
+            ],
+        ];
+
+        $this->withSession($session)->get('/')
+            ->assertOk()
+            ->assertSee('id="landingCreditAvatar"', false)
+            ->assertSee('id="landingCreditSwitchGoogleButton"', false)
+            ->assertSee('id="googleIdentityServicesScript" src="https://accounts.google.com/gsi/client"', false)
+            ->assertSee('data-google-client-id="sidehouse-test-client-id"', false);
+
+        $paymentResponse = $this->withSession($session)->get(route('guest.book.payment', [
+            'court_id' => $court->id,
+            'date' => $date,
+            'slots' => [$date.' 06:00', $date.' 06:30'],
+        ]));
+        $paymentResponse->assertOk()
+            ->assertSee('id="guestEmailSwitchGoogleButton"', false)
+            ->assertSee('id="googleIdentityServicesScript" src="https://accounts.google.com/gsi/client"', false)
+            ->assertSee('data-google-client-id="sidehouse-test-client-id"', false);
+    }
+
     private function createUser(): User
     {
         return User::create([

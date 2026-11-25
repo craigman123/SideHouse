@@ -17,9 +17,10 @@
     <link rel="stylesheet" href="{{ asset('css/auth/mfa-modal.css') }}">
     <link rel="stylesheet" href="{{ asset('css/guest/guest-payment.css') }}">
     <link rel="stylesheet" href="{{ asset('css/guest/theme-toggle.css') }}">
+    <script src="{{ asset('js/guest/google-credit-account.js') }}?v={{ filemtime(public_path('js/guest/google-credit-account.js')) }}"></script>
     <script src="{{ asset('js/guest/payment.js') }}" defer></script>
     <link rel="icon" type="image/png" href="{{ asset('images/tab_icon.png') }}">
-    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <script id="googleIdentityServicesScript" src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 <body class="guest-payment-page">
     @include('partials.guest.theme-toggle', ['placement' => 'corner'])
@@ -175,7 +176,8 @@
                 <p id="guestEmailSwitchMessage"></p>
                 <p id="guestEmailSwitchStatus" class="guest-email-switch-status" role="status" hidden></p>
                 <div class="guest-email-switch-actions">
-                    <button class="mfa-btn" type="button" id="guestEmailSwitchConfirm">Switch account</button>
+                    <div id="guestEmailSwitchGoogleButton" aria-label="Switch account with Google"></div>
+                    <button type="button" class="btn btn-link" id="guestEmailSwitchRetry" hidden>Try again</button>
                     <button class="btn btn-ghost-danger" type="button" id="guestEmailSwitchCancel">Cancel</button>
                 </div>
             </div>

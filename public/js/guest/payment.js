@@ -30,7 +30,8 @@
     const guestEmailSwitchDialog = document.getElementById('guestEmailSwitchDialog');
     const guestEmailSwitchMessage = document.getElementById('guestEmailSwitchMessage');
     const guestEmailSwitchStatus = document.getElementById('guestEmailSwitchStatus');
-    const guestEmailSwitchConfirm = document.getElementById('guestEmailSwitchConfirm');
+    const guestEmailSwitchGoogleButton = document.getElementById('guestEmailSwitchGoogleButton');
+    const guestEmailSwitchRetry = document.getElementById('guestEmailSwitchRetry');
     const guestEmailSwitchCancel = document.getElementById('guestEmailSwitchCancel');
     const paymentGrid = document.getElementById('paymentGrid');
     const summaryPayment = document.getElementById('summaryPayment');
@@ -286,18 +287,6 @@
         }
     }
 
-    function saveStoredGuestIdentity(identity) {
-        const saved = {
-            email: identity.email,
-            name: identity.name || '',
-            picture: identity.picture || '',
-        };
-        storedGuestIdentity = saved;
-        try {
-            localStorage.setItem(GUEST_IDENTITY_KEY, JSON.stringify(saved));
-        } catch (_) {}
-    }
-
     function saveGuestFields() {
         try {
             localStorage.setItem(GUEST_FIELDS_KEY, JSON.stringify({
@@ -498,25 +487,7 @@
         }
     }
 
-    function decodeJwtPayload(jwt) {
-        try {
-            const base64 = jwt.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
-            const paddedBase64 = base64.padEnd(Math.ceil(base64.length / 4) * 4, '=');
-            const json = decodeURIComponent(
-                atob(paddedBase64)
-                    .split('')
-                    .map((c) => '%' + c.charCodeAt(0).toString(16).padStart(2, '0'))
-                    .join('')
-            );
-            return JSON.parse(json);
-        } catch (err) {
-            return null;
-        }
-    }
-
-    let googleNonce = null;
-    let switchNonce = null;
-    let switchNonceRequest = 0;
+    let switchRequest = 0;
 
     guestGooglePicture.addEventListener('error', () => {
         guestGooglePicture.hidden = true;
@@ -524,180 +495,131 @@
         guestGoogleInitials.hidden = false;
     });
 
-    async function fetchGoogleNonce() {
-        const response = await fetch(creditNonceUrl, {
-            method: 'POST',
-            credentials: 'same-origin',
-            headers: { Accept: 'application/json', ...csrfHeaders() },
-        });
-        const data = await response.json();
-        if (!response.ok || typeof data.nonce !== 'string' || !data.nonce) {
-            throw new Error(data.message || 'Could not prepare Google sign-in.');
-        }
-        return data.nonce;
+    function handleVerifiedGoogleAccount(data, identity) {
+        googleIdToken = 'server-session-verified';
+        googleEmail = data.email;
+        storedGuestIdentity = identity;
+        showSignedInState(identity);
+        if (data.prefill?.name && !guestNameInput.value.trim()) guestNameInput.value = data.prefill.name;
+        if (data.prefill?.phone && !guestContactInput.value.trim()) guestContactInput.value = data.prefill.phone;
+        updateCreditDisplay(data.credit);
+        document.querySelector('.guest-email-block')?.classList.remove('guest-email-block-invalid');
     }
 
-    async function prepareAccountSwitchNonce(requestId) {
-        guestEmailSwitchConfirm.disabled = true;
-        guestEmailSwitchStatus.textContent = 'Preparing secure Google sign-in…';
-        guestEmailSwitchStatus.hidden = false;
-        try {
-            const nonce = await fetchGoogleNonce();
-            if (!guestEmailSwitchDialog.open || requestId !== switchNonceRequest) return;
-            switchNonce = nonce;
-            guestEmailSwitchStatus.hidden = true;
-            guestEmailSwitchConfirm.disabled = false;
-        } catch (_) {
-            if (!guestEmailSwitchDialog.open || requestId !== switchNonceRequest) return;
-            guestEmailSwitchStatus.textContent = 'Google sign-in is unavailable. Please try again.';
-            guestEmailSwitchConfirm.disabled = true;
+    function accountSwitchErrorMessage(error) {
+        if (error?.code === 'google-script-unavailable' || error?.code === 'google-script-missing') {
+            return 'Google sign-in could not load. Check your connection or content blocker and try again.';
         }
+        if (error?.code === 'client-id-missing') {
+            return 'Google sign-in is not configured on this page. Please try again later.';
+        }
+        return error?.message || 'Could not prepare Google account switching. Please try again.';
+    }
+
+    function configureGoogleButton(container, isActive, isSwitch = false) {
+        const helper = window.GuestGoogleAccount;
+        if (!helper) {
+            const error = new Error('Google sign-in could not load. Refresh the page and try again.');
+            error.code = 'google-script-unavailable';
+            if (isSwitch) {
+                guestEmailSwitchStatus.textContent = accountSwitchErrorMessage(error);
+                guestEmailSwitchStatus.dataset.state = 'error';
+                guestEmailSwitchStatus.hidden = false;
+                guestEmailSwitchRetry.hidden = false;
+            } else {
+                showToast(error.message, 'error');
+            }
+            return;
+        }
+
+        helper.renderVerifiedButton({
+            container,
+            clientId: googleClientId,
+            nonceUrl: creditNonceUrl,
+            verifyUrl: creditVerifyUrl,
+            csrfToken: document.querySelector('meta[name="csrf-token"]')?.content || '',
+            isActive,
+            onVerifying: () => setSigningIn(true),
+            onReady: () => {
+                if (!isSwitch || !isActive()) return;
+                guestEmailSwitchStatus.hidden = true;
+                guestEmailSwitchStatus.dataset.state = '';
+                guestEmailSwitchRetry.hidden = true;
+            },
+            onVerified: (data, identity) => {
+                handleVerifiedGoogleAccount(data, identity);
+                setSigningIn(false);
+                if (isSwitch && guestEmailSwitchDialog.open) guestEmailSwitchDialog.close();
+            },
+            onUnmatched: async () => {
+                setSigningIn(false);
+                await clearGoogleSignIn();
+                if (isSwitch && guestEmailSwitchDialog.open) guestEmailSwitchDialog.close();
+                showToast('Google sign-in is verified, but no registered account or unique credit match was found.', 'error');
+            },
+            onError: (error) => {
+                setSigningIn(false);
+                if (isSwitch && isActive()) {
+                    guestEmailSwitchStatus.textContent = accountSwitchErrorMessage(error);
+                    guestEmailSwitchStatus.hidden = false;
+                    guestEmailSwitchRetry.hidden = false;
+                    return;
+                }
+                if (!isSwitch) showToast(error.message || "Couldn't verify that Google account. Please try again.", 'error');
+            },
+        }).catch(() => {});
     }
 
     function openAccountSwitchDialog() {
         if (!guestIdentityVerified || !googleEmail || guestEmailSwitchDialog.open) return;
         guestEmailSwitchMessage.textContent = `Credits are tied to ${googleEmail}. Switching to another account will use that account's credits.`;
-        guestEmailSwitchStatus.hidden = true;
-        guestEmailSwitchConfirm.disabled = true;
+        guestEmailSwitchStatus.textContent = 'Loading Google sign-in…';
+        guestEmailSwitchStatus.dataset.state = 'loading';
+        guestEmailSwitchStatus.hidden = false;
+        guestEmailSwitchRetry.hidden = true;
+        guestEmailSwitchGoogleButton.replaceChildren();
         guestEmailSwitchDialog.showModal();
-        const requestId = ++switchNonceRequest;
-        switchNonce = null;
-        prepareAccountSwitchNonce(requestId);
+        const requestId = ++switchRequest;
+        configureGoogleButton(
+            guestEmailSwitchGoogleButton,
+            () => guestEmailSwitchDialog.open && requestId === switchRequest,
+            true
+        );
     }
 
-    function startAccountSwitch() {
-        if (!switchNonce) return;
-        const googleIdentity = window.google?.accounts?.id;
-        if (!googleIdentity) {
-            guestEmailSwitchStatus.textContent = 'Google sign-in is unavailable. Please try again.';
-            guestEmailSwitchStatus.hidden = false;
-            return;
-        }
-
-        const nonce = switchNonce;
-        switchNonce = null;
-        switchNonceRequest += 1;
-        try {
-            googleIdentity.disableAutoSelect();
-            googleIdentity.initialize({
-                client_id: googleClientId,
-                callback: handleGoogleCredential,
-                auto_select: false,
-                nonce,
-            });
-            guestEmailSwitchDialog.close();
-            googleIdentity.prompt((notification) => {
-                if (notification.isNotDisplayed?.() || notification.isSkippedMoment?.() || notification.isDismissedMoment?.()) {
-                    switchNonce = null;
-                }
-            });
-        } catch (_) {
-            guestEmailSwitchDialog.close();
-            showToast('Could not open Google account selection. Your current account is unchanged.', 'error');
-        }
-    }
-
-    async function handleGoogleCredential(response) {
-        if (signingIn) return;
-        setSigningIn(true);
-        try {
-            const res = await fetch(creditVerifyUrl, {
-                method: 'POST',
-                credentials: 'same-origin',
-                headers: {
-                    Accept: 'application/json',
-                    'Content-Type': 'application/json',
-                    ...csrfHeaders(),
-                },
-                body: JSON.stringify({ id_token: response.credential }),
-            });
-            const data = await res.json();
-            if (!res.ok) {
-                showToast(data.message || "Couldn't verify that Google account. Please try again.", 'error');
-                return;
-            }
-            if (!data.verified) {
-                await clearGoogleSignIn();
-                showToast('Google sign-in is verified, but no registered account or unique credit match was found.', 'error');
-                return;
-            }
-            const claims = decodeJwtPayload(response.credential) || {};
-            const identity = {
-                email: data.email,
-                name: (typeof claims.name === 'string' && claims.name.trim()) || data.prefill?.name || '',
-                picture: googlePictureUrl(claims.picture),
-            };
-            googleIdToken = response.credential;
-            googleEmail = data.email;
-            saveStoredGuestIdentity(identity);
-            showSignedInState(identity);
-            if (data.prefill?.name && !guestNameInput.value.trim()) guestNameInput.value = data.prefill.name;
-            if (data.prefill?.phone && !guestContactInput.value.trim()) guestContactInput.value = data.prefill.phone;
-            updateCreditDisplay(data.credit);
-            document.querySelector('.guest-email-block')?.classList.remove('guest-email-block-invalid');
-        } catch (_) {
-            showToast("Couldn't verify that Google account. Please try again.", 'error');
-        } finally {
-            setSigningIn(false);
-        }
+    function retryAccountSwitch() {
+        if (!guestEmailSwitchDialog.open) return;
+        const requestId = ++switchRequest;
+        guestEmailSwitchStatus.textContent = 'Loading Google sign-in…';
+        guestEmailSwitchStatus.dataset.state = 'loading';
+        guestEmailSwitchStatus.hidden = false;
+        guestEmailSwitchRetry.hidden = true;
+        guestEmailSwitchGoogleButton.replaceChildren();
+        configureGoogleButton(
+            guestEmailSwitchGoogleButton,
+            () => guestEmailSwitchDialog.open && requestId === switchRequest,
+            true
+        );
     }
 
     guestEmailChangeBtn.addEventListener('click', openAccountSwitchDialog);
     guestEmailSwitchCancel.addEventListener('click', () => {
-        switchNonce = null;
-        switchNonceRequest += 1;
+        switchRequest += 1;
+        guestEmailSwitchGoogleButton.replaceChildren();
         guestEmailSwitchDialog.close();
     });
-    guestEmailSwitchConfirm.addEventListener('click', startAccountSwitch);
+    guestEmailSwitchRetry.addEventListener('click', retryAccountSwitch);
     guestEmailSwitchDialog.addEventListener('cancel', () => {
-        switchNonce = null;
-        switchNonceRequest += 1;
+        switchRequest += 1;
+        guestEmailSwitchGoogleButton.replaceChildren();
     });
     guestEmailSwitchDialog.addEventListener('close', () => guestEmailChangeBtn.focus());
 
     (function initGoogleSignIn() {
-        if (!googleClientId || !googleSignInBtnEl) return;
-
-        async function render() {
-            await identitySessionReset;
-            if (!googleNonce) {
-                try {
-                    googleNonce = await fetchGoogleNonce();
-                } catch (_) {
-                    googleNonce = null;
-                }
-            }
-            if (!googleNonce) return;
-
-            window.google.accounts.id.initialize({
-                client_id: googleClientId,
-                callback: handleGoogleCredential,
-                auto_select: false,
-                nonce: googleNonce,
-            });
-            window.google.accounts.id.renderButton(googleSignInBtnEl, {
-                type: 'standard',
-                theme: 'filled_black',
-                size: 'large',
-                text: 'continue_with',
-                shape: 'pill',
-            });
-        }
-
-        if (window.google && window.google.accounts && window.google.accounts.id) {
-            render();
-        } else {
-            let attempts = 0;
-            const wait = setInterval(() => {
-                attempts += 1;
-                if (window.google && window.google.accounts && window.google.accounts.id) {
-                    clearInterval(wait);
-                    render();
-                } else if (attempts > 40) {
-                    clearInterval(wait);
-                }
-            }, 250);
-        }
+        if (!googleSignInBtnEl) return;
+        identitySessionReset.then(() => {
+            configureGoogleButton(googleSignInBtnEl, () => true);
+        });
     })();
 
     // ---------- Back ----------

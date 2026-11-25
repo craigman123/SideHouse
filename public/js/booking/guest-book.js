@@ -868,21 +868,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // ---------- Google Sign-In (Google confirms the address, not a
     // typed-twice field or a self-serve yes/no) ----------
 
-    function decodeJwtPayload(jwt) {
-        try {
-            const base64 = jwt.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
-            const json = decodeURIComponent(
-                atob(base64)
-                    .split('')
-                    .map((c) => '%' + c.charCodeAt(0).toString(16).padStart(2, '0'))
-                    .join('')
-            );
-            return JSON.parse(json);
-        } catch (err) {
-            return null;
-        }
-    }
-
     function showSignedInState(email) {
         guestEmailConfirmedAddress.textContent = email;
         guestEmailConfirmed.hidden = false;
@@ -899,7 +884,10 @@ document.addEventListener('DOMContentLoaded', () => {
     async function clearGoogleSignIn() {
         googleIdToken = null;
         googleEmail = '';
+        window.GuestGoogleAccount?.clearIdentity();
         showSignedOutState();
+        const creditWrap = document.getElementById('landingCreditWrap');
+        if (creditWrap) creditWrap.hidden = true;
         try {
             await fetch('/guest/credit/switch', {
                 method: 'POST',
@@ -909,43 +897,6 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (_) {}
         if (window.google && window.google.accounts && window.google.accounts.id) {
             window.google.accounts.id.disableAutoSelect();
-        }
-    }
-
-    let googleNonce = null;
-    async function handleGoogleCredential(response) {
-        try {
-            const res = await fetch('/guest/credit/verify', {
-                method: 'POST',
-                credentials: 'same-origin',
-                headers: {
-                    Accept: 'application/json',
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
-                },
-                body: JSON.stringify({ id_token: response.credential }),
-            });
-            const data = await res.json();
-            if (!res.ok) {
-                showToast(data.message || "Couldn't verify that Google account. Please try again.", 'error');
-                return;
-            }
-            if (!data.verified) {
-                showToast('No registered account or unique credit match was found.', 'success');
-                googleIdToken = null;
-                googleEmail = '';
-                showSignedOutState();
-                return;
-            }
-            googleIdToken = response.credential;
-            googleEmail = data.email;
-            showSignedInState(data.email);
-            if (data.prefill?.name && !guestNameInput.value.trim()) guestNameInput.value = data.prefill.name;
-            if (data.prefill?.phone && !guestContactInput.value.trim()) guestContactInput.value = data.prefill.phone;
-            const emailBlock = document.querySelector('.guest-email-block');
-            if (emailBlock) emailBlock.classList.remove('guest-email-block-invalid');
-        } catch (_) {
-            showToast("Couldn't verify that Google account. Please try again.", 'error');
         }
     }
 
@@ -964,53 +915,33 @@ document.addEventListener('DOMContentLoaded', () => {
     (function initGoogleSignIn() {
         const clientId = grid.dataset.googleClientId;
         if (!clientId || !googleSignInBtnEl) return;
-
-        async function render() {
-            if (!googleNonce) {
-                try {
-                    const nonceResponse = await fetch('/guest/credit/nonce', {
-                        method: 'POST',
-                        credentials: 'same-origin',
-                        headers: { Accept: 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '' },
-                    });
-                    const nonceData = await nonceResponse.json();
-                    googleNonce = nonceData.nonce;
-                } catch (_) {
-                    googleNonce = null;
-                }
-            }
-            if (!googleNonce) return;
-            window.google.accounts.id.initialize({
-                client_id: clientId,
-                callback: handleGoogleCredential,
-                auto_select: false,
-                nonce: googleNonce,
-            });
-            window.google.accounts.id.renderButton(googleSignInBtnEl, {
-                type: 'standard',
-                theme: 'filled_black',
-                size: 'large',
-                text: 'continue_with',
-                shape: 'pill',
-            });
-        }
-
-        if (window.google && window.google.accounts && window.google.accounts.id) {
-            render();
-        } else {
-            // The GIS script tag is `defer`, so it may not have finished
-            // loading yet — poll briefly instead of assuming order.
-            let attempts = 0;
-            const wait = setInterval(() => {
-                attempts += 1;
-                if (window.google && window.google.accounts && window.google.accounts.id) {
-                    clearInterval(wait);
-                    render();
-                } else if (attempts > 40) {
-                    clearInterval(wait);
-                }
-            }, 250);
-        }
+        window.GuestGoogleAccount?.renderVerifiedButton({
+            container: googleSignInBtnEl,
+            clientId,
+            nonceUrl: grid.dataset.creditNonceUrl,
+            verifyUrl: grid.dataset.creditVerifyUrl,
+            csrfToken: document.querySelector('meta[name="csrf-token"]')?.content || '',
+            onVerified: (data, identity) => {
+                googleIdToken = 'server-session-verified';
+                googleEmail = data.email;
+                showSignedInState(data.email);
+                if (data.prefill?.name && !guestNameInput.value.trim()) guestNameInput.value = data.prefill.name;
+                if (data.prefill?.phone && !guestContactInput.value.trim()) guestContactInput.value = data.prefill.phone;
+                document.querySelector('.guest-email-block')?.classList.remove('guest-email-block-invalid');
+                window.LandingGuestCredit?.update(data.credit, identity);
+            },
+            onUnmatched: () => {
+                googleIdToken = null;
+                googleEmail = '';
+                showSignedOutState();
+                const creditWrap = document.getElementById('landingCreditWrap');
+                if (creditWrap) creditWrap.hidden = true;
+                showToast('No registered account or unique credit match was found.', 'success');
+            },
+            onError: (error) => {
+                showToast(error.message || "Couldn't verify that Google account. Please try again.", 'error');
+            },
+        }).catch(() => {});
     })();
 
     guestEmailChangeBtn?.addEventListener('click', clearGoogleSignIn);

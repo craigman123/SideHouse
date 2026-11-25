@@ -5,27 +5,202 @@
  */
 
 document.addEventListener('DOMContentLoaded', function() {
+    const creditWrap = document.getElementById('landingCreditWrap');
     const landingCreditToggle = document.getElementById('landingCreditToggle');
+    const landingCreditAvatar = document.getElementById('landingCreditAvatar');
     const landingCreditPopover = document.getElementById('landingCreditPopover');
     const landingCreditSwitch = document.getElementById('landingCreditSwitch');
-    if (landingCreditToggle && landingCreditPopover) {
-        landingCreditToggle.addEventListener('click', function () {
-            const open = landingCreditPopover.hidden;
-            landingCreditPopover.hidden = !open;
-            landingCreditToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+    const switchPanel = document.getElementById('landingCreditSwitchPanel');
+    const switchStatus = document.getElementById('landingCreditSwitchStatus');
+    const switchGoogleButton = document.getElementById('landingCreditSwitchGoogleButton');
+    const switchRetry = document.getElementById('landingCreditSwitchRetry');
+    const switchCancel = document.getElementById('landingCreditSwitchCancel');
+    const accountLine = document.getElementById('landingCreditAccount');
+    const accountName = document.getElementById('landingCreditAccountName');
+    const accountSeparator = document.getElementById('landingCreditAccountSeparator');
+    const accountEmail = document.getElementById('landingCreditAccountEmail');
+    const picture = document.getElementById('landingCreditPicture');
+    const initials = document.getElementById('landingCreditInitials');
+    let switchRequest = 0;
+
+    function accountInitials(name, email) {
+        const source = (name || (email || '').split('@')[0] || email || '').trim();
+        const words = source.split(/\s+/).filter(Boolean);
+        const value = words.length > 1
+            ? words[0].charAt(0) + words[words.length - 1].charAt(0)
+            : source.slice(0, 2);
+        return value.toLocaleUpperCase();
+    }
+
+    function renderAccount(identity) {
+        const email = typeof identity?.email === 'string' ? identity.email : (creditWrap?.dataset.accountEmail || '');
+        const name = typeof identity?.name === 'string' ? identity.name : '';
+        const pictureUrl = window.GuestGoogleAccount?.pictureUrl(identity?.picture) || '';
+        const label = name || email || 'Google account';
+
+        if (creditWrap) creditWrap.dataset.accountEmail = email;
+        if (accountName) {
+            accountName.textContent = name;
+            accountName.hidden = !name;
+        }
+        if (accountSeparator) accountSeparator.hidden = !name;
+        if (accountEmail) accountEmail.textContent = email;
+        if (accountLine) accountLine.hidden = !email && !name;
+        if (landingCreditAvatar) landingCreditAvatar.setAttribute('aria-label', `Account: ${label}`);
+        if (initials) {
+            initials.textContent = accountInitials(name, email) || '?';
+            initials.hidden = false;
+        }
+        if (picture) {
+            picture.onerror = function() {
+                picture.hidden = true;
+                picture.removeAttribute('src');
+                if (initials) initials.hidden = false;
+            };
+            picture.hidden = true;
+            picture.removeAttribute('src');
+            if (pictureUrl) {
+                picture.src = pictureUrl;
+                picture.hidden = false;
+                if (initials) initials.hidden = true;
+            }
+        }
+    }
+
+    function updateCredit(credit, identity) {
+        if (!credit || !creditWrap) return;
+        creditWrap.hidden = false;
+        if (identity) renderAccount(identity);
+        else renderAccount({ email: creditWrap.dataset.accountEmail || '' });
+        const total = document.getElementById('landingCreditTotal');
+        const given = document.getElementById('landingCreditGiven');
+        const reserved = document.getElementById('landingCreditReserved');
+        if (total) total.textContent = Number(credit.total || 0).toLocaleString();
+        if (given) given.textContent = Number(credit.given || 0).toLocaleString();
+        if (reserved) reserved.textContent = Number(credit.reserved || 0).toLocaleString();
+    }
+
+    function setPopoverOpen(open) {
+        if (!landingCreditPopover) return;
+        landingCreditPopover.hidden = !open;
+        [landingCreditToggle, landingCreditAvatar].forEach((button) => {
+            button?.setAttribute('aria-expanded', open ? 'true' : 'false');
         });
-        landingCreditSwitch?.addEventListener('click', async function () {
-            try {
-                await fetch('/guest/credit/switch', {
-                    method: 'POST',
-                    credentials: 'same-origin',
-                    headers: {
-                        Accept: 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
-                    },
-                });
-            } catch (_) {}
-            window.location.reload();
+    }
+
+    if (creditWrap && landingCreditPopover) {
+        creditWrap.addEventListener('click', function(event) {
+            const button = event.target.closest('#landingCreditToggle, #landingCreditAvatar');
+            if (!button) return;
+            setPopoverOpen(landingCreditPopover.hidden);
+        });
+    }
+
+    function switchErrorMessage(error) {
+        if (error?.code === 'google-script-unavailable' || error?.code === 'google-script-missing') {
+            return 'Google sign-in could not load. Check your connection or content blocker and try again.';
+        }
+        if (error?.code === 'client-id-missing') {
+            return 'Google sign-in is not configured on this page. Please try again later.';
+        }
+        return error?.message || 'Could not prepare Google account switching. Please try again.';
+    }
+
+    function startAccountSwitch() {
+        if (!switchPanel || !switchStatus || !switchGoogleButton) return;
+        const requestId = ++switchRequest;
+        switchPanel.hidden = false;
+        landingCreditSwitch.hidden = true;
+        switchRetry.hidden = true;
+        switchStatus.dataset.state = '';
+        switchStatus.hidden = false;
+        switchStatus.textContent = 'Loading Google sign-in…';
+
+        const bookNow = document.getElementById('bookNow');
+        const helper = window.GuestGoogleAccount;
+        if (!helper) {
+            switchStatus.textContent = 'Google sign-in could not load. Refresh the page and try again.';
+            switchStatus.dataset.state = 'error';
+            switchStatus.hidden = false;
+            switchRetry.hidden = false;
+            return;
+        }
+
+        helper.renderVerifiedButton({
+            container: switchGoogleButton,
+            clientId: bookNow?.dataset.googleClientId || '',
+            nonceUrl: bookNow?.dataset.creditNonceUrl || '',
+            verifyUrl: bookNow?.dataset.creditVerifyUrl || '',
+            csrfToken: document.querySelector('meta[name="csrf-token"]')?.content || '',
+            isActive: () => requestId === switchRequest && !switchPanel.hidden,
+            onReady: () => {
+                switchStatus.hidden = true;
+                switchRetry.hidden = true;
+            },
+            onVerified: (data, identity) => {
+                updateCredit(data.credit, identity);
+                switchPanel.hidden = true;
+                landingCreditSwitch.hidden = false;
+                setPopoverOpen(true);
+            },
+            onUnmatched: () => {
+                helper.clearIdentity();
+                switchPanel.hidden = true;
+                switchGoogleButton.replaceChildren();
+                landingCreditSwitch.hidden = false;
+                creditWrap.hidden = true;
+                setPopoverOpen(false);
+            },
+            onError: (error) => {
+                switchStatus.textContent = switchErrorMessage(error);
+                switchStatus.dataset.state = 'error';
+                switchStatus.hidden = false;
+                switchRetry.hidden = false;
+            },
+        }).catch(() => {});
+    }
+
+    landingCreditSwitch?.addEventListener('click', startAccountSwitch);
+    switchRetry?.addEventListener('click', startAccountSwitch);
+    switchCancel?.addEventListener('click', function() {
+        switchRequest += 1;
+        switchPanel.hidden = true;
+        switchGoogleButton.replaceChildren();
+        switchStatus.hidden = true;
+        switchStatus.textContent = '';
+        switchStatus.dataset.state = '';
+        switchRetry.hidden = true;
+        landingCreditSwitch.hidden = false;
+    });
+
+    if (creditWrap) {
+        const cached = window.GuestGoogleAccount?.readIdentity();
+        const currentEmail = creditWrap.dataset.accountEmail || '';
+        const matchingIdentity = cached && cached.email.toLocaleLowerCase() === currentEmail.toLocaleLowerCase()
+            ? cached
+            : { email: currentEmail };
+        if (!creditWrap.hidden) renderAccount(matchingIdentity);
+
+        window.LandingGuestCredit = { update: updateCredit };
+        window.addEventListener('pageshow', function(event) {
+            if (!event.persisted) return;
+            fetch(creditWrap.dataset.creditStateUrl, {
+                credentials: 'same-origin',
+                headers: { Accept: 'application/json' },
+            }).then((response) => response.json()).then((data) => {
+                if (!data.verified || !data.credit) {
+                    creditWrap.hidden = true;
+                    setPopoverOpen(false);
+                    window.GuestGoogleAccount?.clearIdentity();
+                    return;
+                }
+                const saved = window.GuestGoogleAccount?.readIdentity();
+                const identity = saved && saved.email.toLocaleLowerCase() === data.email.toLocaleLowerCase()
+                    ? saved
+                    : { email: data.email, name: data.prefill?.name || '', picture: '' };
+                creditWrap.dataset.accountEmail = data.email;
+                updateCredit(data.credit, identity);
+            }).catch(() => {});
         });
     }
 
