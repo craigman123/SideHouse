@@ -41,6 +41,9 @@ class User extends Authenticatable
         'promoted_by',
         'promoted_at',
         'last_login_at',
+        'locked_at',
+        'locked_by',
+        'locked_reason',
     ];
 
     /**
@@ -79,6 +82,8 @@ class User extends Authenticatable
             'access_version'     => 'integer',
             'promoted_at'        => 'datetime',
             'last_login_at'      => 'datetime',
+            'locked_at'          => 'datetime',
+            'locked_by'          => 'integer',
         ];
     }
 

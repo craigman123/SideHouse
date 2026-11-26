@@ -11,6 +11,7 @@ class MfaResetRequest extends Model
         'requested_by_user_id',
         'approved_by_user_id',
         'action',
+        'reason',
         'status',
         'expires_at',
         'approved_at',

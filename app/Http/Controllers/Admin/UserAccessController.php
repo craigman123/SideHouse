@@ -4,14 +4,17 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Mail\AdminChangedAccountEmailNotice;
+use App\Mail\PrivilegedMfaNotice;
 use App\Models\MfaResetRequest;
 use App\Models\User;
 use App\Services\PrivilegedMfaService;
 use App\Services\UserAccessService;
 use App\Support\ActivityLogger;
+use App\Support\BrevoMailer;
 use App\Support\GuardSessionState;
 use App\Support\LikePattern;
 use App\Support\Mask;
+use App\Support\NotificationService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -59,6 +62,11 @@ class UserAccessController extends Controller
             'mfaOwnerApproveUrlTemplate' => $canManageMfa
                 ? role_route('admin.users.mfa.owner-approve', ['user' => '__USER__', 'requestId' => '__REQUEST__'])
                 : '',
+            'accountLockUrlTemplate' => role_route('admin.users.lock', ['user' => '__USER__']),
+            'accountPromoteAgainUrlTemplate' => role_route('admin.users.promote-again', ['user' => '__USER__']),
+            'accountLockApproveUrlTemplate' => $canManageMfa
+                ? role_route('admin.users.lock-approve', ['user' => '__USER__', 'requestId' => '__REQUEST__'])
+                : '',
             'permissionDefinitions' => collect(config('user_access.staff_permissions', []))
                 ->mapWithKeys(fn (string $key) => [$key => $permissionDefinitions[$key] ?? null])
                 ->all(),
@@ -91,6 +99,17 @@ class UserAccessController extends Controller
             ? collect()
             : MfaResetRequest::query()
                 ->whereIn('target_user_id', $users->pluck('user_id'))
+                ->whereIn('action', ['disable', 'force_reenroll'])
+                ->where('status', 'pending')
+                ->where('expires_at', '>', now())
+                ->with('requester')
+                ->get()
+                ->keyBy('target_user_id');
+        $pendingAccountRequests = $users->isEmpty()
+            ? collect()
+            : MfaResetRequest::query()
+                ->whereIn('target_user_id', $users->pluck('user_id'))
+                ->whereIn('action', ['account_lock', 'account_promote'])
                 ->where('status', 'pending')
                 ->where('expires_at', '>', now())
                 ->with('requester')
@@ -104,6 +123,7 @@ class UserAccessController extends Controller
             $actor,
             $pendingRequests->get($user->user_id),
             $request,
+            $pendingAccountRequests->get($user->user_id),
         ));
 
         return response()->json(['users' => $serialized]);
@@ -292,6 +312,299 @@ class UserAccessController extends Controller
         ]);
     }
 
+    public function lockAccount(
+        Request $request,
+        User $user,
+        UserAccessService $access,
+        PrivilegedMfaService $mfa,
+    ): JsonResponse {
+        $actor = $this->freshLockActor($request, $access);
+        $validated = $request->validate([
+            'code' => ['required', 'string', 'size:6', 'regex:/^[0-9]{6}$/'],
+            'reason' => ['nullable', 'string', 'max:500'],
+        ]);
+        $reason = trim((string) ($validated['reason'] ?? '')) ?: null;
+
+        $result = DB::transaction(function () use ($request, $actor, $user, $access, $mfa, $validated, $reason): array {
+            [$lockedActor, $target] = $this->lockActorAndTarget($actor->user_id, $user->user_id);
+            $this->authorizeLockTarget($request, $lockedActor, $target, $access);
+            abort_if($target->locked_at !== null, 409, 'This account is already locked.');
+
+            if ($target->role === 'admin') {
+                $this->assertNotLastAdmin('locked', true);
+            } elseif ($target->role === 'owner') {
+                $this->assertNotLastOwner(true);
+            }
+
+            $step = $mfa->verifyFreshTotp($lockedActor, $validated['code']);
+            $lockedActor->forceFill(['mfa_last_admin_action_step' => $step])->save();
+
+            if ($target->role === 'owner') {
+                $this->assertNoPendingAccountRequest($target);
+                $ownerRequest = MfaResetRequest::query()->create([
+                    'target_user_id' => $target->user_id,
+                    'requested_by_user_id' => $lockedActor->user_id,
+                    'action' => 'account_lock',
+                    'reason' => $reason,
+                    'status' => 'pending',
+                    'expires_at' => now()->addDay(),
+                ]);
+                $recipientIds = $this->notifyLockObservers(
+                    $lockedActor,
+                    $target,
+                    'account_lock_requested',
+                    'Account lock request pending',
+                    'A second admin must approve locking this owner account within 24 hours.',
+                    'account_lock',
+                    'pending',
+                    ['request_id' => $ownerRequest->id],
+                );
+                $this->auditAccountLock($lockedActor, $target, 'account_lock', 'pending', [
+                    'request_id' => $ownerRequest->id,
+                    'reason' => $reason,
+                ]);
+
+                return [
+                    'pending' => true,
+                    'target' => $target,
+                    'request' => $ownerRequest,
+                    'recipient_ids' => $recipientIds,
+                ];
+            }
+
+            $this->applyAccountLock($lockedActor, $target, $reason);
+            $recipientIds = $this->notifyLockObservers(
+                $lockedActor,
+                $target,
+                'account_locked',
+                'Account locked',
+                'An administrator locked an account. Contact an administrator if this was unexpected.',
+                'account_lock',
+                'success',
+            );
+            $this->auditAccountLock($lockedActor, $target, 'account_lock', 'success', ['reason' => $reason]);
+
+            return ['pending' => false, 'target' => $target->fresh(), 'recipient_ids' => $recipientIds];
+        });
+
+        $this->sendAccountLockEmails(
+            $result['recipient_ids'],
+            $result['pending'] ? 'Owner account lock request pending' : 'Account locked',
+            $result['pending']
+                ? 'A second admin must approve locking this owner account within 24 hours.'
+                : 'An administrator locked an account. Contact an administrator if this was unexpected.',
+        );
+
+        if ($result['pending']) {
+            return response()->json([
+                'message' => 'Lock request created. A different admin must approve it within 24 hours.',
+                'request' => [
+                    'id' => $result['request']->id,
+                    'action' => $result['request']->action,
+                    'expires_at' => $result['request']->expires_at->toIso8601String(),
+                ],
+            ], 201);
+        }
+
+        return response()->json(['message' => 'Account locked.']);
+    }
+
+    public function promoteAgain(
+        Request $request,
+        User $user,
+        UserAccessService $access,
+        PrivilegedMfaService $mfa,
+    ): JsonResponse {
+        $actor = $this->freshLockActor($request, $access);
+        $validated = $request->validate([
+            'code' => ['required', 'string', 'size:6', 'regex:/^[0-9]{6}$/'],
+        ]);
+
+        $result = DB::transaction(function () use ($request, $actor, $user, $access, $mfa, $validated): array {
+            [$lockedActor, $target] = $this->lockActorAndTarget($actor->user_id, $user->user_id);
+            $this->authorizeLockTarget($request, $lockedActor, $target, $access);
+            abort_unless($target->locked_at !== null, 409, 'This account is not locked.');
+
+            $step = $mfa->verifyFreshTotp($lockedActor, $validated['code']);
+            $lockedActor->forceFill(['mfa_last_admin_action_step' => $step])->save();
+
+            if ($target->role === 'owner') {
+                $this->assertNoPendingAccountRequest($target);
+                $ownerRequest = MfaResetRequest::query()->create([
+                    'target_user_id' => $target->user_id,
+                    'requested_by_user_id' => $lockedActor->user_id,
+                    'action' => 'account_promote',
+                    'status' => 'pending',
+                    'expires_at' => now()->addDay(),
+                ]);
+                $recipientIds = $this->notifyLockObservers(
+                    $lockedActor,
+                    $target,
+                    'account_promote_requested',
+                    'Promotion request pending',
+                    'A second admin must approve restoring this owner account within 24 hours.',
+                    'account_promote',
+                    'pending',
+                    ['request_id' => $ownerRequest->id],
+                );
+                $this->auditAccountLock($lockedActor, $target, 'account_promote', 'pending', [
+                    'request_id' => $ownerRequest->id,
+                ]);
+
+                return [
+                    'pending' => true,
+                    'target' => $target,
+                    'request' => $ownerRequest,
+                    'recipient_ids' => $recipientIds,
+                ];
+            }
+
+            $this->applyAccountPromotion($target);
+            $recipientIds = $this->notifyLockObservers(
+                $lockedActor,
+                $target,
+                'account_promoted_again',
+                'Account promoted again',
+                'An administrator restored access to this account. Its normal sign-in and MFA requirements apply.',
+                'account_promote',
+                'success',
+            );
+            $this->auditAccountLock($lockedActor, $target, 'account_promote', 'success');
+
+            return ['pending' => false, 'target' => $target->fresh(), 'recipient_ids' => $recipientIds];
+        });
+
+        $this->sendAccountLockEmails(
+            $result['recipient_ids'],
+            $result['pending'] ? 'Owner account promotion request pending' : 'Account promoted again',
+            $result['pending']
+                ? 'A second admin must approve restoring this owner account within 24 hours.'
+                : 'An administrator restored access to this account. Its normal sign-in and MFA requirements apply.',
+        );
+
+        if ($result['pending']) {
+            return response()->json([
+                'message' => 'Promotion request created. A different admin must approve it within 24 hours.',
+                'request' => [
+                    'id' => $result['request']->id,
+                    'action' => $result['request']->action,
+                    'expires_at' => $result['request']->expires_at->toIso8601String(),
+                ],
+            ], 201);
+        }
+
+        return response()->json(['message' => 'Account promoted again. Normal MFA requirements apply.']);
+    }
+
+    public function approveAccountLockChange(
+        Request $request,
+        User $user,
+        int $requestId,
+        UserAccessService $access,
+        PrivilegedMfaService $mfa,
+    ): JsonResponse {
+        $actor = $this->freshLockActor($request, $access);
+        abort_unless($actor->role === 'admin', 403);
+        $validated = $request->validate([
+            'code' => ['required', 'string', 'size:6', 'regex:/^[0-9]{6}$/'],
+        ]);
+
+        $result = DB::transaction(function () use ($request, $actor, $user, $requestId, $access, $mfa, $validated): array {
+            [$lockedActor, $target] = $this->lockActorAndTarget($actor->user_id, $user->user_id);
+            $ownerRequest = MfaResetRequest::query()->whereKey($requestId)->lockForUpdate()->firstOrFail();
+            $this->authorizeLockTarget($request, $lockedActor, $target, $access);
+            abort_unless(
+                $lockedActor->role === 'admin'
+                    && $target->role === 'owner'
+                    && (int) $ownerRequest->target_user_id === (int) $target->user_id
+                    && in_array($ownerRequest->action, ['account_lock', 'account_promote'], true)
+                    && (int) $ownerRequest->requested_by_user_id !== (int) $lockedActor->user_id,
+                403,
+            );
+            abort_unless($ownerRequest->status === 'pending', 409, 'This account request is no longer pending.');
+
+            if ($ownerRequest->expires_at->lessThanOrEqualTo(now())) {
+                $ownerRequest->forceFill(['status' => 'expired'])->save();
+                $this->auditAccountLock(
+                    $lockedActor,
+                    $target,
+                    $ownerRequest->action,
+                    'expired',
+                    ['request_id' => $ownerRequest->id],
+                );
+
+                return ['expired' => true, 'recipient_ids' => []];
+            }
+
+            $isLock = $ownerRequest->action === 'account_lock';
+            abort_unless(
+                $isLock ? $target->locked_at === null : $target->locked_at !== null,
+                409,
+                'The account state changed after this request was created.',
+            );
+            if ($isLock) {
+                $this->assertNotLastOwner(true);
+            }
+
+            $step = $mfa->verifyFreshTotp($lockedActor, $validated['code']);
+            $lockedActor->forceFill(['mfa_last_admin_action_step' => $step])->save();
+
+            if ($isLock) {
+                $this->applyAccountLock($lockedActor, $target, $ownerRequest->reason);
+            } else {
+                $this->applyAccountPromotion($target);
+            }
+            $ownerRequest->forceFill([
+                'status' => 'approved',
+                'approved_by_user_id' => $lockedActor->user_id,
+                'approved_at' => now(),
+                'executed_at' => now(),
+            ])->save();
+
+            $action = $isLock ? 'account_lock' : 'account_promote';
+            $title = $isLock ? 'Owner account locked' : 'Owner account promoted again';
+            $body = $isLock
+                ? 'Two admins approved locking this owner account.'
+                : 'Two admins approved restoring access to this owner account.';
+            $recipientIds = $this->notifyLockObservers(
+                $lockedActor,
+                $target,
+                $isLock ? 'account_locked' : 'account_promoted_again',
+                $title,
+                $body,
+                $action,
+                'success',
+                ['request_id' => $ownerRequest->id],
+                (int) $ownerRequest->requested_by_user_id,
+            );
+            $this->auditAccountLock($lockedActor, $target, $action, 'success', [
+                'request_id' => $ownerRequest->id,
+                'requested_by_user_id' => (int) $ownerRequest->requested_by_user_id,
+                'reason' => $isLock ? $ownerRequest->reason : null,
+            ]);
+
+            return [
+                'expired' => false,
+                'action' => $action,
+                'recipient_ids' => $recipientIds,
+                'title' => $title,
+                'body' => $body,
+            ];
+        });
+
+        if ($result['expired']) {
+            return response()->json(['message' => 'This account request expired and cannot be approved.'], 410);
+        }
+
+        $this->sendAccountLockEmails($result['recipient_ids'], $result['title'], $result['body']);
+
+        return response()->json([
+            'message' => $result['action'] === 'account_lock'
+                ? 'Owner account locked.'
+                : 'Owner account promoted again. Normal MFA requirements apply.',
+        ]);
+    }
+
     public function details(Request $request, User $user, UserAccessService $access): JsonResponse
     {
         $actor = $this->freshActor($request, $access);
@@ -472,6 +785,162 @@ class UserAccessController extends Controller
         ];
     }
 
+    private function freshLockActor(Request $request, UserAccessService $access): User
+    {
+        $actor = User::query()->findOrFail($request->user()->user_id);
+        abort_if($request->session()->get(GuardSessionState::key('view_as')) !== null, 403);
+        abort_unless(in_array($actor->role, ['admin', 'owner'], true), 403);
+        $this->authorizeAction($actor, null, 'edit_access', null, $access);
+
+        return $actor;
+    }
+
+    private function authorizeLockTarget(
+        Request $request,
+        User $actor,
+        User $target,
+        UserAccessService $access,
+    ): void {
+        abort_if($request->session()->get(GuardSessionState::key('view_as')) !== null, 403);
+        abort_unless(in_array($target->role, self::MANAGED_ROLES, true), 404);
+        $this->authorizeAction($actor, $target, 'edit_access', null, $access);
+    }
+
+    private function lockActorAndTarget(int $actorId, int $targetId): array
+    {
+        $users = User::query()
+            ->whereIn('user_id', array_values(array_unique([$actorId, $targetId])))
+            ->orderBy('user_id')
+            ->lockForUpdate()
+            ->get()
+            ->keyBy('user_id');
+
+        return [
+            $users->get($actorId) ?? abort(404),
+            $users->get($targetId) ?? abort(404),
+        ];
+    }
+
+    private function assertNoPendingAccountRequest(User $target): void
+    {
+        $pending = MfaResetRequest::query()
+            ->where('target_user_id', $target->user_id)
+            ->where('status', 'pending')
+            ->where('expires_at', '>', now())
+            ->lockForUpdate()
+            ->exists();
+        abort_if($pending, 409, 'An account request is already awaiting approval.');
+    }
+
+    private function applyAccountLock(User $actor, User $target, ?string $reason): void
+    {
+        $target->forceFill([
+            'locked_at' => now(),
+            'locked_by' => $actor->user_id,
+            'locked_reason' => $reason,
+            'access_version' => (int) $target->access_version + 1,
+            'remember_token' => Str::random(60),
+        ])->save();
+    }
+
+    private function applyAccountPromotion(User $target): void
+    {
+        $target->forceFill([
+            'locked_at' => null,
+            'locked_by' => null,
+            'locked_reason' => null,
+            'access_version' => (int) $target->access_version + 1,
+            'remember_token' => Str::random(60),
+        ])->save();
+    }
+
+    private function notifyLockObservers(
+        User $actor,
+        User $target,
+        string $type,
+        string $title,
+        string $body,
+        string $action,
+        string $result,
+        array $extra = [],
+        ?int $requesterId = null,
+    ): array {
+        $recipientIds = User::query()->where('role', 'owner')->pluck('user_id')->all();
+        $recipientIds[] = (int) $actor->user_id;
+        if ($requesterId !== null) {
+            $recipientIds[] = $requesterId;
+        }
+        $recipientIds = array_values(array_unique(array_filter(
+            array_map('intval', $recipientIds),
+            fn (int $id): bool => $id !== (int) $target->user_id,
+        )));
+
+        foreach ($recipientIds as $recipientId) {
+            NotificationService::notify(
+                $recipientId,
+                $type,
+                $title,
+                $body,
+                [
+                    'actor_id' => (int) $actor->user_id,
+                    'target_id' => (int) $target->user_id,
+                    'action' => $action,
+                    'result' => $result,
+                ] + $extra,
+            );
+        }
+
+        return $recipientIds;
+    }
+
+    private function auditAccountLock(
+        User $actor,
+        User $target,
+        string $action,
+        string $result,
+        array $extra = [],
+    ): void {
+        ActivityLogger::logStrict(
+            'user_access.'.$action.'.'.$result,
+            "{$actor->name} performed {$action} for {$target->name}: {$result}.",
+            actor: $actor,
+            subject: $target,
+            properties: [
+                'actor_id' => (int) $actor->user_id,
+                'target_id' => (int) $target->user_id,
+                'action' => $action,
+                'result' => $result,
+            ] + $extra,
+        );
+    }
+
+    private function sendAccountLockEmails(array $recipientIds, string $subject, string $body): void
+    {
+        if (! config('services.brevo.key') || $recipientIds === []) {
+            return;
+        }
+
+        $recipients = User::query()->whereIn('user_id', $recipientIds)->get();
+        foreach ($recipients as $recipient) {
+            if (! $recipient->email) {
+                continue;
+            }
+
+            try {
+                BrevoMailer::send(
+                    $recipient->email,
+                    $recipient->name,
+                    new PrivilegedMfaNotice($subject, $body),
+                );
+            } catch (\Illuminate\Http\Client\ConnectionException|\RuntimeException $exception) {
+                Log::error('Account lock notification email failed.', [
+                    'user_id' => $recipient->user_id,
+                    'exception' => get_class($exception),
+                ]);
+            }
+        }
+    }
+
     private function freshActor(Request $request, UserAccessService $access): User
     {
         $actor = User::query()->findOrFail($request->user()->user_id);
@@ -505,6 +974,7 @@ class UserAccessController extends Controller
         ?User $actor = null,
         ?MfaResetRequest $pendingRequest = null,
         ?Request $request = null,
+        ?MfaResetRequest $pendingAccountRequest = null,
     ): array
     {
         $mfaService = app(PrivilegedMfaService::class);
@@ -518,10 +988,23 @@ class UserAccessController extends Controller
         $realAdmin = $actor !== null
             && User::query()->whereKey($actor->user_id)->value('role') === 'admin'
             && ($request === null || $request->session()->get(GuardSessionState::key('view_as')) === null);
+        $realActorRole = $actor !== null
+            ? User::query()->whereKey($actor->user_id)->value('role')
+            : null;
+        $viewAsActive = $request !== null
+            && $request->session()->get(GuardSessionState::key('view_as')) !== null;
         $mfaTargetAllowed = $realAdmin
             && in_array($user->role, self::MANAGED_ROLES, true)
             && $actorId !== null
             && (int) $user->user_id !== $actorId;
+        $lockTargetAllowed = $access !== null
+            && $actor !== null
+            && ! $viewAsActive
+            && in_array($realActorRole, ['admin', 'owner'], true)
+            && in_array($user->role, self::MANAGED_ROLES, true)
+            && $actorId !== null
+            && (int) $user->user_id !== $actorId
+            && $access->canManage($actor, $user, 'edit_access');
 
         $row = [
             'id' => (int) $user->user_id,
@@ -546,6 +1029,18 @@ class UserAccessController extends Controller
                 'name' => $user->promotedBy->name,
             ] : null,
             'promoted_at' => $user->promoted_at?->toIso8601String(),
+            'locked' => $user->locked_at !== null,
+            'locked_at' => $user->locked_at?->toIso8601String(),
+            'locked_by' => $user->locked_by,
+            'locked_reason' => $user->locked_reason,
+            'account_lock_request' => $pendingAccountRequest ? [
+                'id' => (int) $pendingAccountRequest->id,
+                'action' => $pendingAccountRequest->action,
+                'reason' => $pendingAccountRequest->reason,
+                'requested_by_user_id' => (int) $pendingAccountRequest->requested_by_user_id,
+                'requested_by_name' => $pendingAccountRequest->requester?->name,
+                'expires_at' => $pendingAccountRequest->expires_at?->toIso8601String(),
+            ] : null,
         ];
         if ($mfaTargetAllowed) {
             $row['mfa_actions'] = [
@@ -577,9 +1072,43 @@ class UserAccessController extends Controller
                     'reason' => $access->canManage($actor, $user, $action) ? null : $access->managementReason($actor, $user, $action),
                 ];
             }
+            $row['account_lock_actions'] = [
+                'allowed' => $lockTargetAllowed,
+                'lock' => $lockTargetAllowed
+                    && $pendingAccountRequest === null
+                    && $user->locked_at === null
+                    && ! $this->isLastActiveAccountOfRole($user),
+                'promote' => $lockTargetAllowed
+                    && $pendingAccountRequest === null
+                    && $user->locked_at !== null,
+                'approve' => $lockTargetAllowed
+                    && $realAdmin
+                    && $user->role === 'owner'
+                    && $pendingAccountRequest !== null
+                    && (int) $pendingAccountRequest->requested_by_user_id !== $actorId,
+            ];
             $row['grantable_roles'] = $access->grantableRoles($actor);
+        } else {
+            $row['account_lock_actions'] = [
+                'allowed' => false,
+                'lock' => false,
+                'promote' => false,
+                'approve' => false,
+            ];
         }
         return $row;
+    }
+
+    private function isLastActiveAccountOfRole(User $user): bool
+    {
+        if (! in_array($user->role, ['admin', 'owner'], true)) {
+            return false;
+        }
+
+        return User::query()
+            ->where('role', $user->role)
+            ->whereNull('locked_at')
+            ->count() <= 1;
     }
 
     private function assertPassword(User $actor, string $password): void
@@ -614,9 +1143,23 @@ class UserAccessController extends Controller
         )));
     }
 
-    private function assertNotLastAdmin(): void
+    private function assertNotLastAdmin(string $intent = 'demoted or removed', bool $activeOnly = false): void
     {
-        User::query()->where('role', 'admin')->orderBy('user_id')->lockForUpdate()->get(['user_id']);
-        abort_if(User::query()->where('role', 'admin')->count() <= 1, 409, 'The last admin cannot be demoted or removed.');
+        $admins = User::query()->where('role', 'admin');
+        if ($activeOnly) {
+            $admins->whereNull('locked_at');
+        }
+        $lockedAdmins = $admins->orderBy('user_id')->lockForUpdate()->get(['user_id']);
+        abort_if($lockedAdmins->count() <= 1, 409, "The last admin cannot be {$intent}.");
+    }
+
+    private function assertNotLastOwner(bool $activeOnly = false): void
+    {
+        $owners = User::query()->where('role', 'owner');
+        if ($activeOnly) {
+            $owners->whereNull('locked_at');
+        }
+        $lockedOwners = $owners->orderBy('user_id')->lockForUpdate()->get(['user_id']);
+        abort_if($lockedOwners->count() <= 1, 409, 'The last owner cannot be locked.');
     }
 }

@@ -20,6 +20,9 @@
         data-mfa-allowed-methods-url-template="{{ $mfaAllowedMethodsUrlTemplate }}"
         data-mfa-owner-request-url-template="{{ $mfaOwnerRequestUrlTemplate }}"
         data-mfa-owner-approve-url-template="{{ $mfaOwnerApproveUrlTemplate }}"
+        data-account-lock-url-template="{{ $accountLockUrlTemplate }}"
+        data-account-promote-again-url-template="{{ $accountPromoteAgainUrlTemplate }}"
+        data-account-lock-approve-url-template="{{ $accountLockApproveUrlTemplate }}"
         data-grantable-roles="{{ implode(',', $grantableRoles) }}">
         <script type="application/json" id="userAccessConfig">@json(['permissions' => $permissionDefinitions, 'staffPreset' => $staffPreset])</script>
 
@@ -115,6 +118,21 @@
                     <p class="permission-customized-hint" id="permissionCustomizedHint" hidden>Customized from the staff preset.</p>
                     <div class="permission-toggle-list" id="permissionToggleList"></div>
                 </fieldset>
+
+                <section class="account-lock-section" id="accountLockSection" hidden aria-labelledby="accountLockTitle">
+                    <div>
+                        <h3 id="accountLockTitle">Lock account</h3>
+                        <p id="accountLockDescription">End the account’s sessions and prevent future sign-ins until it is promoted again.</p>
+                    </div>
+                    <label class="field-label" id="accountLockReasonLabel" for="accountLockReason">Reason (optional)</label>
+                    <textarea id="accountLockReason" maxlength="500" rows="3"></textarea>
+                    <label class="field-label" for="accountLockCode">Confirm with a fresh authenticator code</label>
+                    <input id="accountLockCode" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]{6}" required>
+                    <p class="access-dialog-error" id="accountLockError" role="alert" hidden></p>
+                    <p class="account-lock-pending" id="accountLockPending" role="status" hidden></p>
+                    <button class="user-access-danger" id="accountLockAction" type="button">Lock account</button>
+                    <button class="user-access-primary" id="accountLockApprove" type="button" hidden>Approve request</button>
+                </section>
             </div>
             <div class="access-confirm-step" id="passwordConfirmStep" hidden>
                 <p id="accessConfirmationSummary"></p>

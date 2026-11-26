@@ -26,6 +26,10 @@ class EnsureAccessVersion
             return $this->logoutForRevokedAccess($request);
         }
 
+        if ($user->locked_at !== null) {
+            return $this->logoutForLockedAccount($request);
+        }
+
         $sessionUserId = $request->session()->get(GuardSessionState::key(self::USER_KEY));
         $sessionVersion = $request->session()->get(GuardSessionState::key(self::VERSION_KEY));
 
@@ -81,6 +85,33 @@ class EnsureAccessVersion
 
         return redirect()->route($loginRoute)->withErrors([
             'username' => 'Your access changed. Please sign in again.',
+        ]);
+    }
+
+    private function logoutForLockedAccount(Request $request): Response
+    {
+        $loginRoute = 'login';
+        if (config('auth.multi_guard')) {
+            $guard = GuardSessionState::currentGuard();
+            Auth::guard($guard)->logout();
+            GuardSessionState::forgetGuard($request, $guard);
+            GuardSessionState::regenerateSession($request);
+            if ($guard !== 'customer') {
+                $loginRoute = $guard.'.login';
+            }
+        } else {
+            $request->session()->forget('view_as');
+            Auth::logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+        }
+
+        if ($request->expectsJson()) {
+            return response()->json(['message' => 'This account has been demoted.'], 403);
+        }
+
+        return redirect()->route($loginRoute)->withErrors([
+            'username' => 'This account has been demoted.',
         ]);
     }
 }

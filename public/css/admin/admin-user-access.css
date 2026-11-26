@@ -157,6 +157,7 @@
 .you-badge { flex: 0 0 auto; padding: 2px var(--s2); border-radius: var(--r-pill); background: color-mix(in srgb, var(--brand), transparent 86%); color: var(--text); font-size: .6875rem; font-weight: 700; }
 .role-badge,
 .mfa-status { display: inline-flex; align-items: center; min-height: 26px; border: 1px solid currentColor; border-radius: var(--r-pill); padding: 2px var(--s2); color: var(--text); background: var(--surface-2); font-size: .6875rem; font-weight: 700; white-space: nowrap; }
+.user-access-locked-badge { display: inline-flex; align-items: center; min-height: 26px; margin: var(--s1) 0; border: 1px solid var(--danger); border-radius: var(--r-pill); padding: 2px var(--s2); color: var(--danger); background: var(--surface-2); font-size: .6875rem; font-weight: 700; white-space: nowrap; }
 .role-badge--owner { border-color: var(--role-owner); background: color-mix(in srgb, var(--surface), var(--role-owner) 18%); }
 .role-badge--admin { border-color: var(--role-admin); background: color-mix(in srgb, var(--surface), var(--role-admin) 18%); }
 .role-badge--staff { border-color: var(--role-staff); background: color-mix(in srgb, var(--surface), var(--role-staff) 18%); }
@@ -215,6 +216,14 @@
 .permission-group legend { width: 100%; margin-bottom: var(--s1); color: var(--text-muted); font-size: .75rem; font-weight: 700; }
 .permission-toggle { display: inline-flex; align-items: center; gap: var(--s2); min-height: 42px; max-width: 100%; padding: var(--s2) var(--s3); border: 1px solid var(--border); border-radius: var(--r-pill); background: var(--surface-2); color: var(--text); font-size: .8125rem; cursor: pointer; }
 .permission-toggle input { width: 18px; min-height: 18px; height: 18px; margin: 0; accent-color: var(--brand); }
+.account-lock-section { display: grid; gap: var(--s2); min-width: 0; padding-top: var(--s4); border-top: 1px solid var(--border); }
+.account-lock-section h3 { margin: 0; color: var(--text); font-size: 1rem; font-weight: 700; }
+.account-lock-section p { margin: 0; color: var(--text-muted); font-size: var(--font-size-small); overflow-wrap: anywhere; }
+.account-lock-section textarea { width: 100%; min-height: 88px; resize: vertical; border: 1px solid var(--border); border-radius: var(--r-md); padding: var(--s3); background: var(--surface-2); color: var(--text); font: inherit; }
+.account-lock-section textarea:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+.account-lock-section .user-access-danger,
+.account-lock-section .user-access-primary { width: 100%; }
+.account-lock-section .account-lock-pending { padding: var(--s3); border: 1px solid var(--warning); border-radius: var(--r-md); background: var(--surface-2); color: var(--text); }
 .candidate-input-wrap { position: relative; z-index: 2; min-width: 0; }
 .candidate-search-status { margin: var(--s1) 0 0; color: var(--text-muted); font-size: var(--font-size-small); }
 .candidate-search-status:empty { display: none; }

@@ -11,6 +11,8 @@ This procedure applies only to admin, owner, and staff accounts. It does not cre
 
 Temporary MFA disablement is a separate, time-limited login bypass of up to 24 hours. It retains the authenticator, recovery codes, and existing sessions; expiration restores the normal challenge automatically. Re-enabling sooner invalidates existing sessions so the saved TOTP is required again. Do not use temporary disablement to recover a lost device; use the forced re-enrollment process above.
 
+For an account locked through User access, use **Promote again** when an authorized admin is available. The account keeps its role and saved MFA factors, must complete its normal MFA challenge, and receives no restored sessions. An owner account still requires a second admin's approval.
+
 ## Only admin or all admins locked out
 
 There is no self-service or application-level bypass for a locked-out admin. If no real admin can perform an authorized action, designated infrastructure operators may carry out a narrowly scoped recovery under two-person control:
@@ -18,7 +20,7 @@ There is no self-service or application-level bypass for a locked-out admin. If 
 1. Open an incident record with the affected account, reason, time, and the names of two distinct authorized operators. Verify the account holder using the organization's established identity-verification process; do not rely on access to the locked account's email alone.
 2. Have both operators independently approve the change. Use individually attributable, short-lived infrastructure credentials and the approved production database access procedure. Do not share credentials or export MFA secrets or recovery codes.
 3. Take or verify a recoverable database snapshot. Read and record the affected row's role, MFA state, and access version before changing anything.
-4. For a privileged account, set `mfa_reenroll_required` to true and clear `mfa_admin_disabled_until`. Keep any existing factor and recovery-code values intact until the user verifies a replacement factor. Increment `access_version` and rotate `remember_token` to invalidate existing sessions. If the account already has no usable factor, leave it factor-free only for the restricted enrollment path; do not grant access to protected pages.
+4. If the account was locked through User access, clear `locked_at`, `locked_by`, and `locked_reason` without changing its role. For a privileged account, set `mfa_reenroll_required` to true and clear `mfa_admin_disabled_until`. Keep any existing factor and recovery-code values intact until the user verifies a replacement factor. Increment `access_version` and rotate `remember_token` to invalidate existing sessions. If the account already has no usable factor, leave it factor-free only for the restricted enrollment path; do not grant access to protected pages.
 5. Record the approved fields, before-and-after values, operator identities, incident reference, and database change result in the incident record and the organization's infrastructure audit log. Verify the row again after the update.
 6. Require the account holder to sign in through the production login page and complete TOTP enrollment. Confirm they cannot access protected pages before enrollment, then verify access and issue new recovery codes from the profile.
 7. Close the incident only after the account holder confirms access and the second operator verifies that the incident record and audit evidence are complete.

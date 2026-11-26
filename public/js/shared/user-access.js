@@ -42,6 +42,14 @@
     const passwordStep = document.getElementById('passwordConfirmStep');
     const passwordInput = document.getElementById('accessPassword');
     const dialogError = document.getElementById('accessDialogError');
+    const accountLockSection = document.getElementById('accountLockSection');
+    const accountLockReason = document.getElementById('accountLockReason');
+    const accountLockReasonLabel = document.getElementById('accountLockReasonLabel');
+    const accountLockCode = document.getElementById('accountLockCode');
+    const accountLockAction = document.getElementById('accountLockAction');
+    const accountLockApprove = document.getElementById('accountLockApprove');
+    const accountLockError = document.getElementById('accountLockError');
+    const accountLockPending = document.getElementById('accountLockPending');
     const candidatePicker = document.getElementById('candidatePicker');
     const candidateSearch = document.getElementById('candidateSearch');
     const candidateResults = document.getElementById('candidateResults');
@@ -181,6 +189,10 @@
 
     function roleBadge(role) {
         return element('span', `role-badge role-badge--${role}`, roleNames[role] || 'Unknown');
+    }
+
+    function lockedBadge(user) {
+        return user.locked ? element('span', 'user-access-locked-badge', 'Locked') : null;
     }
 
     function permissionNames(permissions) {
@@ -448,6 +460,8 @@
         const nameCell = document.createElement('td'); nameCell.append(personCell(user));
         const emailCell = element('td', 'user-access-email', user.email || '-');
         const roleCell = document.createElement('td'); roleCell.append(roleBadge(user.role));
+        const rowLockedBadge = lockedBadge(user);
+        if (rowLockedBadge) roleCell.append(rowLockedBadge);
         const mfaStatusClass = {
             enabled: 'is-enabled',
             disabled: 'is-disabled',
@@ -470,6 +484,8 @@
         card.dataset.userId = String(user.id);
         const header = element('header', 'user-access-card-header');
         header.append(personCell(user), roleBadge(user.role));
+        const cardLockedBadge = lockedBadge(user);
+        if (cardLockedBadge) header.append(cardLockedBadge);
         const list = element('dl', 'user-access-card-details');
         const fields = [
             ['Email', user.email || '-'],
@@ -600,6 +616,17 @@
         document.getElementById('accessConfirmationSummary').textContent = '';
         document.getElementById('accessPassword').value = '';
         dialogError.hidden = true;
+        accountLockSection.hidden = true;
+        accountLockReason.value = '';
+        accountLockReason.hidden = false;
+        accountLockReasonLabel.hidden = false;
+        accountLockCode.value = '';
+        accountLockCode.hidden = false;
+        accountLockCode.required = false;
+        accountLockAction.hidden = false;
+        accountLockApprove.hidden = true;
+        accountLockPending.hidden = true;
+        accountLockError.hidden = true;
         detailStep.hidden = false;
         passwordStep.hidden = true;
         document.getElementById('backToAccessDetails').hidden = true;
@@ -633,8 +660,55 @@
         const permissions = user.role === 'staff' ? permissionNames(user.permissions) : [];
         renderPermissions(permissions, user.role === 'staff' && JSON.stringify(permissions) !== JSON.stringify(permissionNames(config.staffPreset)));
         updatePermissionVisibility();
+        configureAccountLockSection(user);
         openDialog(accessDialog, opener);
         roleSelect.focus();
+    }
+
+    function configureAccountLockSection(user) {
+        const actions = user.account_lock_actions || {};
+        const pending = user.account_lock_request;
+        const canLock = actions.lock === true;
+        const canPromote = actions.promote === true;
+        const canApprove = actions.approve === true;
+        accountLockSection.hidden = !(
+            canLock || canPromote || canApprove || pending
+        );
+        accountLockError.hidden = true;
+        accountLockPending.hidden = !pending;
+        accountLockReason.value = canLock && !user.locked ? '' : '';
+        accountLockReason.hidden = !canLock || user.locked;
+        accountLockReasonLabel.hidden = accountLockReason.hidden;
+        accountLockCode.value = '';
+        accountLockCode.hidden = !(canLock || canPromote || canApprove);
+        accountLockCode.required = !accountLockCode.hidden;
+        accountLockAction.hidden = !(canLock || canPromote);
+        accountLockApprove.hidden = !canApprove;
+
+        const title = document.getElementById('accountLockTitle');
+        const description = document.getElementById('accountLockDescription');
+        if (user.locked) {
+            title.textContent = 'Account locked';
+            description.textContent = 'This account cannot sign in until it is promoted again.';
+            accountLockAction.textContent = user.role === 'owner' ? 'Request promote again' : 'Promote again';
+            accountLockAction.className = 'user-access-primary';
+        } else {
+            title.textContent = 'Lock account';
+            description.textContent = user.role === 'owner'
+                ? 'A second admin must approve this request before the account is locked.'
+                : 'End the account’s sessions and prevent future sign-ins until it is promoted again.';
+            accountLockAction.textContent = user.role === 'owner' ? 'Request lock' : 'Lock account';
+            accountLockAction.className = 'user-access-danger';
+        }
+
+        if (pending) {
+            const requestedAction = pending.action === 'account_lock' ? 'lock' : 'promote again';
+            const expiresAt = formatDate(pending.expires_at);
+            accountLockPending.textContent = `${requestedAction} request from ${pending.requested_by_name || 'another admin'} is awaiting approval until ${expiresAt}.`;
+            accountLockApprove.textContent = pending.action === 'account_lock'
+                ? 'Approve lock request'
+                : 'Approve promote request';
+        }
     }
 
     function openRemove(user, opener) {
@@ -1009,6 +1083,78 @@
         }
     }
 
+    async function performAccountLockAction() {
+        const user = state.selectedUser;
+        if (!user || !accountLockCode.reportValidity()) return;
+
+        const promote = user.locked === true;
+        const template = promote
+            ? page.dataset.accountPromoteAgainUrlTemplate
+            : page.dataset.accountLockUrlTemplate;
+        const url = template?.replace('__USER__', encodeURIComponent(user.id)) || '';
+        if (!url) {
+            accountLockError.textContent = 'This account action is unavailable.';
+            accountLockError.hidden = false;
+            return;
+        }
+
+        accountLockAction.disabled = true;
+        accountLockApprove.disabled = true;
+        accountLockError.hidden = true;
+        const payload = { code: accountLockCode.value.trim() };
+        if (!promote && accountLockReason.value.trim()) {
+            payload.reason = accountLockReason.value.trim();
+        }
+
+        try {
+            const result = await request(url, { method: 'POST', body: JSON.stringify(payload) });
+            closeDialog(accessDialog);
+            toast(result.message || 'Account access updated.', 'success');
+            await loadUsers({ refreshAll: true });
+        } catch (actionError) {
+            accountLockError.textContent = actionError.message;
+            accountLockError.hidden = false;
+        } finally {
+            accountLockAction.disabled = false;
+            accountLockApprove.disabled = false;
+        }
+    }
+
+    async function approveAccountLockRequest() {
+        const user = state.selectedUser;
+        const accountRequest = user?.account_lock_request;
+        if (!user || !accountRequest || !accountLockCode.reportValidity()) return;
+
+        const template = page.dataset.accountLockApproveUrlTemplate;
+        const url = template
+            ?.replace('__USER__', encodeURIComponent(user.id))
+            .replace('__REQUEST__', encodeURIComponent(accountRequest.id)) || '';
+        if (!url) {
+            accountLockError.textContent = 'This approval action is unavailable.';
+            accountLockError.hidden = false;
+            return;
+        }
+
+        accountLockApprove.disabled = true;
+        accountLockAction.disabled = true;
+        accountLockError.hidden = true;
+        try {
+            const result = await request(url, {
+                method: 'POST',
+                body: JSON.stringify({ code: accountLockCode.value.trim() }),
+            });
+            closeDialog(accessDialog);
+            toast(result.message || 'Account request approved.', 'success');
+            await loadUsers({ refreshAll: true });
+        } catch (actionError) {
+            accountLockError.textContent = actionError.message;
+            accountLockError.hidden = false;
+        } finally {
+            accountLockApprove.disabled = false;
+            accountLockAction.disabled = false;
+        }
+    }
+
     async function submitMfaAction(event) {
         event.preventDefault();
         mfaError.hidden = true;
@@ -1074,6 +1220,8 @@
     accessForm.addEventListener('submit', saveAccess);
     removeForm.addEventListener('submit', removeAccess);
     mfaForm.addEventListener('submit', submitMfaAction);
+    accountLockAction.addEventListener('click', performAccountLockAction);
+    accountLockApprove.addEventListener('click', approveAccountLockRequest);
     if (canEditDetails) {
         document.getElementById('continueAccountDetails').addEventListener('click', enterDetailsPasswordStep);
         document.getElementById('backToAccountDetails').addEventListener('click', () => {

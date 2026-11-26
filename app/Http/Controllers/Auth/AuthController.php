@@ -101,6 +101,16 @@ class AuthController extends Controller
             return $this->loginOnRoleGuard($request, $credentials);
         }
 
+        $provider = Auth::guard()->getProvider();
+        $candidate = $provider->retrieveByCredentials($credentials);
+        if (
+            $candidate instanceof User
+            && $provider->validateCredentials($candidate, $credentials)
+            && $candidate->locked_at !== null
+        ) {
+            return $this->lockedAccountResponse($request);
+        }
+
         if (!Auth::attempt($credentials)) {
             ActivityLogger::log(
                 'user.login_failed',
@@ -262,6 +272,10 @@ class AuthController extends Controller
             $isNewAccount = true;
         }
 
+        if ($user->locked_at !== null) {
+            return $this->lockedAccountResponse($request);
+        }
+
         $request->session()->forget(GuardSessionState::key('view_as'));
         Auth::login($user);
         $request->session()->regenerate();
@@ -318,6 +332,10 @@ class AuthController extends Controller
             }
 
             return back()->withErrors(['username' => 'Invalid username or password.'])->onlyInput('username');
+        }
+
+        if ($user->locked_at !== null) {
+            return $this->lockedAccountResponse($request);
         }
 
         if (Auth::guard($guard)->user()?->is($user)) {
@@ -425,6 +443,10 @@ class AuthController extends Controller
             return response()->json([
                 'message' => "We couldn't verify that Google sign-in. Please try again.",
             ], 422);
+        }
+
+        if ($user->locked_at !== null) {
+            return $this->lockedAccountResponse($request);
         }
 
         if (Auth::guard($guard)->user()?->is($user)) {
@@ -560,6 +582,17 @@ class AuthController extends Controller
         }
 
         return redirect($this->homePath($user))->with('success', 'Logged in successfully!');
+    }
+
+    private function lockedAccountResponse(Request $request)
+    {
+        $message = 'This account has been demoted.';
+
+        if ($request->expectsJson()) {
+            return response()->json(['message' => $message], 403);
+        }
+
+        return back()->withErrors(['username' => $message])->onlyInput('username');
     }
 
     /**
