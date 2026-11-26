@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use App\Support\GuardSessionState;
+use App\Services\PrivilegedMfaService;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -17,6 +18,17 @@ class EnsureAdminMfa
 
         if (!$user || !$user->requiresMfa()) {
             return $next($request);
+        }
+
+        $mfa = app(PrivilegedMfaService::class);
+        $user = $mfa->applyExpiredDisable($user);
+        if ($mfa->isReenrollmentRequired($user)) {
+            $request->session()->forget([
+                GuardSessionState::key('mfa_passed_at'),
+                GuardSessionState::key('mfa_passed_user_id'),
+            ]);
+
+            return redirect()->route(mfa_route_name('mfa.setup'));
         }
 
         $passedAt = $request->session()->get(GuardSessionState::key('mfa_passed_at'));

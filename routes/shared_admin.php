@@ -7,6 +7,7 @@ use App\Http\Controllers\Admin\CustomerCreditController;
 use App\Http\Controllers\Admin\ReportController;
 use App\Http\Controllers\Admin\SpecificDateClosureController;
 use App\Http\Controllers\Admin\UserAccessController;
+use App\Http\Controllers\Admin\PrivilegedMfaController;
 use App\Http\Controllers\Admin\WalkInBookingController;
 
 return [
@@ -269,6 +270,46 @@ return [
             'throttle.admin-management:20,1',
             'can.access:user_details.edit',
         ],
+        'roles' => ['admin'],
+    ],
+    [
+        'name' => 'admin.users.mfa.disable',
+        'method' => 'POST',
+        'legacy_uri' => 'admin/users/{user}/mfa/disable',
+        'action' => [PrivilegedMfaController::class, 'disable'],
+        'middleware' => ['auth', 'admin.mfa', 'real-admin', 'throttle:5,1'],
+        'roles' => ['admin'],
+    ],
+    [
+        'name' => 'admin.users.mfa.enable',
+        'method' => 'POST',
+        'legacy_uri' => 'admin/users/{user}/mfa/enable',
+        'action' => [PrivilegedMfaController::class, 'enable'],
+        'middleware' => ['auth', 'admin.mfa', 'real-admin', 'throttle:5,1'],
+        'roles' => ['admin'],
+    ],
+    [
+        'name' => 'admin.users.mfa.allowed-methods',
+        'method' => 'PATCH',
+        'legacy_uri' => 'admin/users/{user}/mfa/allowed-methods',
+        'action' => [PrivilegedMfaController::class, 'allowedMethods'],
+        'middleware' => ['auth', 'admin.mfa', 'real-admin', 'throttle:5,1'],
+        'roles' => ['admin'],
+    ],
+    [
+        'name' => 'admin.users.mfa.owner-request',
+        'method' => 'POST',
+        'legacy_uri' => 'admin/users/{user}/mfa/owner-requests',
+        'action' => [PrivilegedMfaController::class, 'requestOwnerChange'],
+        'middleware' => ['auth', 'admin.mfa', 'real-admin', 'throttle:5,1'],
+        'roles' => ['admin'],
+    ],
+    [
+        'name' => 'admin.users.mfa.owner-approve',
+        'method' => 'POST',
+        'legacy_uri' => 'admin/users/{user}/mfa/owner-requests/{requestId}/approve',
+        'action' => [PrivilegedMfaController::class, 'approveOwnerChange'],
+        'middleware' => ['auth', 'admin.mfa', 'real-admin', 'throttle:5,1'],
         'roles' => ['admin'],
     ],
     [

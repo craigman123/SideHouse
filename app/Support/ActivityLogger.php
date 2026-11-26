@@ -6,6 +6,7 @@ use App\Models\ActivityLog;
 use App\Models\User;
 use App\Support\GuardSessionState;
 use Illuminate\Support\Facades\Log;
+use RuntimeException;
 use Throwable;
 
 /**
@@ -104,6 +105,53 @@ class ActivityLogger
                 'action' => $action,
             ]);
         }
+    }
+
+    public static function logStrict(
+        string $action,
+        string $description,
+        mixed $actor = self::ACTOR_NOT_PROVIDED,
+        mixed $subject = null,
+        array $properties = []
+    ): void {
+        $actor = $actor === self::ACTOR_NOT_PROVIDED ? auth()->user() : $actor;
+        $viewAs = request()?->hasSession()
+            ? request()->session()->get(GuardSessionState::key('view_as'))
+            : null;
+        if ($actor && $viewAs !== null) {
+            $realRole = User::query()->whereKey($actor->user_id)->value('role');
+            if ($realRole === 'admin' && in_array($viewAs, ['admin', 'owner', 'staff', 'customer'], true)) {
+                $properties['view_as'] ??= $viewAs;
+            }
+        }
+
+        $payload = [
+            'user_id' => $actor?->user_id,
+            'user_name' => $actor?->name ?? 'Guest',
+            'action' => $action,
+            'subject_type' => $subject ? class_basename($subject) : null,
+            'subject_id' => $subject?->id ?? $subject?->user_id ?? null,
+            'description' => $description,
+            'properties' => $properties ?: null,
+            'ip_address' => request()?->ip(),
+            'user_agent' => request()?->userAgent(),
+        ];
+
+        $log = ActivityLog::create($payload);
+        if (! $log->exists) {
+            throw new RuntimeException('The strict activity log was not persisted.');
+        }
+
+        self::fileChannel()->info($description, [
+            'action' => $action,
+            'user' => $payload['user_name'],
+            'user_id' => $payload['user_id'],
+            'subject' => $payload['subject_type'] && $payload['subject_id']
+                ? $payload['subject_type'].'#'.$payload['subject_id']
+                : null,
+            'ip' => $payload['ip_address'],
+            'context' => $properties ?: null,
+        ]);
     }
 
     /**

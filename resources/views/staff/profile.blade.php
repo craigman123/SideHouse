@@ -39,17 +39,7 @@
             </form>
         </section>
 
-        <section class="profile-card staff-mfa-card">
-            <div><h2>Multi-factor authentication</h2><p>Status: <strong>{{ $mfaEnabled ? 'Enabled' : 'Pending setup' }}</strong></p><p>MFA is required for staff access and cannot be disabled here.</p></div>
-            @if ($mfaEnabled)
-                <form method="POST" action="{{ route('staff.profile.recovery-codes') }}" id="staffRecoveryCodesForm">
-                    @csrf
-                    <div class="profile-grid"><div class="profile-item"><label for="staffRecoveryPassword">Current password</label><input id="staffRecoveryPassword" type="password" name="current_password" autocomplete="current-password" required></div></div>
-                    <div class="profile-actions"><button class="btn btn-primary" type="submit">Regenerate recovery codes</button></div>
-                </form>
-            @endif
-            @if (session('recovery_codes'))<div class="recovery-codes" role="status"><h3>Save your new recovery codes</h3><ul>@foreach (session('recovery_codes') as $code)<li>{{ $code }}</li>@endforeach</ul></div>@endif
-        </section>
+        @include('partials.management.privileged-mfa')
 
         <section class="profile-card staff-signout-card" aria-labelledby="staffSignoutTitle">
             <div>

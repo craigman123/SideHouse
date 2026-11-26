@@ -28,6 +28,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Maintenance\MaintenanceController;
 use App\Http\Controllers\Guest\GuestBookingLookupController;
 use App\Http\Controllers\Admin\MetricsController;
+use App\Http\Controllers\Admin\PrivilegedMfaController;
 use App\Http\Controllers\Guest\GuestCreditController;
 
 Route::get('/guest/booking/latest', [GuestBookingLookupController::class, 'latest'])
@@ -345,6 +346,9 @@ Route::middleware(['auth', 'admin', 'admin.mfa', 'throttle.admin-management:120,
     Route::get('/admin/profile', [AdminProfileController::class, 'profile'])->middleware('owner.page.redirect')->name('admin.profile');
     Route::put('/admin/profile', [AdminProfileController::class, 'update'])->name('admin.profile.update');
     Route::delete('/admin/profile', [AdminProfileController::class, 'destroyAccount'])->name('admin.profile.destroy');
+    Route::post('/admin/profile/mfa/recovery-codes', [PrivilegedMfaController::class, 'regenerateRecoveryCodes'])
+        ->middleware('throttle:5,1')
+        ->name('admin.profile.mfa.recovery-codes');
 
     // Reports
     Route::get('/reports', [ReportController::class, 'index'])->middleware('owner.page.redirect')->name('admin.reports.index');

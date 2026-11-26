@@ -41,6 +41,11 @@ class RoleScopedSharedRoutesTest extends TestCase
         'admin.users.remove-access' => ['admin', 'owner'],
         'admin.users.details' => ['admin'],
         'admin.users.details.update' => ['admin'],
+        'admin.users.mfa.disable' => ['admin'],
+        'admin.users.mfa.enable' => ['admin'],
+        'admin.users.mfa.allowed-methods' => ['admin'],
+        'admin.users.mfa.owner-request' => ['admin'],
+        'admin.users.mfa.owner-approve' => ['admin'],
         'admin.reports.data' => ['admin', 'owner'],
         'admin.customer-credits.lookup' => ['admin', 'owner'],
         'admin.customer-credits.store' => ['admin', 'owner'],
@@ -230,6 +235,7 @@ class RoleScopedSharedRoutesTest extends TestCase
                     'block' => $block->id,
                     'closure' => $closure->id,
                     'user' => $targetUser->user_id,
+                    'requestId' => 1,
                 ]);
                 $url = route($routeName, $parameters);
 

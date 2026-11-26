@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Services\CustomerMfaService;
+use App\Services\PrivilegedMfaService;
 use App\Support\ActivityLogger;
 use App\Support\GuardSessionState;
 use Illuminate\Http\Request;
@@ -19,8 +20,12 @@ class MfaController extends Controller
     public function setup(Request $request)
     {
         $user = $request->user();
+        $privilegedMfa = app(PrivilegedMfaService::class);
+        if ($user->requiresMfa()) {
+            $user = $privilegedMfa->applyExpiredDisable($user);
+        }
 
-        if ($user->hasMfaEnabled()) {
+        if ($user->hasMfaEnabled() && ! $privilegedMfa->isReenrollmentRequired($user)) {
             return redirect($this->homePath($user));
         }
 
@@ -59,8 +64,12 @@ class MfaController extends Controller
     public function initSetup(Request $request)
     {
         $user = $request->user();
+        $privilegedMfa = app(PrivilegedMfaService::class);
+        if ($user->requiresMfa()) {
+            $user = $privilegedMfa->applyExpiredDisable($user);
+        }
 
-        if ($user->hasMfaEnabled()) {
+        if ($user->hasMfaEnabled() && ! $privilegedMfa->isReenrollmentRequired($user)) {
             return response()->json(['message' => 'MFA already enabled'], 400);
         }
 
@@ -93,8 +102,12 @@ class MfaController extends Controller
         $request->validate(['code' => 'required|string']);
 
         $user = $request->user();
+        $privilegedMfa = app(PrivilegedMfaService::class);
+        if ($user->requiresMfa()) {
+            $user = $privilegedMfa->applyExpiredDisable($user);
+        }
 
-        if ($user->hasMfaEnabled()) {
+        if ($user->hasMfaEnabled() && ! $privilegedMfa->isReenrollmentRequired($user)) {
             if ($request->expectsJson()) {
                 return response()->json(['message' => 'MFA already enabled'], 400);
             }
@@ -118,9 +131,7 @@ class MfaController extends Controller
         }
 
         $recoveryCodes = collect(range(1, 8))->map(fn () => Str::random(10))->values()->all();
-        $storedRecoveryCodes = $user->role === 'user'
-            ? array_map(static fn (string $code): string => Hash::make($code), $recoveryCodes)
-            : $recoveryCodes;
+        $storedRecoveryCodes = array_map(static fn (string $code): string => Hash::make($code), $recoveryCodes);
 
         if ($user->role === 'user') {
             DB::transaction(function () use ($user, $secret, $storedRecoveryCodes, $google2fa, $request): void {
@@ -136,12 +147,40 @@ class MfaController extends Controller
                 ]);
             });
         } else {
-            $user->update([
-                'mfa_enabled'        => true,
-                'mfa_method'         => 'totp',
-                'mfa_secret'         => $secret,
-                'mfa_recovery_codes' => $storedRecoveryCodes,
-            ]);
+            abort_unless($user->requiresMfa(), 403);
+            DB::transaction(function () use ($user, $secret, $storedRecoveryCodes, $google2fa, $request, $privilegedMfa): void {
+                $target = User::query()->whereKey($user->user_id)->lockForUpdate()->firstOrFail();
+                abort_unless($target->requiresMfa(), 403);
+                abort_if(
+                    $target->mfa_admin_disabled_until !== null,
+                    409,
+                    'Sign in again before completing MFA re-enrollment.',
+                );
+                abort_if(
+                    $target->hasMfaEnabled() && ! $privilegedMfa->isReenrollmentRequired($target),
+                    409,
+                    'MFA is already enabled.',
+                );
+                $allowedMethods = $target->mfa_pending_allowed_methods ?? $target->mfa_allowed_methods ?? 'totp';
+                abort_unless(in_array('totp', match ($allowedMethods) {
+                    'both' => ['totp', 'passkey'],
+                    'passkey' => ['passkey'],
+                    default => ['totp'],
+                }, true), 409, 'TOTP is not currently allowed for this account.');
+                abort_unless($google2fa->verifyKey($secret, $request->code), 422, 'Invalid authentication code.');
+
+                $target->forceFill([
+                    'mfa_enabled' => true,
+                    'mfa_method' => 'totp',
+                    'mfa_secret' => $secret,
+                    'mfa_recovery_codes' => $storedRecoveryCodes,
+                    'mfa_reenroll_required' => false,
+                    'mfa_admin_disabled_until' => null,
+                    'mfa_allowed_methods' => $target->mfa_pending_allowed_methods ?? ($target->mfa_allowed_methods ?? 'totp'),
+                    'mfa_pending_allowed_methods' => null,
+                ])->save();
+            });
+            $user->refresh();
         }
 
         if ($user->role === 'user') {
@@ -178,20 +217,46 @@ class MfaController extends Controller
             ->with('recovery_codes', $recoveryCodes);
     }
 
-    public function challenge(Request $request)
+    public function challenge(Request $request, PrivilegedMfaService $privilegedMfa)
     {
+        $user = $request->user();
+        if ($user?->requiresMfa()) {
+            $user = $privilegedMfa->applyExpiredDisable($user);
+            if ($privilegedMfa->isReenrollmentRequired($user)) {
+                return redirect()->route(mfa_route_name('mfa.setup'));
+            }
+        }
+
         return view('auth.mfa-challenge', [
-            'mfaVerifyUrl' => $request->user()?->role === 'user'
+            'mfaVerifyUrl' => $user?->role === 'user'
                 ? role_route('customer.mfa.verify')
                 : route(mfa_route_name('mfa.verify')),
         ]);
     }
 
-    public function verify(Request $request, CustomerMfaService $customerMfa)
+    public function verify(
+        Request $request,
+        CustomerMfaService $customerMfa,
+        PrivilegedMfaService $privilegedMfa
+    )
     {
         $request->validate(['code' => 'required|string']);
 
         $user = $request->user();
+        if ($user->requiresMfa()) {
+            $user = $privilegedMfa->applyExpiredDisable($user);
+            if ($privilegedMfa->isReenrollmentRequired($user)) {
+                if ($request->expectsJson()) {
+                    return response()->json([
+                        'message' => 'MFA re-enrollment is required.',
+                        'redirect' => route(mfa_route_name('mfa.setup'), absolute: false),
+                    ], 409);
+                }
+
+                return redirect()->route(mfa_route_name('mfa.setup'));
+            }
+        }
+
         $google2fa = new Google2FA();
 
         $secret = $user->mfa_secret;
@@ -226,16 +291,16 @@ class MfaController extends Controller
             $recoveryCodeUsed = $verification['recovery_code_used'];
             $user->refresh();
         } else {
-            $valid = $google2fa->verifyKey($secret, $request->code);
+            $verification = DB::transaction(function () use ($privilegedMfa, $request, $user): array {
+                $target = User::query()->whereKey($user->user_id)->lockForUpdate()->firstOrFail();
+                abort_unless($target->requiresMfa(), 403);
+                abort_unless($target->hasMfaEnabled(), 409, 'Set up MFA before verifying a code.');
 
-            if (!$valid && is_array($user->mfa_recovery_codes)) {
-                if (in_array($request->code, $user->mfa_recovery_codes)) {
-                    $valid = true;
-                    $user->update([
-                        'mfa_recovery_codes' => array_values(array_diff($user->mfa_recovery_codes, [$request->code])),
-                    ]);
-                }
-            }
+                return $privilegedMfa->verifyAndConsumeCode($target, $request->code);
+            });
+            $valid = $verification['valid'];
+            $recoveryCodeUsed = $verification['recovery_code_used'];
+            $user->refresh();
         }
 
         if (!$valid) {
@@ -246,9 +311,12 @@ class MfaController extends Controller
         }
 
         if ($recoveryCodeUsed) {
+            $customer = $user->role === 'user';
             ActivityLogger::log(
-                'customer.mfa_recovery_code_used',
-                "{$user->name} used a customer MFA recovery code.",
+                $customer ? 'customer.mfa_recovery_code_used' : 'privileged_mfa.recovery_code_used',
+                $customer
+                    ? "{$user->name} used a customer MFA recovery code."
+                    : "{$user->name} used a privileged MFA recovery code.",
                 actor: $user,
                 subject: $user,
                 properties: ['context' => 'login'],

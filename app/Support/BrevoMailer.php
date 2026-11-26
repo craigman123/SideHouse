@@ -38,7 +38,7 @@ class BrevoMailer
             'api-key' => $apiKey,
             'Content-Type' => 'application/json',
             'Accept' => 'application/json',
-        ])->post('https://api.brevo.com/v3/smtp/email', [
+        ])->connectTimeout(3)->timeout(10)->post('https://api.brevo.com/v3/smtp/email', [
             'sender' => [
                 'name' => config('mail.from.name'),
                 'email' => config('mail.from.address'),

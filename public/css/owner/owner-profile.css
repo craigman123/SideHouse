@@ -24,6 +24,35 @@ html.owner-layout-shell .profile-card {
     border-top: var(--s1) solid var(--brand);
 }
 
+html.owner-layout-shell .privileged-mfa-card {
+    display: grid;
+    gap: var(--s4);
+}
+
+html.owner-layout-shell .privileged-mfa-card h2 {
+    margin: 0 0 var(--s3);
+}
+
+html.owner-layout-shell .privileged-mfa-card .profile-item > span {
+    color: var(--text-muted);
+    font-size: var(--font-size-small);
+}
+
+html.owner-layout-shell .privileged-mfa-card p {
+    color: var(--text-muted);
+}
+
+html.owner-layout-shell .privileged-mfa-card .profile-item strong {
+    overflow-wrap: anywhere;
+}
+
+html.owner-layout-shell .privileged-mfa-card .recovery-codes {
+    padding: var(--s4);
+    border: 1px solid var(--border);
+    border-radius: var(--r-md);
+    background: var(--surface-2);
+}
+
 html.owner-layout-shell .profile-header {
     display: flex;
     align-items: center;

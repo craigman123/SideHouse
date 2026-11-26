@@ -124,6 +124,31 @@ class LegacySharedRoutesSnapshotTest extends TestCase
             ['PATCH'],
             ['web', 'auth', 'admin.mfa', 'admin.or.owner', 'throttle.admin-management:120,1', 'can.access:user_access.manage', 'throttle.admin-management:20,1', 'can.access:user_details.edit'],
         ],
+        'admin.users.mfa.disable' => [
+            'admin/users/{user}/mfa/disable',
+            ['POST'],
+            ['web', 'auth', 'admin.mfa', 'real-admin', 'throttle:5,1'],
+        ],
+        'admin.users.mfa.enable' => [
+            'admin/users/{user}/mfa/enable',
+            ['POST'],
+            ['web', 'auth', 'admin.mfa', 'real-admin', 'throttle:5,1'],
+        ],
+        'admin.users.mfa.allowed-methods' => [
+            'admin/users/{user}/mfa/allowed-methods',
+            ['PATCH'],
+            ['web', 'auth', 'admin.mfa', 'real-admin', 'throttle:5,1'],
+        ],
+        'admin.users.mfa.owner-request' => [
+            'admin/users/{user}/mfa/owner-requests',
+            ['POST'],
+            ['web', 'auth', 'admin.mfa', 'real-admin', 'throttle:5,1'],
+        ],
+        'admin.users.mfa.owner-approve' => [
+            'admin/users/{user}/mfa/owner-requests/{requestId}/approve',
+            ['POST'],
+            ['web', 'auth', 'admin.mfa', 'real-admin', 'throttle:5,1'],
+        ],
         'admin.reports.data' => [
             'reports/data',
             ['GET', 'HEAD'],

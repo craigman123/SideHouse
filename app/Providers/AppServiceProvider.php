@@ -15,12 +15,15 @@ use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\View;
 use App\Models\CreditWallet;
+use App\Models\User;
+use App\Policies\PrivilegedMfaPolicy;
 use App\Support\GuardSessionState;
 use Symfony\Component\Mailer\Bridge\Brevo\Transport\BrevoTransportFactory;
 use Symfony\Component\Mailer\Transport\Dsn;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Auth\Events\Logout;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Gate;
 
 
 class AppServiceProvider extends ServiceProvider
@@ -40,6 +43,7 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {   
         Model::preventSilentlyDiscardingAttributes(! $this->app->isProduction());
+        Gate::policy(User::class, PrivilegedMfaPolicy::class);
         Paginator::defaultView('vendor.pagination.pagination-custom');
         PaymentReference::observe(PaymentReferenceObserver::class);
 

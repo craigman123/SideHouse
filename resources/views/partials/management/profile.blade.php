@@ -76,6 +76,8 @@
 
         </div>
 
+        @include('partials.management.privileged-mfa')
+
         <div class="danger-zone">
             <h3 class="danger-zone-title">Danger Zone</h3>
             <div class="danger-zone-row">

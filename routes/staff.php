@@ -5,6 +5,7 @@ use App\Http\Controllers\Staff\CustomersController;
 use App\Http\Controllers\Staff\ActivityLogsController;
 use App\Http\Controllers\Staff\OverviewController;
 use App\Http\Controllers\Staff\ProfileController;
+use App\Http\Controllers\Admin\PrivilegedMfaController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware(['auth', 'staff', 'admin.mfa', 'throttle:120,1'])
@@ -30,6 +31,6 @@ Route::middleware(['auth', 'staff', 'admin.mfa', 'throttle:120,1'])
         Route::get('/profile', [ProfileController::class, 'index'])->name('profile');
         Route::put('/profile', [ProfileController::class, 'update'])->middleware('throttle:10,1')->name('profile.update');
         Route::put('/profile/password', [ProfileController::class, 'changePassword'])->middleware('throttle:10,1')->name('profile.password');
-        Route::post('/profile/recovery-codes', [ProfileController::class, 'regenerateRecoveryCodes'])
-            ->middleware('throttle:5,1')->name('profile.recovery-codes');
+        Route::post('/profile/mfa/recovery-codes', [PrivilegedMfaController::class, 'regenerateRecoveryCodes'])
+            ->middleware('throttle:5,1')->name('profile.mfa.recovery-codes');
     });

@@ -14,10 +14,7 @@ class ProfileController extends Controller
 {
     public function index(Request $request): View
     {
-        return view('staff.profile', [
-            'user' => $request->user(),
-            'mfaEnabled' => $request->user()->hasMfaEnabled(),
-        ]);
+        return view('staff.profile', ['user' => $request->user()]);
     }
 
     public function update(Request $request): RedirectResponse
@@ -50,17 +47,4 @@ class ProfileController extends Controller
         return back()->with('success', 'Password updated.');
     }
 
-    public function regenerateRecoveryCodes(Request $request): RedirectResponse
-    {
-        $passwordGuard = config('auth.multi_guard') ? GuardSessionState::currentGuard() : 'web';
-        $request->validate(['current_password' => ['required', 'current_password:'.$passwordGuard]]);
-        $user = $request->user();
-        abort_unless($user->hasMfaEnabled(), 409, 'Set up MFA before regenerating recovery codes.');
-
-        $codes = collect(range(1, 8))->map(fn () => Str::random(10))->values()->all();
-        $user->forceFill(['mfa_recovery_codes' => $codes])->save();
-        ActivityLogger::log('staff.mfa_recovery_codes_regenerated', "{$user->name} regenerated MFA recovery codes.", subject: $user);
-
-        return back()->with('recovery_codes', $codes);
-    }
 }

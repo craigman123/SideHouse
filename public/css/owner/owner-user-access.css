@@ -162,6 +162,8 @@
 .role-badge--staff { border-color: var(--role-staff); background: color-mix(in srgb, var(--surface), var(--role-staff) 18%); }
 .mfa-status.is-enabled { border-color: var(--role-staff); }
 .mfa-status.is-pending { border-color: var(--role-owner); }
+.mfa-status.is-disabled { border-color: var(--danger); color: var(--danger); }
+.mfa-status.is-reenrollment { border-color: var(--warning); color: var(--warning); }
 
 .user-access-actions { position: relative; }
 .user-access-actions summary { width: max-content; color: var(--brand); cursor: pointer; font-size: .8125rem; font-weight: 700; list-style: none; }

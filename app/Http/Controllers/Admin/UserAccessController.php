@@ -4,9 +4,12 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Mail\AdminChangedAccountEmailNotice;
+use App\Models\MfaResetRequest;
 use App\Models\User;
+use App\Services\PrivilegedMfaService;
 use App\Services\UserAccessService;
 use App\Support\ActivityLogger;
+use App\Support\GuardSessionState;
 use App\Support\LikePattern;
 use App\Support\Mask;
 use Illuminate\Database\Eloquent\Builder;
@@ -26,15 +29,33 @@ class UserAccessController extends Controller
 {
     private const MANAGED_ROLES = ['owner', 'admin', 'staff'];
 
-    public function page(UserAccessService $access): View
+    public function page(Request $request, UserAccessService $access): View
     {
-        $actor = auth()->user();
+        $actor = $request->user();
         $effectiveActor = $access->effectiveUser($actor);
         $permissionDefinitions = config('user_access.permissions', []);
+        $canManageMfa = $access->isRealAdmin($actor, $request)
+            && $request->session()->get(GuardSessionState::key('view_as')) === null;
 
         return view('admin.user-access.index', [
             'actorRole' => $effectiveActor->role,
             'actorId' => (int) $actor->user_id,
+            'canManageMfa' => $canManageMfa,
+            'mfaDisableUrlTemplate' => $canManageMfa
+                ? role_route('admin.users.mfa.disable', ['user' => '__USER__'])
+                : '',
+            'mfaEnableUrlTemplate' => $canManageMfa
+                ? role_route('admin.users.mfa.enable', ['user' => '__USER__'])
+                : '',
+            'mfaAllowedMethodsUrlTemplate' => $canManageMfa
+                ? role_route('admin.users.mfa.allowed-methods', ['user' => '__USER__'])
+                : '',
+            'mfaOwnerRequestUrlTemplate' => $canManageMfa
+                ? role_route('admin.users.mfa.owner-request', ['user' => '__USER__'])
+                : '',
+            'mfaOwnerApproveUrlTemplate' => $canManageMfa
+                ? role_route('admin.users.mfa.owner-approve', ['user' => '__USER__', 'requestId' => '__REQUEST__'])
+                : '',
             'permissionDefinitions' => collect(config('user_access.staff_permissions', []))
                 ->mapWithKeys(fn (string $key) => [$key => $permissionDefinitions[$key] ?? null])
                 ->all(),
@@ -62,10 +83,27 @@ class UserAccessController extends Controller
         }
 
         $users = $query->orderByRaw("CASE role WHEN 'owner' THEN 0 WHEN 'admin' THEN 1 ELSE 2 END")
-            ->orderBy('name')->get()
-            ->map(fn (User $user) => $this->serializeUser($user, (int) $actor->user_id, $access, $actor));
+            ->orderBy('name')->get();
+        $pendingRequests = $users->isEmpty()
+            ? collect()
+            : MfaResetRequest::query()
+                ->whereIn('target_user_id', $users->pluck('user_id'))
+                ->where('status', 'pending')
+                ->where('expires_at', '>', now())
+                ->with('requester')
+                ->get()
+                ->keyBy('target_user_id');
 
-        return response()->json(['users' => $users]);
+        $serialized = $users->map(fn (User $user) => $this->serializeUser(
+            $user,
+            (int) $actor->user_id,
+            $access,
+            $actor,
+            $pendingRequests->get($user->user_id),
+            $request,
+        ));
+
+        return response()->json(['users' => $serialized]);
     }
 
     public function candidates(Request $request): JsonResponse
@@ -457,8 +495,31 @@ class UserAccessController extends Controller
         });
     }
 
-    private function serializeUser(User $user, ?int $actorId = null, ?UserAccessService $access = null, ?User $actor = null): array
+    private function serializeUser(
+        User $user,
+        ?int $actorId = null,
+        ?UserAccessService $access = null,
+        ?User $actor = null,
+        ?MfaResetRequest $pendingRequest = null,
+        ?Request $request = null,
+    ): array
     {
+        $mfaService = app(PrivilegedMfaService::class);
+        $state = in_array($user->role, self::MANAGED_ROLES, true)
+            ? $mfaService->state($user)
+            : [
+                'key' => $user->hasMfaEnabled() ? 'enabled' : 'pending_setup',
+                'label' => $user->hasMfaEnabled() ? 'Enabled' : 'Pending setup',
+                'disabled_until' => null,
+            ];
+        $realAdmin = $actor !== null
+            && User::query()->whereKey($actor->user_id)->value('role') === 'admin'
+            && ($request === null || $request->session()->get(GuardSessionState::key('view_as')) === null);
+        $mfaTargetAllowed = $realAdmin
+            && in_array($user->role, self::MANAGED_ROLES, true)
+            && $actorId !== null
+            && (int) $user->user_id !== $actorId;
+
         $row = [
             'id' => (int) $user->user_id,
             'name' => $user->name,
@@ -469,6 +530,13 @@ class UserAccessController extends Controller
             'role' => $user->role,
             'permissions' => $user->role === 'staff' ? ($user->permissions ?? config('user_access.presets.staff')) : [],
             'mfa_enabled' => $user->hasMfaEnabled(),
+            'mfa_state' => $state['key'],
+            'mfa_state_label' => $state['label'],
+            'mfa_disabled_until' => $state['disabled_until'],
+            'mfa_allowed_methods' => in_array($user->role, self::MANAGED_ROLES, true)
+                ? ($user->mfa_allowed_methods ?? 'totp')
+                : null,
+            'mfa_pending_allowed_methods' => $mfaTargetAllowed ? $user->mfa_pending_allowed_methods : null,
             'last_login_at' => $user->last_login_at?->toIso8601String(),
             'promoted_by' => $user->promotedBy ? [
                 'id' => (int) $user->promotedBy->user_id,
@@ -476,6 +544,28 @@ class UserAccessController extends Controller
             ] : null,
             'promoted_at' => $user->promoted_at?->toIso8601String(),
         ];
+        if ($mfaTargetAllowed) {
+            $row['mfa_actions'] = [
+                'disable' => $user->role !== 'owner' && $state['key'] === 'enabled',
+                'enable' => $user->role !== 'owner' && $state['key'] === 'disabled',
+                'force_reenroll' => $user->role !== 'owner' && $state['key'] === 'enabled',
+                'allowed_methods' => true,
+                'request_owner_change' => $user->role === 'owner'
+                    && $pendingRequest === null
+                    && in_array($state['key'], ['enabled', 'disabled'], true),
+                'approve_owner_request' => $pendingRequest !== null
+                    && (int) $pendingRequest->requested_by_user_id !== $actorId,
+            ];
+            $row['pending_mfa_request'] = $pendingRequest ? [
+                'id' => (int) $pendingRequest->id,
+                'action' => $pendingRequest->action,
+                'requested_by_user_id' => (int) $pendingRequest->requested_by_user_id,
+                'requested_by_name' => $pendingRequest->requester?->name,
+                'expires_at' => $pendingRequest->expires_at?->toIso8601String(),
+            ] : null;
+        } else {
+            $row['mfa_actions'] = [];
+        }
         if ($access && $actor) {
             $row['actions'] = [];
             foreach (['edit_access', 'remove_access', 'edit_details'] as $action) {

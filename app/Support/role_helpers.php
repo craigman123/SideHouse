@@ -6,6 +6,22 @@ use Illuminate\Support\Facades\Route;
 if (! function_exists('role_route')) {
     function role_route(string $baseName, array $parameters = []): string
     {
+        if ($baseName === 'admin.profile.mfa.recovery-codes') {
+            $role = config('auth.multi_guard')
+                ? Auth::getDefaultDriver()
+                : (string) Auth::user()?->role;
+            $routeName = match ($role) {
+                'admin', 'owner', 'staff' => $role.'.profile.mfa.recovery-codes',
+                default => throw new LogicException("Privileged profile routes are not available for role [{$role}]."),
+            };
+
+            if (! Route::has($routeName)) {
+                throw new LogicException("Route [{$routeName}] is not available for role [{$role}].");
+            }
+
+            return route($routeName, $parameters);
+        }
+
         $customerRoutes = [
             'customer.mfa.setup' => 'mfa.setup',
             'customer.mfa.setup.init' => 'mfa.setup.init',

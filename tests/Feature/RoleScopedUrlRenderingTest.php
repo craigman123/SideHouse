@@ -131,7 +131,12 @@ class RoleScopedUrlRenderingTest extends TestCase
         $adminReports->assertSee('data-reports-url="'.route('admin.reports.data').'"', false);
         $adminAccess = $this->signInAs($admin, 'admin')->get('/admin/user-access')->assertOk();
         $adminAccess->assertSee('data-list-url="'.route('admin.users.index').'"', false)
-            ->assertSee('data-update-url-template="'.route('admin.users.update', ['user' => '__USER__']).'"', false);
+            ->assertSee('data-update-url-template="'.route('admin.users.update', ['user' => '__USER__']).'"', false)
+            ->assertSee('data-mfa-disable-url-template="'.route('admin.users.mfa.disable', ['user' => '__USER__']).'"', false)
+            ->assertSee('data-mfa-owner-approve-url-template="'.route('admin.users.mfa.owner-approve', ['user' => '__USER__', 'requestId' => '__REQUEST__']).'"', false);
+        $admin->forceFill(['mfa_enabled' => true, 'mfa_secret' => 'ADMINSECRET'])->save();
+        $adminProfile = $this->signInAs($admin, 'admin')->get('/admin/profile')->assertOk();
+        $adminProfile->assertSee('action="'.route('admin.profile.mfa.recovery-codes').'"', false);
 
         $ownerCustomers = $this->signInAs($owner, 'owner')->get('/owner/customers')->assertOk();
         $ownerCustomers->assertSee('data-customers-url="'.route('owner.customers.data').'"', false)
@@ -142,11 +147,17 @@ class RoleScopedUrlRenderingTest extends TestCase
         $ownerAccess = $this->signInAs($owner, 'owner')->get('/owner/user-access')->assertOk();
         $ownerAccess->assertSee('data-list-url="'.route('owner.users.index').'"', false)
             ->assertSee('data-update-url-template="'.route('owner.users.update', ['user' => '__USER__']).'"', false);
+        $owner->forceFill(['mfa_enabled' => true, 'mfa_secret' => 'OWNERSECRET'])->save();
+        $ownerProfile = $this->signInAs($owner, 'owner')->get('/owner/profile')->assertOk();
+        $ownerProfile->assertSee('action="'.route('owner.profile.mfa.recovery-codes').'"', false);
 
         $staffCustomers = $this->signInAs($staff, 'staff')->get('/staff/customers')->assertOk();
         $staffCustomers->assertSee('data-customers-url="'.route('staff.customers.data').'"', false)
             ->assertSee('data-credit-lookup-url=""', false)
             ->assertSee('data-credit-store-url=""', false);
+        $staff->forceFill(['mfa_enabled' => true, 'mfa_secret' => 'STAFFSECRET'])->save();
+        $staffProfile = $this->signInAs($staff, 'staff')->get('/staff/profile')->assertOk();
+        $staffProfile->assertSee('action="'.route('staff.profile.mfa.recovery-codes').'"', false);
 
         $customer = $this->user('user');
         $customerPage = $this->signInAs($customer, 'customer')->get('/profile')->assertOk();

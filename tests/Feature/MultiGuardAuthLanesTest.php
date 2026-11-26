@@ -3,8 +3,8 @@
 namespace Tests\Feature;
 
 use App\Models\User;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
 use Illuminate\Session\TokenMismatchException;
 use Illuminate\Support\Facades\Auth;
@@ -207,14 +207,13 @@ class MultiGuardAuthLanesTest extends TestCase
             $expectedUsers[$guard] = $user;
             $token = $this->fakeGoogleToken($user->email, $user->name);
 
-            $this->postJson('/auth/google', ['id_token' => $token])
-                ->assertOk()
-                ->assertJsonPath('redirect', match ($guard) {
-                    'admin' => '/dashboard',
-                    'owner' => '/owner/dashboard',
-                    'staff' => '/staff/dashboard',
-                    default => '/my-dashboard',
-                });
+            $response = $this->postJson('/auth/google', ['id_token' => $token])->assertOk();
+            if ($guard === 'customer') {
+                $response->assertJsonPath('redirect', '/my-dashboard');
+            } else {
+                $response->assertJsonPath('mfa_required', true)
+                    ->assertJsonPath('mfa_type', 'setup');
+            }
             $this->assertSame($user->user_id, Auth::guard($guard)->user()?->user_id);
         }
 

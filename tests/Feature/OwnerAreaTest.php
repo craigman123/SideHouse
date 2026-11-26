@@ -170,7 +170,7 @@ class OwnerAreaTest extends TestCase
         self::assertSame('Updated Owner', $owner->fresh()->name);
     }
 
-    public function test_password_and_google_login_choose_the_owner_dashboard(): void
+    public function test_password_and_google_login_enforce_owner_mfa(): void
     {
         $secret = (new Google2FA())->generateSecretKey();
         $owner = $this->user('owner', null, ['mfa_enabled' => true, 'mfa_secret' => $secret]);
@@ -182,8 +182,13 @@ class OwnerAreaTest extends TestCase
 
         config(['services.google.client_id' => 'owner-area-client']);
         $token = $this->fakeGoogleToken($owner->email, $owner->name, 'owner-area-client');
-        $this->postJson('/auth/google', ['id_token' => $token])
-            ->assertOk()->assertJsonPath('redirect', '/owner/dashboard');
+        $googleLogin = $this->postJson('/auth/google', ['id_token' => $token])->assertOk();
+        if (config('auth.multi_guard')) {
+            $googleLogin->assertJsonPath('redirect', '/owner/dashboard');
+        } else {
+            $googleLogin->assertJsonPath('mfa_required', true)
+                ->assertJsonPath('mfa_type', 'challenge');
+        }
     }
 
     public function test_owner_dashboard_excludes_cancelled_bookings_and_admin_pages_keep_their_layout(): void

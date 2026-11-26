@@ -13,6 +13,12 @@
         data-actor-role="{{ $actorRole }}"
         data-current-id="{{ $actorId }}"
         data-owner-exists="{{ $ownerExists ? 'true' : 'false' }}"
+        data-can-manage-mfa="{{ $canManageMfa ? 'true' : 'false' }}"
+        data-mfa-disable-url-template="{{ $mfaDisableUrlTemplate }}"
+        data-mfa-enable-url-template="{{ $mfaEnableUrlTemplate }}"
+        data-mfa-allowed-methods-url-template="{{ $mfaAllowedMethodsUrlTemplate }}"
+        data-mfa-owner-request-url-template="{{ $mfaOwnerRequestUrlTemplate }}"
+        data-mfa-owner-approve-url-template="{{ $mfaOwnerApproveUrlTemplate }}"
         data-grantable-roles="{{ implode(',', $grantableRoles) }}">
         <script type="application/json" id="userAccessConfig">@json(['permissions' => $permissionDefinitions, 'staffPreset' => $staffPreset])</script>
 
@@ -188,6 +194,31 @@
             <footer class="access-dialog-footer">
                 <button type="button" class="user-access-secondary btn-ghost-danger" data-close-dialog>Cancel</button>
                 <button type="submit" class="user-access-danger" id="confirmRemoveAccess">Remove access</button>
+            </footer>
+        </form>
+    </dialog>
+
+    <dialog class="access-dialog" id="mfaActionDialog" aria-labelledby="mfaActionTitle">
+        <form class="access-dialog-card" id="mfaActionForm" novalidate>
+            <header class="access-dialog-header">
+                <div><p class="user-access-eyebrow">Privileged account security</p><h2 id="mfaActionTitle">MFA action</h2></div>
+                <button type="button" class="dialog-close btn-ghost-danger" data-close-dialog aria-label="Close dialog">×</button>
+            </header>
+            <div class="access-dialog-body">
+                <p id="mfaActionDescription"></p>
+                <label class="field-label" id="mfaCodeField" for="mfaActionCode" hidden>Confirm with your current TOTP code</label>
+                <input id="mfaActionCode" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]{6}" hidden>
+                <label class="field-label" id="mfaMethodsField" for="mfaAllowedMethods" hidden>Allowed methods</label>
+                <select id="mfaAllowedMethods" hidden>
+                    <option value="totp">TOTP only</option>
+                    <option value="both">TOTP and passkey</option>
+                    <option value="passkey" disabled>Passkey only (coming soon)</option>
+                </select>
+                <p class="access-dialog-error" id="mfaActionError" role="alert" hidden></p>
+            </div>
+            <footer class="access-dialog-footer">
+                <button type="button" class="user-access-secondary btn-ghost-danger" data-close-dialog>Cancel</button>
+                <button type="submit" class="user-access-primary" id="mfaActionSubmit">Continue</button>
             </footer>
         </form>
     </dialog>

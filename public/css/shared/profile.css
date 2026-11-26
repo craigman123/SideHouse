@@ -22,6 +22,41 @@ html.admin-layout-shell .danger-zone {
     color: var(--text);
 }
 
+html.admin-layout-shell .privileged-mfa-card,
+html.staff-layout-shell .privileged-mfa-card {
+    display: grid;
+    gap: var(--s4);
+}
+
+html.admin-layout-shell .privileged-mfa-card h2,
+html.staff-layout-shell .privileged-mfa-card h2 {
+    margin: 0 0 var(--s3);
+}
+
+html.admin-layout-shell .privileged-mfa-card .profile-item > span,
+html.staff-layout-shell .privileged-mfa-card .profile-item > span {
+    color: var(--text-muted);
+    font-size: var(--font-size-small);
+}
+
+html.admin-layout-shell .privileged-mfa-card p,
+html.staff-layout-shell .privileged-mfa-card p {
+    color: var(--text-muted);
+}
+
+html.admin-layout-shell .privileged-mfa-card .profile-item strong,
+html.staff-layout-shell .privileged-mfa-card .profile-item strong {
+    overflow-wrap: anywhere;
+}
+
+html.admin-layout-shell .privileged-mfa-card .recovery-codes,
+html.staff-layout-shell .privileged-mfa-card .recovery-codes {
+    padding: var(--s4);
+    border: 1px solid var(--border);
+    border-radius: var(--r-md);
+    background: var(--surface-2);
+}
+
 html.admin-layout-shell .profile-header {
     display: flex;
     align-items: center;

@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Owner\OwnerPageController;
+use App\Http\Controllers\Admin\PrivilegedMfaController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware(['auth', 'owner.only', 'admin.mfa', 'throttle.admin-management:120,1'])
@@ -14,6 +15,8 @@ Route::middleware(['auth', 'owner.only', 'admin.mfa', 'throttle.admin-management
         Route::get('/configuration', 'configuration')->name('configuration');
         Route::get('/profile', 'profile')->name('profile');
         Route::put('/profile', 'updateProfile')->middleware('throttle.admin-management:10,1')->name('profile.update');
+        Route::post('/profile/mfa/recovery-codes', [PrivilegedMfaController::class, 'regenerateRecoveryCodes'])
+            ->middleware('throttle:5,1')->name('profile.mfa.recovery-codes');
         Route::get('/equipment', 'equipment')->name('equipment');
         Route::get('/customers', 'customers')->name('customers');
         Route::get('/user-access', 'userAccess')->middleware('can.access:user_access.manage')->name('user-access');

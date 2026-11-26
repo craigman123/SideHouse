@@ -24,6 +24,14 @@
     const accessForm = document.getElementById('accessForm');
     const removeDialog = document.getElementById('removeAccessDialog');
     const removeForm = document.getElementById('removeAccessForm');
+    const mfaDialog = document.getElementById('mfaActionDialog');
+    const mfaForm = document.getElementById('mfaActionForm');
+    const mfaCodeField = document.getElementById('mfaCodeField');
+    const mfaCodeInput = document.getElementById('mfaActionCode');
+    const mfaMethodsField = document.getElementById('mfaMethodsField');
+    const mfaMethodsSelect = document.getElementById('mfaAllowedMethods');
+    const mfaError = document.getElementById('mfaActionError');
+    const mfaSubmit = document.getElementById('mfaActionSubmit');
     const roleSelect = document.getElementById('accessRole');
     const permissionFieldset = document.getElementById('permissionFieldset');
     const permissionList = document.getElementById('permissionToggleList');
@@ -74,6 +82,8 @@
         candidateLoad: null,
         detailsController: null,
         detailsRequestVersion: 0,
+        mfaUser: null,
+        mfaAction: null,
     };
 
     const roleNames = { owner: 'Owner', admin: 'Admin', staff: 'Staff', user: 'Customer' };
@@ -180,6 +190,42 @@
         return user.actions?.edit_access?.reason || 'You do not have permission to change this account.';
     }
 
+    function openMfaDialog(user, action, opener) {
+        state.mfaUser = user;
+        state.mfaAction = action;
+        mfaError.hidden = true;
+        mfaCodeInput.value = '';
+        mfaCodeInput.required = action === 'disable' || action === 'approve';
+        mfaCodeField.hidden = !mfaCodeInput.required;
+        mfaCodeInput.hidden = !mfaCodeInput.required;
+        mfaMethodsField.hidden = action !== 'allowed_methods';
+        mfaMethodsSelect.hidden = action !== 'allowed_methods';
+        mfaMethodsSelect.value = user.mfa_pending_allowed_methods || user.mfa_allowed_methods || 'totp';
+
+        const ownerRequest = action === 'owner_request_disable' || action === 'owner_request_enable';
+        const actionNames = {
+            disable: ['Disable MFA', 'Enter your current TOTP code to confirm this one-time action.'],
+            enable: ['Enable MFA', 'The target will be required to enroll TOTP before accessing protected pages.'],
+            force_reenroll: ['Force re-enrollment', 'The current factor stays active until the target verifies a new TOTP factor.'],
+            allowed_methods: ['Allowed methods', 'Passkey-only access is unavailable until passkeys are implemented.'],
+            owner_request_disable: ['Request owner MFA disable', 'A different real admin must approve this request with a fresh TOTP code within 24 hours.'],
+            owner_request_enable: ['Request owner MFA re-enrollment', 'A different real admin must approve this request with a fresh TOTP code within 24 hours.'],
+            approve: ['Approve owner MFA request', 'Enter your current TOTP code. It can approve only this one action.'],
+        };
+        const [title, description] = actionNames[action];
+        document.getElementById('mfaActionTitle').textContent = title;
+        document.getElementById('mfaActionDescription').textContent = ownerRequest
+            ? `${description} Target: ${user.name}.`
+            : `${description} Target: ${user.name}.`;
+        mfaSubmit.textContent = action.startsWith('owner_request')
+            ? 'Create request'
+            : action === 'approve' ? 'Approve request' : 'Confirm';
+        openDialog(mfaDialog, opener);
+        if (mfaCodeInput.required) mfaCodeInput.focus();
+        else if (action === 'allowed_methods') mfaMethodsSelect.focus();
+        else mfaSubmit.focus();
+    }
+
     function actionMenu(user) {
         const details = element('details', 'user-access-actions');
         details.dataset.userId = String(user.id);
@@ -206,6 +252,37 @@
         remove.title = user.actions?.remove_access?.reason || '';
         remove.addEventListener('click', () => { details.open = false; openRemove(user, remove); });
         menu.append(edit, remove);
+
+        const canManageMfa = page.dataset.canManageMfa === 'true'
+            && user.mfa_actions
+            && ['admin', 'owner', 'staff'].includes(user.role)
+            && Number(user.id) !== Number(page.dataset.currentId);
+        if (canManageMfa) {
+            const addMfaAction = (label, action, danger = false) => {
+                const button = element('button', danger ? 'is-danger' : '', label);
+                button.type = 'button';
+                button.addEventListener('click', () => {
+                    details.open = false;
+                    openMfaDialog(user, action, button);
+                });
+                menu.append(button);
+            };
+
+            if (user.mfa_actions.disable) addMfaAction('Disable MFA', 'disable', true);
+            if (user.mfa_actions.enable) addMfaAction('Enable MFA', 'enable');
+            if (user.mfa_actions.force_reenroll) addMfaAction('Force re-enrollment', 'force_reenroll');
+            if (user.mfa_actions.allowed_methods) addMfaAction('Allowed methods', 'allowed_methods');
+            if (user.mfa_actions.request_owner_change && user.mfa_state === 'enabled') {
+                addMfaAction('Request disable MFA', 'owner_request_disable', true);
+                addMfaAction('Request force re-enrollment', 'owner_request_enable');
+            } else if (user.mfa_actions.request_owner_change && user.mfa_state === 'disabled') {
+                addMfaAction('Request enable MFA', 'owner_request_enable');
+            }
+            if (user.mfa_actions.approve_owner_request) {
+                addMfaAction('Approve MFA request', 'approve');
+            }
+        }
+
         details.append(summaryButton, menu);
         return details;
     }
@@ -225,7 +302,13 @@
         const nameCell = document.createElement('td'); nameCell.append(personCell(user));
         const emailCell = element('td', 'user-access-email', user.email || '-');
         const roleCell = document.createElement('td'); roleCell.append(roleBadge(user.role));
-        const mfaCell = document.createElement('td'); mfaCell.append(element('span', `mfa-status ${user.mfa_enabled ? 'is-enabled' : 'is-pending'}`, user.mfa_enabled ? 'Enabled' : 'Pending setup'));
+        const mfaStatusClass = {
+            enabled: 'is-enabled',
+            disabled: 'is-disabled',
+            reenrollment_required: 'is-reenrollment',
+            pending_setup: 'is-pending',
+        }[user.mfa_state] || 'is-pending';
+        const mfaCell = document.createElement('td'); mfaCell.append(element('span', `mfa-status ${mfaStatusClass}`, user.mfa_state_label || 'Pending setup'));
         const lastLoginCell = element('td', 'user-access-date', formatDate(user.last_login_at));
         const promotedCell = document.createElement('td');
         const promoter = user.promoted_by?.name || '-';
@@ -244,7 +327,7 @@
         const list = element('dl', 'user-access-card-details');
         const fields = [
             ['Email', user.email || '-'],
-            ['MFA', user.mfa_enabled ? 'Enabled' : 'Pending setup'],
+            ['MFA', user.mfa_state_label || 'Pending setup'],
             ['Last login', formatDate(user.last_login_at)],
             ['Promoted by', user.promoted_by?.name || '-'],
             ['Promoted date', formatDate(user.promoted_at)],
@@ -780,6 +863,58 @@
         }
     }
 
+    async function submitMfaAction(event) {
+        event.preventDefault();
+        mfaError.hidden = true;
+        const user = state.mfaUser;
+        const action = state.mfaAction;
+        if (!user || !action) return;
+
+        const userId = encodeURIComponent(user.id);
+        const templates = {
+            disable: page.dataset.mfaDisableUrlTemplate,
+            enable: page.dataset.mfaEnableUrlTemplate,
+            force_reenroll: page.dataset.mfaEnableUrlTemplate,
+            allowed_methods: page.dataset.mfaAllowedMethodsUrlTemplate,
+            owner_request_disable: page.dataset.mfaOwnerRequestUrlTemplate,
+            owner_request_enable: page.dataset.mfaOwnerRequestUrlTemplate,
+            approve: page.dataset.mfaOwnerApproveUrlTemplate,
+        };
+        let url = templates[action]?.replace('__USER__', userId) || '';
+        let method = action === 'allowed_methods' ? 'PATCH' : 'POST';
+        const payload = {};
+
+        if (action === 'disable' || action === 'approve') payload.code = mfaCodeInput.value.trim();
+        if (action === 'allowed_methods') payload.allowed_methods = mfaMethodsSelect.value;
+        if (action === 'owner_request_disable') payload.action = 'disable';
+        if (action === 'owner_request_enable') payload.action = 'enable';
+        if (action === 'approve') {
+            url = url.replace('__REQUEST__', encodeURIComponent(user.pending_mfa_request?.id || ''));
+        }
+
+        mfaSubmit.disabled = true;
+        try {
+            const result = await request(url, { method, body: JSON.stringify(payload) });
+            closeDialog(mfaDialog);
+            const emailStatus = result.email_notification?.status;
+            const emailNotice = emailStatus === 'not_configured'
+                ? ' Email notification is not configured.'
+                : emailStatus === 'failed'
+                    ? ' The action succeeded, but an email notification failed.'
+                    : '';
+            toast(
+                (result.message || 'MFA settings updated.') + emailNotice,
+                emailStatus === 'failed' ? 'error' : 'success',
+            );
+            await loadUsers({ refreshAll: true });
+        } catch (actionError) {
+            mfaError.textContent = actionError.message;
+            mfaError.hidden = false;
+        } finally {
+            mfaSubmit.disabled = false;
+        }
+    }
+
     document.getElementById('addStaffButton').addEventListener('click', (event) => openCreate(event.currentTarget));
     document.getElementById('retryUserAccess').addEventListener('click', () => loadUsers({ refreshAll: true }));
     document.getElementById('backToAccessDetails').addEventListener('click', () => {
@@ -790,6 +925,7 @@
     continueButton.addEventListener('click', enterPasswordStep);
     accessForm.addEventListener('submit', saveAccess);
     removeForm.addEventListener('submit', removeAccess);
+    mfaForm.addEventListener('submit', submitMfaAction);
     if (canEditDetails) {
         document.getElementById('continueAccountDetails').addEventListener('click', enterDetailsPasswordStep);
         document.getElementById('backToAccountDetails').addEventListener('click', () => {
@@ -861,7 +997,7 @@
     document.querySelectorAll('[data-close-dialog]').forEach((button) => {
         button.addEventListener('click', () => closeDialog(button.closest('dialog')));
     });
-    [accessDialog, removeDialog].forEach((dialog) => {
+    [accessDialog, removeDialog, mfaDialog].forEach((dialog) => {
         dialog.addEventListener('click', (event) => {
             if (event.target === dialog) closeDialog(dialog);
         });
