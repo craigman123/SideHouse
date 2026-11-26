@@ -1,0 +1,525 @@
+html.staff-layout-shell .profile-page.staff-profile-page {
+    gap: var(--s5);
+}
+
+html.staff-layout-shell #staffProfilePage .profile-card {
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 840px;
+    min-width: 0;
+    padding: var(--s5);
+    border: 1px solid transparent;
+    border-top-width: 1px;
+    border-radius: var(--r-lg);
+    background-image: linear-gradient(var(--surface), var(--surface)), var(--brand-grad);
+    background-origin: border-box;
+    background-clip: padding-box, border-box;
+    color: var(--text);
+}
+
+html.staff-layout-shell #staffProfilePage .staff-mfa-header h2 {
+    margin: 0 0 var(--s2);
+    color: var(--text);
+    font-size: var(--font-size-h3);
+    font-weight: var(--font-weight-h3);
+}
+
+html.staff-layout-shell #staffProfilePage .profile-card-header p,
+html.staff-layout-shell #staffProfilePage .staff-mfa-description,
+html.staff-layout-shell #staffProfilePage .staff-recovery-section > p {
+    margin: 0;
+    color: var(--text-muted);
+    font-size: var(--font-size-small);
+    line-height: var(--line-height-body);
+}
+
+html.staff-layout-shell #staffProfilePage .profile-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--s4);
+}
+
+html.staff-layout-shell #staffProfilePage .profile-item {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    gap: var(--s2);
+}
+
+html.staff-layout-shell #staffProfilePage .profile-item label {
+    color: var(--text-muted);
+    font-size: var(--font-size-small);
+    font-weight: var(--font-weight-button);
+}
+
+html.staff-layout-shell #staffProfilePage .profile-item input {
+    box-sizing: border-box;
+    width: 100%;
+    min-height: 48px;
+    padding: var(--s3);
+    border: 1px solid var(--border);
+    border-radius: var(--r-md);
+    background: var(--surface-2);
+    color: var(--text);
+    font-family: var(--font-family);
+    font-size: var(--font-size-body);
+}
+
+html.staff-layout-shell #staffProfilePage .profile-item input:read-only {
+    color: var(--text-muted);
+    cursor: default;
+}
+
+html.staff-layout-shell #staffProfilePage .profile-item input.editable {
+    border-color: var(--brand);
+    color: var(--text);
+}
+
+html.staff-layout-shell #staffProfilePage .field-error {
+    color: var(--danger);
+    font-size: var(--font-size-small);
+    line-height: var(--line-height-body);
+}
+
+html.staff-layout-shell #staffProfilePage .profile-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--s3);
+    margin-top: var(--s5);
+}
+
+html.staff-layout-shell #staffProfilePage [hidden] {
+    display: none !important;
+}
+
+html.staff-layout-shell #staffProfilePage .profile-actions :is(.btn-primary, .btn-secondary, .btn-quiet),
+html.staff-layout-shell #staffProfilePage .staff-password-trigger .btn-secondary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 0;
+    min-height: 44px;
+    margin: 0;
+    padding: var(--s2) var(--s4);
+    border-radius: var(--r-pill);
+    font-family: var(--font-family);
+    font-size: var(--font-size-button);
+    font-weight: var(--font-weight-button);
+    line-height: 1.2;
+    text-align: center;
+    cursor: pointer;
+    transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease;
+}
+
+html.staff-layout-shell #staffProfilePage .btn-primary {
+    border-color: var(--brand);
+    background: var(--brand);
+    color: var(--bg);
+}
+
+html.staff-layout-shell #staffProfilePage .btn-primary:hover {
+    border-color: var(--brand-hover);
+    background: var(--brand-hover);
+    color: var(--bg);
+}
+
+html.staff-layout-shell #staffProfilePage .btn-secondary {
+    border-color: var(--brand);
+    background: transparent;
+    color: var(--text);
+}
+
+html.staff-layout-shell #staffProfilePage .btn-secondary:hover {
+    background: color-mix(in srgb, var(--brand) 14%, var(--surface));
+}
+
+html.staff-layout-shell #staffProfilePage .btn-quiet {
+    border-color: var(--border);
+    background: transparent;
+    color: var(--text-muted);
+}
+
+html.staff-layout-shell #staffProfilePage .btn-quiet:hover {
+    border-color: var(--text-muted);
+    color: var(--text);
+}
+
+html.staff-layout-shell #staffProfilePage .staff-password-trigger {
+    width: min(100%, 840px);
+}
+
+html.staff-layout-shell #staffProfilePage .staff-profile-mfa-card {
+    display: grid;
+    gap: var(--s4);
+}
+
+html.staff-layout-shell #staffProfilePage .staff-mfa-header {
+    display: grid;
+    gap: var(--s2);
+}
+
+html.staff-layout-shell #staffProfilePage .staff-mfa-header h2 {
+    margin: 0;
+}
+
+html.staff-layout-shell #staffProfilePage .staff-method-choice {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) var(--s8) minmax(0, 1fr);
+    align-items: center;
+    gap: var(--s3);
+    min-width: 0;
+}
+
+html.staff-layout-shell #staffProfilePage .staff-method-label {
+    color: var(--text);
+    font-size: var(--font-size-body);
+    font-weight: var(--font-weight-button);
+}
+
+html.staff-layout-shell #staffProfilePage .staff-method-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: var(--s8);
+    min-width: var(--s8);
+    min-height: 44px;
+    padding: 0;
+    border: 0;
+    border-radius: var(--r-pill);
+    background: transparent;
+    cursor: not-allowed;
+}
+
+html.staff-layout-shell #staffProfilePage .staff-method-toggle:focus-visible {
+    outline: 2px solid var(--brand);
+    outline-offset: 2px;
+}
+
+html.staff-layout-shell #staffProfilePage .staff-method-track {
+    position: relative;
+    display: block;
+    width: var(--s8);
+    height: var(--s6);
+    border: 1px solid var(--border);
+    border-radius: var(--r-pill);
+    background: var(--surface-2);
+}
+
+html.staff-layout-shell #staffProfilePage .staff-method-thumb {
+    position: absolute;
+    top: 50%;
+    left: var(--s1);
+    width: var(--s4);
+    height: var(--s4);
+    border-radius: 50%;
+    background: var(--brand);
+    transform: translateY(-50%);
+    transition: transform 160ms ease;
+}
+
+html.staff-layout-shell #staffProfilePage .staff-method-toggle[aria-checked="true"] .staff-method-thumb {
+    transform: translate(calc(var(--s8) - var(--s4) - var(--s1) - var(--s1)), -50%);
+}
+
+html.staff-layout-shell #staffProfilePage .staff-method-biometrics {
+    display: grid;
+    justify-items: start;
+    gap: var(--s1);
+    min-width: 0;
+}
+
+html.staff-layout-shell #staffProfilePage .staff-method-coming-soon {
+    color: var(--text-muted);
+    font-size: var(--font-size-small);
+    line-height: var(--line-height-body);
+}
+
+html.staff-layout-shell #staffProfilePage .staff-recovery-section {
+    display: grid;
+    gap: var(--s3);
+    padding-top: var(--s4);
+    border-top: 1px solid var(--border);
+}
+
+html.staff-layout-shell #staffProfilePage .staff-recovery-section h3 {
+    margin: 0;
+    color: var(--text);
+    font-size: var(--font-size-h3);
+    font-weight: var(--font-weight-h3);
+}
+
+html.staff-layout-shell #staffProfilePage .recovery-codes-display {
+    padding: var(--s4);
+    border: 1px solid var(--border);
+    border-radius: var(--r-md);
+    background: var(--surface-2);
+}
+
+html.staff-layout-shell #staffProfilePage .recovery-codes-display p {
+    margin: 0 0 var(--s2);
+    color: var(--text-muted);
+    font-size: var(--font-size-small);
+}
+
+html.staff-layout-shell #staffProfilePage .recovery-codes-display ul {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--s2);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+html.staff-layout-shell #staffProfilePage .recovery-codes-display code {
+    color: var(--text);
+    overflow-wrap: anywhere;
+}
+
+html.staff-layout-shell #staffProfilePage .staff-recovery-form {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: var(--s3);
+}
+
+html.staff-layout-shell #staffProfilePage .staff-recovery-form .profile-item {
+    flex: 1 1 220px;
+}
+
+html.staff-layout-shell #staffProfilePage .staff-signout-card {
+    border: 1px solid var(--danger);
+    border-top: var(--s1) solid var(--danger);
+    background: var(--surface);
+    background-image: none;
+}
+
+html.staff-layout-shell #staffProfilePage .staff-signout-card > div:first-child {
+    display: grid;
+    gap: var(--s3);
+    margin-bottom: var(--s4);
+}
+
+html.staff-layout-shell #staffProfilePage .staff-signout-card > div:first-child h2 {
+    margin: 0;
+    color: var(--danger);
+    font-size: var(--font-size-h3);
+    font-weight: var(--font-weight-h3);
+}
+
+html.staff-layout-shell #staffProfilePage .staff-signout-card > div:first-child p {
+    margin: 0;
+    color: var(--text-muted);
+    font-size: var(--font-size-small);
+    line-height: var(--line-height-body);
+}
+
+html.staff-layout-shell #staffProfilePage .profile-flash-success,
+html.staff-layout-shell #staffProfilePage .profile-flash-error {
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 840px;
+    margin: 0;
+    padding: var(--s3) var(--s4);
+    border: 1px solid var(--border);
+    border-radius: var(--r-md);
+    font-size: var(--font-size-small);
+}
+
+html.staff-layout-shell #staffProfilePage .profile-flash-success {
+    color: var(--brand-hover);
+}
+
+html.staff-layout-shell #staffProfilePage .profile-flash-error {
+    color: var(--danger);
+}
+
+html.staff-layout-shell .staff-profile-modal-overlay {
+    position: fixed;
+    z-index: 1200;
+    inset: 0;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+    width: 100%;
+    height: 100vh;
+    height: 100dvh;
+    padding: max(var(--s4), env(safe-area-inset-top)) max(var(--s4), env(safe-area-inset-right)) max(var(--s4), env(safe-area-inset-bottom)) max(var(--s4), env(safe-area-inset-left));
+    overflow-y: auto;
+    background: color-mix(in srgb, var(--bg) 76%, transparent);
+}
+
+html[data-theme="light"].staff-layout-shell .staff-profile-modal-overlay {
+    background: color-mix(in srgb, var(--text) 65%, transparent);
+}
+
+html.staff-layout-shell .staff-profile-modal-overlay.open {
+    display: flex;
+}
+
+html.staff-layout-shell .staff-profile-modal-overlay[hidden] {
+    display: none;
+}
+
+html.staff-layout-shell .staff-profile-modal-card {
+    box-sizing: border-box;
+    width: min(100%, 560px);
+    max-height: calc(100vh - var(--s4) - var(--s4));
+    max-height: calc(100dvh - var(--s4) - var(--s4));
+    padding: var(--s5);
+    overflow-y: auto;
+    border: 1px solid transparent;
+    border-radius: var(--r-lg);
+    background-image: linear-gradient(var(--surface), var(--surface)), var(--brand-grad);
+    background-origin: border-box;
+    background-clip: padding-box, border-box;
+    color: var(--text);
+}
+
+html.staff-layout-shell .staff-profile-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--s3);
+    margin-bottom: var(--s3);
+}
+
+html.staff-layout-shell .staff-profile-modal-header h2 {
+    margin: 0;
+    color: var(--text);
+    font-size: var(--font-size-h3);
+    font-weight: var(--font-weight-h3);
+}
+
+html.staff-layout-shell .staff-profile-modal-card > p {
+    margin: 0 0 var(--s4);
+    color: var(--text-muted);
+    font-size: var(--font-size-small);
+    line-height: var(--line-height-body);
+}
+
+html.staff-layout-shell .staff-profile-modal-card form {
+    display: grid;
+    gap: var(--s4);
+}
+
+html.staff-layout-shell .staff-profile-modal-close {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 44px;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    border: 1px solid var(--border);
+    border-radius: var(--r-pill);
+    background: transparent;
+    color: var(--text);
+    font-family: var(--font-family);
+    font-size: var(--font-size-h3);
+    cursor: pointer;
+}
+
+html.staff-layout-shell .staff-profile-modal-close:hover {
+    border-color: var(--text-muted);
+}
+
+html.staff-layout-shell .staff-profile-modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--s3);
+}
+
+html.staff-layout-shell .staff-profile-modal-actions .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 0;
+    min-height: 44px;
+    margin: 0;
+    padding: var(--s2) var(--s4);
+    border-radius: var(--r-pill);
+    font-family: var(--font-family);
+    font-size: var(--font-size-button);
+    font-weight: var(--font-weight-button);
+    cursor: pointer;
+}
+
+html.staff-layout-shell .staff-profile-modal-actions .btn-quiet {
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text-muted);
+}
+
+html.staff-layout-shell .staff-profile-modal-actions .btn-quiet:hover {
+    border-color: var(--text-muted);
+    color: var(--text);
+}
+
+html.staff-layout-shell .staff-profile-modal-overlay :is(button, input):focus-visible {
+    outline: 2px solid var(--brand);
+    outline-offset: 2px;
+}
+
+@media (max-width: 700px) {
+    html.staff-layout-shell #staffProfilePage .profile-grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
+@media (max-width: 560px) {
+    html.staff-layout-shell #staffProfilePage .profile-card {
+        padding: var(--s4);
+    }
+
+    html.staff-layout-shell #staffProfilePage .profile-actions,
+    html.staff-layout-shell .staff-profile-modal-actions {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    html.staff-layout-shell #staffProfilePage .profile-actions .btn,
+    html.staff-layout-shell .staff-profile-modal-actions .btn {
+        width: 100%;
+    }
+
+    html.staff-layout-shell #staffProfilePage .staff-recovery-form {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    html.staff-layout-shell #staffProfilePage .staff-recovery-form .profile-item,
+    html.staff-layout-shell #staffProfilePage .staff-recovery-form .btn {
+        width: 100%;
+    }
+
+    html.staff-layout-shell #staffProfilePage .recovery-codes-display ul {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    html.staff-layout-shell .staff-profile-modal-card {
+        padding: var(--s4);
+    }
+}
+
+@media (max-width: 360px) {
+    html.staff-layout-shell #staffProfilePage .staff-method-choice {
+        grid-template-columns: minmax(0, 1fr) var(--s7) minmax(0, 1fr);
+        gap: var(--s2);
+    }
+
+    html.staff-layout-shell #staffProfilePage .staff-method-label {
+        font-size: var(--font-size-small);
+        overflow-wrap: anywhere;
+    }
+
+    html.staff-layout-shell #staffProfilePage .staff-method-toggle,
+    html.staff-layout-shell #staffProfilePage .staff-method-track {
+        width: var(--s7);
+        min-width: var(--s7);
+    }
+
+    html.staff-layout-shell #staffProfilePage .staff-method-toggle[aria-checked="true"] .staff-method-thumb {
+        transform: translate(calc(var(--s7) - var(--s4) - var(--s1) - var(--s1)), -50%);
+    }
+}

@@ -70,7 +70,21 @@ class StaffAreaTest extends TestCase
 
         $profile = $this->signInStaff($staff)->get('/staff/profile')->assertOk();
         $profile->assertSee('shared/profile.css')->assertSee('shared/dashboard-base.css')->assertDontSee('css/admin/');
-        $profile->assertSee('Change password')->assertSee('Pending setup');
+        $profile->assertSee('staff-profile.css')->assertSee('staff-profile.js')
+            ->assertSee('Change password')
+            ->assertSee('Coming soon')
+            ->assertSee('role="switch"', false)
+            ->assertSee('aria-checked="false"', false)
+            ->assertSee('aria-disabled="true"', false)
+            ->assertSee('id="staffProfileEditButton"', false)
+            ->assertSee('id="staffPasswordModal"', false)
+            ->assertDontSee('Pending setup')
+            ->assertDontSee('Current method')
+            ->assertDontSee('Allowed methods')
+            ->assertDontSee('TOTP only');
+        $this->assertMatchesRegularExpression('/<input[^>]*id="staffName"[^>]*readonly/', $profile->getContent());
+        $profile->assertDontSee('Enable MFA')
+            ->assertDontSee('Disable MFA');
         $profile->assertSee('id="staffLogoutForm"', false)
             ->assertSee('action="'.route(config('auth.multi_guard') ? 'staff.logout' : 'logout').'"', false)
             ->assertSee('name="_token"', false)
@@ -390,11 +404,16 @@ class StaffAreaTest extends TestCase
     {
         $staff = $this->staff();
 
-        $this->signInStaff($staff)->put('/staff/profile/password', [
+        $this->signInStaff($staff)->from('/staff/profile')->put('/staff/profile/password', [
             'current_password' => 'wrong-password',
             'password' => 'replacement-password-123',
             'password_confirmation' => 'replacement-password-123',
-        ])->assertSessionHasErrors('current_password');
+        ])->assertRedirect('/staff/profile')->assertSessionHasErrors('current_password');
+
+        $profile = $this->get('/staff/profile')->assertOk();
+        $profile->assertSee('class="staff-profile-modal-overlay open"', false)
+            ->assertSee('aria-hidden="false"', false)
+            ->assertSee('aria-invalid="true"', false);
 
         $this->signInStaff($staff)->put('/staff/profile/password', [
             'current_password' => 'current-password-123',
@@ -403,5 +422,39 @@ class StaffAreaTest extends TestCase
         ])->assertRedirect();
 
         $this->assertTrue(password_verify('replacement-password-123', $staff->fresh()->password));
+    }
+
+    public function test_staff_profile_method_selector_reflects_the_saved_method_and_admin_disable_state(): void
+    {
+        $staff = $this->staff();
+        $staff->forceFill([
+            'mfa_enabled' => true,
+            'mfa_secret' => 'JBSWY3DPEHPK3PXP',
+            'mfa_recovery_codes' => [],
+        ])->save();
+
+        $twoMethods = $staff->forceFill([
+            'mfa_allowed_methods' => 'both',
+            'mfa_method' => 'totp',
+        ])->save();
+        $this->assertTrue($twoMethods);
+
+        $this->signInStaff($staff->fresh())->get('/staff/profile')
+            ->assertOk()
+            ->assertSee('aria-checked="false"', false)
+            ->assertSee('aria-disabled="true"', false)
+            ->assertSee('id="privilegedRecoveryCode"', false)
+            ->assertSee('Coming soon');
+
+        $staff->forceFill([
+            'mfa_method' => 'totp',
+            'mfa_admin_disabled_until' => now()->addHours(24),
+        ])->save();
+
+        $this->signInStaff($staff->fresh())->get('/staff/profile')
+            ->assertOk()
+            ->assertSee('MFA is turned off by an administrator.')
+            ->assertSee('aria-checked="false"', false)
+            ->assertSee('aria-disabled="true"', false);
     }
 }
