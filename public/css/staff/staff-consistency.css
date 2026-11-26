@@ -1,0 +1,97 @@
+html.staff-layout-shell .staff-stat-grid .card,
+html.staff-layout-shell .staff-overview-card {
+    padding: var(--s4);
+}
+
+html.staff-layout-shell .customers-page {
+    gap: var(--s4);
+}
+
+html.staff-layout-shell .customers-header {
+    align-items: flex-end;
+}
+
+html.staff-layout-shell .customers-toolbar {
+    width: min(100%, 900px);
+}
+
+html.staff-layout-shell .customers-table-wrap {
+    padding: var(--s2);
+}
+
+html.staff-layout-shell .admin-activity-logs-page {
+    gap: var(--s5);
+}
+
+html.staff-layout-shell .profile-page {
+    gap: var(--s5);
+}
+
+html.staff-layout-shell .profile-page .profile-card {
+    border: 1px solid var(--text-muted);
+    border-radius: var(--r-lg);
+    background: var(--surface);
+    background-image: none;
+}
+
+html.staff-layout-shell .profile-page > .profile-card {
+    border-top: var(--s1) solid var(--brand);
+}
+
+html.staff-layout-shell .profile-page > .profile-card.staff-signout-card {
+    border-top: var(--s1) solid var(--danger);
+}
+
+html.staff-layout-shell .profile-actions .btn {
+    width: auto;
+    flex: 0 0 auto;
+    margin: 0;
+}
+
+html.staff-layout-shell .content .admin-activity-logs-page .activity-filters-panel,
+html.staff-layout-shell .content .admin-activity-logs-page .activity-table-panel {
+    border: 1px solid var(--text-muted);
+    background: var(--surface);
+    background-image: none;
+}
+
+html.staff-layout-shell .content > .admin-bookings-page {
+    padding: var(--s4);
+}
+
+@media (max-width: 767px) {
+    html.staff-layout-shell .customers-header {
+        align-items: stretch;
+    }
+
+    html.staff-layout-shell .customers-toolbar {
+        width: 100%;
+    }
+
+    html.staff-layout-shell .customers-table-wrap {
+        padding: var(--s1);
+    }
+}
+
+@media (max-width: 560px) {
+    html.staff-layout-shell .profile-page .profile-card {
+        padding: var(--s4);
+    }
+
+    html.staff-layout-shell .profile-actions .btn {
+        width: 100%;
+    }
+}
+
+@media (max-width: 480px) {
+    html.staff-layout-shell .content .admin-activity-logs-page .activity-filters-panel,
+    html.staff-layout-shell .content .admin-activity-logs-page .activity-table-panel {
+        padding: var(--s4);
+    }
+}
+
+@media (max-width: 767px) {
+    html.staff-layout-shell .content > .admin-bookings-page {
+        padding: var(--s3);
+    }
+}

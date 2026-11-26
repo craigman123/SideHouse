@@ -1,7 +1,7 @@
 html.staff-layout-shell .staff-overview {
     display: grid;
     min-width: 0;
-    gap: var(--s9);
+    gap: var(--s5);
 }
 
 html.staff-layout-shell .staff-overview .overview-header {
@@ -35,7 +35,7 @@ html.staff-layout-shell .staff-overview-actions {
 html.staff-layout-shell .staff-overview-grid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    grid-auto-rows: minmax(180px, 1fr);
+    grid-auto-rows: auto;
     gap: var(--s4);
 }
 
@@ -74,7 +74,7 @@ html.staff-layout-shell .staff-overview-row .staff-overview-row-meta {
 
 @media (max-width: 767px) {
     html.staff-layout-shell .staff-overview {
-        gap: var(--s7);
+        gap: var(--s5);
     }
 
     html.staff-layout-shell .staff-overview .overview-header {

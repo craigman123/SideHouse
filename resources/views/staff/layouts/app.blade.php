@@ -13,4 +13,7 @@
         ],
     ];
 @endphp
+@push('styles')
+    <link rel="stylesheet" href="{{ asset('css/staff/staff-consistency.css') . '?v=' . filemtime(public_path('css/staff/staff-consistency.css')) }}">
+@endpush
 @include('layouts.partials.dashboard-shell', ['shell' => $shell])
