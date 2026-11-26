@@ -141,6 +141,8 @@
             .status-title { font-size: 19px; }
         }
     </style>
+    <link rel="stylesheet" href="{{ asset('css/tokens.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/shared/page-glow.css') }}">
 </head>
 <body>
 

@@ -19,6 +19,7 @@
     <script src="{{ asset('js/config/back-guard.js') . '?v=' . filemtime(public_path('js/config/back-guard.js')) }}" defer></script>
     @stack('styles')
     <link rel="stylesheet" href="{{ asset('css/shared/dashboard-shell.css') . '?v=' . filemtime(public_path('css/shared/dashboard-shell.css')) }}">
+    <link rel="stylesheet" href="{{ asset('css/shared/page-glow.css') . '?v=' . filemtime(public_path('css/shared/page-glow.css')) }}">
     <link rel="stylesheet" href="{{ asset('css/shared/switch-access.css') . '?v=' . filemtime(public_path('css/shared/switch-access.css')) }}">
     <script src="{{ asset('js/shared/switch-access.js') . '?v=' . filemtime(public_path('js/shared/switch-access.js')) }}" defer></script>
 </head>

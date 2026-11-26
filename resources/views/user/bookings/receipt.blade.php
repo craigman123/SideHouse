@@ -11,6 +11,7 @@
     <link rel="stylesheet" href="{{ asset('css/app.css') }}">
     <link rel="stylesheet" href="{{ asset('css/guest/payment-receipt.css') }}">
     <link rel="stylesheet" href="{{ asset('css/guest/theme-toggle.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/shared/page-glow.css') }}">
 </head>
 <body class="receipt-body">
     @include('partials.guest.theme-toggle', ['placement' => 'corner'])

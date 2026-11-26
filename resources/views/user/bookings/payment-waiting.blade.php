@@ -13,6 +13,7 @@
     <link rel="stylesheet" href="{{ asset('css/guest/payment-waiting-modal.css') }}">
     <link rel="stylesheet" href="{{ asset('css/guest/theme-toggle.css') }}">
     <link rel="stylesheet" href="{{ asset('css/user/user-booking-flow.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/shared/page-glow.css') }}">
     <link rel="icon" type="image/png" href="{{ asset('images/tab_icon.png') }}">
 </head>
 <body class="wt-body user-booking-waiting-page">
