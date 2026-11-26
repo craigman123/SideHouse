@@ -113,7 +113,22 @@
     const monthInput = document.getElementById('courtMonthInput');
     const monthSummary = document.getElementById('courtMonthSummary');
     const monthGrid = document.getElementById('courtMonthGrid');
-    const calendarGrids = [monthGrid, weekGrid].filter(Boolean);
+    const calendarLoadingStates = new Map();
+    [[monthSummary, monthGrid], [weekSummary, weekGrid]].forEach(([summaryElement, grid]) => {
+        const scroll = grid?.closest('.court-month-scroll');
+        const skeleton = scroll?.querySelector('.court-calendar-skeleton');
+        const status = scroll?.querySelector('.court-calendar-loading-status');
+        if (summaryElement && scroll && skeleton && status) {
+            calendarLoadingStates.set(summaryElement, {
+                scroll,
+                skeleton,
+                status,
+                pending: 0,
+                showTimer: null,
+                shownAt: 0,
+            });
+        }
+    });
     let activeCalendarGrid = monthGrid;
     const formatDateInputValue = dateKey;
     const escapeHtml = (value) => { const el = document.createElement('span'); el.textContent = String(value ?? ''); return el.innerHTML; };
@@ -3526,10 +3541,51 @@
         }
     }
 
+    const beginCalendarLoading = (state) => {
+        state.pending += 1;
+        state.scroll.setAttribute('aria-busy', 'true');
+        state.status.textContent = 'Loading calendar…';
+
+        if (state.pending === 1 && state.skeleton.hidden) {
+            state.showTimer = window.setTimeout(() => {
+                state.showTimer = null;
+                if (!state.pending) return;
+                state.shownAt = performance.now();
+                state.scroll.classList.add('is-calendar-loading');
+                state.skeleton.hidden = false;
+            }, 150);
+        }
+
+        return async () => {
+            state.pending = Math.max(0, state.pending - 1);
+            if (state.pending) return;
+
+            if (state.showTimer) {
+                window.clearTimeout(state.showTimer);
+                state.showTimer = null;
+            } else if (!state.skeleton.hidden) {
+                const remaining = Math.max(0, 300 - (performance.now() - state.shownAt));
+                if (remaining) await new Promise((resolve) => window.setTimeout(resolve, remaining));
+            }
+
+            if (state.pending) return;
+            state.skeleton.hidden = true;
+            state.scroll.classList.remove('is-calendar-loading');
+            state.scroll.setAttribute('aria-busy', 'false');
+            state.status.textContent = '';
+        };
+    };
     const loadVisibleRangeThenRender = async (range, summaryElement, render) => {
         if (!rangeIsCached(range.from, range.to)) {
-            summaryElement.textContent = 'Loading calendar…';
-            const loaded = await loadCalendarRange(range.from, range.to);
+            const loadingState = calendarLoadingStates.get(summaryElement);
+            const finishLoading = loadingState ? beginCalendarLoading(loadingState) : null;
+            if (!loadingState) summaryElement.textContent = 'Loading calendar…';
+            let loaded;
+            try {
+                loaded = await loadCalendarRange(range.from, range.to);
+            } finally {
+                if (finishLoading) await finishLoading();
+            }
             if (!loaded) {
                 render();
                 return;

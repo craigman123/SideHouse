@@ -901,6 +901,10 @@ html {
     display: inline-block;
 }
 
+.google-signin-btn.google-signin-responsive {
+    display: flex;
+}
+
 .guest-email-confirmed {
     display: flex;
     align-items: center;

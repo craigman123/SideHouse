@@ -185,6 +185,7 @@
             return Promise.resolve();
         }
 
+        global.GoogleButtonRenderer.dispose(container);
         container.replaceChildren();
 
         return Promise.all([
@@ -251,14 +252,19 @@
                     }
                 },
             });
-            googleIdentity.renderButton(container, {
-                type: 'standard',
-                theme: 'filled_black',
-                size: 'large',
-                text: 'continue_with',
-                shape: 'pill',
+            global.GoogleButtonRenderer.render(container, (width) => {
+                googleIdentity.renderButton(container, {
+                    type: 'standard',
+                    theme: 'filled_black',
+                    size: 'large',
+                    text: 'continue_with',
+                    shape: 'pill',
+                    width,
+                });
+            }, {
+                isActive,
+                onReady,
             });
-            onReady?.();
         }).catch((error) => {
             if (!isActive || isActive()) onError?.(error);
         });

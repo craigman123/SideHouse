@@ -5,7 +5,7 @@
     const lumiButton = document.querySelector('[data-user-lumi-button]');
     const backdrop = document.querySelector('[data-user-sidebar-backdrop]');
     const main = document.querySelector('.user-layout-shell .main');
-    const mobileQuery = window.matchMedia('(max-width: 800px)');
+    const drawerQuery = window.matchMedia('(max-width: 1450px)');
 
     lumiButton?.addEventListener('click', () => {
         const destination = lumiButton.dataset.href;
@@ -22,8 +22,8 @@
         menuButton.querySelector('[data-user-menu-icon="close"]')?.toggleAttribute('hidden', !isOpen);
     };
 
-    const syncMobileState = () => {
-        if (!mobileQuery.matches) {
+    const syncDrawerState = () => {
+        if (!drawerQuery.matches) {
             closeDrawer(false, false);
             sidebar.inert = false;
             sidebar.removeAttribute('aria-hidden');
@@ -50,29 +50,49 @@
         shell.classList.remove('is-user-mobile-drawer-open');
         main.style.overflowY = previousOverflowY;
         previousOverflowY = '';
-        if (updateState) syncMobileState();
-        if (returnFocus && mobileQuery.matches) menuButton.focus();
+        if (updateState) syncDrawerState();
+        if (returnFocus && drawerQuery.matches) menuButton.focus();
     };
 
     const openDrawer = () => {
-        if (!mobileQuery.matches || open) return;
+        if (!drawerQuery.matches || open) return;
         open = true;
         previousOverflowY = main.style.overflowY;
         main.style.overflowY = 'hidden';
         shell.classList.add('is-user-mobile-drawer-open');
-        syncMobileState();
+        syncDrawerState();
         sidebar.querySelector('.sidebar-nav a[href]')?.focus();
     };
 
     menuButton.addEventListener('click', () => open ? closeDrawer() : openDrawer());
     backdrop.addEventListener('click', () => closeDrawer());
     document.addEventListener('keydown', (event) => {
+        if (event.key === 'Tab' && open) {
+            const focusable = [...sidebar.querySelectorAll('a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])')]
+                .filter((element) => element.tabIndex >= 0 && element.getClientRects().length > 0);
+
+            if (!focusable.length) {
+                event.preventDefault();
+                return;
+            }
+
+            const first = focusable[0];
+            const last = focusable[focusable.length - 1];
+            if (event.shiftKey && (document.activeElement === first || !sidebar.contains(document.activeElement))) {
+                event.preventDefault();
+                last.focus();
+            } else if (!event.shiftKey && (document.activeElement === last || !sidebar.contains(document.activeElement))) {
+                event.preventDefault();
+                first.focus();
+            }
+        }
+
         if (event.key === 'Escape' && open) closeDrawer();
     });
     sidebar.addEventListener('click', (event) => {
-        if (event.target.closest('a[href]')) closeDrawer(false);
+        if (event.target.closest('a[href]')) closeDrawer();
     });
-    mobileQuery.addEventListener('change', syncMobileState);
+    drawerQuery.addEventListener('change', syncDrawerState);
 
-    syncMobileState();
+    syncDrawerState();
 })();

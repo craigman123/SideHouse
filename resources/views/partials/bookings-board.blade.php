@@ -165,7 +165,20 @@
                 </div>
 
                 <div id="courtMonthSummary" class="court-board-summary" aria-live="polite"></div>
-                <div class="court-month-scroll">
+                <div class="court-month-scroll" aria-busy="false">
+                    <div class="court-calendar-skeleton court-calendar-skeleton--month" aria-hidden="true" hidden>
+                        <div class="court-calendar-skeleton-header">
+                            <span class="court-calendar-skeleton-corner"></span>
+                            <span class="court-calendar-skeleton-month-days"></span>
+                        </div>
+                        <div class="court-calendar-skeleton-body">
+                            <span class="court-calendar-skeleton-time court-calendar-skeleton-time--month"></span>
+                            <div class="court-calendar-skeleton-grid court-calendar-skeleton-grid--month">
+                                <span></span><span></span><span></span>
+                            </div>
+                        </div>
+                    </div>
+                    <span class="visually-hidden court-calendar-loading-status" role="status" aria-atomic="true"></span>
                     <div id="courtMonthGrid" class="court-month-grid" aria-live="polite"></div>
                 </div>
                 @if (auth()->user() && app(\App\Services\UserAccessService::class)->allows(auth()->user(), 'calendar_events.manage') && $canManageWeeklyClosures)
@@ -192,7 +205,21 @@
                     <span class="legend-booking">Booking</span><span data-calendar-legend-icon="lock" class="legend-closed">Closed</span><span data-calendar-legend-icon="wrench" class="legend-maintenance">Maintenance</span><span data-calendar-legend-icon="padel" class="legend-open-play">Open play</span>
                 </div>
                 <div id="courtWeekSummary" class="court-board-summary" aria-live="polite"></div>
-                <div class="court-week-scroll court-month-scroll">
+                <div class="court-week-scroll court-month-scroll" aria-busy="false">
+                    <div class="court-calendar-skeleton court-calendar-skeleton--week" aria-hidden="true" hidden>
+                        <div class="court-calendar-skeleton-header">
+                            <span class="court-calendar-skeleton-corner"></span>
+                            <span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+                        </div>
+                        <div class="court-calendar-skeleton-body">
+                            <span class="court-calendar-skeleton-time court-calendar-skeleton-time--week"></span>
+                            <div class="court-calendar-skeleton-grid court-calendar-skeleton-grid--week">
+                                <span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+                                <span></span><span></span><span></span>
+                            </div>
+                        </div>
+                    </div>
+                    <span class="visually-hidden court-calendar-loading-status" role="status" aria-atomic="true"></span>
                     <div id="courtWeekGrid" class="court-month-grid court-week-grid" aria-live="polite"></div>
                 </div>
                 @if (auth()->user() && app(\App\Services\UserAccessService::class)->allows(auth()->user(), 'calendar_events.manage') && $canManageWeeklyClosures)

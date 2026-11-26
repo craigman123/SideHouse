@@ -167,13 +167,15 @@ document.addEventListener('DOMContentLoaded', function () {
             callback: handleGoogleCredential,
             auto_select: false,
         });
-        window.google.accounts.id.renderButton(btnEl, {
-            type: 'standard',
-            theme: 'filled_black',
-            size: 'large',
-            text: btnEl.dataset.buttonText || 'continue_with',
-            shape: 'pill',
-            width: 270,
+        window.GoogleButtonRenderer.render(btnEl, function (width) {
+            window.google.accounts.id.renderButton(btnEl, {
+                type: 'standard',
+                theme: 'filled_black',
+                size: 'large',
+                text: btnEl.dataset.buttonText || 'continue_with',
+                shape: 'pill',
+                width: width,
+            });
         });
     }
 

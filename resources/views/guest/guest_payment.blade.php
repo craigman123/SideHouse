@@ -18,6 +18,7 @@
     <link rel="stylesheet" href="{{ asset('css/guest/guest-payment.css') }}">
     <link rel="stylesheet" href="{{ asset('css/guest/theme-toggle.css') }}">
     <link rel="stylesheet" href="{{ asset('css/shared/page-glow.css') }}">
+    <script src="{{ asset('js/shared/google-button-renderer.js') }}"></script>
     <script src="{{ asset('js/guest/google-credit-account.js') }}?v={{ filemtime(public_path('js/guest/google-credit-account.js')) }}"></script>
     <script src="{{ asset('js/guest/payment.js') }}" defer></script>
     <link rel="icon" type="image/png" href="{{ asset('images/tab_icon.png') }}">

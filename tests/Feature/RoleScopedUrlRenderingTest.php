@@ -162,7 +162,9 @@ class RoleScopedUrlRenderingTest extends TestCase
         $customer = $this->user('user');
         $customerPage = $this->signInAs($customer, 'customer')->get('/profile')->assertOk();
         $customerPage->assertSee('action="'.route('logout').'"', false)
-            ->assertSee('href="'.route('user.dashboard').'"', false);
+            ->assertSee('href="'.route('user.dashboard').'"', false)
+            ->assertSee('href="'.route('user.profile').'" class="active"', false)
+            ->assertSee('aria-current="page"', false);
     }
 
     public function test_view_as_stays_on_the_admin_guard_and_forbidden_home_links_follow_the_selected_guard(): void

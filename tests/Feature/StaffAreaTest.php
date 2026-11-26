@@ -379,6 +379,10 @@ class StaffAreaTest extends TestCase
 
         $response = $this->signInStaff($staff)->get('/staff/bookings')->assertOk();
         $response->assertSee('shared/bookings-board.css')->assertSee('shared/bookings-board.js')->assertSee('staff-bookings.js');
+        $response->assertSee('court-calendar-skeleton--month')
+            ->assertSee('court-calendar-skeleton--week')
+            ->assertSee('role="status"', false);
+        $this->assertStringNotContainsString('Loading calendar…', $response->getContent());
         $response->assertSee('shared/dashboard-base.css')->assertSee('shared/dashboard-shell.css')->assertDontSee('css/admin/')->assertDontSee('js/admin/');
         $this->assertStringNotContainsString('500.00', $response->getContent());
         $this->assertStringNotContainsString('hourly_rate', $response->getContent());

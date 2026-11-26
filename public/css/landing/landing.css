@@ -143,7 +143,7 @@ body {
 .landing-credit-switch-panel #landingCreditSwitchGoogleButton {
     display: flex;
     justify-content: center;
-    min-height: 40px;
+    min-height: 44px;
 }
 
 .landing-credit-switch-panel button {
@@ -155,7 +155,8 @@ body {
     z-index: 20;
     top: calc(100% + var(--s2));
     left: 72px;
-    width: 220px;
+    width: calc(200px + var(--s3) + var(--s3) + 2px);
+    max-width: calc(100vw - var(--s4) - var(--s4));
     padding: var(--s3);
     border: 1px solid var(--border);
     border-radius: var(--r-md);

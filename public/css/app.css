@@ -340,6 +340,31 @@ html:not(.admin-layout-shell) body .content {
     pointer-events: none;
 }
 
+.google-signin-responsive {
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: min(100%, 400px);
+    min-width: min(100%, 200px);
+    min-height: 44px;
+    margin-inline: auto;
+}
+
+.google-signin-responsive[hidden] {
+    display: none !important;
+}
+
+.google-signin-responsive:focus-within {
+    outline: 2px solid var(--brand);
+    outline-offset: 3px;
+    border-radius: var(--r-pill);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .google-btn-wrap { transition: none; }
+}
+
 .auth-divider {
     display: flex;
     align-items: center;
