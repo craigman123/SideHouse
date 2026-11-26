@@ -7,8 +7,11 @@ use App\Support\GuardSessionState;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Auth\Events\Logout;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Session\TokenMismatchException;
 use PragmaRX\Google2FA\Google2FA;
 use Tests\Feature\Concerns\UsesMultiGuardEnvironment;
 use Tests\TestCase;
@@ -37,6 +40,7 @@ class CustomerMfaTest extends TestCase
         $customer = $this->customer();
         $google2fa = new Google2FA();
         $this->actingAs($customer, 'customer');
+        session()->put(GuardSessionState::key('mfa_setup_voluntary'), true);
 
         $init = $this->postJson('/mfa/setup/init')->assertOk();
         $secret = $init->json('secret');
@@ -50,6 +54,7 @@ class CustomerMfaTest extends TestCase
         $customer->refresh();
         $this->assertTrue($customer->hasMfaEnabled());
         $this->assertSame('totp', $customer->mfa_method);
+        $this->assertNull(session(GuardSessionState::key('mfa_setup_voluntary')));
         $plainCodes = $enable->json('recovery_codes');
         $this->assertCount(8, $plainCodes);
         foreach ($plainCodes as $index => $plainCode) {
@@ -64,6 +69,103 @@ class CustomerMfaTest extends TestCase
         $this->assertFalse($customer->fresh()->hasMfaEnabled());
         $this->assertDatabaseHas('activity_logs', ['action' => 'customer.mfa_disabled', 'subject_id' => $customer->user_id]);
         $this->assertDatabaseHas('activity_logs', ['action' => 'customer.mfa_enabled', 'subject_id' => $customer->user_id]);
+    }
+
+    public function test_customer_can_cancel_voluntary_setup_without_changing_saved_mfa_or_other_guard_state(): void
+    {
+        $customer = $this->customer();
+        $this->actingAs($customer, 'customer');
+
+        $this->post('/profile/mfa/setup')->assertRedirect('/mfa/setup');
+        $this->get('/mfa/setup')
+            ->assertOk()
+            ->assertSee('action="'.route('mfa.setup.cancel').'"', false)
+            ->assertSee('class="mfa-modal-ghost-btn">Cancel</button>', false);
+
+        $session = app('session.store');
+        $session->put([GuardSessionState::key('mfa_passed_at') => 123]);
+        if (config('auth.multi_guard')) {
+            $session->put('mfa_temp_secret_admin', 'admin-secret');
+            $session->put('mfa_temp_secret_user_id_admin', 99);
+        }
+
+        $this->post('/mfa/setup/cancel')->assertRedirect('/profile')->assertSessionHas('success', 'MFA setup cancelled.');
+
+        $this->assertNull($session->get(GuardSessionState::key('mfa_temp_secret')));
+        $this->assertNull($session->get(GuardSessionState::key('mfa_temp_secret_user_id')));
+        $this->assertNull($session->get(GuardSessionState::key('mfa_setup_voluntary')));
+        $this->assertSame(123, $session->get(GuardSessionState::key('mfa_passed_at')));
+        if (config('auth.multi_guard')) {
+            $this->assertSame('admin-secret', $session->get('mfa_temp_secret_admin'));
+            $this->assertSame(99, $session->get('mfa_temp_secret_user_id_admin'));
+        }
+
+        $this->assertFalse($customer->fresh()->mfa_enabled);
+        $this->assertNull($customer->fresh()->mfa_secret);
+    }
+
+    public function test_cancel_does_not_change_an_already_enabled_customers_mfa(): void
+    {
+        $customer = $this->customer([
+            'mfa_enabled' => true,
+            'mfa_method' => 'totp',
+            'mfa_secret' => (new Google2FA())->generateSecretKey(),
+            'mfa_recovery_codes' => ['existing-code'],
+        ]);
+        $savedSecret = $customer->mfa_secret;
+        $this->actingAs($customer, 'customer');
+        $session = app('session.store');
+        $session->put([
+            GuardSessionState::key('mfa_setup_voluntary') => true,
+            GuardSessionState::key('mfa_temp_secret') => 'pending-secret',
+            GuardSessionState::key('mfa_temp_secret_user_id') => $customer->user_id,
+        ]);
+
+        $this->post('/mfa/setup/cancel')->assertRedirect('/profile');
+
+        $fresh = $customer->fresh();
+        $this->assertTrue($fresh->mfa_enabled);
+        $this->assertSame('totp', $fresh->mfa_method);
+        $this->assertSame($savedSecret, $fresh->mfa_secret);
+        $this->assertSame('existing-code', $fresh->mfa_recovery_codes[0]);
+    }
+
+    public function test_privileged_roles_cannot_cancel_mandatory_setup(): void
+    {
+        foreach (['admin', 'owner', 'staff'] as $role) {
+            $actor = $this->createUser($role);
+            $setupUri = config('auth.multi_guard') ? '/'.$role.'/mfa/setup' : '/mfa/setup';
+            $authenticated = $this->actingAs($actor, $role)
+                ->withSession([
+                    'access_version_user_id' => $actor->user_id,
+                    'access_version' => 1,
+                    'mfa_setup_voluntary' => true,
+                    'mfa_temp_secret' => 'mandatory-secret',
+                    'mfa_temp_secret_user_id' => $actor->user_id,
+                ]);
+            $authenticated->get($setupUri)->assertOk()->assertDontSee('mfa-modal-ghost-btn');
+            $response = $authenticated->post('/mfa/setup/cancel');
+
+            $this->assertNotContains($response->getStatusCode(), [200, 201, 202, 204]);
+        }
+    }
+
+    public function test_cancel_requires_csrf_token(): void
+    {
+        $request = Request::create('/mfa/setup/cancel', 'POST');
+        $request->setLaravelSession(app('session.store'));
+        $route = app('router')->getRoutes()->match($request);
+        $request->setRouteResolver(fn () => $route);
+        $middleware = new class($this->app, $this->app['encrypter']) extends VerifyCsrfToken
+        {
+            protected function runningUnitTests()
+            {
+                return false;
+            }
+        };
+
+        $this->expectException(TokenMismatchException::class);
+        $middleware->handle($request, fn () => response()->noContent());
     }
 
     public function test_recovery_code_is_consumed_once_and_plaintext_codes_remain_supported(): void

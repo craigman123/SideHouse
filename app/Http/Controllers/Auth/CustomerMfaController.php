@@ -18,9 +18,24 @@ class CustomerMfaController extends Controller
         $user = $this->customer($request);
         abort_if($user->hasMfaEnabled(), 409, 'MFA is already enabled.');
 
+        $request->session()->put(GuardSessionState::key('mfa_setup_voluntary'), true);
         $mfa->beginSetup($request, $user);
 
         return redirect()->to(role_route('customer.mfa.setup'));
+    }
+
+    public function cancelSetup(Request $request): RedirectResponse
+    {
+        $this->customer($request);
+        abort_unless((bool) $request->session()->get(GuardSessionState::key('mfa_setup_voluntary')), 403);
+
+        $request->session()->forget([
+            GuardSessionState::key('mfa_temp_secret'),
+            GuardSessionState::key('mfa_temp_secret_user_id'),
+            GuardSessionState::key('mfa_setup_voluntary'),
+        ]);
+
+        return redirect()->route('user.profile')->with('success', 'MFA setup cancelled.');
     }
 
     public function enable(Request $request, CustomerMfaService $mfa): RedirectResponse

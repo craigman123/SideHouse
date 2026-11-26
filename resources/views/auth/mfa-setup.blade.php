@@ -56,6 +56,12 @@
 
                     <button type="submit" class="mfa-btn">Enable MFA</button>
                 </form>
+                @if ($customerCancelUrl)
+                    <form method="POST" action="{{ $customerCancelUrl }}">
+                        @csrf
+                        <button type="submit" class="mfa-modal-ghost-btn">Cancel</button>
+                    </form>
+                @endif
             </div>
         </div>
     </div>

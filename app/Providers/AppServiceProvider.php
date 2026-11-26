@@ -111,7 +111,7 @@ class AppServiceProvider extends ServiceProvider
             $guard = config('auth.multi_guard') ? $guard : null;
             session()->forget(array_map(
                 static fn (string $key): string => GuardSessionState::key($key, $guard),
-                ['mfa_passed_at', 'mfa_passed_user_id', 'mfa_temp_secret', 'mfa_temp_secret_user_id'],
+                ['mfa_passed_at', 'mfa_passed_user_id', 'mfa_temp_secret', 'mfa_temp_secret_user_id', 'mfa_setup_voluntary'],
             ));
         };
 

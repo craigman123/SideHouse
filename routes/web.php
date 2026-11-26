@@ -204,6 +204,7 @@ if (! config('auth.multi_guard')) {
             $registerLaneRoute('POST', $path('auth/google'), [AuthController::class, 'googleAuth'], ['throttle:15,1'], $name('auth.google'), $guard);
             $registerLaneRoute('GET', 'register', [AuthController::class, 'showRegister'], ['throttle:30,1'], 'register', $guard);
             $registerLaneRoute('POST', 'register', [AuthController::class, 'register'], ['throttle:register'], 'register.submit', $guard);
+            $registerLaneRoute('POST', $path('mfa/setup/cancel'), [CustomerMfaController::class, 'cancelSetup'], ['auth', 'throttle:5,1'], $name('mfa.setup.cancel'), $guard);
         } else {
             $registerLaneRoute(
                 'GET',
@@ -253,6 +254,9 @@ if (! config('auth.multi_guard')) {
         Route::post('/mfa/verify', [MfaController::class, 'verify'])
             ->middleware('throttle:5,1')
             ->name('mfa.verify');
+        Route::post('/mfa/setup/cancel', [CustomerMfaController::class, 'cancelSetup'])
+            ->middleware('throttle:5,1')
+            ->name('mfa.setup.cancel');
     });
 }
 

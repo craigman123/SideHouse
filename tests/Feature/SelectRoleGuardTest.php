@@ -94,7 +94,7 @@ class SelectRoleGuardTest extends TestCase
     public function test_all_auth_and_mfa_lane_routes_have_guard_markers(): void
     {
         foreach ([
-            'customer' => ['login', 'login.submit', 'register', 'register.submit', 'auth.google', 'logout', 'mfa.setup', 'mfa.setup.init', 'mfa.enable', 'mfa.challenge', 'mfa.verify'],
+            'customer' => ['login', 'login.submit', 'register', 'register.submit', 'auth.google', 'logout', 'mfa.setup', 'mfa.setup.init', 'mfa.enable', 'mfa.challenge', 'mfa.verify', 'mfa.setup.cancel'],
             'admin' => ['admin.login', 'admin.logout', 'admin.mfa.setup', 'admin.mfa.setup.init', 'admin.mfa.enable', 'admin.mfa.challenge', 'admin.mfa.verify'],
             'owner' => ['owner.login', 'owner.logout', 'owner.mfa.setup', 'owner.mfa.setup.init', 'owner.mfa.enable', 'owner.mfa.challenge', 'owner.mfa.verify'],
             'staff' => ['staff.login', 'staff.logout', 'staff.mfa.setup', 'staff.mfa.setup.init', 'staff.mfa.enable', 'staff.mfa.challenge', 'staff.mfa.verify'],

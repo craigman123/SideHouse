@@ -15,6 +15,7 @@ class GuardSessionState
         'mfa_passed_user_id',
         'mfa_temp_secret',
         'mfa_temp_secret_user_id',
+        'mfa_setup_voluntary',
         'view_as',
         'lumi_login_popover_pending',
         'lumi_login_popover_shown',

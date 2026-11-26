@@ -126,6 +126,7 @@ class RoleScopedSharedRoutesTest extends TestCase
                 'mfa.enable' => 'mfa/enable',
                 'mfa.challenge' => 'mfa/challenge',
                 'mfa.verify' => 'mfa/verify',
+                'mfa.setup.cancel' => 'mfa/setup/cancel',
             ],
             'admin' => [
                 'login' => 'admin/login',

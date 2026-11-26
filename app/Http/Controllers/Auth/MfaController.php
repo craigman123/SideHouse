@@ -49,6 +49,10 @@ class MfaController extends Controller
             'secret'    => $secret,
             'qrCodeUrl' => $qrCodeUrl,
             'mfaEnableUrl' => route(mfa_route_name('mfa.enable')),
+            'customerCancelUrl' => $user->role === 'user'
+                && (bool) session(GuardSessionState::key('mfa_setup_voluntary'))
+                ? role_route('customer.mfa.setup.cancel')
+                : null,
         ]);
     }
 
@@ -152,6 +156,7 @@ class MfaController extends Controller
         session()->forget([
             GuardSessionState::key('mfa_temp_secret'),
             GuardSessionState::key('mfa_temp_secret_user_id'),
+            GuardSessionState::key('mfa_setup_voluntary'),
         ]);
         session([
             GuardSessionState::key('mfa_passed_at') => now()->timestamp,

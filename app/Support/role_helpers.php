@@ -12,6 +12,7 @@ if (! function_exists('role_route')) {
             'customer.mfa.enable' => 'mfa.enable',
             'customer.mfa.challenge' => 'mfa.challenge',
             'customer.mfa.verify' => 'mfa.verify',
+            'customer.mfa.setup.cancel' => 'mfa.setup.cancel',
             'customer.profile.mfa.setup' => 'user.profile.mfa.setup',
             'customer.profile.mfa.enable' => 'user.profile.mfa.enable',
             'customer.profile.mfa.disable' => 'user.profile.mfa.disable',
