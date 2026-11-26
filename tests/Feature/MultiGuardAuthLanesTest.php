@@ -4,6 +4,9 @@ namespace Tests\Feature;
 
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
+use Illuminate\Http\Request;
+use Illuminate\Session\TokenMismatchException;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Http;
 use PragmaRX\Google2FA\Google2FA;
@@ -72,6 +75,69 @@ class MultiGuardAuthLanesTest extends TestCase
 
             $this->assertSame($user->user_id, Auth::guard($guard)->user()?->user_id, $guard);
         }
+    }
+
+    public function test_customer_login_accepts_the_login_page_token_after_admin_login_rotates_the_session(): void
+    {
+        $admin = $this->user('admin');
+        $customer = $this->user('user');
+
+        $page = $this->get('/login')->assertOk();
+        preg_match('/<meta name="csrf-token" content="([^"]+)"/', $page->getContent(), $matches);
+        $oldToken = html_entity_decode($matches[1], ENT_QUOTES);
+        $sessionCookieName = config('session.cookie');
+        $sessionCookie = $page->getCookie($sessionCookieName);
+        $this->assertNotNull($sessionCookie);
+        $this->withCookie($sessionCookieName, $sessionCookie->getValue())->withCredentials();
+        $initialRefresh = $this->get('/login')->assertOk();
+        preg_match('/<meta name="csrf-token" content="([^"]+)"/', $initialRefresh->getContent(), $initialMatches);
+        $this->assertSame($oldToken, html_entity_decode($initialMatches[1], ENT_QUOTES));
+
+        $adminLogin = $this->post('/login', [
+            '_token' => $oldToken,
+            'username' => $admin->username,
+            'password' => 'password',
+        ])->assertRedirect(route('admin.mfa.setup'))
+            ->assertSessionHas('_token', $oldToken);
+
+        $sessionCookie = $adminLogin->getCookie($sessionCookieName);
+        $this->assertNotNull($sessionCookie);
+        $this->withCookie($sessionCookieName, $sessionCookie->getValue());
+
+        $refreshedPage = $this->get('/login')->assertOk();
+        preg_match('/<meta name="csrf-token" content="([^"]+)"/', $refreshedPage->getContent(), $refreshedMatches);
+        $this->assertSame($oldToken, html_entity_decode($refreshedMatches[1], ENT_QUOTES));
+
+        $this->post('/login', [
+            '_token' => $oldToken,
+            'username' => $customer->username,
+            'password' => 'password',
+        ])->assertRedirect('/my-dashboard');
+
+        Auth::forgetGuards();
+        $this->assertSame($admin->user_id, Auth::guard('admin')->user()?->user_id);
+        $this->assertSame($customer->user_id, Auth::guard('customer')->user()?->user_id);
+    }
+
+    public function test_csrf_mismatches_redirect_only_for_login_routes_when_multi_guard_is_enabled(): void
+    {
+        $session = app('session.store');
+        $session->start();
+        $session->put('_token', str_repeat('a', 40));
+
+        foreach ([['/login', []], ['/login', ['_token' => str_repeat('b', 40)]]] as [$uri, $input]) {
+            $response = $this->csrfMismatchResponse($uri, $input, $session);
+
+            $this->assertSame(302, $response->getStatusCode());
+            $this->assertSame(route('login'), $response->headers->get('Location'));
+            $this->assertSame(
+                'Your page expired. Please try again.',
+                $session->get('_flash.new') ? $session->get('errors')->first() : null,
+            );
+            $this->assertGuest('customer');
+        }
+
+        $this->assertSame(419, $this->csrfMismatchResponse('/register', [], $session)->getStatusCode());
     }
 
     public function test_wrong_username_and_password_return_the_same_generic_error(): void
@@ -271,6 +337,30 @@ class MultiGuardAuthLanesTest extends TestCase
             'role' => $role,
             'access_version' => 1,
         ]);
+    }
+
+    private function csrfMismatchResponse(string $uri, array $input, $session)
+    {
+        $request = Request::create($uri, 'POST', $input);
+        $request->setLaravelSession($session);
+        $route = app('router')->getRoutes()->match($request);
+        $request->setRouteResolver(fn () => $route);
+        $middleware = new class($this->app, $this->app['encrypter']) extends VerifyCsrfToken
+        {
+            protected function runningUnitTests()
+            {
+                return false;
+            }
+        };
+
+        try {
+            $middleware->handle($request, fn () => response()->noContent());
+            $this->fail('The invalid CSRF token was accepted.');
+        } catch (TokenMismatchException $exception) {
+            return $this->app
+                ->make(\Illuminate\Contracts\Debug\ExceptionHandler::class)
+                ->render($request, $exception);
+        }
     }
 
     private function fakeGoogleToken(string $email, string $name): string

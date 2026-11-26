@@ -64,7 +64,7 @@ class EnsureAccessVersion
             $guard = GuardSessionState::currentGuard();
             Auth::guard($guard)->logout();
             GuardSessionState::forgetGuard($request, $guard);
-            $request->session()->regenerate();
+            GuardSessionState::regenerateSession($request);
             if ($guard !== 'customer') {
                 $loginRoute = $guard.'.login';
             }

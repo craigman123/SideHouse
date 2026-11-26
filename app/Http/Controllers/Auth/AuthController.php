@@ -236,9 +236,12 @@ class AuthController extends Controller
         }
 
         Auth::shouldUse($guard);
-        Auth::guard($guard)->login($user);
+        GuardSessionState::runPreservingToken(
+            $request,
+            fn () => Auth::guard($guard)->login($user),
+        );
         $request->session()->forget(GuardSessionState::key('view_as'));
-        $request->session()->regenerate();
+        GuardSessionState::regenerateSession($request);
         $this->resetLumiPopoverSession($request);
         $this->recordSuccessfulLogin($request, $user);
 
@@ -305,9 +308,12 @@ class AuthController extends Controller
         }
 
         Auth::shouldUse($guard);
-        Auth::guard($guard)->login($user);
+        GuardSessionState::runPreservingToken(
+            $request,
+            fn () => Auth::guard($guard)->login($user),
+        );
         $request->session()->forget(GuardSessionState::key('view_as'));
-        $request->session()->regenerate();
+        GuardSessionState::regenerateSession($request);
         $this->resetLumiPopoverSession($request);
         $this->recordSuccessfulLogin($request, $user);
 
@@ -431,7 +437,7 @@ class AuthController extends Controller
         if (config('auth.multi_guard')) {
             Auth::guard($guard)->logout();
             GuardSessionState::forgetGuard($request, $guard);
-            $request->session()->regenerate();
+            GuardSessionState::regenerateSession($request);
         } else {
             $request->session()->forget('view_as');
             Auth::logout();

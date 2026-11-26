@@ -125,7 +125,7 @@ class MfaController extends Controller
             GuardSessionState::key('mfa_passed_at') => now()->timestamp,
             GuardSessionState::key('mfa_passed_user_id') => $user->user_id,
         ]);
-        session()->regenerate();
+        GuardSessionState::regenerateSession($request);
 
         if ($request->expectsJson()) {
             return response()->json([
@@ -197,7 +197,7 @@ class MfaController extends Controller
             GuardSessionState::key('mfa_passed_at') => now()->timestamp,
             GuardSessionState::key('mfa_passed_user_id') => $user->user_id,
         ]);
-        session()->regenerate();
+        GuardSessionState::regenerateSession($request);
 
         if ($request->expectsJson()) {
             return response()->json([

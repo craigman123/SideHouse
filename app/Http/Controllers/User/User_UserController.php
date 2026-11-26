@@ -998,7 +998,7 @@ class User_UserController extends Controller
         $user->delete();
 
         if ($multiGuard) {
-            $request->session()->regenerate();
+            GuardSessionState::regenerateSession($request);
             $loginRoute = $guard === 'customer' ? 'login' : $guard.'.login';
 
             return redirect()->route($loginRoute);

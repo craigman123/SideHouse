@@ -751,10 +751,6 @@ html:not(.admin-layout-shell) body .content {
         font-size: 11px;
     }
 
-    .profile-name {
-        display: none; /* just show the avatar to save space */
-    }
-
     .profile-dropdown {
         left: auto;
         right: 8px;

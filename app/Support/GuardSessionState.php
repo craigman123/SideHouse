@@ -2,6 +2,7 @@
 
 namespace App\Support;
 
+use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -41,5 +42,26 @@ class GuardSessionState
             : self::SESSION_KEYS;
 
         $request->session()->forget($keys);
+    }
+
+    public static function regenerateSession(Request $request): void
+    {
+        self::runPreservingToken($request, fn () => $request->session()->regenerate());
+    }
+
+    public static function runPreservingToken(Request $request, Closure $callback): mixed
+    {
+        if (! config('auth.multi_guard')) {
+            return $callback();
+        }
+
+        $token = $request->session()->token();
+        $result = $callback();
+
+        if (is_string($token)) {
+            $request->session()->put('_token', $token);
+        }
+
+        return $result;
     }
 }
