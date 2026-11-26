@@ -9,6 +9,8 @@ This procedure applies only to admin, owner, and staff accounts. It does not cre
 3. If no recovery code or working device remains, ask a different real admin to require re-enrollment for an admin or staff account. The affected account is notified, its sessions are invalidated, and protected pages remain unavailable until a new TOTP factor is verified.
 4. An owner account cannot be disabled or forced to re-enroll by one admin. One admin creates a request and a second real admin approves it with a fresh TOTP code. The requester cannot approve their own request.
 
+Temporary MFA disablement is a separate, time-limited login bypass of up to 24 hours. It retains the authenticator, recovery codes, and existing sessions; expiration restores the normal challenge automatically. Re-enabling sooner invalidates existing sessions so the saved TOTP is required again. Do not use temporary disablement to recover a lost device; use the forced re-enrollment process above.
+
 ## Only admin or all admins locked out
 
 There is no self-service or application-level bypass for a locked-out admin. If no real admin can perform an authorized action, designated infrastructure operators may carry out a narrowly scoped recovery under two-person control:

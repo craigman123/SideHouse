@@ -18,6 +18,11 @@ class PrivilegedMfaPolicy
         return $this->canManageTarget($actor, $target) && $this->realTargetRole($target) !== 'owner';
     }
 
+    public function enablePrivilegedMfa(User $actor, User $target): bool
+    {
+        return $this->canManageTarget($actor, $target);
+    }
+
     public function setPrivilegedMfaMethods(User $actor, User $target): bool
     {
         return $this->canManageTarget($actor, $target);

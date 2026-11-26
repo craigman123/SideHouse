@@ -31,8 +31,7 @@ class PrivilegedMfaController extends Controller
         $target = DB::transaction(function () use ($actor, $user, $validated, $mfa): User {
             [$lockedActor, $lockedTarget] = $this->lockActorAndTarget($actor->user_id, $user->user_id);
             Gate::forUser($lockedActor)->authorize('disablePrivilegedMfa', $lockedTarget);
-            abort_unless($lockedTarget->hasMfaEnabled(), 409, 'This account does not have an active MFA method to disable.');
-            abort_unless(($lockedTarget->mfa_method ?? 'totp') === 'totp', 409, 'Only an active TOTP method can be disabled.');
+            abort_if($mfa->isTemporarilyDisabled($lockedTarget), 409, 'This account already has MFA temporarily disabled.');
 
             $step = $mfa->verifyFreshTotp($lockedActor, $validated['code']);
             $lockedActor->forceFill(['mfa_last_admin_action_step' => $step])->save();
@@ -41,7 +40,7 @@ class PrivilegedMfaController extends Controller
                 $lockedTarget,
                 'privileged_mfa_disabled',
                 'MFA disabled',
-                "An administrator disabled this account's MFA. Re-enrollment is required at the next sign-in.",
+                'An administrator temporarily disabled MFA for this account. The saved authenticator and recovery codes remain in place, and MFA will be required again within 24 hours.',
                 'disable',
             );
             $this->audit($lockedActor, $lockedTarget, 'privileged_mfa.disabled', 'disable', 'success');
@@ -51,18 +50,57 @@ class PrivilegedMfaController extends Controller
 
         return $this->jsonWithEmail(
             $target,
-            'MFA disabled. The account must re-enroll at its next sign-in.',
+            'MFA is disabled for up to 24 hours. The saved authenticator and recovery codes were retained.',
             'MFA disabled',
-            'An administrator disabled MFA for your Side House account. Re-enrollment will be required at your next sign-in.',
+            'An administrator temporarily disabled MFA for your Side House account. Your saved authenticator and recovery codes remain in place. MFA will be required again after the temporary disablement expires.',
         );
     }
 
-    public function enable(Request $request, User $user): JsonResponse
+    public function enable(Request $request, User $user, PrivilegedMfaService $mfa): JsonResponse
+    {
+        $actor = $this->freshActor($request);
+        Gate::forUser($actor)->authorize('enablePrivilegedMfa', $user);
+        $validated = $request->validate(['code' => ['required', 'string', 'size:6', 'regex:/^[0-9]{6}$/']]);
+
+        $target = DB::transaction(function () use ($actor, $user, $validated, $mfa): User {
+            [$lockedActor, $lockedTarget] = $this->lockActorAndTarget($actor->user_id, $user->user_id);
+            Gate::forUser($lockedActor)->authorize('enablePrivilegedMfa', $lockedTarget);
+            abort_unless($mfa->isTemporarilyDisabled($lockedTarget), 409, 'This account does not have MFA temporarily disabled.');
+
+            $step = $mfa->verifyFreshTotp($lockedActor, $validated['code']);
+            $lockedActor->forceFill(['mfa_last_admin_action_step' => $step])->save();
+            $lockedTarget->forceFill([
+                'mfa_admin_disabled_until' => null,
+                'access_version' => (int) $lockedTarget->access_version + 1,
+                'remember_token' => Str::random(60),
+            ])->save();
+            $this->notifyTargetAndOwner(
+                $lockedTarget,
+                'privileged_mfa_enabled',
+                'MFA enabled',
+                'An administrator ended this account\'s temporary MFA disablement. The account’s normal MFA requirement applies again.',
+                'enable',
+            );
+            $this->audit($lockedActor, $lockedTarget, 'privileged_mfa.enabled', 'enable', 'success');
+
+            return $lockedTarget->fresh();
+        });
+
+        return $this->jsonWithEmail(
+            $target,
+            'The temporary MFA disablement ended. The normal MFA requirement applies again.',
+            'MFA enabled',
+            'An administrator ended the temporary MFA disablement for your account. Your normal MFA requirement applies again.',
+        );
+    }
+
+    public function forceReenrollment(Request $request, User $user, PrivilegedMfaService $mfa): JsonResponse
     {
         $actor = $this->freshActor($request);
         Gate::forUser($actor)->authorize('forcePrivilegedMfaReenrollment', $user);
+        $validated = $request->validate(['code' => ['required', 'string', 'size:6', 'regex:/^[0-9]{6}$/']]);
 
-        $target = DB::transaction(function () use ($actor, $user): User {
+        $target = DB::transaction(function () use ($actor, $user, $validated, $mfa): User {
             [$lockedActor, $lockedTarget] = $this->lockActorAndTarget($actor->user_id, $user->user_id);
             Gate::forUser($lockedActor)->authorize('forcePrivilegedMfaReenrollment', $lockedTarget);
             abort_if(
@@ -71,24 +109,26 @@ class PrivilegedMfaController extends Controller
                 'This account already requires MFA re-enrollment.',
             );
 
-            $this->forceReenrollment($lockedTarget);
+            $step = $mfa->verifyFreshTotp($lockedActor, $validated['code']);
+            $lockedActor->forceFill(['mfa_last_admin_action_step' => $step])->save();
+            $this->applyForcedReenrollment($lockedTarget);
             $this->notifyTargetAndOwner(
                 $lockedTarget,
                 'privileged_mfa_reenrollment',
                 'MFA re-enrollment required',
-                'An administrator requires this account to enroll a TOTP method before accessing protected pages.',
-                'enable',
+                'An administrator erased this account\'s saved authenticator and recovery codes. A new TOTP factor is required before accessing protected pages.',
+                'force_reenrollment',
             );
-            $this->audit($lockedActor, $lockedTarget, 'privileged_mfa.reenrollment_required', 'enable', 'success');
+            $this->audit($lockedActor, $lockedTarget, 'privileged_mfa.reenrollment_required', 'force_reenrollment', 'success');
 
             return $lockedTarget->fresh();
         });
 
         return $this->jsonWithEmail(
             $target,
-            'MFA re-enrollment is required at the next sign-in.',
+            'The saved factor and recovery codes were erased. MFA setup is required at the next sign-in.',
             'MFA re-enrollment required',
-            'An administrator requires you to enroll a TOTP method before accessing protected pages.',
+            'An administrator erased the saved authenticator and recovery codes for your account. Enroll a new TOTP factor before accessing protected pages.',
         );
     }
 
@@ -165,7 +205,7 @@ class PrivilegedMfaController extends Controller
         $actor = $this->freshActor($request);
         Gate::forUser($actor)->authorize('requestOwnerMfaChange', $user);
         $validated = $request->validate([
-            'action' => ['required', Rule::in(['disable', 'enable'])],
+            'action' => ['required', Rule::in(['disable', 'force_reenroll'])],
         ]);
 
         $resetRequest = DB::transaction(function () use ($actor, $user, $validated): MfaResetRequest {
@@ -193,7 +233,9 @@ class PrivilegedMfaController extends Controller
                 $lockedTarget,
                 'privileged_mfa_owner_request',
                 'Owner MFA request pending',
-                "A second administrator must approve an MFA {$validated['action']} request for this owner account within 24 hours.",
+                $validated['action'] === 'disable'
+                    ? 'A second administrator must approve temporarily disabling MFA for this owner account within 24 hours.'
+                    : 'A second administrator must approve forcing MFA re-enrollment for this owner account within 24 hours.',
                 'owner_request',
                 ['request_id' => $requestRecord->id],
             );
@@ -275,8 +317,8 @@ class PrivilegedMfaController extends Controller
                 'privileged_mfa_owner_executed',
                 'Owner MFA change completed',
                 $lockedRequest->action === 'disable'
-                    ? 'Two administrators approved disabling MFA. Re-enrollment is required at the next sign-in.'
-                    : 'Two administrators approved requiring MFA re-enrollment.',
+                    ? 'Two administrators approved temporarily disabling MFA. The saved factor remains in place and MFA will be required again within 24 hours.'
+                    : 'Two administrators approved erasing the saved factor and requiring MFA re-enrollment.',
                 'owner_execution',
                 ['request_id' => $lockedRequest->id],
             );
@@ -297,8 +339,8 @@ class PrivilegedMfaController extends Controller
         }
 
         $message = $requestRecord->action === 'disable'
-            ? 'Owner MFA disabled. Re-enrollment is required at the next sign-in.'
-            : 'Owner MFA re-enrollment is now required.';
+            ? 'Owner MFA is temporarily disabled for up to 24 hours. The saved factor was retained.'
+            :             'The owner\'s saved factor and recovery codes were erased. MFA setup is required at the next sign-in.';
         $emailResult = $this->sendEmails([$result['target']], 'Owner MFA change completed', $message);
 
         return response()->json(['message' => $message, 'email_notification' => $emailResult]);
@@ -316,6 +358,11 @@ class PrivilegedMfaController extends Controller
         $codes = DB::transaction(function () use ($actor, $validated, $mfa, $recoveryCodes): array {
             $lockedActor = User::query()->whereKey($actor->user_id)->lockForUpdate()->firstOrFail();
             Gate::forUser($lockedActor)->authorize('regenerateOwnRecoveryCodes', $lockedActor);
+            abort_if(
+                $mfa->isTemporarilyDisabled($lockedActor),
+                409,
+                'Recovery codes cannot be regenerated while MFA is temporarily disabled.',
+            );
             abort_unless($lockedActor->hasMfaEnabled(), 409, 'Set up MFA before regenerating recovery codes.');
             $step = $mfa->verifyFreshTotp($lockedActor, $validated['code']);
             $generated = $recoveryCodes->generateRecoveryCodes();
@@ -363,20 +410,17 @@ class PrivilegedMfaController extends Controller
     private function disableTarget(User $target): void
     {
         $target->forceFill([
+            'mfa_admin_disabled_until' => now()->addHours(24),
+        ])->save();
+    }
+
+    private function applyForcedReenrollment(User $target): void
+    {
+        $target->forceFill([
             'mfa_enabled' => false,
             'mfa_secret' => null,
             'mfa_recovery_codes' => null,
             'mfa_method' => null,
-            'mfa_admin_disabled_until' => now()->addDay(),
-            'mfa_reenroll_required' => false,
-            'access_version' => (int) $target->access_version + 1,
-            'remember_token' => Str::random(60),
-        ])->save();
-    }
-
-    private function forceReenrollment(User $target): void
-    {
-        $target->forceFill([
             'mfa_admin_disabled_until' => null,
             'mfa_reenroll_required' => true,
             'access_version' => (int) $target->access_version + 1,
@@ -387,15 +431,15 @@ class PrivilegedMfaController extends Controller
     private function applyAction(User $target, string $action): void
     {
         if ($action === 'disable') {
-            abort_unless($target->hasMfaEnabled(), 409, 'This owner account has no active MFA method to disable.');
+            abort_unless(! app(PrivilegedMfaService::class)->isTemporarilyDisabled($target), 409);
             $this->disableTarget($target);
 
             return;
         }
 
-        abort_unless($action === 'enable', 409);
+        abort_unless($action === 'force_reenroll', 409);
         abort_if($target->mfa_reenroll_required && $target->mfa_admin_disabled_until === null, 409, 'This owner account already requires MFA re-enrollment.');
-        $this->forceReenrollment($target);
+        $this->applyForcedReenrollment($target);
     }
 
     private function notifyTargetAndOwner(

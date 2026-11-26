@@ -47,6 +47,9 @@ class UserAccessController extends Controller
             'mfaEnableUrlTemplate' => $canManageMfa
                 ? role_route('admin.users.mfa.enable', ['user' => '__USER__'])
                 : '',
+            'mfaForceReenrollmentUrlTemplate' => $canManageMfa
+                ? role_route('admin.users.mfa.force-reenrollment', ['user' => '__USER__'])
+                : '',
             'mfaAllowedMethodsUrlTemplate' => $canManageMfa
                 ? role_route('admin.users.mfa.allowed-methods', ['user' => '__USER__'])
                 : '',
@@ -546,13 +549,13 @@ class UserAccessController extends Controller
         ];
         if ($mfaTargetAllowed) {
             $row['mfa_actions'] = [
-                'disable' => $user->role !== 'owner' && $state['key'] === 'enabled',
-                'enable' => $user->role !== 'owner' && $state['key'] === 'disabled',
-                'force_reenroll' => $user->role !== 'owner' && $state['key'] === 'enabled',
+                'disable' => $user->role !== 'owner' && $state['key'] !== 'disabled',
+                'enable' => $state['key'] === 'disabled',
+                'force_reenroll' => $user->role !== 'owner' && $state['key'] !== 'reenrollment_required',
                 'allowed_methods' => true,
                 'request_owner_change' => $user->role === 'owner'
                     && $pendingRequest === null
-                    && in_array($state['key'], ['enabled', 'disabled'], true),
+                    && in_array($state['key'], ['enabled', 'disabled', 'pending_setup', 'reenrollment_required'], true),
                 'approve_owner_request' => $pendingRequest !== null
                     && (int) $pendingRequest->requested_by_user_id !== $actorId,
             ];

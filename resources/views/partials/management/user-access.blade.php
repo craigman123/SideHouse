@@ -16,6 +16,7 @@
         data-can-manage-mfa="{{ $canManageMfa ? 'true' : 'false' }}"
         data-mfa-disable-url-template="{{ $mfaDisableUrlTemplate }}"
         data-mfa-enable-url-template="{{ $mfaEnableUrlTemplate }}"
+        data-mfa-force-reenrollment-url-template="{{ $mfaForceReenrollmentUrlTemplate }}"
         data-mfa-allowed-methods-url-template="{{ $mfaAllowedMethodsUrlTemplate }}"
         data-mfa-owner-request-url-template="{{ $mfaOwnerRequestUrlTemplate }}"
         data-mfa-owner-approve-url-template="{{ $mfaOwnerApproveUrlTemplate }}"
@@ -206,7 +207,7 @@
             </header>
             <div class="access-dialog-body">
                 <p id="mfaActionDescription"></p>
-                <label class="field-label" id="mfaCodeField" for="mfaActionCode" hidden>Confirm with your current TOTP code</label>
+                <label class="field-label" id="mfaCodeField" for="mfaActionCode" hidden>Confirm with a fresh current TOTP code</label>
                 <input id="mfaActionCode" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]{6}" hidden>
                 <label class="field-label" id="mfaMethodsField" for="mfaAllowedMethods" hidden>Allowed methods</label>
                 <select id="mfaAllowedMethods" hidden>

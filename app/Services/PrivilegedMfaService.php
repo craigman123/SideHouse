@@ -11,45 +11,30 @@ class PrivilegedMfaService
 {
     private const PRIVILEGED_ROLES = ['admin', 'owner', 'staff'];
 
-    public function afterSuccessfulLogin(User $user): void
+    public function isTemporarilyDisabled(User $user): bool
     {
-        if (! in_array($user->role, self::PRIVILEGED_ROLES, true)) {
-            return;
-        }
+        return in_array($user->role, self::PRIVILEGED_ROLES, true)
+            && $user->mfa_admin_disabled_until !== null
+            && $user->mfa_admin_disabled_until->isFuture();
+    }
 
-        DB::transaction(function () use ($user): void {
-            $target = User::query()->whereKey($user->user_id)->lockForUpdate()->firstOrFail();
-            if (! in_array($target->role, self::PRIVILEGED_ROLES, true) || $target->mfa_admin_disabled_until === null) {
-                return;
-            }
-
-            $target->forceFill([
-                'mfa_admin_disabled_until' => null,
-                'mfa_reenroll_required' => true,
-            ])->save();
-        });
+    public function hasExpiredDisable(User $user): bool
+    {
+        return in_array($user->role, self::PRIVILEGED_ROLES, true)
+            && $user->mfa_admin_disabled_until !== null
+            && $user->mfa_admin_disabled_until->lessThanOrEqualTo(now());
     }
 
     public function applyExpiredDisable(User $user): User
     {
-        if (
-            ! in_array($user->role, self::PRIVILEGED_ROLES, true)
-            || $user->mfa_admin_disabled_until === null
-            || $user->mfa_admin_disabled_until->isFuture()
-        ) {
+        if (! $this->hasExpiredDisable($user)) {
             return $user;
         }
 
         return DB::transaction(function () use ($user): User {
             $target = User::query()->whereKey($user->user_id)->lockForUpdate()->firstOrFail();
-            if (
-                $target->mfa_admin_disabled_until !== null
-                && $target->mfa_admin_disabled_until->lessThanOrEqualTo(now())
-            ) {
-                $target->forceFill([
-                    'mfa_admin_disabled_until' => null,
-                    'mfa_reenroll_required' => true,
-                ])->save();
+            if ($this->hasExpiredDisable($target)) {
+                $target->forceFill(['mfa_admin_disabled_until' => null])->save();
             }
 
             return $target;
@@ -58,20 +43,20 @@ class PrivilegedMfaService
 
     public function isReenrollmentRequired(User $user): bool
     {
-        return $user->mfa_reenroll_required
-            || ($user->mfa_admin_disabled_until !== null && $user->mfa_admin_disabled_until->lessThanOrEqualTo(now()));
+        return (bool) $user->mfa_reenroll_required;
     }
 
     public function state(User $user): array
     {
-        if ($user->mfa_admin_disabled_until !== null && $user->mfa_admin_disabled_until->isFuture()) {
+        if ($this->isTemporarilyDisabled($user)) {
             $seconds = now()->diffInSeconds($user->mfa_admin_disabled_until);
             $hours = intdiv($seconds, 3600);
-            $minutes = intdiv($seconds % 3600, 60);
 
             return [
                 'key' => 'disabled',
-                'label' => sprintf('Disabled (%dh %02dm left)', $hours, $minutes),
+                'label' => $hours > 0
+                    ? sprintf('Disabled (%dh left)', $hours)
+                    : 'Disabled (<1h left)',
                 'disabled_until' => $user->mfa_admin_disabled_until->toIso8601String(),
             ];
         }

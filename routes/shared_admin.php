@@ -289,6 +289,14 @@ return [
         'roles' => ['admin'],
     ],
     [
+        'name' => 'admin.users.mfa.force-reenrollment',
+        'method' => 'POST',
+        'legacy_uri' => 'admin/users/{user}/mfa/force-reenrollment',
+        'action' => [PrivilegedMfaController::class, 'forceReenrollment'],
+        'middleware' => ['auth', 'admin.mfa', 'real-admin', 'throttle:5,1'],
+        'roles' => ['admin'],
+    ],
+    [
         'name' => 'admin.users.mfa.allowed-methods',
         'method' => 'PATCH',
         'legacy_uri' => 'admin/users/{user}/mfa/allowed-methods',

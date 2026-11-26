@@ -195,22 +195,22 @@
         state.mfaAction = action;
         mfaError.hidden = true;
         mfaCodeInput.value = '';
-        mfaCodeInput.required = action === 'disable' || action === 'approve';
+        mfaCodeInput.required = ['disable', 'enable', 'force_reenroll', 'approve'].includes(action);
         mfaCodeField.hidden = !mfaCodeInput.required;
         mfaCodeInput.hidden = !mfaCodeInput.required;
         mfaMethodsField.hidden = action !== 'allowed_methods';
         mfaMethodsSelect.hidden = action !== 'allowed_methods';
         mfaMethodsSelect.value = user.mfa_pending_allowed_methods || user.mfa_allowed_methods || 'totp';
 
-        const ownerRequest = action === 'owner_request_disable' || action === 'owner_request_enable';
+        const ownerRequest = action === 'owner_request_disable' || action === 'owner_request_force_reenroll';
         const actionNames = {
-            disable: ['Disable MFA', 'Enter your current TOTP code to confirm this one-time action.'],
-            enable: ['Enable MFA', 'The target will be required to enroll TOTP before accessing protected pages.'],
-            force_reenroll: ['Force re-enrollment', 'The current factor stays active until the target verifies a new TOTP factor.'],
+            disable: ['Disable MFA', 'The saved authenticator and recovery codes will be retained. MFA will automatically be required again within 24 hours.'],
+            enable: ['Enable MFA', 'The target’s saved authenticator will be required again immediately.'],
+            force_reenroll: ['Force re-enrollment', 'The saved authenticator and recovery codes will be erased. The target must enroll a new TOTP factor before accessing protected pages.'],
             allowed_methods: ['Allowed methods', 'Passkey-only access is unavailable until passkeys are implemented.'],
-            owner_request_disable: ['Request owner MFA disable', 'A different real admin must approve this request with a fresh TOTP code within 24 hours.'],
-            owner_request_enable: ['Request owner MFA re-enrollment', 'A different real admin must approve this request with a fresh TOTP code within 24 hours.'],
-            approve: ['Approve owner MFA request', 'Enter your current TOTP code. It can approve only this one action.'],
+            owner_request_disable: ['Request owner MFA disable', 'A different real admin must approve temporary disablement with a fresh TOTP code within 24 hours.'],
+            owner_request_force_reenroll: ['Request owner force re-enrollment', 'A different real admin must approve erasing the saved factor with a fresh TOTP code within 24 hours.'],
+            approve: ['Approve owner MFA request', 'Enter a fresh current TOTP code. It can approve only this one action.'],
         };
         const [title, description] = actionNames[action];
         document.getElementById('mfaActionTitle').textContent = title;
@@ -272,11 +272,15 @@
             if (user.mfa_actions.enable) addMfaAction('Enable MFA', 'enable');
             if (user.mfa_actions.force_reenroll) addMfaAction('Force re-enrollment', 'force_reenroll');
             if (user.mfa_actions.allowed_methods) addMfaAction('Allowed methods', 'allowed_methods');
-            if (user.mfa_actions.request_owner_change && user.mfa_state === 'enabled') {
-                addMfaAction('Request disable MFA', 'owner_request_disable', true);
-                addMfaAction('Request force re-enrollment', 'owner_request_enable');
-            } else if (user.mfa_actions.request_owner_change && user.mfa_state === 'disabled') {
-                addMfaAction('Request enable MFA', 'owner_request_enable');
+            if (user.mfa_actions.request_owner_change) {
+                if (user.mfa_state === 'disabled') {
+                    addMfaAction('Request force re-enrollment', 'owner_request_force_reenroll');
+                } else {
+                    if (user.mfa_state !== 'reenrollment_required') {
+                        addMfaAction('Request force re-enrollment', 'owner_request_force_reenroll');
+                    }
+                    addMfaAction('Request disable MFA', 'owner_request_disable', true);
+                }
             }
             if (user.mfa_actions.approve_owner_request) {
                 addMfaAction('Approve MFA request', 'approve');
@@ -874,20 +878,22 @@
         const templates = {
             disable: page.dataset.mfaDisableUrlTemplate,
             enable: page.dataset.mfaEnableUrlTemplate,
-            force_reenroll: page.dataset.mfaEnableUrlTemplate,
+            force_reenroll: page.dataset.mfaForceReenrollmentUrlTemplate,
             allowed_methods: page.dataset.mfaAllowedMethodsUrlTemplate,
             owner_request_disable: page.dataset.mfaOwnerRequestUrlTemplate,
-            owner_request_enable: page.dataset.mfaOwnerRequestUrlTemplate,
+            owner_request_force_reenroll: page.dataset.mfaOwnerRequestUrlTemplate,
             approve: page.dataset.mfaOwnerApproveUrlTemplate,
         };
         let url = templates[action]?.replace('__USER__', userId) || '';
         let method = action === 'allowed_methods' ? 'PATCH' : 'POST';
         const payload = {};
 
-        if (action === 'disable' || action === 'approve') payload.code = mfaCodeInput.value.trim();
+        if (['disable', 'enable', 'force_reenroll', 'approve'].includes(action)) {
+            payload.code = mfaCodeInput.value.trim();
+        }
         if (action === 'allowed_methods') payload.allowed_methods = mfaMethodsSelect.value;
         if (action === 'owner_request_disable') payload.action = 'disable';
-        if (action === 'owner_request_enable') payload.action = 'enable';
+        if (action === 'owner_request_force_reenroll') payload.action = 'force_reenroll';
         if (action === 'approve') {
             url = url.replace('__REQUEST__', encodeURIComponent(user.pending_mfa_request?.id || ''));
         }

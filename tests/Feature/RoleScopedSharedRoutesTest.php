@@ -43,6 +43,7 @@ class RoleScopedSharedRoutesTest extends TestCase
         'admin.users.details.update' => ['admin'],
         'admin.users.mfa.disable' => ['admin'],
         'admin.users.mfa.enable' => ['admin'],
+        'admin.users.mfa.force-reenrollment' => ['admin'],
         'admin.users.mfa.allowed-methods' => ['admin'],
         'admin.users.mfa.owner-request' => ['admin'],
         'admin.users.mfa.owner-approve' => ['admin'],

@@ -22,6 +22,9 @@ class MfaController extends Controller
         $user = $request->user();
         $privilegedMfa = app(PrivilegedMfaService::class);
         if ($user->requiresMfa()) {
+            if ($privilegedMfa->isTemporarilyDisabled($user)) {
+                return redirect($this->homePath($user));
+            }
             $user = $privilegedMfa->applyExpiredDisable($user);
         }
 
@@ -66,6 +69,9 @@ class MfaController extends Controller
         $user = $request->user();
         $privilegedMfa = app(PrivilegedMfaService::class);
         if ($user->requiresMfa()) {
+            if ($privilegedMfa->isTemporarilyDisabled($user)) {
+                return response()->json(['message' => 'MFA is temporarily disabled for this account.'], 409);
+            }
             $user = $privilegedMfa->applyExpiredDisable($user);
         }
 
@@ -104,6 +110,13 @@ class MfaController extends Controller
         $user = $request->user();
         $privilegedMfa = app(PrivilegedMfaService::class);
         if ($user->requiresMfa()) {
+            if ($privilegedMfa->isTemporarilyDisabled($user)) {
+                if ($request->expectsJson()) {
+                    return response()->json(['message' => 'MFA is temporarily disabled for this account.'], 409);
+                }
+
+                return redirect($this->homePath($user));
+            }
             $user = $privilegedMfa->applyExpiredDisable($user);
         }
 
@@ -221,6 +234,9 @@ class MfaController extends Controller
     {
         $user = $request->user();
         if ($user?->requiresMfa()) {
+            if ($privilegedMfa->isTemporarilyDisabled($user)) {
+                return redirect($this->homePath($user));
+            }
             $user = $privilegedMfa->applyExpiredDisable($user);
             if ($privilegedMfa->isReenrollmentRequired($user)) {
                 return redirect()->route(mfa_route_name('mfa.setup'));
@@ -244,6 +260,16 @@ class MfaController extends Controller
 
         $user = $request->user();
         if ($user->requiresMfa()) {
+            if ($privilegedMfa->isTemporarilyDisabled($user)) {
+                if ($request->expectsJson()) {
+                    return response()->json([
+                        'message' => 'MFA is temporarily disabled for this account.',
+                        'redirect' => $this->homePath($user),
+                    ], 409);
+                }
+
+                return redirect($this->homePath($user));
+            }
             $user = $privilegedMfa->applyExpiredDisable($user);
             if ($privilegedMfa->isReenrollmentRequired($user)) {
                 if ($request->expectsJson()) {

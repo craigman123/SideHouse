@@ -21,7 +21,19 @@ class EnsureAdminMfa
         }
 
         $mfa = app(PrivilegedMfaService::class);
+        $disableExpired = $mfa->hasExpiredDisable($user);
+        if ($mfa->isTemporarilyDisabled($user)) {
+            return $next($request);
+        }
+
         $user = $mfa->applyExpiredDisable($user);
+        if ($disableExpired) {
+            $request->session()->forget([
+                GuardSessionState::key('mfa_passed_at'),
+                GuardSessionState::key('mfa_passed_user_id'),
+            ]);
+        }
+
         if ($mfa->isReenrollmentRequired($user)) {
             $request->session()->forget([
                 GuardSessionState::key('mfa_passed_at'),

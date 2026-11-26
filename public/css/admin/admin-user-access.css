@@ -114,7 +114,6 @@
 .user-access-role-filter select,
 .access-dialog input,
 .access-dialog select {
-    width: 100%;
     min-width: 0;
     min-height: 48px;
     border: 1px solid var(--border);
@@ -123,6 +122,7 @@
     background: var(--surface-2);
     color: var(--text);
     font: inherit;
+    margin: var(--s2);
 }
 .user-access-search input::placeholder,
 .access-dialog input::placeholder { color: var(--text-muted); opacity: 1; }

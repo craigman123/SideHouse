@@ -42,13 +42,26 @@ class AuthController extends Controller
     private function privilegedMfaRequired(Request $request, User $user, ?string $guard = null): bool
     {
         $mfa = app(PrivilegedMfaService::class);
+        $guard = config('auth.multi_guard')
+            ? ($guard ?? GuardSessionState::currentGuard())
+            : null;
+
+        if ($mfa->hasExpiredDisable($user)) {
+            $user = $mfa->applyExpiredDisable($user);
+            $request->session()->forget([
+                GuardSessionState::key('mfa_passed_at', $guard),
+                GuardSessionState::key('mfa_passed_user_id', $guard),
+            ]);
+        }
+
+        if ($mfa->isTemporarilyDisabled($user)) {
+            return false;
+        }
+
         if ($mfa->isReenrollmentRequired($user) || ! $user->hasMfaEnabled()) {
             return true;
         }
 
-        $guard = config('auth.multi_guard')
-            ? ($guard ?? GuardSessionState::currentGuard())
-            : null;
         $passedAt = $request->session()->get(GuardSessionState::key('mfa_passed_at', $guard));
         $passedUserId = $request->session()->get(GuardSessionState::key('mfa_passed_user_id', $guard));
 
@@ -108,13 +121,17 @@ class AuthController extends Controller
         $this->recordSuccessfulLogin($request, $user);
 
         if ($user->requiresMfa()) {
-            $mfaType = $this->privilegedMfaResponseType($user);
             ActivityLogger::log(
                 $user->isAdmin() ? 'admin.logged_in' : 'staff.logged_in',
                 $user->name . ' logged in.',
                 subject: $user,
             );
 
+            if (app(PrivilegedMfaService::class)->isTemporarilyDisabled($user)) {
+                return $this->loginRedirectResponse($request, $user);
+            }
+
+            $mfaType = $this->privilegedMfaResponseType($user);
             // Tell the frontend to show the correct MFA modal
             if ($request->expectsJson()) {
                 return response()->json([
@@ -264,6 +281,13 @@ class AuthController extends Controller
         }
 
         if ($user->requiresMfa()) {
+            if (app(PrivilegedMfaService::class)->isTemporarilyDisabled($user)) {
+                return response()->json([
+                    'message' => 'Logged in successfully!',
+                    'redirect' => $this->homePath($user),
+                ]);
+            }
+
             return $this->privilegedMfaResponse($request, $user);
         }
 
@@ -300,18 +324,19 @@ class AuthController extends Controller
             if ($guard === 'customer' && $this->customerMfaRequired($request, $user)) {
                 return $this->customerMfaResponse($request);
             }
-            if (
-                $user->requiresMfa()
-                && app(PrivilegedMfaService::class)->isReenrollmentRequired($user)
-            ) {
-                return $this->privilegedMfaResponse($request, $user);
-            }
-            if (
-                $user->requiresMfa()
-                && $user->hasMfaEnabled()
-                && $this->privilegedMfaRequired($request, $user, $guard)
-            ) {
-                return $this->privilegedMfaResponse($request, $user);
+            if ($user->requiresMfa()) {
+                $mfa = app(PrivilegedMfaService::class);
+                if (! $mfa->isTemporarilyDisabled($user)) {
+                    if ($mfa->isReenrollmentRequired($user)) {
+                        return $this->privilegedMfaResponse($request, $user);
+                    }
+                    if (
+                        $user->hasMfaEnabled()
+                        && $this->privilegedMfaRequired($request, $user, $guard)
+                    ) {
+                        return $this->privilegedMfaResponse($request, $user);
+                    }
+                }
             }
 
             return $this->loginRedirectResponse($request, $user);
@@ -328,13 +353,17 @@ class AuthController extends Controller
         $this->recordSuccessfulLogin($request, $user);
 
         if ($user->requiresMfa()) {
-            $mfaType = $this->privilegedMfaResponseType($user);
             ActivityLogger::log(
                 $user->isAdmin() ? 'admin.logged_in' : 'staff.logged_in',
                 $user->name.' logged in.',
                 subject: $user,
             );
 
+            if (app(PrivilegedMfaService::class)->isTemporarilyDisabled($user)) {
+                return $this->loginRedirectResponse($request, $user);
+            }
+
+            $mfaType = $this->privilegedMfaResponseType($user);
             if ($request->expectsJson()) {
                 return response()->json([
                     'mfa_required' => true,
@@ -361,6 +390,13 @@ class AuthController extends Controller
         }
 
         if ($user->requiresMfa()) {
+            if (app(PrivilegedMfaService::class)->isTemporarilyDisabled($user)) {
+                return response()->json([
+                    'message' => $isNewAccount ? 'Account created! Welcome to Side House.' : 'Logged in successfully!',
+                    'redirect' => $this->homePath($user),
+                ]);
+            }
+
             return $this->privilegedMfaResponse($request, $user);
         }
 
@@ -395,14 +431,19 @@ class AuthController extends Controller
             if ($guard === 'customer' && $this->customerMfaRequired($request, $user)) {
                 return $this->customerMfaResponse($request);
             }
-            if (
-                $user->requiresMfa()
-                && (
-                    app(PrivilegedMfaService::class)->isReenrollmentRequired($user)
-                    || ($user->hasMfaEnabled() && $this->privilegedMfaRequired($request, $user, $guard))
-                )
-            ) {
-                return $this->privilegedMfaResponse($request, $user);
+            if ($user->requiresMfa()) {
+                $mfa = app(PrivilegedMfaService::class);
+                if (! $mfa->isTemporarilyDisabled($user)) {
+                    if ($mfa->isReenrollmentRequired($user)) {
+                        return $this->privilegedMfaResponse($request, $user);
+                    }
+                    if (
+                        $user->hasMfaEnabled()
+                        && $this->privilegedMfaRequired($request, $user, $guard)
+                    ) {
+                        return $this->privilegedMfaResponse($request, $user);
+                    }
+                }
             }
 
             return response()->json([
@@ -434,6 +475,10 @@ class AuthController extends Controller
         }
 
         if ($user->requiresMfa()) {
+            if (app(PrivilegedMfaService::class)->isTemporarilyDisabled($user)) {
+                return $this->loginRedirectResponse($request, $user);
+            }
+
             return $this->privilegedMfaResponse($request, $user);
         }
 
@@ -550,7 +595,6 @@ class AuthController extends Controller
 
     private function recordSuccessfulLogin(Request $request, User $user): void
     {
-        app(PrivilegedMfaService::class)->afterSuccessfulLogin($user);
         $user->forceFill(['last_login_at' => now()])->save();
         $user->refresh();
         EnsureAccessVersion::stamp($request, $user);
