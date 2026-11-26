@@ -23,22 +23,22 @@
 
 @section('content')
 <div class="profile-page staff-profile-page" id="staffProfilePage">
-    @if (session('success'))
-        <p class="profile-flash-success" role="status">{{ session('success') }}</p>
-    @endif
-    @if ($errors->any() && !$passwordModalHasErrors)
-        <p class="profile-flash-error" role="alert">{{ $errors->first() }}</p>
-    @endif
-
     <section class="profile-card" aria-labelledby="staffProfileTitle">
         <header class="profile-header">
             <div class="profile-avatar-lg">{{ strtoupper(substr($user->name, 0, 1)) }}</div>
-            <div>
+            <div class="profile-identity">
                 <h2 id="staffProfileTitle">{{ $user->name }}</h2>
-                <p>{{ $user->email }}</p>
+                <p class="profile-email-row">{{ $user->email }}</p>
                 <span class="admin-role-badge">Staff</span>
             </div>
         </header>
+
+        @if (session('success'))
+            <p class="profile-flash-success" role="status">{{ session('success') }}</p>
+        @endif
+        @if ($errors->any() && !$passwordModalHasErrors)
+            <p class="profile-flash-error" role="alert">{{ $errors->first() }}</p>
+        @endif
 
         <form id="staffProfileForm" method="POST" action="{{ route('staff.profile.update') }}" data-edit-on-error="{{ $profileEditHasErrors ? 'true' : 'false' }}">
             @csrf
@@ -48,17 +48,20 @@
                 <div class="profile-item">
                     <label for="staffName">Name</label>
                     <input type="text" id="staffName" name="name" value="{{ old('name', $user->name) }}" autocomplete="name" maxlength="255" required readonly aria-invalid="{{ $errors->has('name') ? 'true' : 'false' }}">
+                    <span class="field-state">Read only. Select Edit Profile to change.</span>
                     @error('name')
                         <span class="field-error" role="alert">{{ $message }}</span>
                     @enderror
                 </div>
                 <div class="profile-item">
                     <label for="staffEmail">Email</label>
-                    <input type="email" id="staffEmail" value="{{ $user->email }}" autocomplete="email" readonly>
+                    <input type="email" id="staffEmail" value="{{ $user->email }}" autocomplete="email" readonly aria-describedby="staffEmailReadOnlyHint">
+                    <span class="field-state" id="staffEmailReadOnlyHint">Email can't be changed here.</span>
                 </div>
                 <div class="profile-item">
                     <label for="staffPhone">Phone number</label>
                     <input type="tel" id="staffPhone" name="phone_number" value="{{ old('phone_number', $user->phone_number) }}" autocomplete="tel" readonly aria-invalid="{{ $errors->has('phone_number') ? 'true' : 'false' }}">
+                    <span class="field-state">Read only. Select Edit Profile to change.</span>
                     @error('phone_number')
                         <span class="field-error" role="alert">{{ $message }}</span>
                     @enderror
@@ -66,72 +69,79 @@
             </div>
 
             <div class="profile-actions">
-                <button type="button" class="btn btn-secondary" id="staffProfileEditButton" @if ($profileEditHasErrors) hidden @endif>Edit Profile</button>
+                <button type="button" class="btn btn-primary" id="staffProfileEditButton" @if ($profileEditHasErrors) hidden @endif>Edit Profile</button>
                 <button type="button" class="btn btn-quiet" id="staffProfileCancelButton" @unless ($profileEditHasErrors) hidden @endunless>Cancel</button>
                 <button type="submit" class="btn btn-primary" id="staffProfileSaveButton" @unless ($profileEditHasErrors) hidden @endunless>Save Changes</button>
             </div>
         </form>
-    </section>
 
-    <div class="staff-password-trigger">
-        <button type="button" class="btn btn-secondary" id="staffChangePasswordButton">Change password</button>
-    </div>
-
-    <section class="profile-card privileged-mfa-card staff-profile-mfa-card" aria-labelledby="privilegedMfaTitle">
-        <header class="staff-mfa-header">
-            <h2 id="privilegedMfaTitle">Security</h2>
-            <p class="staff-mfa-description">
-                @if (($mfaState['key'] ?? null) === 'disabled')
-                    MFA is turned off by an administrator.
-                @else
-                    Choose how you confirm it's you.
-                @endif
-            </p>
-        </header>
-
-        <div class="staff-method-choice">
-            <span class="staff-method-label">MFA</span>
-            <button type="button" class="staff-method-toggle" id="staffMfaMethodSwitch" role="switch" aria-label="Choose between MFA and Biometrics" aria-checked="{{ $biometricsSelected ? 'true' : 'false' }}" aria-disabled="true" tabindex="0">
-                <span class="staff-method-track" aria-hidden="true">
-                    <span class="staff-method-thumb"></span>
-                </span>
-            </button>
-            <div class="staff-method-biometrics" aria-label="Biometrics unavailable">
-                <span class="staff-method-label">Biometrics</span>
-                <span class="staff-method-coming-soon">Coming soon</span>
+        <section class="profile-section" aria-labelledby="staffPasswordRowTitle">
+            <div class="preference-row">
+                <div>
+                    <h2 class="profile-section-title" id="staffPasswordRowTitle">Change password</h2>
+                    <p class="preference-sub">Choose a new password for your staff account.</p>
+                </div>
+                <button type="button" class="btn btn-secondary" id="staffChangePasswordButton">Change password</button>
             </div>
-        </div>
+        </section>
 
-        @if ($user->hasMfaEnabled() && ($user->mfa_method ?? 'totp') === 'totp')
-            <div class="staff-recovery-section">
-                <h3>Recovery codes</h3>
-                <p>Regenerate your codes using a code from your authenticator app.</p>
-                @if (session('recovery_codes'))
-                    <div class="recovery-codes recovery-codes-display" role="status">
-                        <h3>Save your new recovery codes</h3>
-                        <p>These are shown once. Store them somewhere safe.</p>
-                        <ul>
-                            @foreach (session('recovery_codes') as $recoveryCode)
-                                <li><code>{{ $recoveryCode }}</code></li>
-                            @endforeach
-                        </ul>
+        <section class="profile-section staff-profile-mfa-card" aria-labelledby="privilegedMfaTitle">
+            <div class="staff-security-header">
+                <div>
+                    <h2 class="profile-section-title" id="privilegedMfaTitle">Security</h2>
+                    <p class="staff-mfa-description">
+                        @if (($mfaState['key'] ?? null) === 'disabled')
+                            MFA is turned off by an administrator.
+                        @else
+                            Choose how you confirm it's you.
+                        @endif
+                    </p>
+                </div>
+                <div class="staff-method-choice">
+                    <span class="staff-method-label">MFA</span>
+                    <button type="button" class="staff-method-toggle" id="staffMfaMethodSwitch" role="switch" aria-label="Choose between MFA and Biometrics" aria-checked="{{ $biometricsSelected ? 'true' : 'false' }}" aria-disabled="true" tabindex="0">
+                        <span class="staff-method-track" aria-hidden="true">
+                            <span class="staff-method-thumb"></span>
+                        </span>
+                    </button>
+                    <div class="staff-method-biometrics" aria-label="Biometrics unavailable">
+                        <span class="staff-method-label">Biometrics</span>
+                        <span class="staff-method-coming-soon">Coming soon</span>
                     </div>
-                @endif
-                <form id="privilegedRecoveryCodesForm" method="POST" action="{{ role_route('admin.profile.mfa.recovery-codes') }}" class="staff-recovery-form">
-                    @csrf
-                    <div class="profile-item">
-                        <label for="privilegedRecoveryCode">Authenticator code</label>
-                        <input type="text" id="privilegedRecoveryCode" name="code" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="one-time-code" required aria-invalid="{{ $errors->has('code') ? 'true' : 'false' }}">
-                        @error('code')
-                            <span class="field-error" role="alert">{{ $message }}</span>
-                        @enderror
-                    </div>
-                    <div class="profile-actions">
-                        <button type="submit" class="btn btn-primary">Regenerate recovery codes</button>
-                    </div>
-                </form>
+                </div>
             </div>
-        @endif
+
+            @if ($user->hasMfaEnabled() && ($user->mfa_method ?? 'totp') === 'totp')
+                <div class="staff-recovery-section">
+                    <h3>Recovery codes</h3>
+                    <p>Use a code from your authenticator app to get new recovery codes.</p>
+                    @if (session('recovery_codes'))
+                        <div class="recovery-codes recovery-codes-display" role="status">
+                            <h3>Save your new recovery codes</h3>
+                            <p>These are shown once. Store them somewhere safe.</p>
+                            <ul>
+                                @foreach (session('recovery_codes') as $recoveryCode)
+                                    <li><code>{{ $recoveryCode }}</code></li>
+                                @endforeach
+                            </ul>
+                        </div>
+                    @endif
+                    <form id="privilegedRecoveryCodesForm" method="POST" action="{{ role_route('admin.profile.mfa.recovery-codes') }}" class="staff-recovery-form">
+                        @csrf
+                        <div class="profile-item">
+                            <label for="privilegedRecoveryCode">Authenticator code</label>
+                            <input type="text" id="privilegedRecoveryCode" name="code" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="one-time-code" required aria-invalid="{{ $errors->has('code') ? 'true' : 'false' }}">
+                            @error('code')
+                                <span class="field-error" role="alert">{{ $message }}</span>
+                            @enderror
+                        </div>
+                        <div class="profile-actions">
+                            <button type="submit" class="btn btn-primary">Regenerate recovery codes</button>
+                        </div>
+                    </form>
+                </div>
+            @endif
+        </section>
     </section>
 
     <section class="profile-card staff-signout-card" aria-labelledby="staffSignoutTitle">

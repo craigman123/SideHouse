@@ -59,6 +59,12 @@ html.staff-layout-shell .content > .admin-bookings-page {
     padding: var(--s4);
 }
 
+html.staff-layout-shell .court-month-block.is-open-play-highlight {
+    z-index: 5;
+    outline: 2px solid var(--brand);
+    outline-offset: var(--s1);
+}
+
 @media (max-width: 767px) {
     html.staff-layout-shell .customers-header {
         align-items: stretch;

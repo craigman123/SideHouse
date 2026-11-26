@@ -8,6 +8,7 @@ use App\Models\BookingEquipment;
 use App\Models\Court;
 use App\Models\CourtBlock;
 use App\Models\CourtClosure;
+use App\Services\AdminBookingsCalendarData;
 use App\Services\UserAccessService;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
@@ -16,7 +17,7 @@ use Illuminate\View\View;
 
 class OverviewController extends Controller
 {
-    public function index(Request $request, UserAccessService $access): View
+    public function index(Request $request, UserAccessService $access, AdminBookingsCalendarData $calendarData): View
     {
         $canViewBookings = $access->allows($request->user(), 'bookings.view');
 
@@ -24,20 +25,20 @@ class OverviewController extends Controller
             'user' => $request->user(),
             'canViewBookings' => $canViewBookings,
             'canCreateOpenPlay' => $access->allows($request->user(), 'calendar_events.open_play'),
-            'overviewData' => $canViewBookings ? $this->todayData() : [],
+            'overviewData' => $canViewBookings ? $this->todayData($calendarData) : [],
         ]);
     }
 
-    public function data(Request $request, UserAccessService $access): JsonResponse
+    public function data(Request $request, UserAccessService $access, AdminBookingsCalendarData $calendarData): JsonResponse
     {
         if (! $access->allows($request->user(), 'bookings.view')) {
             return response()->json(['message' => 'You are not allowed to view booking data.'], 403);
         }
 
-        return response()->json($this->todayData());
+        return response()->json($this->todayData($calendarData));
     }
 
-    private function todayData(): array
+    private function todayData(AdminBookingsCalendarData $calendarData): array
     {
         $now = CarbonImmutable::now('Asia/Manila');
         $today = $now->toDateString();
@@ -75,12 +76,7 @@ class OverviewController extends Controller
             ->orderBy('start_time')
             ->get();
 
-        $openPlay = $blocks->where('type', 'open_play')->map(fn (CourtBlock $block) => [
-            'title' => $block->title ?: 'Open play',
-            'time' => CarbonImmutable::parse($block->start_time)->format('g:i A')
-                .' – '.CarbonImmutable::parse($block->end_time)->format('g:i A'),
-            'court' => $block->court?->name ?? 'All courts',
-        ])->values();
+        $openPlay = $this->nextOpenPlay($now, $calendarData);
 
         $closures = CourtClosure::whereDate('date', $today)->get();
         $nowTime = $now->format('H:i:s');
@@ -127,6 +123,59 @@ class OverviewController extends Controller
             'open_play' => $openPlay,
             'equipment_prep' => $equipmentPrep,
             'synced_at' => 'just now',
+        ];
+    }
+
+    private function nextOpenPlay(CarbonImmutable $now, AdminBookingsCalendarData $calendarData): ?array
+    {
+        $sessions = CourtBlock::query()
+            ->select(['id', 'court_id', 'type', 'title', 'block_date', 'start_time', 'end_time'])
+            ->with('court:id,name')
+            ->where('type', 'open_play')
+            ->whereDate('block_date', '>=', $now->subDay()->toDateString())
+            ->orderBy('block_date')
+            ->orderBy('start_time')
+            ->get()
+            ->map(function (CourtBlock $block): array {
+                $date = $block->block_date->toDateString();
+                $start = CarbonImmutable::parse($date.' '.substr((string) $block->start_time, 0, 8), 'Asia/Manila');
+                $end = CarbonImmutable::parse($date.' '.substr((string) $block->end_time, 0, 8), 'Asia/Manila');
+                if ($end->lessThanOrEqualTo($start)) {
+                    $end = $end->addDay();
+                }
+
+                return ['block' => $block, 'start' => $start, 'end' => $end];
+            });
+
+        $active = $sessions->first(fn (array $session) => $session['start']->lessThanOrEqualTo($now)
+            && $session['end']->greaterThan($now));
+        $selected = $active ?? $sessions->first(fn (array $session) => $session['start']->greaterThan($now));
+        if ($selected === null) {
+            return null;
+        }
+
+        $block = $selected['block'];
+        $date = $block->block_date->toDateString();
+        $calendarDate = CarbonImmutable::parse($date, 'Asia/Manila');
+        $calendarDataForDate = $calendarData->forRange($calendarDate, $calendarDate);
+        $calendarBlock = collect($calendarDataForDate['blocks'])
+            ->first(fn (array $item) => (string) $item['id'] === (string) $block->id);
+        $participants = collect($calendarBlock['participants'] ?? [])
+            ->pluck('name')
+            ->values();
+        $isToday = $date === $now->toDateString();
+
+        return [
+            'id' => $block->id,
+            'title' => $block->title ?: 'Open play',
+            'date' => $date,
+            'date_label' => $calendarDate->format('l, F j, Y'),
+            'time' => $selected['start']->format('g:i A').' – '.$selected['end']->format('g:i A'),
+            'court' => $block->court?->name ?? ($block->court_id === null ? 'All courts' : 'Court '.$block->court_id),
+            'status' => $active !== null ? 'active' : ($isToday ? 'upcoming' : 'soon'),
+            'is_today' => $isToday,
+            'participant_count' => $participants->count(),
+            'participants' => $participants->take(3)->all(),
         ];
     }
 }

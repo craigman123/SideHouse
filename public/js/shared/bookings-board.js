@@ -1934,6 +1934,29 @@
     const listStateParams = ['search', 'date', 'status', 'page'];
     const hasListState = listStateParams.some((key) => queryParams.has(key));
     const requestedView = queryParams.get('view');
+    const requestedOpenPlayId = document.documentElement.classList.contains('staff-layout-shell') && requestedView === 'week'
+        ? queryParams.get('highlight_open_play')
+        : null;
+    let openPlayHighlightReady = false;
+    let openPlayHighlightScrolled = false;
+    const highlightRequestedOpenPlay = () => {
+        if (!requestedOpenPlayId) return;
+        const visiblePanel = workspace.querySelector('.bookings-view-panel:not([hidden])');
+        const target = Array.from(visiblePanel?.querySelectorAll('[data-calendar-kind="block"][data-calendar-id]') || [])
+            .find((item) => item.dataset.calendarId === requestedOpenPlayId && item.classList.contains('type-open_play'));
+        if (!target) return;
+        target.classList.add('is-open-play-highlight');
+        if (openPlayHighlightScrolled) return;
+        openPlayHighlightScrolled = true;
+        requestAnimationFrame(() => {
+            target.focus({ preventScroll: true });
+            target.scrollIntoView({
+                behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
+                block: 'center',
+                inline: 'center',
+            });
+        });
+    };
     const initialView = ['list', 'board', 'month', 'week'].includes(requestedView)
         ? requestedView
         : (hasListState ? 'list' : 'month');
@@ -3484,6 +3507,7 @@
         weekHeading.textContent = fullWeekRangeLabel(weekStart, addDays(weekStart, 6));
         updateWeekNavigation();
         updateWeekPastSlots();
+        if (openPlayHighlightReady) highlightRequestedOpenPlay();
     };
     window.setInterval(updateWeekPastSlots, 60000);
 
@@ -3647,7 +3671,13 @@
     const initialEnd = parseLocalDate(initialToday);
     initialEnd.setMonth(initialEnd.getMonth() + 6);
     rangeCache.push({ from: addDays(initialToday, -1), to: toDateValue(initialEnd) });
-    if (initialView === 'week') void loadVisibleRangeThenRender(currentVisibleRange(), weekSummary, renderWeek);
+    if (initialView === 'week') {
+        void loadVisibleRangeThenRender(currentVisibleRange(), weekSummary, renderWeek).then(() => {
+            openPlayHighlightReady = true;
+            highlightRequestedOpenPlay();
+            schedulePoll();
+        });
+    }
     if (initialView === 'month') void loadVisibleRangeThenRender(currentVisibleRange(), monthSummary, renderMonth);
     if (initialView === 'board') void loadVisibleRangeThenRender(currentVisibleRange(), summary, renderBoard);
     schedulePoll();

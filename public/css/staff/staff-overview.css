@@ -44,10 +44,193 @@ html.staff-layout-shell .staff-overview-list {
     min-width: 0;
 }
 
+html.staff-layout-shell .staff-overview-card .dashboard-panel-header h2 {
+    font-weight: var(--font-weight-h3);
+}
+
 html.staff-layout-shell .staff-overview-list {
     display: grid;
     align-content: start;
     gap: var(--s2);
+}
+
+html.staff-layout-shell .staff-open-play-slot {
+    display: contents;
+}
+
+html.staff-layout-shell .staff-open-play-card {
+    display: flex;
+    min-height: 100%;
+    flex-direction: column;
+    gap: var(--s3);
+    color: var(--text);
+    text-decoration: none;
+}
+
+html.staff-layout-shell a.staff-open-play-card {
+    transition: transform 160ms ease, box-shadow 160ms ease;
+}
+
+@media (hover: hover) {
+    html.staff-layout-shell a.staff-open-play-card:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-card);
+    }
+}
+
+html.staff-layout-shell .staff-open-play-card.is-today {
+    border-color: var(--warning);
+    background-image: linear-gradient(var(--surface), var(--surface)), linear-gradient(135deg, var(--warning), var(--warning));
+}
+
+html.staff-layout-shell .staff-open-play-card:focus-visible {
+    outline: 2px solid var(--brand);
+    outline-offset: 3px;
+}
+
+html.staff-layout-shell .staff-open-play-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--s3);
+}
+
+html.staff-layout-shell .staff-open-play-header h2 {
+    margin: 0;
+    color: var(--text);
+    font-size: var(--font-size-h3);
+    font-weight: var(--font-weight-h3);
+}
+
+html.staff-layout-shell .staff-open-play-status {
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: var(--s2);
+    min-height: 44px;
+    color: var(--text);
+    font-size: var(--font-size-small);
+    font-weight: var(--font-weight-button);
+    white-space: nowrap;
+}
+
+html.staff-layout-shell .staff-open-play-status-dot {
+    box-sizing: border-box;
+    width: var(--s2);
+    height: var(--s2);
+    border: 1px solid var(--text-muted);
+    border-radius: var(--r-pill);
+    background: transparent;
+}
+
+html.staff-layout-shell .staff-open-play-status--active .staff-open-play-status-dot {
+    border-color: var(--brand);
+    background: var(--brand);
+}
+
+html.staff-layout-shell .staff-open-play-status--upcoming .staff-open-play-status-dot {
+    border-color: var(--warning);
+    background: var(--warning);
+}
+
+html.staff-layout-shell .staff-open-play-content {
+    display: grid;
+    flex: 1 1 auto;
+    align-content: start;
+    gap: var(--s3);
+}
+
+html.staff-layout-shell .staff-open-play-title {
+    margin: 0;
+    color: var(--text);
+    font-size: var(--font-size-body);
+    font-weight: var(--font-weight-h3);
+    line-height: var(--line-height-body);
+    overflow-wrap: anywhere;
+}
+
+html.staff-layout-shell .staff-open-play-court,
+html.staff-layout-shell .staff-open-play-player-count {
+    margin: 0;
+    color: var(--text-muted);
+    font-size: var(--font-size-small);
+    line-height: var(--line-height-body);
+}
+
+html.staff-layout-shell .staff-open-play-schedule {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--s2) var(--s4);
+    color: var(--text-muted);
+    font-size: var(--font-size-small);
+    line-height: var(--line-height-body);
+}
+
+html.staff-layout-shell .staff-open-play-players {
+    display: grid;
+    gap: var(--s2);
+}
+
+html.staff-layout-shell .staff-open-play-player-names {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--s2);
+    min-width: 0;
+}
+
+html.staff-layout-shell .staff-open-play-player-name,
+html.staff-layout-shell .staff-open-play-player-more {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--s6);
+    max-width: 100%;
+    padding: var(--s1) var(--s3);
+    border: 1px solid var(--border);
+    border-radius: var(--r-pill);
+    background: var(--surface-2);
+    color: var(--text);
+    font-size: var(--font-size-small);
+    overflow-wrap: anywhere;
+}
+
+html.staff-layout-shell .staff-open-play-player-more {
+    color: var(--text-muted);
+}
+
+html.staff-layout-shell .staff-open-play-empty {
+    display: grid;
+    justify-items: start;
+    gap: var(--s2);
+    min-height: var(--s8);
+}
+
+html.staff-layout-shell .staff-open-play-empty svg {
+    box-sizing: border-box;
+    width: var(--s7);
+    height: var(--s7);
+    padding: var(--s3);
+    border: 1px solid var(--border);
+    border-radius: var(--r-md);
+    color: var(--brand);
+    fill: none;
+    stroke: currentColor;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-width: 1.5;
+}
+
+html.staff-layout-shell .staff-open-play-empty h3 {
+    margin: 0;
+    color: var(--text);
+    font-size: var(--font-size-body);
+    font-weight: var(--font-weight-h3);
+}
+
+html.staff-layout-shell .staff-open-play-empty p {
+    margin: 0;
+    color: var(--text-muted);
+    font-size: var(--font-size-small);
+    line-height: var(--line-height-body);
 }
 
 html.staff-layout-shell .staff-court-status-list {
@@ -75,6 +258,12 @@ html.staff-layout-shell .staff-overview-row .staff-overview-row-meta {
 @media (max-width: 767px) {
     html.staff-layout-shell .staff-overview {
         gap: var(--s5);
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        html.staff-layout-shell a.staff-open-play-card {
+            transition: none;
+        }
     }
 
     html.staff-layout-shell .staff-overview .overview-header {

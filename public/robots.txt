@@ -1,2 +1,28 @@
 User-agent: *
-Disallow:
+Disallow: /admin
+Disallow: /owner
+Disallow: /staff
+Disallow: /mfa
+Disallow: /login
+Disallow: /register
+Disallow: /book
+Disallow: /guest
+Disallow: /my-bookings
+Disallow: /my-dashboard
+Disallow: /dashboard
+Disallow: /user
+Disallow: /profile
+Disallow: /notifications
+Disallow: /feedback
+Disallow: /lumi
+Disallow: /whats-new
+Disallow: /courts
+Disallow: /customers
+Disallow: /configuration
+Disallow: /reports
+Disallow: /announcements
+Disallow: /activity_logs
+Disallow: /equipment
+Disallow: /auth
+
+Sitemap: https://sidehouse.onrender.com/sitemap.xml

@@ -8,6 +8,7 @@ use App\Models\Court;
 use App\Models\CourtBlock;
 use App\Models\ActivityLog;
 use App\Models\User;
+use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -66,7 +67,8 @@ class StaffAreaTest extends TestCase
         $dashboard->assertSee('shared/dashboard-shell.css')->assertSee('shared/dashboard-shell.js')
             ->assertSee('shared/overview.css')->assertSee('staff-overview.css')->assertSee('staff-overview.js');
         $dashboard->assertDontSee('css/admin/')->assertDontSee('js/admin/')->assertDontSee('staff-layout.css');
-        $dashboard->assertSee('staffSyncStatus')->assertSee("Today's bookings", false);
+        $dashboard->assertSee('staffSyncStatus')->assertSee("Today's bookings", false)
+            ->assertSee('Open play')->assertDontSee('Needs attention')->assertDontSee('Open play today');
 
         $profile = $this->signInStaff($staff)->get('/staff/profile')->assertOk();
         $profile->assertSee('shared/profile.css')->assertSee('shared/dashboard-base.css')->assertDontSee('css/admin/');
@@ -153,6 +155,99 @@ class StaffAreaTest extends TestCase
         $listedCustomers = collect($data->json('upcoming'))->pluck('customer')->all();
         $this->assertNotContains('Cancelled Customer', $listedCustomers);
         $this->assertNotContains('Expired Customer', $listedCustomers);
+    }
+
+    public function test_staff_overview_prefers_active_open_play_and_uses_calendar_participants(): void
+    {
+        $now = CarbonImmutable::parse('2030-05-15 12:00:00', 'Asia/Manila');
+        \Carbon\Carbon::setTestNow($now);
+        CarbonImmutable::setTestNow($now);
+
+        $staff = $this->staff();
+        BusinessSetting::current();
+        $court = Court::create([
+            'name' => 'Open Play Court', 'width' => 10, 'length' => 20, 'hourly_rate' => 500, 'status' => 'active',
+        ]);
+        $active = CourtBlock::create([
+            'court_id' => $court->id, 'type' => 'open_play', 'title' => 'Lunch Open Play',
+            'block_date' => '2030-05-15', 'start_time' => '11:30', 'end_time' => '12:30',
+            'max_players' => 8, 'price_per_player' => 100, 'created_by' => $staff->user_id,
+        ]);
+        CourtBlock::create([
+            'court_id' => $court->id, 'type' => 'open_play', 'title' => 'Afternoon Open Play',
+            'block_date' => '2030-05-15', 'start_time' => '13:00', 'end_time' => '14:00',
+            'max_players' => 8, 'price_per_player' => 100, 'created_by' => $staff->user_id,
+        ]);
+        CourtBlock::create([
+            'court_id' => $court->id, 'type' => 'open_play', 'title' => 'Tomorrow Open Play',
+            'block_date' => '2030-05-16', 'start_time' => '10:00', 'end_time' => '11:00',
+            'max_players' => 8, 'price_per_player' => 100, 'created_by' => $staff->user_id,
+        ]);
+
+        foreach ([
+            ['Player One', '11:30'],
+            ['Player Two', '11:35'],
+            ['Player Three', '11:40'],
+            ['Player Four', '11:45'],
+        ] as [$name, $start]) {
+            Booking::create([
+                'user_id' => null, 'customer_name' => $name, 'contact_number' => '09171234567',
+                'court_id' => $court->id, 'date' => '2030-05-15',
+                'start_time' => $start, 'end_time' => '12:00',
+                'status' => 'paid', 'source' => 'online', 'amount' => 100,
+            ]);
+        }
+
+        $response = $this->signInStaff($staff)->getJson('/staff/overview/data')->assertOk();
+        $response->assertJsonPath('open_play.id', $active->id)
+            ->assertJsonPath('open_play.title', 'Lunch Open Play')
+            ->assertJsonPath('open_play.court', 'Open Play Court')
+            ->assertJsonPath('open_play.date', '2030-05-15')
+            ->assertJsonPath('open_play.time', '11:30 AM – 12:30 PM')
+            ->assertJsonPath('open_play.status', 'active')
+            ->assertJsonPath('open_play.is_today', true)
+            ->assertJsonPath('open_play.participant_count', 4)
+            ->assertJsonPath('open_play.participants', ['Player One', 'Player Two', 'Player Three']);
+
+        $openPlay = $response->json('open_play');
+        $this->assertArrayNotHasKey('amount', $openPlay);
+        $this->assertArrayNotHasKey('price_per_player', $openPlay);
+
+        $page = $this->get('/staff/dashboard')->assertOk();
+        $page->assertSee('data-bookings-url="'.route('staff.bookings').'"', false)
+            ->assertDontSee('Needs attention')
+            ->assertDontSee('Open play today');
+    }
+
+    public function test_staff_overview_open_play_status_covers_upcoming_soon_and_empty(): void
+    {
+        $now = CarbonImmutable::parse('2030-05-15 12:00:00', 'Asia/Manila');
+        \Carbon\Carbon::setTestNow($now);
+        CarbonImmutable::setTestNow($now);
+
+        $staff = $this->staff();
+        BusinessSetting::current();
+        $court = Court::create([
+            'name' => 'Status Court', 'width' => 10, 'length' => 20, 'hourly_rate' => 500, 'status' => 'active',
+        ]);
+        $event = CourtBlock::create([
+            'court_id' => $court->id, 'type' => 'open_play', 'title' => 'Status Open Play',
+            'block_date' => '2030-05-15', 'start_time' => '13:00', 'end_time' => '14:00',
+            'max_players' => 8, 'price_per_player' => 100, 'created_by' => $staff->user_id,
+        ]);
+
+        $this->signInStaff($staff)->getJson('/staff/overview/data')->assertOk()
+            ->assertJsonPath('open_play.status', 'upcoming')
+            ->assertJsonPath('open_play.is_today', true);
+
+        $event->update(['block_date' => '2030-05-16']);
+        $this->getJson('/staff/overview/data')->assertOk()
+            ->assertJsonPath('open_play.status', 'soon')
+            ->assertJsonPath('open_play.is_today', false);
+
+        $event->update(['block_date' => '2030-05-14', 'start_time' => '10:00', 'end_time' => '11:00']);
+        $this->getJson('/staff/overview/data')->assertOk()
+            ->assertJsonPath('open_play', null);
     }
 
     public function test_staff_navigation_is_permission_driven_and_contains_only_the_allowed_sections(): void
@@ -363,7 +458,7 @@ class StaffAreaTest extends TestCase
             ->assertDontSee('Courts in use')
             ->assertDontSee('Next up')
             ->assertDontSee('Needs attention')
-            ->assertDontSee('Open play today')
+            ->assertDontSee('Open play')
             ->assertDontSee('Court status')
             ->assertDontSee($booking->customer_name)
             ->assertDontSee('09:00')
