@@ -19,6 +19,7 @@ class SelectRoleGuard
         'owner.only' => 'owner',
         'staff' => 'staff',
         'customer.only' => 'customer',
+        'customer.mfa' => 'customer',
     ];
 
     private const SHARED_AUTH_ROUTES = [

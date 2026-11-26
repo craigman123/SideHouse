@@ -285,6 +285,26 @@ class OwnerAreaTest extends TestCase
         return "$header.$payload.".$b64($sig);
     }
 
+    public function test_google_login_requires_mfa_for_enabled_customer(): void
+    {
+        $secret = (new Google2FA())->generateSecretKey();
+        $customer = $this->user('user', null, [
+            'mfa_enabled' => true,
+            'mfa_method' => 'totp',
+            'mfa_secret' => $secret,
+            'mfa_recovery_codes' => [],
+        ]);
+
+        config(['services.google.client_id' => 'customer-mfa-google']);
+        $token = $this->fakeGoogleToken($customer->email, $customer->name, 'customer-mfa-google');
+        $this->postJson('/auth/google', ['id_token' => $token])
+            ->assertOk()
+            ->assertJsonPath('mfa_required', true)
+            ->assertJsonPath('mfa_type', 'challenge');
+
+        $this->get('/my-dashboard')->assertRedirect(route('mfa.challenge'));
+    }
+
     public function test_google_login_does_not_skip_mfa_for_owner_pages(): void
     {
         $secret = (new Google2FA())->generateSecretKey();

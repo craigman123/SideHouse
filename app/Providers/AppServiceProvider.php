@@ -15,6 +15,7 @@ use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\View;
 use App\Models\CreditWallet;
+use App\Support\GuardSessionState;
 use Symfony\Component\Mailer\Bridge\Brevo\Transport\BrevoTransportFactory;
 use Symfony\Component\Mailer\Transport\Dsn;
 use Illuminate\Auth\Events\Login;
@@ -106,12 +107,20 @@ class AppServiceProvider extends ServiceProvider
         RateLimiter::for('admin-closures', static fn (Request $request) => $calendarLimit($request, 120, 120));
         RateLimiter::for('admin-calendar-read', static fn (Request $request) => $calendarLimit($request, 120, 60));
 
-        Event::listen(function (Login $event) {
-            session()->forget(['mfa_passed_at', 'mfa_passed_user_id', 'mfa_temp_secret', 'mfa_temp_secret_user_id']);
+        $clearMfaSession = static function (string $guard): void {
+            $guard = config('auth.multi_guard') ? $guard : null;
+            session()->forget(array_map(
+                static fn (string $key): string => GuardSessionState::key($key, $guard),
+                ['mfa_passed_at', 'mfa_passed_user_id', 'mfa_temp_secret', 'mfa_temp_secret_user_id'],
+            ));
+        };
+
+        Event::listen(function (Login $event) use ($clearMfaSession) {
+            $clearMfaSession($event->guard);
         });
 
-        Event::listen(function (Logout $event) {
-            session()->forget(['mfa_passed_at', 'mfa_passed_user_id', 'mfa_temp_secret', 'mfa_temp_secret_user_id']);
+        Event::listen(function (Logout $event) use ($clearMfaSession) {
+            $clearMfaSession($event->guard);
         });
 
         // Share the authenticated user's credit wallet balance with the

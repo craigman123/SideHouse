@@ -24,9 +24,9 @@ class AuthController extends Controller
             'loginSubmitUrl' => route('login.submit'),
             'googleAuthUrl' => route('auth.google'),
             'loginHomeUrl' => route('user.dashboard'),
-            'mfaSetupInitUrl' => route(mfa_route_name('mfa.setup.init', $guard)),
-            'mfaEnableUrl' => route(mfa_route_name('mfa.enable', $guard)),
-            'mfaVerifyUrl' => route(mfa_route_name('mfa.verify', $guard)),
+            'mfaSetupInitUrl' => role_route('customer.mfa.setup.init'),
+            'mfaEnableUrl' => role_route('customer.mfa.enable'),
+            'mfaVerifyUrl' => role_route('customer.mfa.verify'),
         ]);
     }
 
@@ -88,6 +88,13 @@ class AuthController extends Controller
             $user->name . ' logged in.',
             subject: $user,
         );
+
+        if ($user->role === 'user' && $user->hasMfaEnabled()) {
+            if ($request->expectsJson()) {
+                return $this->customerMfaResponse($request);
+            }
+            return redirect()->route('mfa.challenge');
+        }
 
         if ($request->expectsJson()) {
             return response()->json([
@@ -202,6 +209,10 @@ class AuthController extends Controller
             subject: $user,
         );
 
+        if ($user->role === 'user' && $user->hasMfaEnabled()) {
+            return $this->customerMfaResponse($request);
+        }
+
         return response()->json([
             'message'  => $isNewAccount ? 'Account created! Welcome to Side House.' : 'Logged in successfully!',
             'redirect' => $this->homePath($user),
@@ -232,6 +243,9 @@ class AuthController extends Controller
         }
 
         if (Auth::guard($guard)->user()?->is($user)) {
+            if ($guard === 'customer' && $this->customerMfaRequired($request, $user)) {
+                return $this->customerMfaResponse($request);
+            }
             return $this->loginRedirectResponse($request, $user);
         }
 
@@ -273,6 +287,10 @@ class AuthController extends Controller
             subject: $user,
         );
 
+        if ($guard === 'customer' && $this->customerMfaRequired($request, $user)) {
+            return $this->customerMfaResponse($request);
+        }
+
         return $this->loginRedirectResponse($request, $user);
     }
 
@@ -301,6 +319,9 @@ class AuthController extends Controller
         }
 
         if (Auth::guard($guard)->user()?->is($user)) {
+            if ($guard === 'customer' && $this->customerMfaRequired($request, $user)) {
+                return $this->customerMfaResponse($request);
+            }
             return response()->json([
                 'message' => 'Logged in successfully!',
                 'redirect' => $this->homePath($user),
@@ -325,6 +346,10 @@ class AuthController extends Controller
             subject: $user,
         );
 
+        if ($guard === 'customer' && $this->customerMfaRequired($request, $user)) {
+            return $this->customerMfaResponse($request);
+        }
+
         return response()->json([
             'message' => $isNewAccount ? 'Account created! Welcome to Side House.' : 'Logged in successfully!',
             'redirect' => $this->homePath($user),
@@ -342,11 +367,55 @@ class AuthController extends Controller
 
     private function mfaUrls(string $guard): array
     {
+        if ($guard === 'customer') {
+            return [
+                'setup_init' => role_route('customer.mfa.setup.init'),
+                'enable' => role_route('customer.mfa.enable'),
+                'verify' => role_route('customer.mfa.verify'),
+            ];
+        }
+
         return [
             'setup_init' => route(mfa_route_name('mfa.setup.init', $guard), absolute: false),
             'enable' => route(mfa_route_name('mfa.enable', $guard), absolute: false),
             'verify' => route(mfa_route_name('mfa.verify', $guard), absolute: false),
         ];
+    }
+
+    private function customerMfaRequired(Request $request, User $user): bool
+    {
+        if ($user->role !== 'user' || !$user->hasMfaEnabled()) {
+            return false;
+        }
+
+        $passedAt = $request->session()->get(GuardSessionState::key(
+            'mfa_passed_at',
+            config('auth.multi_guard') ? 'customer' : null,
+        ));
+        $passedUserId = $request->session()->get(GuardSessionState::key(
+            'mfa_passed_user_id',
+            config('auth.multi_guard') ? 'customer' : null,
+        ));
+
+        return !(
+            $passedAt
+            && (int) $passedUserId === (int) $user->user_id
+            && (now()->timestamp - $passedAt) < 60 * 60 * 8
+        );
+    }
+
+    private function customerMfaResponse(Request $request)
+    {
+        if (!$request->expectsJson()) {
+            return redirect()->to(role_route('customer.mfa.challenge'));
+        }
+
+        return response()->json([
+            'mfa_required' => true,
+            'mfa_type' => 'challenge',
+            'csrf_token' => csrf_token(),
+            'mfa_urls' => $this->mfaUrls('customer'),
+        ]);
     }
 
     private function loginRedirectResponse(Request $request, User $user)

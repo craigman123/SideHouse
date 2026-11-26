@@ -4,8 +4,12 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Services\CustomerMfaService;
+use App\Support\ActivityLogger;
 use App\Support\GuardSessionState;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use PragmaRX\Google2FA\Google2FA;
 use Illuminate\Support\Str;
 use App\Support\QrCodeGenerator;
@@ -110,12 +114,40 @@ class MfaController extends Controller
         }
 
         $recoveryCodes = collect(range(1, 8))->map(fn () => Str::random(10))->values()->all();
+        $storedRecoveryCodes = $user->role === 'user'
+            ? array_map(static fn (string $code): string => Hash::make($code), $recoveryCodes)
+            : $recoveryCodes;
 
-        $user->update([
-            'mfa_enabled'        => true,
-            'mfa_secret'         => $secret,
-            'mfa_recovery_codes' => $recoveryCodes,
-        ]);
+        if ($user->role === 'user') {
+            DB::transaction(function () use ($user, $secret, $storedRecoveryCodes, $google2fa, $request): void {
+                $target = User::query()->whereKey($user->user_id)->lockForUpdate()->firstOrFail();
+                abort_unless($target->role === 'user', 403);
+                abort_if($target->hasMfaEnabled(), 409, 'MFA is already enabled.');
+                abort_unless($google2fa->verifyKey($secret, $request->code), 422, 'Invalid authentication code.');
+                $target->update([
+                    'mfa_enabled' => true,
+                    'mfa_method' => 'totp',
+                    'mfa_secret' => $secret,
+                    'mfa_recovery_codes' => $storedRecoveryCodes,
+                ]);
+            });
+        } else {
+            $user->update([
+                'mfa_enabled'        => true,
+                'mfa_method'         => 'totp',
+                'mfa_secret'         => $secret,
+                'mfa_recovery_codes' => $storedRecoveryCodes,
+            ]);
+        }
+
+        if ($user->role === 'user') {
+            ActivityLogger::log(
+                'customer.mfa_enabled',
+                "{$user->name} enabled customer MFA.",
+                actor: $user,
+                subject: $user,
+            );
+        }
 
         session()->forget([
             GuardSessionState::key('mfa_temp_secret'),
@@ -141,14 +173,16 @@ class MfaController extends Controller
             ->with('recovery_codes', $recoveryCodes);
     }
 
-    public function challenge()
+    public function challenge(Request $request)
     {
         return view('auth.mfa-challenge', [
-            'mfaVerifyUrl' => route(mfa_route_name('mfa.verify')),
+            'mfaVerifyUrl' => $request->user()?->role === 'user'
+                ? role_route('customer.mfa.verify')
+                : route(mfa_route_name('mfa.verify')),
         ]);
     }
 
-    public function verify(Request $request)
+    public function verify(Request $request, CustomerMfaService $customerMfa)
     {
         $request->validate(['code' => 'required|string']);
 
@@ -175,14 +209,27 @@ class MfaController extends Controller
                 ->withErrors(['code' => 'Your MFA setup needs to be redone. Please set it up again.']);
         }
 
-        $valid = $google2fa->verifyKey($secret, $request->code);
+        $recoveryCodeUsed = false;
+        if ($user->role === 'user') {
+            $verification = DB::transaction(function () use ($customerMfa, $request, $user): array {
+                $target = User::query()->whereKey($user->user_id)->lockForUpdate()->firstOrFail();
+                abort_unless($target->role === 'user', 403);
 
-        if (!$valid && is_array($user->mfa_recovery_codes)) {
-            if (in_array($request->code, $user->mfa_recovery_codes)) {
-                $valid = true;
-                $user->update([
-                    'mfa_recovery_codes' => array_values(array_diff($user->mfa_recovery_codes, [$request->code])),
-                ]);
+                return $customerMfa->verifyAndConsumeCode($target, $request->code);
+            });
+            $valid = $verification['valid'];
+            $recoveryCodeUsed = $verification['recovery_code_used'];
+            $user->refresh();
+        } else {
+            $valid = $google2fa->verifyKey($secret, $request->code);
+
+            if (!$valid && is_array($user->mfa_recovery_codes)) {
+                if (in_array($request->code, $user->mfa_recovery_codes)) {
+                    $valid = true;
+                    $user->update([
+                        'mfa_recovery_codes' => array_values(array_diff($user->mfa_recovery_codes, [$request->code])),
+                    ]);
+                }
             }
         }
 
@@ -191,6 +238,16 @@ class MfaController extends Controller
                 return response()->json(['message' => 'Invalid authentication code.'], 422);
             }
             return back()->withErrors(['code' => 'Invalid authentication code.']);
+        }
+
+        if ($recoveryCodeUsed) {
+            ActivityLogger::log(
+                'customer.mfa_recovery_code_used',
+                "{$user->name} used a customer MFA recovery code.",
+                actor: $user,
+                subject: $user,
+                properties: ['context' => 'login'],
+            );
         }
 
         session([

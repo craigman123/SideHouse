@@ -17,6 +17,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (!loginForm) return;
 
+    window.addEventListener('customer-mfa-required', async (event) => {
+        if (event.detail?.type === 'setup') {
+            await openSetupModal();
+        } else {
+            openChallengeModal();
+        }
+    });
+
     // ---------- Login form → AJAX ----------
     loginForm.addEventListener('submit', async (e) => {
         e.preventDefault();

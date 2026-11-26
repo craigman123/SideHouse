@@ -6,6 +6,27 @@ use Illuminate\Support\Facades\Route;
 if (! function_exists('role_route')) {
     function role_route(string $baseName, array $parameters = []): string
     {
+        $customerRoutes = [
+            'customer.mfa.setup' => 'mfa.setup',
+            'customer.mfa.setup.init' => 'mfa.setup.init',
+            'customer.mfa.enable' => 'mfa.enable',
+            'customer.mfa.challenge' => 'mfa.challenge',
+            'customer.mfa.verify' => 'mfa.verify',
+            'customer.profile.mfa.setup' => 'user.profile.mfa.setup',
+            'customer.profile.mfa.enable' => 'user.profile.mfa.enable',
+            'customer.profile.mfa.disable' => 'user.profile.mfa.disable',
+            'customer.profile.mfa.recovery-codes' => 'user.profile.mfa.recovery-codes',
+        ];
+
+        if (isset($customerRoutes[$baseName])) {
+            $routeName = $customerRoutes[$baseName];
+            if (! Route::has($routeName)) {
+                throw new LogicException("Route [{$routeName}] is not available for the customer guard.");
+            }
+
+            return route($routeName, $parameters);
+        }
+
         if (! config('auth.multi_guard')) {
             return route($baseName, $parameters);
         }

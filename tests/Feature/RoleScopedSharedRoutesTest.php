@@ -267,7 +267,7 @@ class RoleScopedSharedRoutesTest extends TestCase
         role_route('admin.users.details');
     }
 
-    public function test_auth_event_cleanup_does_not_remove_guard_scoped_mfa_keys(): void
+    public function test_auth_event_cleanup_removes_only_the_affected_guard_scoped_mfa_keys(): void
     {
         $admin = $this->user('admin');
         $session = app('session.store');
@@ -285,11 +285,12 @@ class RoleScopedSharedRoutesTest extends TestCase
         ]);
 
         event(new Login('admin', $admin, false));
-        $this->assertNull($session->get('mfa_passed_at'));
-        $this->assertNull($session->get('mfa_temp_secret'));
-        $this->assertSame(10, $session->get('mfa_passed_at_admin'));
-        $this->assertSame($admin->user_id, $session->get('mfa_passed_user_id_admin'));
-        $this->assertSame('admin-secret', $session->get('mfa_temp_secret_admin'));
+        $this->assertSame(1, $session->get('mfa_passed_at'));
+        $this->assertSame('legacy-secret', $session->get('mfa_temp_secret'));
+        $this->assertNull($session->get('mfa_passed_at_admin'));
+        $this->assertNull($session->get('mfa_passed_user_id_admin'));
+        $this->assertNull($session->get('mfa_temp_secret_admin'));
+        $this->assertNull($session->get('mfa_temp_secret_user_id_admin'));
         $this->assertSame(20, $session->get('mfa_passed_at_owner'));
 
         $session->put([
@@ -297,10 +298,10 @@ class RoleScopedSharedRoutesTest extends TestCase
             'mfa_temp_secret' => 'legacy-secret',
         ]);
         event(new Logout('admin', $admin));
-        $this->assertNull($session->get('mfa_passed_at'));
-        $this->assertNull($session->get('mfa_temp_secret'));
-        $this->assertSame(10, $session->get('mfa_passed_at_admin'));
-        $this->assertSame('admin-secret', $session->get('mfa_temp_secret_admin'));
+        $this->assertSame(3, $session->get('mfa_passed_at'));
+        $this->assertSame('legacy-secret', $session->get('mfa_temp_secret'));
+        $this->assertNull($session->get('mfa_passed_at_admin'));
+        $this->assertNull($session->get('mfa_temp_secret_admin'));
         $this->assertSame(20, $session->get('mfa_passed_at_owner'));
     }
 

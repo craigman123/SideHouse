@@ -30,6 +30,7 @@ class User extends Authenticatable
         'mfa_enabled',
         'mfa_secret',
         'mfa_recovery_codes',
+        'mfa_method',
         'permissions',
         'access_version',
         'promoted_by',

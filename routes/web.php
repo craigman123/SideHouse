@@ -13,6 +13,7 @@ use App\Http\Controllers\Admin\ReportController;
 use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\Auth\ViewAsController;
 use App\Http\Controllers\Auth\MfaController;
+use App\Http\Controllers\Auth\CustomerMfaController;
 use App\Http\Controllers\BookingCronController;
 use App\Http\Controllers\Guest\GuestBookingController;
 use App\Http\Controllers\Guest\GuestBookingSearchController;
@@ -375,7 +376,7 @@ Route::middleware(['auth', 'admin', 'admin.mfa', 'throttle.admin-management:120,
 // =====================================   USER ROUTES    =====================================
 // Same pattern as the admin group: a generous baseline for everything,
 // tighter overrides on anything that writes data or sends email.
-Route::middleware(['auth', 'admin.mfa', 'customer.only', 'throttle:120,1'])->group(function () {
+Route::middleware(['auth', 'admin.mfa', 'customer.only', 'customer.mfa', 'throttle:120,1'])->group(function () {
     Route::get('/my-dashboard', [UserDashboardController::class, 'index'])->name('user.dashboard');
     Route::get('/user/dashboard', [UserDashboardController::class, 'index'])->name('user.dashboard.view-as');
     Route::get('/lumi', [LumiController::class, 'show'])->name('user.lumi');
@@ -421,6 +422,18 @@ Route::middleware(['auth', 'admin.mfa', 'customer.only', 'throttle:120,1'])->gro
     // let an admin update/delete their own account via the generic
     // /profile endpoints without ever going through /admin/profile.
     Route::get('/profile', [User_UserController::class, 'profile'])->name('user.profile');
+    Route::post('/profile/mfa/setup', [CustomerMfaController::class, 'setup'])
+        ->middleware('throttle:5,1')
+        ->name('user.profile.mfa.setup');
+    Route::post('/profile/mfa/enable', [CustomerMfaController::class, 'enable'])
+        ->middleware('throttle:5,1')
+        ->name('user.profile.mfa.enable');
+    Route::post('/profile/mfa/disable', [CustomerMfaController::class, 'disable'])
+        ->middleware('throttle:5,1')
+        ->name('user.profile.mfa.disable');
+    Route::post('/profile/mfa/recovery-codes', [CustomerMfaController::class, 'regenerateRecoveryCodes'])
+        ->middleware('throttle:5,1')
+        ->name('user.profile.mfa.recovery-codes');
     Route::put('/profile', [User_UserController::class, 'updateProfile'])
         ->middleware(['throttle:10,1', 'admin.mfa'])
         ->name('user.profile.update');

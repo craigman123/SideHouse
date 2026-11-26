@@ -125,6 +125,14 @@ html.user-profile-page:not([data-theme="light"]) .wt-confirm-overlay {
 .user-profile-page .preference-row { display: flex; align-items: center; justify-content: space-between; gap: var(--s4); }
 .user-profile-page .preference-label { margin: 0 0 var(--s1); color: var(--text); font-weight: var(--font-weight-button); }
 .user-profile-page .preference-sub { margin: 0; color: var(--text-muted); font-size: var(--font-size-small); }
+.user-profile-page .mfa-state-badge { display: inline-flex; align-items: center; min-height: var(--s6); padding: var(--s1) var(--s3); border: 1px solid var(--brand); border-radius: var(--r-pill); background: color-mix(in srgb, var(--brand) 12%, var(--surface)); color: var(--brand-hover); font-size: var(--font-size-small); font-weight: var(--font-weight-button); }
+.user-profile-page .mfa-action-form { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: var(--s3); margin-top: var(--s4); }
+.user-profile-page .mfa-action-form label { grid-column: 1 / -1; color: var(--text-muted); font-size: var(--font-size-small); font-weight: var(--font-weight-button); }
+.user-profile-page .mfa-action-form input { box-sizing: border-box; min-height: 48px; padding: var(--s2) var(--s3); border: 1px solid var(--border); border-radius: var(--r-md); background: var(--surface-2); color: var(--text); font-family: var(--font-family); font-size: 16px; }
+.user-profile-page .mfa-passkey-row { margin-top: var(--s4); padding-top: var(--s4); border-top: 1px solid var(--border); }
+.user-profile-page .mfa-recovery-panel { margin-top: var(--s4); padding: var(--s4); border: 1px solid var(--border); border-radius: var(--r-md); background: var(--surface-2); }
+.user-profile-page .mfa-recovery-panel ul { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s2); margin: var(--s3) 0 0; padding: 0; list-style: none; }
+.user-profile-page .mfa-recovery-panel code { color: var(--text); }
 .user-profile-page .switch {
     position: relative;
     flex: 0 0 var(--s8);
@@ -218,6 +226,8 @@ html[data-theme="light"] .user-profile-page .wt-confirm-actions .wt-confirm-acce
 }
 
 @media (max-width: 560px) {
+    .user-profile-page .mfa-action-form { grid-template-columns: minmax(0, 1fr); }
+    .user-profile-page .mfa-action-form .btn { width: 100%; }
     .user-profile-page .profile-card,
     .user-profile-page .danger-zone { padding: var(--s4); }
     .user-profile-page .profile-header { flex-wrap: wrap; align-items: flex-start; }

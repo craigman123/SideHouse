@@ -137,6 +137,20 @@ document.addEventListener('DOMContentLoaded', function () {
                 return;
             }
 
+            if (data.mfa_required) {
+                var loginForm = document.getElementById('login-form');
+                if (loginForm && data.mfa_urls) {
+                    if (typeof data.mfa_urls.setup_init === 'string') loginForm.dataset.mfaSetupInitUrl = data.mfa_urls.setup_init;
+                    if (typeof data.mfa_urls.enable === 'string') loginForm.dataset.mfaEnableUrl = data.mfa_urls.enable;
+                    if (typeof data.mfa_urls.verify === 'string') loginForm.dataset.mfaVerifyUrl = data.mfa_urls.verify;
+                }
+                window.dispatchEvent(new CustomEvent('customer-mfa-required', {
+                    detail: { type: data.mfa_type || 'challenge' }
+                }));
+                resetGoogleLoading();
+                return;
+            }
+
             showToast(data.message || (btnEl.dataset.buttonText === 'signup_with' ? 'Account created!' : 'Signed in!'), 'success');
             window.location.href = safeRedirectPath(data.redirect, redirectFallback);
             redirectFallbackTimer = setTimeout(resetGoogleLoading, 10000);

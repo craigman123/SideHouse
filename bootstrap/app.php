@@ -41,6 +41,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'admin'       => \App\Http\Middleware\EnsureUserIsAdmin::class,
             'admin.or.owner' => \App\Http\Middleware\EnsureUserIsAdminOrOwner::class,
             'admin.mfa'   => \App\Http\Middleware\EnsureAdminMfa::class,
+            'customer.mfa' => \App\Http\Middleware\EnsureCustomerMfa::class,
             'can.access'  => \App\Http\Middleware\EnsurePermission::class,
             'staff'       => \App\Http\Middleware\EnsureUserIsStaff::class,
             'customer.only' => \App\Http\Middleware\EnsureUserIsCustomer::class,
