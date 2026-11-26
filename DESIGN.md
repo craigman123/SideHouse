@@ -93,8 +93,45 @@ Signature touch: one key word in each H1 or H2 is colored `--brand` (for example
 - Primary: `--brand` background, white text, 600 weight. Hover: `--brand-hover`.
 - Secondary: transparent, 1px `--brand` border, white text. Hover: `rgba(0,157,82,.12)` background.
 - Destructive: transparent with `--danger` border and text.
+- Quiet (Back, Previous, Cancel, Delete, Erase, Clear): transparent background, `--text-muted` text, no visible border, `--r-pill`, 44px minimum height, 600 weight. On hover (and while pressed on touch screens): transparent background, `--danger` text and a 1px `--danger` border. Keyboard focus keeps the standard focus ring, not the red state. Disabled: 50% opacity, no hover change.
+- Use Quiet for low-emphasis actions that leave or undo something. A final confirm such as "Delete booking" inside a modal still uses Destructive, so the dangerous choice is visibly dangerous before the user hovers it.
 - Disabled: `--surface-2` background, `--text-muted` text, no hover.
 - Contrast note: white on `#009D57` is about 3.5:1, fine for 16px/600 buttons but not for small body text. Never put small white text on green.
+
+```css
+.btn-quiet {
+  min-height: 44px;
+  padding: 0 var(--s5);
+  background: transparent;
+  color: var(--text-muted);
+  border: 1px solid transparent;
+  border-radius: var(--r-pill);
+  font-family: var(--font);
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: color 150ms ease, border-color 150ms ease;
+}
+
+.btn-quiet:active:not(:disabled) {
+  background: transparent;
+  color: var(--danger);
+  border-color: var(--danger);
+}
+
+@media (hover: hover) {
+  .btn-quiet:hover:not(:disabled) {
+    background: transparent;
+    color: var(--danger);
+    border-color: var(--danger);
+  }
+}
+
+.btn-quiet:disabled {
+  opacity: .5;
+  cursor: not-allowed;
+}
+```
 
 **Inputs**: `--surface-2` background, 1px `--border`, `--r-md` radius, 48px tall. Focus: 2px `--brand` outline. Error: `--danger` border plus a message under the field.
 
