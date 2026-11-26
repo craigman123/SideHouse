@@ -169,9 +169,13 @@
 .user-access-actions summary { width: max-content; color: var(--brand); cursor: pointer; font-size: .8125rem; font-weight: 700; list-style: none; }
 .user-access-actions summary::-webkit-details-marker { display: none; }
 .user-access-actions summary::after { content: '⌄'; padding-left: var(--s1); }
+.user-access-actions > button { width: max-content; min-height: 44px; padding: 0; border: 0; background: transparent; color: var(--brand); cursor: pointer; font: inherit; font-size: .8125rem; font-weight: 700; }
+.user-access-actions > button::after { content: '⌄'; padding-left: var(--s1); }
 .user-access-action-menu { position: absolute; z-index: 5; top: calc(100% + var(--s1)); right: 0; display: grid; min-width: 150px; padding: var(--s1); border: 1px solid var(--border); border-radius: var(--r-md); background: var(--surface); box-shadow: 0 12px 32px color-mix(in srgb, var(--bg), transparent 20%); }
-.user-access-action-menu button { min-height: 40px; padding: var(--s2); border: 0; border-radius: var(--r-sm); background: transparent; color: var(--text); text-align: left; font: inherit; cursor: pointer; }
+.user-access-action-menu.is-floating { position: fixed; z-index: 1000; top: 0; right: auto; box-sizing: border-box; width: max-content; max-width: calc(100vw - var(--s4)); max-height: calc(100vh - var(--s4)); max-height: calc(100dvh - var(--s4)); overflow-y: auto; overscroll-behavior: contain; }
+.user-access-action-menu button { min-height: 44px; padding: var(--s2); border: 0; border-radius: var(--r-sm); background: transparent; color: var(--text); text-align: left; font: inherit; cursor: pointer; }
 .user-access-action-menu button:hover:not(:disabled) { background: var(--surface-2); }
+.user-access-action-menu button:focus-visible { outline: 3px solid var(--brand); outline-offset: -2px; }
 .user-access-action-menu button.is-danger { color: var(--danger); }
 .user-access-action-menu button:disabled { color: var(--text-muted); cursor: not-allowed; }
 

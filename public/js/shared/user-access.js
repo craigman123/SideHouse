@@ -85,6 +85,7 @@
         mfaUser: null,
         mfaAction: null,
     };
+    let openActionMenu = null;
 
     const roleNames = { owner: 'Owner', admin: 'Admin', staff: 'Staff', user: 'Customer' };
     const roleOrder = { owner: 0, admin: 1, staff: 2 };
@@ -226,32 +227,170 @@
         else mfaSubmit.focus();
     }
 
+    function closeActionMenu(restoreFocus = false, tabDirection = null) {
+        if (!openActionMenu) return;
+
+        const { trigger, wrapper, menu } = openActionMenu;
+        const focusWasInMenu = menu.contains(document.activeElement);
+        menu.hidden = true;
+        menu.classList.remove('is-floating');
+        menu.removeAttribute('style');
+        menu.remove();
+        wrapper.append(menu);
+        trigger.setAttribute('aria-expanded', 'false');
+        openActionMenu = null;
+
+        if (tabDirection === 'backward') {
+            trigger.focus();
+        } else if (tabDirection === 'forward') {
+            const focusable = Array.from(document.querySelectorAll(
+                'a[href], button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"])',
+            )).filter((node) => !node.closest('[hidden]') && node.getClientRects().length > 0);
+            const triggerIndex = focusable.indexOf(trigger);
+            (focusable[triggerIndex + 1] || trigger).focus();
+        } else if (restoreFocus || focusWasInMenu) {
+            trigger.focus();
+        }
+    }
+
+    function positionActionMenu(trigger, menu) {
+        const inset = 8;
+        const gap = 4;
+        const viewportWidth = document.documentElement.clientWidth || window.innerWidth;
+        const viewportHeight = window.innerHeight;
+        const buttonRect = trigger.getBoundingClientRect();
+
+        menu.style.visibility = 'hidden';
+        menu.style.left = '0px';
+        menu.style.top = '0px';
+        menu.style.maxWidth = `${Math.max(0, viewportWidth - inset * 2)}px`;
+        menu.style.maxHeight = `${Math.max(0, viewportHeight - inset * 2)}px`;
+
+        const menuStyle = getComputedStyle(menu);
+        const borderHeight = Number.parseFloat(menuStyle.borderTopWidth) + Number.parseFloat(menuStyle.borderBottomWidth);
+        const naturalHeight = menu.scrollHeight + borderHeight;
+        const belowSpace = Math.max(0, viewportHeight - inset - buttonRect.bottom - gap);
+        const aboveSpace = Math.max(0, buttonRect.top - inset - gap);
+        const openAbove = naturalHeight > belowSpace && aboveSpace > belowSpace;
+        const availableSpace = openAbove ? aboveSpace : belowSpace;
+        menu.style.maxHeight = `${Math.min(naturalHeight, availableSpace)}px`;
+
+        const menuRect = menu.getBoundingClientRect();
+        const left = Math.max(
+            inset,
+            Math.min(buttonRect.right - menuRect.width, viewportWidth - inset - menuRect.width),
+        );
+        const top = openAbove
+            ? buttonRect.top - gap - menuRect.height
+            : buttonRect.bottom + gap;
+        menu.style.left = `${left}px`;
+        menu.style.top = `${Math.max(inset, Math.min(top, viewportHeight - inset - menuRect.height))}px`;
+        menu.style.visibility = '';
+    }
+
+    function toggleActionMenu(trigger, wrapper, menu) {
+        if (openActionMenu?.trigger === trigger) {
+            closeActionMenu();
+            return;
+        }
+
+        closeActionMenu();
+        menu.hidden = false;
+        menu.classList.add('is-floating');
+        document.body.append(menu);
+        openActionMenu = { trigger, wrapper, menu };
+        trigger.setAttribute('aria-expanded', 'true');
+        positionActionMenu(trigger, menu);
+        menu.querySelector('[role="menuitem"]:not(:disabled)')?.focus();
+    }
+
+    if (actorRole === 'admin') {
+        document.addEventListener('click', (event) => {
+            if (
+                openActionMenu
+                && !openActionMenu.menu.contains(event.target)
+                && !openActionMenu.trigger.contains(event.target)
+            ) {
+                closeActionMenu();
+            }
+        });
+        document.addEventListener('keydown', (event) => {
+            if (!openActionMenu) return;
+            if (event.key === 'Escape') {
+                event.preventDefault();
+                closeActionMenu(true);
+                return;
+            }
+            if (event.key === 'Tab') {
+                event.preventDefault();
+                closeActionMenu(false, event.shiftKey ? 'backward' : 'forward');
+                return;
+            }
+            if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+                const items = Array.from(openActionMenu.menu.querySelectorAll('[role="menuitem"]:not(:disabled)'));
+                if (!items.length) return;
+                event.preventDefault();
+                const currentIndex = items.indexOf(document.activeElement);
+                const step = event.key === 'ArrowDown' ? 1 : -1;
+                const nextIndex = currentIndex < 0
+                    ? (step > 0 ? 0 : items.length - 1)
+                    : (currentIndex + step + items.length) % items.length;
+                items[nextIndex].focus();
+            }
+        });
+        document.addEventListener('scroll', (event) => {
+            if (openActionMenu && !openActionMenu.menu.contains(event.target)) closeActionMenu();
+        }, true);
+        window.addEventListener('scroll', () => closeActionMenu(), { passive: true });
+        window.addEventListener('resize', () => closeActionMenu());
+    }
+
     function actionMenu(user) {
-        const details = element('details', 'user-access-actions');
+        const floatingMenu = actorRole === 'admin';
+        const details = element(floatingMenu ? 'div' : 'details', 'user-access-actions');
         details.dataset.userId = String(user.id);
-        const summaryButton = element('summary', '', 'Actions');
+        const summaryButton = element(floatingMenu ? 'button' : 'summary', '', 'Actions');
+        if (floatingMenu) {
+            summaryButton.type = 'button';
+            summaryButton.setAttribute('aria-haspopup', 'menu');
+            summaryButton.setAttribute('aria-expanded', 'false');
+        }
         summaryButton.setAttribute('aria-label', `Actions for ${user.name}`);
         const menu = element('div', 'user-access-action-menu');
+        if (floatingMenu) {
+            menu.setAttribute('role', 'menu');
+            menu.hidden = true;
+        }
+        const appendMenuItem = (button) => {
+            if (floatingMenu) button.setAttribute('role', 'menuitem');
+            menu.append(button);
+        };
+        const closeMenu = () => {
+            if (floatingMenu) closeActionMenu();
+            else details.open = false;
+        };
+        const menuOpener = (button) => floatingMenu ? summaryButton : button;
         const reason = guardReason(user);
         if (canEditDetails) {
             const detailsButton = element('button', '', 'Edit details');
             detailsButton.type = 'button';
             detailsButton.disabled = !user.actions?.edit_details?.allowed;
             detailsButton.title = user.actions?.edit_details?.reason || '';
-            detailsButton.addEventListener('click', () => { details.open = false; openDetails(user, detailsButton); });
-            menu.append(detailsButton);
+            detailsButton.addEventListener('click', () => { closeMenu(); openDetails(user, menuOpener(detailsButton)); });
+            appendMenuItem(detailsButton);
         }
         const edit = element('button', '', 'Edit access');
         edit.type = 'button';
         edit.disabled = !user.actions?.edit_access?.allowed;
         edit.title = user.actions?.edit_access?.reason || '';
-        edit.addEventListener('click', () => { details.open = false; openEdit(user, edit); });
+        edit.addEventListener('click', () => { closeMenu(); openEdit(user, menuOpener(edit)); });
         const remove = element('button', 'is-danger', 'Remove access');
         remove.type = 'button';
         remove.disabled = !user.actions?.remove_access?.allowed;
         remove.title = user.actions?.remove_access?.reason || '';
-        remove.addEventListener('click', () => { details.open = false; openRemove(user, remove); });
-        menu.append(edit, remove);
+        remove.addEventListener('click', () => { closeMenu(); openRemove(user, menuOpener(remove)); });
+        appendMenuItem(edit);
+        appendMenuItem(remove);
 
         const canManageMfa = page.dataset.canManageMfa === 'true'
             && user.mfa_actions
@@ -262,10 +401,10 @@
                 const button = element('button', danger ? 'is-danger' : '', label);
                 button.type = 'button';
                 button.addEventListener('click', () => {
-                    details.open = false;
-                    openMfaDialog(user, action, button);
+                    closeMenu();
+                    openMfaDialog(user, action, menuOpener(button));
                 });
-                menu.append(button);
+                appendMenuItem(button);
             };
 
             if (user.mfa_actions.disable) addMfaAction('Disable MFA', 'disable', true);
@@ -287,6 +426,9 @@
             }
         }
 
+        if (floatingMenu) {
+            summaryButton.addEventListener('click', () => toggleActionMenu(summaryButton, details, menu));
+        }
         details.append(summaryButton, menu);
         return details;
     }
