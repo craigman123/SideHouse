@@ -40,7 +40,34 @@ class OwnerPageController
 
     public function profile(): View
     {
-        return $this->page(AdminProfileController::class, 'owner.profile', 'profile');
+        $user = auth()->user();
+
+        return view('user.profile.profile', [
+            'profileLayout' => 'owner.layouts.app',
+            'profileTitle' => 'My Profile | Owner | Side House',
+            'profileStylesheets' => [
+                'css/owner/owner-base.css',
+                'css/user/profile.css',
+            ],
+            'profileScripts' => [],
+            'profileSecurityView' => 'partials.management.privileged-mfa',
+            'profileUpdateAction' => route('owner.profile.update'),
+            'profilePageId' => 'profilePage',
+            'canEditEmail' => true,
+            'canEditUsername' => true,
+            'showUsername' => true,
+            'showMembership' => false,
+            'showDelete' => true,
+            'deleteAccountAction' => route('admin.profile.destroy'),
+            'deleteZoneDescription' => "Permanently delete your admin account. This can't be undone.",
+            'deleteModalTitle' => 'Delete your account?',
+            'deleteModalDescription' => "This permanently deletes your admin account and can't be undone. You will lose access to the admin dashboard and all its data. If you're the only admin, make sure someone else has access first.",
+            'deleteCancelLabel' => 'Cancel',
+            'deleteSubmitLabel' => 'Delete Account',
+            'logoutDescription' => "You'll need to sign in again to access the owner dashboard.",
+            'user' => $user,
+            'userName' => $user->name,
+        ]);
     }
 
     public function updateProfile(Request $request)

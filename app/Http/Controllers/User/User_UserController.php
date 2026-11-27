@@ -870,7 +870,30 @@ class User_UserController extends Controller
     public function profile()
     {
         return view('user.profile.profile', [
-            'user'     => auth()->user(),
+            'profileLayout' => 'layouts.user',
+            'profileTitle' => 'Profile | Side House',
+            'profileStylesheets' => [
+                'css/user/dashboard.css',
+                'css/user/user-dashboard.css',
+                'css/user/profile.css',
+            ],
+            'profileScripts' => [],
+            'profileSecurityView' => 'partials.profile.security.customer',
+            'profileUpdateAction' => route('user.profile.update'),
+            'profilePageId' => 'profilePage',
+            'canEditEmail' => true,
+            'canEditUsername' => true,
+            'showUsername' => true,
+            'showMembership' => true,
+            'showDelete' => true,
+            'deleteAccountAction' => route('user.profile.destroy'),
+            'deleteZoneDescription' => "Permanently delete your account. This can't be undone.",
+            'deleteModalTitle' => 'Delete your account?',
+            'deleteModalDescription' => 'This permanently deletes your account and cannot be undone.',
+            'deleteCancelLabel' => 'Keep my account',
+            'deleteSubmitLabel' => 'Yes, delete account',
+            'logoutDescription' => "You'll need to sign in again to access your account.",
+            'user' => auth()->user(),
             'userName' => auth()->user()->name,
         ]);
     }

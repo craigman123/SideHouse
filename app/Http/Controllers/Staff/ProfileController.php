@@ -14,7 +14,47 @@ class ProfileController extends Controller
 {
     public function index(Request $request): View
     {
-        return view('staff.profile', ['user' => $request->user()]);
+        $user = $request->user();
+
+        return view('user.profile.profile', [
+            'profileLayout' => 'staff.layouts.app',
+            'profileTitle' => 'Staff Profile | Side House',
+            'profileStylesheets' => [
+                'css/shared/dashboard-base.css',
+                'css/staff/staff-profile.css',
+                'css/user/profile.css',
+            ],
+            'profileScripts' => ['js/staff/staff-profile.js'],
+            'profileSecurityView' => 'partials.profile.security.staff',
+            'profileUpdateAction' => route('staff.profile.update'),
+            'profilePageId' => 'staffProfilePage',
+            'profileDomIds' => [
+                'form' => 'staffProfileForm',
+                'name' => 'staffName',
+                'email' => 'staffEmail',
+                'phone' => 'staffPhone',
+                'edit' => 'staffProfileEditButton',
+                'cancel' => 'staffProfileCancelButton',
+                'save' => 'staffProfileSaveButton',
+                'logoutForm' => 'staffLogoutForm',
+                'logoutButton' => 'staffLogoutButton',
+                'logoutModal' => 'staffLogoutModal',
+                'logoutTitle' => 'staffLogoutModalTitle',
+                'logoutClose' => 'staffLogoutModalClose',
+                'logoutDescription' => 'staffLogoutModalDescription',
+                'logoutCancel' => 'staffLogoutModalCancel',
+                'logoutConfirm' => 'staffLogoutConfirm',
+            ],
+            'logoutModalInitiallyHidden' => true,
+            'canEditEmail' => false,
+            'canEditUsername' => false,
+            'showUsername' => false,
+            'showMembership' => false,
+            'showDelete' => false,
+            'user' => $user,
+            'userName' => $user->name,
+            'logoutDescription' => "You'll need to sign in again to access the staff dashboard.",
+        ]);
     }
 
     public function update(Request $request): RedirectResponse

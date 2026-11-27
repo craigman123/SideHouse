@@ -1,7 +1,7 @@
 (() => {
     const profileForm = document.getElementById('staffProfileForm');
 
-    if (profileForm) {
+    if (profileForm && !profileForm.hasAttribute('data-shared-profile')) {
         const fields = [
             document.getElementById('staffName'),
             document.getElementById('staffPhone'),

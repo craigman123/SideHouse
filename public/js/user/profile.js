@@ -2,15 +2,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     /* ---------- Edit mode toggle ---------- */
 
-    const form = document.getElementById('profileForm');
-    const editBtn = document.getElementById('editProfileBtn');
-    const saveBtn = document.getElementById('saveProfileBtn');
-    const cancelBtn = document.getElementById('cancelEditBtn');
+    const form = document.querySelector('[data-profile-form]');
+    const editBtn = document.querySelector('[data-profile-edit]');
+    const saveBtn = document.querySelector('[data-profile-save]');
+    const cancelBtn = document.querySelector('[data-profile-edit-cancel]');
 
-    // Only these fields are ever unlocked — role/dates/id stay readonly
-    // and disabled no matter what, so they're never even submitted.
+    // Only fields explicitly marked by the role's profile view are unlocked.
     const editableFields = form
-        ? form.querySelectorAll('#name, #username, #email, #phone_number')
+        ? form.querySelectorAll('[data-profile-editable="true"]')
         : [];
 
     const originalValues = new Map();
@@ -53,7 +52,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const deleteConfirmInput = document.getElementById('deleteConfirmInput');
     const deleteConfirmSubmit = document.getElementById('deleteConfirmSubmit');
     const deleteForm = document.getElementById('deleteAccountForm');
-    const contentScroller = document.querySelector('.user-profile-page .content');
+    const profilePage = document.querySelector('.user-profile-page');
+    const contentScroller = document.querySelector('.user-profile-page .content') || profilePage?.closest('.content');
 
     const DELETE_PHRASE = 'DELETE MY ACCOUNT';
 

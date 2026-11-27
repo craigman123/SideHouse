@@ -13,8 +13,31 @@ class AdminProfileController extends Controller
 {
     public function profile()
     {
-        return view('admin.profile.admin-profile', [
+        return view('user.profile.profile', [
+            'profileLayout' => 'layouts.app',
+            'profileTitle' => 'My Profile | Side House',
+            'profileStylesheets' => [
+                'css/shared/dashboard-base.css',
+                'css/user/profile.css',
+            ],
+            'profileScripts' => [],
+            'profileSecurityView' => 'partials.management.privileged-mfa',
+            'profileUpdateAction' => route('admin.profile.update'),
+            'profilePageId' => 'profilePage',
+            'canEditEmail' => true,
+            'canEditUsername' => true,
+            'showUsername' => true,
+            'showMembership' => false,
+            'showDelete' => true,
+            'deleteAccountAction' => route('admin.profile.destroy'),
+            'deleteZoneDescription' => "Permanently delete your admin account. This can't be undone.",
+            'deleteModalTitle' => 'Delete your account?',
+            'deleteModalDescription' => "This permanently deletes your admin account and can't be undone. You will lose access to the admin dashboard and all its data. If you're the only admin, make sure someone else has access first.",
+            'deleteCancelLabel' => 'Cancel',
+            'deleteSubmitLabel' => 'Delete Account',
+            'logoutDescription' => "You'll need to sign in again to access the admin dashboard.",
             'user' => auth()->user(),
+            'userName' => auth()->user()->name,
         ]);
     }
 

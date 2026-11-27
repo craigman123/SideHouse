@@ -71,7 +71,7 @@ class StaffAreaTest extends TestCase
             ->assertSee('Open play')->assertDontSee('Needs attention')->assertDontSee('Open play today');
 
         $profile = $this->signInStaff($staff)->get('/staff/profile')->assertOk();
-        $profile->assertSee('shared/profile.css')->assertSee('shared/dashboard-base.css')->assertDontSee('css/admin/');
+        $profile->assertSee('user/profile.css')->assertSee('shared/dashboard-base.css')->assertDontSee('css/admin/');
         $profile->assertSee('staff-profile.css')->assertSee('staff-profile.js')
             ->assertSee('Change password')
             ->assertSee('Coming soon')
@@ -90,7 +90,8 @@ class StaffAreaTest extends TestCase
         $profile->assertSee('id="staffLogoutForm"', false)
             ->assertSee('action="'.route(config('auth.multi_guard') ? 'staff.logout' : 'logout').'"', false)
             ->assertSee('name="_token"', false)
-            ->assertSee('Sign out')
+            ->assertSee('Log Out')
+            ->assertDontSee('Sign out')
             ->assertDontSee('Delete Account')
             ->assertDontSee('Disable MFA');
 

@@ -3,9 +3,8 @@
     $mfaState = $privilegedMfa->state($user);
 @endphp
 
-<section class="profile-card privileged-mfa-card" aria-labelledby="privilegedMfaTitle">
+<div class="privileged-mfa-card">
     <div>
-        <h2 id="privilegedMfaTitle">Security and multi-factor authentication</h2>
         <div class="profile-grid">
             <div class="profile-item">
                 <span>Current method</span>
@@ -47,4 +46,4 @@
             <ul>@foreach (session('recovery_codes') as $code)<li>{{ $code }}</li>@endforeach</ul>
         </div>
     @endif
-</section>
+</div>
