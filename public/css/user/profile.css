@@ -128,7 +128,7 @@ html.user-profile-page:not([data-theme="light"]) .wt-confirm-overlay {
 .user-profile-page .password-field-control input { flex: 1 1 auto; min-width: 0; }
 .user-profile-page .password-visibility-toggle { box-sizing: border-box; flex: 0 0 auto; min-width: 44px; min-height: 44px; padding: var(--s1) var(--s2); border: 1px solid var(--border); border-radius: var(--r-md); background: var(--surface-2); color: var(--text); font-family: var(--font-family); font-size: var(--font-size-small); cursor: pointer; }
 .user-profile-page .password-visibility-toggle:hover { border-color: var(--brand); color: var(--brand-hover); }
-.user-profile-page .preference-row { display: flex; align-items: center; justify-content: space-between; gap: var(--s4); }
+.user-profile-page .preference-row {margin-bottom: var(--s4); display: flex; align-items: center; justify-content: space-between; gap: var(--s4); }
 .user-profile-page .preference-label { margin: 0 0 var(--s1); color: var(--text); font-weight: var(--font-weight-button); }
 .user-profile-page .preference-sub { margin: 0; color: var(--text-muted); font-size: var(--font-size-small); }
 .user-profile-page .mfa-state-badge { display: inline-flex; align-items: center; min-height: var(--s6); padding: var(--s1) var(--s3); border: 1px solid var(--brand); border-radius: var(--r-pill); background: color-mix(in srgb, var(--brand) 12%, var(--surface)); color: var(--brand-hover); font-size: var(--font-size-small); font-weight: var(--font-weight-button); }
