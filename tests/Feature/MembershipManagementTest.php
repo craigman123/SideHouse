@@ -65,7 +65,7 @@ class MembershipManagementTest extends TestCase
         $titlePosition = strpos($content, '<h2 class="membership-card-title">'.e($title).'</h2>');
         $this->assertNotFalse($titlePosition, "Membership card for {$title} was not rendered.");
 
-        $cardStart = strrpos(substr($content, 0, $titlePosition), '<article class="membership-card">');
+        $cardStart = strrpos(substr($content, 0, $titlePosition), '<article class="membership-card');
         $cardEnd = strpos($content, '</article>', $titlePosition);
         $this->assertNotFalse($cardStart);
         $this->assertNotFalse($cardEnd);
@@ -84,6 +84,12 @@ class MembershipManagementTest extends TestCase
         );
         $this->assertStringContainsString('aria-label="'.$label.'"', $card);
         $this->assertStringContainsString('title="'.$label.'"', $card);
+
+        if ($status === 'expiring-soon') {
+            $this->assertStringContainsString('membership-card--expiring-soon', $card);
+        } else {
+            $this->assertStringNotContainsString('membership-card--expiring-soon', $card);
+        }
 
         if ($status === 'expired') {
             $this->assertStringContainsString('class="membership-card-expired-overlay"', $card);
@@ -132,6 +138,7 @@ class MembershipManagementTest extends TestCase
             ->assertOk()
             ->assertSee('Memberships')
             ->assertSee('Add membership')
+            ->assertSee("Create membership plans with a price, discount, player count and optional expiry. Each card's QR holds the plan details.", false)
             ->assertSee('membershipModal')
             ->assertSee('role="dialog" aria-modal="true"', false)
             ->assertSee(route('admin.memberships.index'));
@@ -171,6 +178,7 @@ class MembershipManagementTest extends TestCase
             ->assertOk()
             ->assertSee('Memberships')
             ->assertSee('Add membership')
+            ->assertSee("Create membership plans with a price, discount, player count and optional expiry. Each card's QR holds the plan details.", false)
             ->assertSee('href="'.route('owner.memberships.index').'"', false);
         $this->assertMembershipModalIsClosedAndAssetsAreIncluded(
             $ownerPage,

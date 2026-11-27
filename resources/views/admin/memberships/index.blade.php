@@ -25,6 +25,7 @@
         <div id="flash-data" data-success="{{ session('success') }}"></div>
 
         <header class="memberships-header">
+            <p class="memberships-header-description">Create membership plans with a price, discount, player count and optional expiry. Each card's QR holds the plan details.</p>
             <button type="button" class="memberships-button memberships-button-primary" id="openMembershipModal" aria-haspopup="dialog" aria-controls="membershipModal">
                 Add membership
             </button>
@@ -38,7 +39,10 @@
                     @php
                         $currentMembersCount = (int) $membershipPlan->current_members_count;
                     @endphp
-                    <article class="membership-card">
+                    <article @class([
+                        'membership-card',
+                        'membership-card--expiring-soon' => $membershipPlan->expiry_status === 'expiring-soon',
+                    ])>
                         <div class="membership-card-top-row">
                             <svg class="membership-card-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                                 <rect x="3" y="5" width="18" height="14" rx="2"></rect>
