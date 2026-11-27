@@ -2688,6 +2688,7 @@
             if (event.target.closest?.('.court-month-bar, .court-month-block') || calendarDrag?.grid === grid) event.preventDefault();
         });
     };
+    const calendarGrids = [board, monthGrid, weekGrid].filter(Boolean);
     calendarGrids.forEach(attachCalendarGridEvents);
 
     const formatHourLabel = (hour) => {
