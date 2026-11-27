@@ -141,7 +141,29 @@
                 </div>
 
                 <div id="courtBoardSummary" class="court-board-summary" aria-live="polite"></div>
-                <div id="courtBoard" class="court-board" aria-live="polite"></div>
+                <div class="court-calendar-empty-state" data-calendar-empty-state="board" role="status" hidden>No bookings on this day.</div>
+                <div class="court-calendar-error-state" data-calendar-error-state="board" role="alert" hidden>
+                    <span data-calendar-error-message></span>
+                    <button type="button" class="btn-clear court-calendar-retry" data-calendar-retry="board">Retry</button>
+                </div>
+                <div id="courtBoardRegion" class="court-board-region" aria-busy="false">
+                    <div id="courtBoardSkeleton" class="court-board court-board-skeleton" aria-hidden="true" hidden>
+                        @foreach ($courts as $court)
+                            <section class="court-board-court court-board-skeleton-card">
+                                <div class="court-board-court-heading">
+                                    <span class="court-board-skeleton-line court-board-skeleton-line--title"></span>
+                                    <span class="court-board-skeleton-line court-board-skeleton-line--count"></span>
+                                </div>
+                                <div class="court-board-events">
+                                    <span class="court-board-skeleton-line court-board-skeleton-line--event"></span>
+                                    <span class="court-board-skeleton-line court-board-skeleton-line--event"></span>
+                                </div>
+                            </section>
+                        @endforeach
+                    </div>
+                    <span id="courtBoardLoadingStatus" class="visually-hidden court-calendar-loading-status" role="status" aria-atomic="true"></span>
+                    <div id="courtBoard" class="court-board" aria-live="polite"></div>
+                </div>
             </div>
         </section>
         <section id="courtMonthView" class="bookings-view-panel" role="tabpanel" @if ($initialBookingsView !== 'month') hidden @endif>
@@ -165,6 +187,11 @@
                 </div>
 
                 <div id="courtMonthSummary" class="court-board-summary" aria-live="polite"></div>
+                <div class="court-calendar-empty-state" data-calendar-empty-state="month" role="status" hidden>No bookings this month.</div>
+                <div class="court-calendar-error-state" data-calendar-error-state="month" role="alert" hidden>
+                    <span data-calendar-error-message></span>
+                    <button type="button" class="btn-clear court-calendar-retry" data-calendar-retry="month">Retry</button>
+                </div>
                 <div class="court-month-scroll" aria-busy="false">
                     <div class="court-calendar-skeleton court-calendar-skeleton--month" aria-hidden="true" hidden>
                         <div class="court-calendar-skeleton-header">
@@ -205,6 +232,11 @@
                     <span class="legend-booking">Booking</span><span data-calendar-legend-icon="lock" class="legend-closed">Closed</span><span data-calendar-legend-icon="wrench" class="legend-maintenance">Maintenance</span><span data-calendar-legend-icon="padel" class="legend-open-play">Open play</span>
                 </div>
                 <div id="courtWeekSummary" class="court-board-summary" aria-live="polite"></div>
+                <div class="court-calendar-empty-state" data-calendar-empty-state="week" role="status" hidden>No bookings this week.</div>
+                <div class="court-calendar-error-state" data-calendar-error-state="week" role="alert" hidden>
+                    <span data-calendar-error-message></span>
+                    <button type="button" class="btn-clear court-calendar-retry" data-calendar-retry="week">Retry</button>
+                </div>
                 <div class="court-week-scroll court-month-scroll" aria-busy="false">
                     <div class="court-calendar-skeleton court-calendar-skeleton--week" aria-hidden="true" hidden>
                         <div class="court-calendar-skeleton-header">

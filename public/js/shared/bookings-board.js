@@ -90,6 +90,9 @@
         if (end <= start) end += 1440;
         return end <= venueNowMinutes();
     };
+    const boardRegion = document.getElementById('courtBoardRegion');
+    const boardSkeleton = document.getElementById('courtBoardSkeleton');
+    const boardLoadingStatus = document.getElementById('courtBoardLoadingStatus');
     const summary = document.getElementById('courtBoardSummary');
     const weekInput = document.getElementById('courtWeekInput');
     const weekSummary = document.getElementById('courtWeekSummary');
@@ -105,29 +108,61 @@
     document.addEventListener('specific-closures:updated', () => {
         const range = currentVisibleRange();
         const view = Object.keys(panels).find((key) => !panels[key].hidden);
-        if (view === 'month') void loadCalendarRange(range.from, range.to, { force: true }).then(() => renderMonth());
-        else if (view === 'week') void loadCalendarRange(range.from, range.to, { force: true }).then(() => renderWeek());
+        if (view === 'month') void loadVisibleRangeThenRender('month', range, renderMonth, { force: true });
+        else if (view === 'week') void loadVisibleRangeThenRender('week', range, renderWeek, { force: true });
     });
 
     // ---------- Month view ----------
     const monthInput = document.getElementById('courtMonthInput');
     const monthSummary = document.getElementById('courtMonthSummary');
     const monthGrid = document.getElementById('courtMonthGrid');
+    const calendarEmptyStates = new Map(['board', 'month', 'week'].map((view) => [
+        view,
+        workspace.querySelector(`[data-calendar-empty-state="${view}"]`),
+    ]));
+    const calendarErrorStates = new Map(['board', 'month', 'week'].map((view) => {
+        const element = workspace.querySelector(`[data-calendar-error-state="${view}"]`);
+        return [view, { element, message: element?.querySelector('[data-calendar-error-message]') }];
+    }));
+    const setCalendarEmpty = (view, isEmpty) => {
+        const element = calendarEmptyStates.get(view);
+        if (element) element.hidden = !isEmpty;
+    };
+    const clearCalendarError = (view) => {
+        const state = calendarErrorStates.get(view);
+        if (!state?.element) return;
+        state.element.hidden = true;
+        if (state.message) state.message.textContent = '';
+    };
+    const showCalendarError = (view, message) => {
+        const state = calendarErrorStates.get(view);
+        if (!state?.element) return;
+        if (state.message) state.message.textContent = message;
+        state.element.hidden = false;
+    };
+    const renderCalendarSafely = (view, render) => {
+        setCalendarEmpty(view, false);
+        try {
+            render();
+            clearCalendarError(view);
+            return true;
+        } catch (error) {
+            console.error(`[bookings] ${view} calendar render failed`, error);
+            showCalendarError(view, 'Calendar could not be displayed. Try again.');
+            return false;
+        }
+    };
     const calendarLoadingStates = new Map();
-    [[monthSummary, monthGrid], [weekSummary, weekGrid]].forEach(([summaryElement, grid]) => {
+    const addCalendarLoadingState = (view, container, skeleton, status) => {
+        if (!container || !skeleton || !status) return;
+        calendarLoadingStates.set(view, { view, container, skeleton, status, pending: 0, shownAt: 0 });
+    };
+    addCalendarLoadingState('board', boardRegion, boardSkeleton, boardLoadingStatus);
+    [monthGrid, weekGrid].forEach((grid) => {
         const scroll = grid?.closest('.court-month-scroll');
         const skeleton = scroll?.querySelector('.court-calendar-skeleton');
         const status = scroll?.querySelector('.court-calendar-loading-status');
-        if (summaryElement && scroll && skeleton && status) {
-            calendarLoadingStates.set(summaryElement, {
-                scroll,
-                skeleton,
-                status,
-                pending: 0,
-                showTimer: null,
-                shownAt: 0,
-            });
-        }
+        addCalendarLoadingState(grid === monthGrid ? 'month' : 'week', scroll, skeleton, status);
     });
     let activeCalendarGrid = monthGrid;
     const formatDateInputValue = dateKey;
@@ -287,9 +322,9 @@
         data.closingCutoffs = closingCutoffs;
         const affectedDates = affectedCalendarDates;
         affectedCalendarDates = null;
-        if (panels.month && !panels.month.hidden) renderMonth(affectedDates);
-        if (panels.week && !panels.week.hidden) renderWeek(affectedDates);
-        if (panels.board && !panels.board.hidden) renderBoard();
+        if (panels.month && !panels.month.hidden) renderCalendarSafely('month', () => renderMonth(affectedDates));
+        if (panels.week && !panels.week.hidden) renderCalendarSafely('week', () => renderWeek(affectedDates));
+        if (panels.board && !panels.board.hidden) renderCalendarSafely('board', renderBoard);
         calendarDataDirty = false;
         if (debugCalendarDuplicates) {
             const visibleGrid = activeCalendarGrid;
@@ -2052,6 +2087,7 @@
         const windows = bookings.flatMap((booking) => eventWindows(booking, date).map((window) => ({ booking, window })));
         const active = windows.filter(({ booking }) => booking.status !== 'cancelled');
         summary.textContent = `${formatDate(date)} · ${active.length} active reservation${active.length === 1 ? '' : 's'} across ${courts.length} court${courts.length === 1 ? '' : 's'}`;
+        setCalendarEmpty('board', courts.length > 0 && active.length === 0);
         board.replaceChildren();
 
         courts.forEach((court) => {
@@ -3449,6 +3485,7 @@
 
         const activeCount = new Set([...windowsByDate.values()].flat()
             .filter((event) => event.kind === 'booking').map((event) => String(event.booking.id))).size;
+        setCalendarEmpty(mode, activeCount === 0);
         if (mode === 'week') {
             const rangeLabel = fullWeekRangeLabel(dates[0], dates[dates.length - 1]);
             weekSummary.textContent = `${shortWeekRangeLabel(dates[0], dates[dates.length - 1])} · ${activeCount} active reservation${activeCount === 1 ? '' : 's'}`;
@@ -3542,57 +3579,82 @@
     }
 
     const beginCalendarLoading = (state) => {
+        const bodyHeight = state.view === 'month' || state.view === 'week'
+            ? `${buildDayRowPlan().gridH}px`
+            : null;
+        const gridWidth = state.view === 'month'
+            ? (() => {
+                const [year, month] = monthInput.value.split('-').map(Number);
+                return `${64 + new Date(year, month, 0).getDate() * 90}px`;
+            })()
+            : null;
         state.pending += 1;
-        state.scroll.setAttribute('aria-busy', 'true');
+        state.container.setAttribute('aria-busy', 'true');
         state.status.textContent = 'Loading calendar…';
+        if (bodyHeight) state.container.style.setProperty('--calendar-body-height', bodyHeight);
+        if (gridWidth) state.container.style.setProperty('--calendar-grid-width', gridWidth);
 
         if (state.pending === 1 && state.skeleton.hidden) {
-            state.showTimer = window.setTimeout(() => {
-                state.showTimer = null;
-                if (!state.pending) return;
-                state.shownAt = performance.now();
-                state.scroll.classList.add('is-calendar-loading');
-                state.skeleton.hidden = false;
-            }, 150);
+            state.shownAt = performance.now();
+            state.container.classList.add('is-calendar-loading');
+            state.skeleton.hidden = false;
         }
 
         return async () => {
             state.pending = Math.max(0, state.pending - 1);
             if (state.pending) return;
 
-            if (state.showTimer) {
-                window.clearTimeout(state.showTimer);
-                state.showTimer = null;
-            } else if (!state.skeleton.hidden) {
-                const remaining = Math.max(0, 300 - (performance.now() - state.shownAt));
+            if (!state.skeleton.hidden) {
+                const remaining = Math.max(0, 120 - (performance.now() - state.shownAt));
                 if (remaining) await new Promise((resolve) => window.setTimeout(resolve, remaining));
             }
 
             if (state.pending) return;
             state.skeleton.hidden = true;
-            state.scroll.classList.remove('is-calendar-loading');
-            state.scroll.setAttribute('aria-busy', 'false');
+            state.container.classList.remove('is-calendar-loading');
+            state.container.setAttribute('aria-busy', 'false');
+            state.container.style.removeProperty('--calendar-body-height');
+            state.container.style.removeProperty('--calendar-grid-width');
             state.status.textContent = '';
         };
     };
-    const loadVisibleRangeThenRender = async (range, summaryElement, render) => {
-        if (!rangeIsCached(range.from, range.to)) {
-            const loadingState = calendarLoadingStates.get(summaryElement);
-            const finishLoading = loadingState ? beginCalendarLoading(loadingState) : null;
-            if (!loadingState) summaryElement.textContent = 'Loading calendar…';
-            let loaded;
-            try {
-                loaded = await loadCalendarRange(range.from, range.to);
-            } finally {
-                if (finishLoading) await finishLoading();
+    const loadVisibleRangeThenRender = async (view, range, render, { force = false } = {}) => {
+        clearCalendarError(view);
+        setCalendarEmpty(view, false);
+        const shouldFetch = force || !rangeIsCached(range.from, range.to);
+        const loadingState = shouldFetch ? calendarLoadingStates.get(view) : null;
+        let finishLoading = null;
+        let loaded = true;
+
+        try {
+            if (loadingState) finishLoading = beginCalendarLoading(loadingState);
+            if (shouldFetch) loaded = await loadCalendarRange(range.from, range.to, { force });
+            const rendered = renderCalendarSafely(view, render);
+            if (!loaded && rendered) {
+                showCalendarError(view, 'Could not refresh the calendar. Showing the available page data.');
             }
-            if (!loaded) {
-                render();
-                return;
-            }
+            return loaded && rendered;
+        } catch (error) {
+            console.error(`[bookings] ${view} calendar load failed`, error);
+            const rendered = renderCalendarSafely(view, render);
+            if (rendered) showCalendarError(view, 'Calendar could not be loaded. Showing the available page data.');
+            return false;
+        } finally {
+            if (finishLoading) await finishLoading();
         }
-        render();
     };
+    workspace.querySelectorAll('[data-calendar-retry]').forEach((button) => {
+        button.addEventListener('click', () => {
+            const view = button.dataset.calendarRetry;
+            if (view === 'board') {
+                void loadVisibleRangeThenRender('board', { from: dateInput.value, to: dateInput.value }, renderBoard, { force: true });
+            } else if (view === 'month') {
+                void loadVisibleRangeThenRender('month', currentVisibleRange(), renderMonth, { force: true });
+            } else if (view === 'week') {
+                void loadVisibleRangeThenRender('week', currentVisibleRange(), renderWeek, { force: true });
+            }
+        });
+    });
     const writeCalendarUrl = (view) => {
         const url = new URL(window.location.href);
         url.searchParams.set('view', view);
@@ -3611,7 +3673,7 @@
         weekStart = startOfWeek(dateValue);
         updateWeekNavigation();
         if (updateUrl) writeCalendarUrl('week');
-        void loadVisibleRangeThenRender({ from: weekStart, to: addDays(weekStart, 6) }, weekSummary, renderWeek).then(schedulePoll);
+        void loadVisibleRangeThenRender('week', { from: weekStart, to: addDays(weekStart, 6) }, renderWeek).then(schedulePoll);
     };
     const stopPolling = () => {
         if (pollTimer) window.clearTimeout(pollTimer);
@@ -3626,10 +3688,14 @@
         pollTimer = window.setTimeout(async () => {
             if (document.visibilityState !== 'visible') return schedulePoll();
             const range = currentVisibleRange();
+            const view = ['month', 'week', 'board'].find((name) => panels[name] && !panels[name].hidden);
             const loaded = await loadCalendarRange(range.from, range.to, { force: true });
             if (loaded) {
+                clearCalendarError(view);
                 if (!calendarDrag && blockModal.hidden && moveQueues.size === 0) renderCalendar();
                 else calendarDataDirty = true;
+            } else if (view) {
+                showCalendarError(view, 'Could not refresh the calendar. Showing the available page data.');
             }
             schedulePoll();
         }, pollDelay);
@@ -3638,18 +3704,19 @@
     tabs.forEach((tab) => tab.addEventListener('click', () => {
         const view = tab.dataset.bookingsView;
         changeView(view);
-        if (view === 'week') void loadVisibleRangeThenRender(currentVisibleRange(), weekSummary, renderWeek);
-        if (view === 'month') void loadVisibleRangeThenRender(currentVisibleRange(), monthSummary, renderMonth);
+        if (view === 'week') void loadVisibleRangeThenRender('week', currentVisibleRange(), renderWeek);
+        if (view === 'month') void loadVisibleRangeThenRender('month', currentVisibleRange(), renderMonth);
+        if (view === 'board') void loadVisibleRangeThenRender('board', currentVisibleRange(), renderBoard);
         schedulePoll();
     }));
     dateInput.addEventListener('change', () => {
         writeCalendarUrl('board');
-        void loadVisibleRangeThenRender({ from: dateInput.value, to: dateInput.value }, summary, renderBoard);
+        void loadVisibleRangeThenRender('board', { from: dateInput.value, to: dateInput.value }, renderBoard);
     });
     monthInput.addEventListener('change', () => {
         const range = currentVisibleRange();
         writeCalendarUrl('month');
-        void loadVisibleRangeThenRender(range, monthSummary, renderMonth);
+        void loadVisibleRangeThenRender('month', range, renderMonth);
     });
     weekInput.addEventListener('change', () => selectWeekDate(weekInput.value));
 
@@ -3696,7 +3763,7 @@
             monthInput.value = toMonthValue(cursor);
             writeCalendarUrl('month');
             const range = currentVisibleRange();
-            void loadVisibleRangeThenRender(range, monthSummary, renderMonth).then(schedulePoll);
+            void loadVisibleRangeThenRender('month', range, renderMonth).then(schedulePoll);
         });
     });
 
@@ -3717,7 +3784,7 @@
             if (button.dataset.boardDate === 'previous') value.setDate(value.getDate() - 1);
             if (button.dataset.boardDate === 'next') value.setDate(value.getDate() + 1);
             dateInput.value = toDateValue(value);
-            void loadVisibleRangeThenRender({ from: dateInput.value, to: dateInput.value }, summary, renderBoard).then(schedulePoll);
+            void loadVisibleRangeThenRender('board', { from: dateInput.value, to: dateInput.value }, renderBoard).then(schedulePoll);
         });
     });
     document.addEventListener('visibilitychange', schedulePoll);
@@ -3728,13 +3795,13 @@
     initialEnd.setMonth(initialEnd.getMonth() + 6);
     rangeCache.push({ from: addDays(initialToday, -1), to: toDateValue(initialEnd) });
     if (initialView === 'week') {
-        void loadVisibleRangeThenRender(currentVisibleRange(), weekSummary, renderWeek).then(() => {
+        void loadVisibleRangeThenRender('week', currentVisibleRange(), renderWeek).then(() => {
             openPlayHighlightReady = true;
             highlightRequestedOpenPlay();
             schedulePoll();
         });
     }
-    if (initialView === 'month') void loadVisibleRangeThenRender(currentVisibleRange(), monthSummary, renderMonth);
-    if (initialView === 'board') void loadVisibleRangeThenRender(currentVisibleRange(), summary, renderBoard);
+    if (initialView === 'month') void loadVisibleRangeThenRender('month', currentVisibleRange(), renderMonth);
+    if (initialView === 'board') void loadVisibleRangeThenRender('board', currentVisibleRange(), renderBoard);
     schedulePoll();
 })();

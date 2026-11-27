@@ -644,6 +644,47 @@ html[data-theme="light"] .admin-bookings-page .btn-filter {
     min-width: 0;
 }
 
+.admin-bookings-page .court-board-region {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+}
+.admin-bookings-page .court-board-region > .court-board { grid-area: 1 / 1; width: 100%; }
+.admin-bookings-page .court-board-region.is-calendar-loading > #courtBoard { visibility: hidden; }
+.admin-bookings-page .court-board-skeleton { pointer-events: none; }
+.admin-bookings-page .court-board-skeleton[hidden] { display: none; }
+.admin-bookings-page .court-board-skeleton-card { min-height: 180px; }
+.admin-bookings-page .court-board-skeleton-line {
+    display: block;
+    height: var(--s3);
+    border-radius: var(--r-pill);
+    background-image: linear-gradient(90deg, var(--surface) 25%, var(--border) 50%, var(--surface) 75%);
+    background-size: 200% 100%;
+    animation: court-calendar-skeleton-shimmer 1.4s ease-in-out infinite;
+}
+.admin-bookings-page .court-board-skeleton-line--title { width: min(52%, 10rem); }
+.admin-bookings-page .court-board-skeleton-line--count { width: 4rem; }
+.admin-bookings-page .court-board-skeleton-line--event { height: var(--s6); }
+.admin-bookings-page .court-calendar-empty-state,
+.admin-bookings-page .court-calendar-error-state {
+    margin-bottom: var(--s4);
+    padding: var(--s3);
+    border: 1px solid var(--border);
+    border-radius: var(--r-md);
+    background: var(--surface-2);
+}
+.admin-bookings-page .court-calendar-empty-state { color: var(--text-muted); }
+.admin-bookings-page .court-calendar-error-state {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--s3);
+    border-color: var(--danger);
+    color: var(--text);
+}
+.admin-bookings-page .court-calendar-empty-state[hidden],
+.admin-bookings-page .court-calendar-error-state[hidden] { display: none; }
+.admin-bookings-page .court-calendar-retry { flex: 0 0 auto; }
+
 .admin-bookings-page .court-board-court {
     min-width: 0;
     min-height: 180px;
@@ -718,7 +759,7 @@ html[data-theme="light"] .admin-bookings-page .btn-filter {
     --calendar-grid-line: var(--text-muted);
     --calendar-half-hour-line: color-mix(in srgb, var(--text-muted) 32%, var(--surface));
     position: relative;
-    max-height: min(72vh, 41.25rem);
+    height: min(72vh, 41.25rem);
     overflow: scroll;
     border: 1px solid var(--calendar-grid-line);
     border-radius: var(--r-md);
@@ -751,10 +792,10 @@ html[data-theme="light"] .admin-bookings-page .btn-filter {
     position: absolute;
     inset: 0 auto auto 0;
     z-index: 4;
-    height: 1216px;
+    height: calc(var(--calendar-body-height, 1216px) + 50px);
     pointer-events: none;
 }
-.admin-bookings-page .court-calendar-skeleton--month { width: 2854px; }
+.admin-bookings-page .court-calendar-skeleton--month { width: var(--calendar-grid-width, 2854px); }
 .admin-bookings-page .court-calendar-skeleton--week { width: 100%; }
 .admin-bookings-page .court-calendar-skeleton-header {
     position: sticky;
@@ -767,7 +808,7 @@ html[data-theme="light"] .admin-bookings-page .btn-filter {
 }
 .admin-bookings-page .court-calendar-skeleton--month .court-calendar-skeleton-header {
     grid-template-columns: 64px 1fr;
-    width: 2854px;
+    width: var(--calendar-grid-width, 2854px);
 }
 .admin-bookings-page .court-calendar-skeleton--week .court-calendar-skeleton-header {
     grid-template-columns: 42px repeat(7, minmax(0, 1fr));
@@ -813,11 +854,11 @@ html[data-theme="light"] .admin-bookings-page .btn-filter {
 }
 .admin-bookings-page .court-calendar-skeleton-body {
     display: grid;
-    height: 1216px;
+    height: var(--calendar-body-height, 1216px);
 }
 .admin-bookings-page .court-calendar-skeleton--month .court-calendar-skeleton-body {
-    grid-template-columns: 64px 2790px;
-    width: 2854px;
+    grid-template-columns: 64px minmax(0, calc(var(--calendar-grid-width, 2854px) - 64px));
+    width: var(--calendar-grid-width, 2854px);
 }
 .admin-bookings-page .court-calendar-skeleton--week .court-calendar-skeleton-body {
     grid-template-columns: 42px minmax(0, 1fr);
@@ -827,7 +868,7 @@ html[data-theme="light"] .admin-bookings-page .btn-filter {
     position: sticky;
     left: 0;
     z-index: 2;
-    height: 1216px;
+    height: var(--calendar-body-height, 1216px);
     border-right: 1px solid var(--border);
     background-color: var(--surface);
     background-image:
@@ -838,11 +879,11 @@ html[data-theme="light"] .admin-bookings-page .btn-filter {
 }
 .admin-bookings-page .court-calendar-skeleton-grid {
     position: relative;
-    height: 1216px;
+    height: var(--calendar-body-height, 1216px);
     background-color: var(--surface);
 }
 .admin-bookings-page .court-calendar-skeleton-grid--month {
-    width: 2790px;
+    width: calc(var(--calendar-grid-width, 2854px) - 64px);
     background-image:
         repeating-linear-gradient(to bottom, transparent 0 63px, var(--border) 63px 64px),
         repeating-linear-gradient(to right, transparent 0 89px, var(--border) 89px 90px);
@@ -878,6 +919,7 @@ html[data-theme="light"] .admin-bookings-page .btn-filter {
     to { background-position: -200% 0; }
 }
 @media (prefers-reduced-motion: reduce) {
+    .admin-bookings-page .court-board-skeleton-line,
     .admin-bookings-page .court-calendar-skeleton-grid--month > span,
     .admin-bookings-page .court-calendar-skeleton-grid--week > span:nth-child(n+8) {
         animation: none;
@@ -1227,7 +1269,7 @@ html[data-theme="light"] .admin-bookings-page .btn-filter {
     .admin-bookings-page .court-board-controls { width: 100%; }
     .admin-bookings-page .court-board-controls input { flex: 1 1 auto; }
     .admin-bookings-page .court-board { grid-template-columns: minmax(0, 1fr); }
-    .admin-bookings-page .court-month-scroll { max-height: 60vh; }
+    .admin-bookings-page .court-month-scroll { height: min(60vh, 41.25rem); }
     .admin-bookings-page .court-week-grid .court-month-date-header { min-height: 50px; gap: 2px; }
     .admin-bookings-page .court-week-grid .court-month-date-header strong small { font-size: .6em; }
     .admin-bookings-page .court-week-grid .court-month-time-cell { padding-top: var(--s1); font-size: .75rem; }

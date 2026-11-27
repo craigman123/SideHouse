@@ -94,10 +94,30 @@ class RoleScopedUrlRenderingTest extends TestCase
         $this->assertSame([], $issues, implode(PHP_EOL, $issues));
     }
 
+    private function assertCalendarLoadingAndFeedbackMarkup(\Illuminate\Testing\TestResponse $response): void
+    {
+        $response->assertSee('id="courtBoardRegion"', false)
+            ->assertSee('id="courtBoardSkeleton"', false)
+            ->assertSee('id="courtMonthGrid"', false)
+            ->assertSee('id="courtWeekGrid"', false)
+            ->assertSee('court-calendar-skeleton--month', false)
+            ->assertSee('court-calendar-skeleton--week', false)
+            ->assertSee('No bookings on this day.', false)
+            ->assertSee('No bookings this month.', false)
+            ->assertSee('No bookings this week.', false);
+
+        foreach (['board', 'month', 'week'] as $view) {
+            $response->assertSee('data-calendar-empty-state="'.$view.'"', false)
+                ->assertSee('data-calendar-error-state="'.$view.'"', false)
+                ->assertSee('data-calendar-retry="'.$view.'"', false);
+        }
+    }
+
     public function test_role_pages_render_role_scoped_logout_api_and_navigation_urls(): void
     {
         $admin = $this->user('admin');
         $adminPage = $this->signInAs($admin, 'admin')->get('/bookings?view=week')->assertOk();
+        $this->assertCalendarLoadingAndFeedbackMarkup($adminPage);
         $adminPage->assertSee('action="'.route('admin.logout').'"', false)
             ->assertSee('data-calendar-url="'.route('admin.bookings.calendar').'"', false)
             ->assertSee('data-walk-in-url="'.route('admin.bookings.walk-in.store').'"', false)
@@ -107,6 +127,7 @@ class RoleScopedUrlRenderingTest extends TestCase
 
         $owner = $this->user('owner');
         $ownerPage = $this->signInAs($owner, 'owner')->get('/owner/bookings?view=week')->assertOk();
+        $this->assertCalendarLoadingAndFeedbackMarkup($ownerPage);
         $ownerPage->assertSee('action="'.route('owner.logout').'"', false)
             ->assertSee('data-calendar-url="'.route('owner.bookings.calendar').'"', false)
             ->assertSee('data-walk-in-url="'.route('owner.bookings.walk-in.store').'"', false)
@@ -116,6 +137,7 @@ class RoleScopedUrlRenderingTest extends TestCase
 
         $staff = $this->user('staff', ['bookings.view', 'customers.view', 'calendar_events.manage', 'bookings.create']);
         $staffPage = $this->signInAs($staff, 'staff')->get('/staff/bookings?view=week')->assertOk();
+        $this->assertCalendarLoadingAndFeedbackMarkup($staffPage);
         $staffPage->assertSee('action="'.route('staff.logout').'"', false)
             ->assertSee('data-calendar-url="'.route('staff.bookings.calendar').'"', false)
             ->assertSee('data-walk-in-url=""', false)
