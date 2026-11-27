@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Membership;
 use App\Models\MembershipPlan;
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Testing\TestResponse;
 use Tests\TestCase;
@@ -53,6 +54,42 @@ class MembershipManagementTest extends TestCase
     private function assertBlocked(TestResponse $response): void
     {
         $this->assertContains($response->getStatusCode(), [302, 401, 403, 404]);
+    }
+
+    private function assertMembershipCardExpiryStatus(
+        TestResponse $response,
+        string $title,
+        string $status
+    ): void {
+        $content = $response->getContent();
+        $titlePosition = strpos($content, '<h2 class="membership-card-title">'.e($title).'</h2>');
+        $this->assertNotFalse($titlePosition, "Membership card for {$title} was not rendered.");
+
+        $cardStart = strrpos(substr($content, 0, $titlePosition), '<article class="membership-card">');
+        $cardEnd = strpos($content, '</article>', $titlePosition);
+        $this->assertNotFalse($cardStart);
+        $this->assertNotFalse($cardEnd);
+        $card = substr($content, $cardStart, $cardEnd - $cardStart);
+        $labels = [
+            'active' => 'Active',
+            'expiring-soon' => 'Expiring soon',
+            'expired' => 'Expired',
+        ];
+        $label = $labels[$status];
+
+        $this->assertStringContainsString('class="membership-card-icon"', $card);
+        $this->assertStringContainsString(
+            'membership-card-status membership-card-status--'.$status,
+            $card
+        );
+        $this->assertStringContainsString('aria-label="'.$label.'"', $card);
+        $this->assertStringContainsString('title="'.$label.'"', $card);
+
+        if ($status === 'expired') {
+            $this->assertStringContainsString('class="membership-card-expired-overlay"', $card);
+            $this->assertStringContainsString('aria-label="EXPIRED"', $card);
+            $this->assertStringContainsString('>EXPIRED</span>', $card);
+        }
     }
 
     private function assertMembershipModalIsClosedAndAssetsAreIncluded(
@@ -233,6 +270,42 @@ class MembershipManagementTest extends TestCase
             ->assertSee('class="membership-card"', false)
             ->assertSee('No expiry')
             ->assertSee('No members yet');
+    }
+
+    public function test_membership_cards_show_expiry_statuses_in_the_app_timezone(): void
+    {
+        $timezone = 'Asia/Manila';
+        config(['app.timezone' => $timezone]);
+        $this->travelTo(Carbon::parse('2026-11-27 00:30:00', $timezone));
+        $today = now($timezone)->startOfDay();
+        $plans = [
+            ['No expiry status', null, 'active'],
+            ['Far future status', $today->copy()->addYear()->toDateString(), 'active'],
+            ['Seven days status', $today->copy()->addDays(7)->toDateString(), 'expiring-soon'],
+            ['One day status', $today->copy()->addDay()->toDateString(), 'expiring-soon'],
+            ['Today status', $today->toDateString(), 'expiring-soon'],
+            ['Past status', $today->copy()->subDay()->toDateString(), 'expired'],
+        ];
+
+        foreach ($plans as [$title, $expiryDate]) {
+            MembershipPlan::create([
+                'name' => $title,
+                'description' => 'Expiry status test plan.',
+                'price' => '1250.00',
+                'discount_type' => 'percentage',
+                'discount_value' => '15.00',
+                'players' => 4,
+                'expiry_date' => $expiryDate,
+            ]);
+        }
+
+        $response = $this->signIn($this->user('admin'))
+            ->get(route('admin.memberships.index'))
+            ->assertOk();
+
+        foreach ($plans as [$title, $expiryDate, $status]) {
+            $this->assertMembershipCardExpiryStatus($response, $title, $status);
+        }
     }
 
     public function test_admin_and_owner_can_prepare_a_receipt_summary_without_saving(): void

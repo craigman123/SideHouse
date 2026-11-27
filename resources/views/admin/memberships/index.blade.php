@@ -39,6 +39,23 @@
                         $currentMembersCount = (int) $membershipPlan->current_members_count;
                     @endphp
                     <article class="membership-card">
+                        <div class="membership-card-top-row">
+                            <svg class="membership-card-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <rect x="3" y="5" width="18" height="14" rx="2"></rect>
+                                <path d="M3 10h18M7 15h3"></path>
+                            </svg>
+                            <span
+                                class="membership-card-status membership-card-status--{{ $membershipPlan->expiry_status }}"
+                                role="img"
+                                aria-label="{{ $membershipPlan->expiry_status_label }}"
+                                title="{{ $membershipPlan->expiry_status_label }}"
+                            ></span>
+                        </div>
+                        @if ($membershipPlan->expiry_status === 'expired')
+                            <div class="membership-card-expired-overlay" role="img" aria-label="EXPIRED">
+                                <span aria-hidden="true">EXPIRED</span>
+                            </div>
+                        @endif
                         <div class="membership-card-qr">
                             <img
                                 src="data:image/svg+xml;base64,{{ base64_encode($membershipPlan->qr_svg) }}"

@@ -81,12 +81,14 @@
 }
 
 .membership-card {
+    position: relative;
     display: flex;
     box-sizing: border-box;
     min-width: 0;
     height: 100%;
     flex-direction: column;
     gap: var(--s4);
+    overflow: hidden;
     padding: var(--s4);
     border: 1px solid transparent;
     border-radius: var(--r-lg);
@@ -95,6 +97,69 @@
     background-clip: padding-box, border-box;
     color: var(--text);
     box-shadow: var(--shadow-card);
+}
+
+.membership-card-top-row {
+    position: relative;
+    z-index: 3;
+    display: flex;
+    min-height: 20px;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: calc(0px - var(--s4));
+}
+
+.membership-card-icon {
+    display: block;
+    width: 20px;
+    height: 20px;
+    color: var(--text-muted);
+}
+
+.membership-card-status {
+    display: block;
+    box-sizing: border-box;
+    width: 12px;
+    height: 12px;
+    flex: none;
+    border: 1px solid var(--surface);
+    border-radius: var(--r-pill);
+    box-shadow: 0 0 0 1px var(--border);
+}
+
+.membership-card-status--active {
+    background: var(--brand);
+}
+
+.membership-card-status--expiring-soon {
+    background: var(--warning);
+}
+
+.membership-card-status--expired {
+    background: var(--danger);
+}
+
+.membership-card-expired-overlay {
+    position: absolute;
+    z-index: 2;
+    inset: 0;
+    display: grid;
+    overflow: hidden;
+    place-items: center;
+    pointer-events: none;
+}
+
+.membership-card-expired-overlay span {
+    display: block;
+    width: 150%;
+    color: var(--danger);
+    font-size: clamp(var(--font-size-h3), 5vw, var(--font-size-h2));
+    font-weight: var(--font-weight-h2);
+    line-height: 1;
+    opacity: 0.68;
+    text-align: center;
+    white-space: nowrap;
+    transform: rotate(-45deg);
 }
 
 .membership-card-qr {
@@ -123,6 +188,7 @@
     color: var(--text);
     font-size: var(--font-size-h3);
     font-weight: var(--font-weight-h3);
+    text-align: center;
     overflow-wrap: anywhere;
 }
 

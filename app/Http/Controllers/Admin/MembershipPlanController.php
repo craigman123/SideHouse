@@ -13,6 +13,8 @@ use Illuminate\View\View;
 
 class MembershipPlanController extends Controller
 {
+    private const EXPIRING_SOON_DAYS = 7;
+
     public function adminIndex(): View
     {
         return $this->index(
@@ -75,7 +77,13 @@ class MembershipPlanController extends Controller
 
     private function membershipPlans(): Collection
     {
-        $today = today()->toDateString();
+        $timezone = config('app.timezone');
+        $now = now($timezone);
+        $today = $now->toDateString();
+        $expiringSoonCutoff = $now->copy()
+            ->startOfDay()
+            ->addDays(self::EXPIRING_SOON_DAYS)
+            ->endOfDay();
 
         return MembershipPlan::query()
             ->withCount(['memberships as current_members_count' => function ($query) use ($today) {
@@ -96,7 +104,25 @@ class MembershipPlanController extends Controller
             ->orderByDesc('created_at')
             ->orderByDesc('id')
             ->get()
-            ->map(function (MembershipPlan $membershipPlan) {
+            ->map(function (MembershipPlan $membershipPlan) use ($now, $timezone, $expiringSoonCutoff) {
+                $expiryAtEndOfDay = $membershipPlan->expiry_date
+                    ?->copy()
+                    ->setTimezone($timezone)
+                    ->endOfDay();
+                $expiryStatus = 'active';
+
+                if ($expiryAtEndOfDay?->lt($now)) {
+                    $expiryStatus = 'expired';
+                } elseif ($expiryAtEndOfDay?->lte($expiringSoonCutoff)) {
+                    $expiryStatus = 'expiring-soon';
+                }
+
+                $membershipPlan->setAttribute('expiry_status', $expiryStatus);
+                $membershipPlan->setAttribute('expiry_status_label', [
+                    'active' => 'Active',
+                    'expiring-soon' => 'Expiring soon',
+                    'expired' => 'Expired',
+                ][$expiryStatus]);
                 $membershipPlan->setAttribute('qr_svg', QrCodeGenerator::svg($this->qrPayload([
                     'title' => $membershipPlan->name,
                     'description' => $membershipPlan->description ?? '',
