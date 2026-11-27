@@ -51,7 +51,7 @@ class MembershipManagementTest extends TestCase
 
     private function assertBlocked(TestResponse $response): void
     {
-        $this->assertContains($response->getStatusCode(), [302, 403, 404]);
+        $this->assertContains($response->getStatusCode(), [302, 401, 403, 404]);
     }
 
     private function assertMembershipModalIsClosedAndAssetsAreIncluded(
@@ -68,10 +68,19 @@ class MembershipManagementTest extends TestCase
                 asset('js/admin/memberships.js').'?v='.filemtime(public_path('js/admin/memberships.js')),
                 false
             )
+            ->assertSee('id="membershipSummaryModal"', false)
+            ->assertSee('id="membershipSummaryQr"', false)
+            ->assertSee('Summary')
+            ->assertSee('id="membershipSummaryExpiry">No expiry</dd>', false)
+            ->assertSee('Date created')
             ->assertDontSee('<h2 id="membershipsHeading">Memberships</h2>', false);
 
         $this->assertMatchesRegularExpression(
             '/<div\b(?=[^>]*\bid="membershipModal")(?=[^>]*\baria-hidden="true")(?=[^>]*\shidden(?:\s|>))[^>]*>/',
+            $response->getContent()
+        );
+        $this->assertMatchesRegularExpression(
+            '/<div\b(?=[^>]*\bid="membershipSummaryModal")(?=[^>]*\baria-hidden="true")(?=[^>]*\shidden(?:\s|>))[^>]*>/',
             $response->getContent()
         );
     }
@@ -133,6 +142,8 @@ class MembershipManagementTest extends TestCase
             $this->assertBlocked($this->get(route('owner.memberships.index')));
             $this->assertBlocked($this->post(route('admin.memberships.store'), $this->validPlan()));
             $this->assertBlocked($this->post(route('owner.memberships.store'), $this->validPlan()));
+            $this->assertBlocked($this->postJson(route('admin.memberships.summary'), $this->validPlan()));
+            $this->assertBlocked($this->postJson(route('owner.memberships.summary'), $this->validPlan()));
         }
 
         $staffPage = $this->signIn($this->user('staff'))->get('/staff/profile')->assertOk();
@@ -172,6 +183,63 @@ class MembershipManagementTest extends TestCase
                 ->assertSee('aria-hidden="false"', false)
                 ->assertSee('role="alert"', false);
         }
+
+        $this->assertSame(0, MembershipPlan::query()->count());
+    }
+
+    public function test_membership_expiry_is_optional_and_null_is_shown_in_the_table(): void
+    {
+        $plan = $this->validPlan('No Expiry Plan');
+        unset($plan['expiry_date']);
+
+        $this->signIn($this->user('admin'))
+            ->post(route('admin.memberships.store'), $plan)
+            ->assertRedirect(route('admin.memberships.index'))
+            ->assertSessionHas('success', 'Membership added.');
+
+        $membership = MembershipPlan::query()->where('name', 'No Expiry Plan')->firstOrFail();
+        $this->assertNull($membership->expiry_date);
+
+        $this->get(route('admin.memberships.index'))
+            ->assertOk()
+            ->assertSee('No expiry');
+    }
+
+    public function test_admin_and_owner_can_prepare_a_receipt_summary_without_saving(): void
+    {
+        foreach ([
+            ['admin', 'admin.memberships.summary'],
+            ['owner', 'owner.memberships.summary'],
+        ] as [$role, $route]) {
+            $plan = $this->validPlan(ucfirst($role).' Receipt Plan');
+            unset($plan['expiry_date']);
+
+            $response = $this->signIn($this->user($role))
+                ->postJson(route($route), $plan)
+                ->assertOk()
+                ->assertJsonPath('membership.title', ucfirst($role).' Receipt Plan')
+                ->assertJsonPath('membership.description', $plan['description'])
+                ->assertJsonPath('membership.price', '1250.00')
+                ->assertJsonPath('membership.discount_type', 'percentage')
+                ->assertJsonPath('membership.discount_value', '15.00')
+                ->assertJsonPath('membership.players', 4)
+                ->assertJsonPath('membership.expiry_date', null)
+                ->assertJsonPath('membership.created_at', now()->format('M j, Y'));
+
+            $this->assertStringContainsString('<svg', $response->json('qr_svg'));
+            $this->assertSame(0, MembershipPlan::query()->count());
+        }
+    }
+
+    public function test_membership_summary_validates_before_generating_a_receipt(): void
+    {
+        $plan = $this->validPlan();
+        $plan['discount_value'] = '101';
+
+        $this->signIn($this->user('admin'))
+            ->postJson(route('admin.memberships.summary'), $plan)
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('discount_value');
 
         $this->assertSame(0, MembershipPlan::query()->count());
     }

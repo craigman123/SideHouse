@@ -336,6 +336,9 @@ Route::middleware(['auth', 'admin', 'admin.mfa', 'throttle.admin-management:120,
     Route::get('/customers', [CustomerController::class, 'index'])->middleware('owner.page.redirect')->name('admin.customers.index');
     Route::get('/memberships', [MembershipPlanController::class, 'adminIndex'])
         ->name('admin.memberships.index');
+    Route::post('/memberships/summary', [MembershipPlanController::class, 'adminSummary'])
+        ->middleware('throttle:5,1,membership-plan-summary')
+        ->name('admin.memberships.summary');
     Route::post('/memberships', [MembershipPlanController::class, 'adminStore'])
         ->middleware('throttle:5,1,membership-plan-store')
         ->name('admin.memberships.store');

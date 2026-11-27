@@ -30,7 +30,7 @@ class StoreMembershipPlanRequest extends FormRequest
             'discount_type' => ['required', 'in:percentage,fixed'],
             'discount_value' => $discountValue,
             'players' => ['required', 'integer', 'min:1', 'max:2147483647'],
-            'expiry_date' => ['required', 'date', 'after:today'],
+            'expiry_date' => ['nullable', 'date', 'after:today'],
         ];
     }
 }

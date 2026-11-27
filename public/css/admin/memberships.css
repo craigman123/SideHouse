@@ -199,12 +199,104 @@ html.owner-layout-shell .memberships-modal-box {
     font-size: var(--font-size-small);
 }
 
+.memberships-field-error:empty {
+    display: none;
+}
+
+.memberships-field-hint {
+    color: var(--text-muted);
+    font-size: var(--font-size-small);
+}
+
 .memberships-form-actions {
     display: flex;
     flex-wrap: wrap;
     justify-content: flex-end;
     gap: var(--s3);
     margin-top: var(--s5);
+}
+
+html.admin-layout-shell .memberships-summary-box,
+html.owner-layout-shell .memberships-summary-box {
+    width: min(100%, 560px);
+    max-width: 560px;
+}
+
+.membership-receipt {
+    display: grid;
+    gap: var(--s4);
+    max-height: 58vh;
+    max-height: 58dvh;
+    overflow-y: auto;
+    padding: var(--s4);
+    border: 1px solid var(--border);
+    border-radius: var(--r-md);
+    background: var(--surface-2);
+}
+
+.membership-receipt-heading {
+    display: grid;
+    gap: var(--s2);
+    overflow-wrap: anywhere;
+}
+
+.membership-receipt-heading h3 {
+    margin: 0;
+    color: var(--text);
+    font-size: var(--font-size-h3);
+    font-weight: var(--font-weight-h3);
+}
+
+.membership-receipt-heading p {
+    margin: 0;
+    color: var(--text-muted);
+    line-height: var(--line-height-body);
+    white-space: pre-wrap;
+}
+
+.membership-receipt-details {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--s3);
+    margin: 0;
+}
+
+.membership-receipt-details div {
+    min-width: 0;
+    padding-bottom: var(--s2);
+    border-bottom: 1px dashed var(--border);
+}
+
+.membership-receipt-details dt {
+    color: var(--text-muted);
+    font-size: var(--font-size-small);
+}
+
+.membership-receipt-details dd {
+    margin: var(--s1) 0 0;
+    color: var(--text);
+    font-weight: var(--font-weight-button);
+    overflow-wrap: anywhere;
+}
+
+.membership-summary-qr {
+    display: flex;
+    justify-content: center;
+    padding-top: var(--s3);
+    border-top: 1px dashed var(--border);
+}
+
+.membership-summary-qr img {
+    display: block;
+    width: 208px;
+    max-width: 100%;
+    height: auto;
+    aspect-ratio: 1;
+    object-fit: contain;
+}
+
+.membership-summary-qr img[hidden] {
+    display: none;
 }
 
 .memberships-page .toast-container {
@@ -231,6 +323,10 @@ html.owner-layout-shell .memberships-modal-box {
     }
 
     .memberships-discount-fields {
+        grid-template-columns: 1fr;
+    }
+
+    .membership-receipt-details {
         grid-template-columns: 1fr;
     }
 

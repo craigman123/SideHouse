@@ -16,6 +16,9 @@ Route::middleware(['auth', 'owner.only', 'admin.mfa', 'throttle.admin-management
         Route::get('/courts', 'courts')->name('courts');
         Route::get('/configuration', 'configuration')->name('configuration');
         Route::get('/memberships', [MembershipPlanController::class, 'ownerIndex'])->name('memberships.index');
+        Route::post('/memberships/summary', [MembershipPlanController::class, 'ownerSummary'])
+            ->middleware('throttle:5,1,membership-plan-summary')
+            ->name('memberships.summary');
         Route::post('/memberships', [MembershipPlanController::class, 'ownerStore'])
             ->middleware('throttle:5,1,membership-plan-store')
             ->name('memberships.store');

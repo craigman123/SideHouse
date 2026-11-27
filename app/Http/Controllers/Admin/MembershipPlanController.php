@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreMembershipPlanRequest;
 use App\Models\MembershipPlan;
+use App\Support\QrCodeGenerator;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\View\View;
 
@@ -16,6 +18,7 @@ class MembershipPlanController extends Controller
             'layouts.app',
             'admin.memberships.index',
             'admin.memberships.store',
+            'admin.memberships.summary',
             'css/shared/dashboard-base.css'
         );
     }
@@ -26,6 +29,7 @@ class MembershipPlanController extends Controller
             'owner.layouts.app',
             'owner.memberships.index',
             'owner.memberships.store',
+            'owner.memberships.summary',
             'css/owner/owner-base.css'
         );
     }
@@ -40,10 +44,21 @@ class MembershipPlanController extends Controller
         return $this->store($request, 'owner.memberships.index');
     }
 
+    public function adminSummary(StoreMembershipPlanRequest $request): JsonResponse
+    {
+        return $this->summary($request);
+    }
+
+    public function ownerSummary(StoreMembershipPlanRequest $request): JsonResponse
+    {
+        return $this->summary($request);
+    }
+
     private function index(
         string $layout,
         string $indexRoute,
         string $storeRoute,
+        string $summaryRoute,
         string $membershipModalStylesheet
     ): View
     {
@@ -51,11 +66,42 @@ class MembershipPlanController extends Controller
             'membershipLayout' => $layout,
             'membershipIndexRoute' => $indexRoute,
             'membershipStoreRoute' => $storeRoute,
+            'membershipSummaryRoute' => $summaryRoute,
             'membershipModalStylesheet' => $membershipModalStylesheet,
             'membershipPlans' => MembershipPlan::query()
                 ->orderByDesc('created_at')
                 ->orderByDesc('id')
                 ->get(),
+        ]);
+    }
+
+    private function summary(StoreMembershipPlanRequest $request): JsonResponse
+    {
+        $validated = $request->validated();
+        $expiryDate = $validated['expiry_date'] ?? null;
+        $membership = [
+            'title' => $validated['title'],
+            'description' => $validated['description'] ?? '',
+            'price' => number_format((float) $validated['price'], 2, '.', ''),
+            'discount_type' => $validated['discount_type'],
+            'discount_value' => number_format((float) $validated['discount_value'], 2, '.', ''),
+            'players' => (int) $validated['players'],
+            'expiry_date' => $expiryDate,
+            'created_at' => now()->format('M j, Y'),
+        ];
+        $qrPayload = json_encode([
+            'title' => $membership['title'],
+            'description' => $membership['description'],
+            'price' => $membership['price'],
+            'discount_type' => $membership['discount_type'],
+            'discount_value' => $membership['discount_value'],
+            'players' => $membership['players'],
+            'expiry_date' => $membership['expiry_date'],
+        ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
+
+        return response()->json([
+            'membership' => $membership,
+            'qr_svg' => QrCodeGenerator::svg($qrPayload, 256),
         ]);
     }
 
@@ -70,7 +116,7 @@ class MembershipPlanController extends Controller
             'discount_type' => $validated['discount_type'],
             'discount_value' => $validated['discount_value'],
             'players' => $validated['players'],
-            'expiry_date' => $validated['expiry_date'],
+            'expiry_date' => $validated['expiry_date'] ?? null,
         ]);
 
         return redirect()

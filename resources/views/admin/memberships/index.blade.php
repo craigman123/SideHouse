@@ -58,7 +58,7 @@
                                         @endif
                                     </td>
                                     <td>{{ $membershipPlan->players }}</td>
-                                    <td>{{ $membershipPlan->expiry_date?->format('M j, Y') ?? 'Not set' }}</td>
+                                    <td>{{ $membershipPlan->expiry_date?->format('M j, Y') ?? 'No expiry' }}</td>
                                 </tr>
                             @endforeach
                         </tbody>
@@ -74,26 +74,26 @@
                     <button type="button" class="modal-close" id="membershipModalClose" aria-label="Close Add membership dialog">&times;</button>
                 </header>
 
-                <form method="POST" action="{{ route($membershipStoreRoute) }}" id="membershipForm">
+                <form method="POST" action="{{ route($membershipStoreRoute) }}" id="membershipForm" data-summary-url="{{ route($membershipSummaryRoute) }}">
                     @csrf
 
                     <div class="memberships-form-grid">
                         <div class="memberships-field">
                             <label for="membershipTitle">Title</label>
                             <input type="text" id="membershipTitle" name="title" value="{{ old('title') }}" maxlength="255" required aria-invalid="{{ $errors->has('title') ? 'true' : 'false' }}">
-                            @error('title')<span class="memberships-field-error" role="alert">{{ $message }}</span>@enderror
+                            <span class="memberships-field-error" data-membership-error="title" role="alert">@error('title'){{ $message }}@enderror</span>
                         </div>
 
                         <div class="memberships-field">
                             <label for="membershipDescription">Description</label>
                             <textarea id="membershipDescription" name="description" rows="3" maxlength="5000" aria-invalid="{{ $errors->has('description') ? 'true' : 'false' }}">{{ old('description') }}</textarea>
-                            @error('description')<span class="memberships-field-error" role="alert">{{ $message }}</span>@enderror
+                            <span class="memberships-field-error" data-membership-error="description" role="alert">@error('description'){{ $message }}@enderror</span>
                         </div>
 
                         <div class="memberships-field">
                             <label for="membershipPrice">Price in PHP</label>
                             <input type="number" id="membershipPrice" name="price" value="{{ old('price') }}" min="0" max="99999999.99" step="0.01" required aria-invalid="{{ $errors->has('price') ? 'true' : 'false' }}">
-                            @error('price')<span class="memberships-field-error" role="alert">{{ $message }}</span>@enderror
+                            <span class="memberships-field-error" data-membership-error="price" role="alert">@error('price'){{ $message }}@enderror</span>
                         </div>
 
                         <div class="memberships-field memberships-discount-fields">
@@ -103,7 +103,7 @@
                                     <option value="percentage" @selected(old('discount_type', 'percentage') === 'percentage')>Percentage</option>
                                     <option value="fixed" @selected(old('discount_type') === 'fixed')>Fixed price</option>
                                 </select>
-                                @error('discount_type')<span class="memberships-field-error" role="alert">{{ $message }}</span>@enderror
+                                <span class="memberships-field-error" data-membership-error="discount_type" role="alert">@error('discount_type'){{ $message }}@enderror</span>
                             </div>
 
                             <div class="memberships-field">
@@ -112,28 +112,75 @@
                                     <input type="number" id="membershipDiscountValue" name="discount_value" value="{{ old('discount_value') }}" min="1" max="100" step="0.01" required aria-invalid="{{ $errors->has('discount_value') ? 'true' : 'false' }}">
                                     <span id="membershipDiscountSuffix" aria-hidden="true">%</span>
                                 </div>
-                                @error('discount_value')<span class="memberships-field-error" role="alert">{{ $message }}</span>@enderror
+                                <span class="memberships-field-error" data-membership-error="discount_value" role="alert">@error('discount_value'){{ $message }}@enderror</span>
                             </div>
                         </div>
 
                         <div class="memberships-field">
                             <label for="membershipPlayers">Players</label>
                             <input type="number" id="membershipPlayers" name="players" value="{{ old('players') }}" min="1" max="2147483647" step="1" required aria-invalid="{{ $errors->has('players') ? 'true' : 'false' }}">
-                            @error('players')<span class="memberships-field-error" role="alert">{{ $message }}</span>@enderror
+                            <span class="memberships-field-error" data-membership-error="players" role="alert">@error('players'){{ $message }}@enderror</span>
                         </div>
 
                         <div class="memberships-field">
                             <label for="membershipExpiry">Expiry</label>
-                            <input type="date" id="membershipExpiry" name="expiry_date" value="{{ old('expiry_date') }}" min="{{ now()->addDay()->toDateString() }}" required aria-invalid="{{ $errors->has('expiry_date') ? 'true' : 'false' }}">
-                            @error('expiry_date')<span class="memberships-field-error" role="alert">{{ $message }}</span>@enderror
+                            <input type="date" id="membershipExpiry" name="expiry_date" value="{{ old('expiry_date') }}" min="{{ now()->addDay()->toDateString() }}" aria-invalid="{{ $errors->has('expiry_date') ? 'true' : 'false' }}">
+                            <span class="memberships-field-hint">Leave empty for no expiry.</span>
+                            <span class="memberships-field-error" data-membership-error="expiry_date" role="alert">@error('expiry_date'){{ $message }}@enderror</span>
                         </div>
                     </div>
 
                     <div class="memberships-form-actions">
                         <button type="button" class="memberships-button memberships-button-secondary" id="cancelMembershipModal">Cancel</button>
-                        <button type="submit" class="memberships-button memberships-button-primary" id="saveMembershipButton">Save membership</button>
+                        <button type="button" class="memberships-button memberships-button-primary" id="previewMembershipButton">Summary</button>
                     </div>
                 </form>
+            </section>
+        </div>
+
+        <div class="modal-overlay memberships-modal" id="membershipSummaryModal" role="presentation" aria-hidden="true" hidden>
+            <section class="modal-box memberships-modal-box memberships-summary-box" role="dialog" aria-modal="true" aria-labelledby="membershipSummaryTitle" tabindex="-1">
+                <header class="modal-header">
+                    <h2 id="membershipSummaryTitle">Membership summary</h2>
+                    <button type="button" class="modal-close" id="membershipSummaryClose" aria-label="Close membership summary">&times;</button>
+                </header>
+
+                <article class="membership-receipt" aria-label="Membership receipt">
+                    <div class="membership-receipt-heading">
+                        <h3 id="membershipSummaryName"></h3>
+                        <p id="membershipSummaryDescription"></p>
+                    </div>
+                    <dl class="membership-receipt-details">
+                        <div>
+                            <dt>Price</dt>
+                            <dd id="membershipSummaryPrice"></dd>
+                        </div>
+                        <div>
+                            <dt>Discount</dt>
+                            <dd id="membershipSummaryDiscount"></dd>
+                        </div>
+                        <div>
+                            <dt>Players</dt>
+                            <dd id="membershipSummaryPlayers"></dd>
+                        </div>
+                        <div>
+                            <dt>Expiry</dt>
+                            <dd id="membershipSummaryExpiry">No expiry</dd>
+                        </div>
+                        <div>
+                            <dt>Date created</dt>
+                            <dd id="membershipSummaryCreated"></dd>
+                        </div>
+                    </dl>
+                    <div class="membership-summary-qr">
+                        <img id="membershipSummaryQr" alt="QR code encoding the membership information" width="256" height="256" hidden>
+                    </div>
+                </article>
+
+                <div class="memberships-form-actions">
+                    <button type="button" class="memberships-button memberships-button-secondary" id="backToMembershipForm">Back</button>
+                    <button type="button" class="memberships-button memberships-button-primary" id="confirmMembershipButton">Confirm and save</button>
+                </div>
             </section>
         </div>
 
