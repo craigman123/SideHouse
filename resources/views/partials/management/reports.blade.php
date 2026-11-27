@@ -119,29 +119,37 @@
         </div>
 
         <div class="reports-summary-grid" id="systemSummaryGrid">
-            <div class="summary-card">
-                <span class="summary-card-label">Users Online</span>
+            <div class="summary-card has-card-icon">
+                <span class="summary-card-label card-icon-label card-icon-label--compact">
+                    Users Online<x-card-icon name="people" class="icon-chip--compact" />
+                </span>
                 <div class="summary-card-value-wrap">
                     <span class="summary-card-value" id="summaryUsersOnline">0</span>
                     <span class="skeleton" aria-hidden="true"></span>
                 </div>
             </div>
-            <div class="summary-card">
-                <span class="summary-card-label">Requests Today</span>
+            <div class="summary-card has-card-icon">
+                <span class="summary-card-label card-icon-label card-icon-label--compact">
+                    Requests Today<x-card-icon name="bar-chart" class="icon-chip--compact" />
+                </span>
                 <div class="summary-card-value-wrap">
                     <span class="summary-card-value" id="summaryRequestsToday">0</span>
                     <span class="skeleton" aria-hidden="true"></span>
                 </div>
             </div>
-            <div class="summary-card">
-                <span class="summary-card-label">Requests / Hour</span>
+            <div class="summary-card has-card-icon">
+                <span class="summary-card-label card-icon-label card-icon-label--compact">
+                    Requests / Hour<x-card-icon name="trending-up" class="icon-chip--compact" />
+                </span>
                 <div class="summary-card-value-wrap">
                     <span class="summary-card-value" id="summaryRequestsHour">0</span>
                     <span class="skeleton" aria-hidden="true"></span>
                 </div>
             </div>
-            <div class="summary-card">
-                <span class="summary-card-label">Unique Visitors Today</span>
+            <div class="summary-card has-card-icon">
+                <span class="summary-card-label card-icon-label card-icon-label--compact">
+                    Unique Visitors Today<x-card-icon name="people" class="icon-chip--compact" />
+                </span>
                 <div class="summary-card-value-wrap">
                     <span class="summary-card-value" id="summaryUniqueVisitors">0</span>
                     <span class="skeleton" aria-hidden="true"></span>
@@ -151,7 +159,10 @@
 
         <div class="report-panel">
             <div class="report-panel-header report-panel-header-with-select">
-                <h2 id="trafficPanelTitle">Traffic (Last 24 Hours)</h2>
+                <div class="report-panel-title card-icon-label card-icon-label--compact has-card-icon">
+                    <h2 id="trafficPanelTitle">Traffic (Last 24 Hours)</h2>
+                    <x-card-icon name="bar-chart" class="icon-chip--compact" />
+                </div>
                 <select id="trafficRangeSelect" class="reports-period-select" aria-label="Traffic range">
                     <option value="30m">30 Min</option>
                     <option value="1h">1 Hour</option>
@@ -166,9 +177,11 @@
         </div>
 
         <div class="report-panel-grid report-panel-grid-health">
-            <div class="report-panel">
+            <div class="report-panel has-card-icon">
                 <div class="report-panel-header">
-                    <h2>Database</h2>
+                    <h2 class="card-icon-label card-icon-label--compact">
+                        Database<x-card-icon name="database" class="icon-chip--compact" />
+                    </h2>
                 </div>
                 <div class="health-status-row">
                     <span class="health-status-label">Connection</span>
@@ -192,9 +205,11 @@
                 <ul class="health-table-list" id="dbTableList"></ul>
             </div>
 
-            <div class="report-panel">
+            <div class="report-panel has-card-icon">
                 <div class="report-panel-header">
-                    <h2>Server</h2>
+                    <h2 class="card-icon-label card-icon-label--compact">
+                        Server<x-card-icon name="gauge" class="icon-chip--compact" />
+                    </h2>
                 </div>
                 <div class="health-stat-row">
                     <span class="health-stat-label">PHP Version</span>

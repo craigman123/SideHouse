@@ -14,29 +14,53 @@
         </div>
     </header>
     <div class="system-monitor-body" id="systemMonitorBody">
-        <div class="system-monitor-stat" data-system-stat="active_connections">
-            <span>DB connections</span><strong data-stat-value>N/A</strong><i data-stat-dot></i>
+        <div class="system-monitor-stat has-card-icon" data-system-stat="active_connections">
+            <span class="card-icon-label card-icon-label--compact">
+                DB connections<x-card-icon name="database" class="icon-chip--compact" />
+            </span>
+            <strong data-stat-value>N/A</strong><i data-stat-dot></i>
         </div>
-        <div class="system-monitor-stat" data-system-stat="queries_per_minute">
-            <span>Queries / min</span><strong data-stat-value>N/A</strong><i data-stat-dot></i>
+        <div class="system-monitor-stat has-card-icon" data-system-stat="queries_per_minute">
+            <span class="card-icon-label card-icon-label--compact">
+                Queries / min<x-card-icon name="bar-chart" class="icon-chip--compact" />
+            </span>
+            <strong data-stat-value>N/A</strong><i data-stat-dot></i>
         </div>
-        <div class="system-monitor-stat" data-system-stat="average_query_time_ms">
-            <span>Avg query</span><strong data-stat-value>N/A</strong><i data-stat-dot></i>
+        <div class="system-monitor-stat has-card-icon" data-system-stat="average_query_time_ms">
+            <span class="card-icon-label card-icon-label--compact">
+                Avg query<x-card-icon name="clock" class="icon-chip--compact" />
+            </span>
+            <strong data-stat-value>N/A</strong><i data-stat-dot></i>
         </div>
-        <div class="system-monitor-stat" data-system-stat="php_memory_bytes">
-            <span>PHP memory</span><strong data-stat-value>N/A</strong><i data-stat-dot></i>
+        <div class="system-monitor-stat has-card-icon" data-system-stat="php_memory_bytes">
+            <span class="card-icon-label card-icon-label--compact">
+                PHP memory<x-card-icon name="gauge" class="icon-chip--compact" />
+            </span>
+            <strong data-stat-value>N/A</strong><i data-stat-dot></i>
         </div>
-        <div class="system-monitor-stat" data-system-stat="server_load">
-            <span>Server load</span><strong data-stat-value>N/A</strong><i data-stat-dot></i>
+        <div class="system-monitor-stat has-card-icon" data-system-stat="server_load">
+            <span class="card-icon-label card-icon-label--compact">
+                Server load<x-card-icon name="gauge" class="icon-chip--compact" />
+            </span>
+            <strong data-stat-value>N/A</strong><i data-stat-dot></i>
         </div>
-        <div class="system-monitor-stat" data-system-stat="average_response_time_ms">
-            <span>Avg response</span><strong data-stat-value>N/A</strong><i data-stat-dot></i>
+        <div class="system-monitor-stat has-card-icon" data-system-stat="average_response_time_ms">
+            <span class="card-icon-label card-icon-label--compact">
+                Avg response<x-card-icon name="clock" class="icon-chip--compact" />
+            </span>
+            <strong data-stat-value>N/A</strong><i data-stat-dot></i>
         </div>
-        <div class="system-monitor-stat" data-system-stat="requests_per_minute">
-            <span>Requests / min</span><strong data-stat-value>N/A</strong><i data-stat-dot></i>
+        <div class="system-monitor-stat has-card-icon" data-system-stat="requests_per_minute">
+            <span class="card-icon-label card-icon-label--compact">
+                Requests / min<x-card-icon name="trending-up" class="icon-chip--compact" />
+            </span>
+            <strong data-stat-value>N/A</strong><i data-stat-dot></i>
         </div>
-        <div class="system-monitor-stat" data-system-stat="error_count_5m">
-            <span>Errors / 5 min</span><strong data-stat-value>N/A</strong><i data-stat-dot></i>
+        <div class="system-monitor-stat has-card-icon" data-system-stat="error_count_5m">
+            <span class="card-icon-label card-icon-label--compact">
+                Errors / 5 min<x-card-icon name="alert" class="icon-chip--compact" />
+            </span>
+            <strong data-stat-value>N/A</strong><i data-stat-dot></i>
         </div>
         <div class="system-monitor-updated">Last updated <time id="systemMonitorUpdated">—</time></div>
     </div>

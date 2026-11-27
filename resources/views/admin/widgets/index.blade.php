@@ -35,14 +35,54 @@
                     <span id="systemMonitorPreviewUpdated">Waiting for updates</span>
                 </div>
                 <div class="system-monitor-preview-grid">
-                    <div><span>DB connections</span><strong data-preview-stat="active_connections">N/A</strong></div>
-                    <div><span>Queries / min</span><strong data-preview-stat="queries_per_minute">N/A</strong></div>
-                    <div><span>Avg query</span><strong data-preview-stat="average_query_time_ms">N/A</strong></div>
-                    <div><span>PHP memory</span><strong data-preview-stat="php_memory_bytes">N/A</strong></div>
-                    <div><span>Server load</span><strong data-preview-stat="server_load">N/A</strong></div>
-                    <div><span>Avg response</span><strong data-preview-stat="average_response_time_ms">N/A</strong></div>
-                    <div><span>Requests / min</span><strong data-preview-stat="requests_per_minute">N/A</strong></div>
-                    <div><span>Errors / 5 min</span><strong data-preview-stat="error_count_5m">N/A</strong></div>
+                    <div class="has-card-icon">
+                        <span class="card-icon-label card-icon-label--compact">
+                            DB connections<x-card-icon name="database" class="icon-chip--compact" />
+                        </span>
+                        <strong data-preview-stat="active_connections">N/A</strong>
+                    </div>
+                    <div class="has-card-icon">
+                        <span class="card-icon-label card-icon-label--compact">
+                            Queries / min<x-card-icon name="bar-chart" class="icon-chip--compact" />
+                        </span>
+                        <strong data-preview-stat="queries_per_minute">N/A</strong>
+                    </div>
+                    <div class="has-card-icon">
+                        <span class="card-icon-label card-icon-label--compact">
+                            Avg query<x-card-icon name="clock" class="icon-chip--compact" />
+                        </span>
+                        <strong data-preview-stat="average_query_time_ms">N/A</strong>
+                    </div>
+                    <div class="has-card-icon">
+                        <span class="card-icon-label card-icon-label--compact">
+                            PHP memory<x-card-icon name="gauge" class="icon-chip--compact" />
+                        </span>
+                        <strong data-preview-stat="php_memory_bytes">N/A</strong>
+                    </div>
+                    <div class="has-card-icon">
+                        <span class="card-icon-label card-icon-label--compact">
+                            Server load<x-card-icon name="gauge" class="icon-chip--compact" />
+                        </span>
+                        <strong data-preview-stat="server_load">N/A</strong>
+                    </div>
+                    <div class="has-card-icon">
+                        <span class="card-icon-label card-icon-label--compact">
+                            Avg response<x-card-icon name="clock" class="icon-chip--compact" />
+                        </span>
+                        <strong data-preview-stat="average_response_time_ms">N/A</strong>
+                    </div>
+                    <div class="has-card-icon">
+                        <span class="card-icon-label card-icon-label--compact">
+                            Requests / min<x-card-icon name="trending-up" class="icon-chip--compact" />
+                        </span>
+                        <strong data-preview-stat="requests_per_minute">N/A</strong>
+                    </div>
+                    <div class="has-card-icon">
+                        <span class="card-icon-label card-icon-label--compact">
+                            Errors / 5 min<x-card-icon name="alert" class="icon-chip--compact" />
+                        </span>
+                        <strong data-preview-stat="error_count_5m">N/A</strong>
+                    </div>
                 </div>
             </div>
         </div>

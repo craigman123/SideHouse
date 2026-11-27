@@ -16,6 +16,7 @@
     border-radius: var(--r-md);
     background: color-mix(in srgb, var(--brand) 14%, transparent);
     color: var(--brand);
+    pointer-events: none;
 }
 
 .icon-chip svg {
@@ -47,11 +48,21 @@
     padding-inline-end: calc(38px + var(--s2));
 }
 
+.card-icon-label--compact {
+    min-width: 0;
+    padding-inline-end: calc(20px + var(--s2));
+}
+
 .card-icon-label > .icon-chip {
     position: absolute;
     inset-inline-end: 0;
     top: 50%;
     transform: translateY(-50%);
+}
+
+.system-monitor-stat .icon-chip,
+.system-monitor-preview-grid .icon-chip {
+    color: var(--brand);
 }
 
 .has-card-icon:focus-visible,

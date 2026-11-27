@@ -122,6 +122,11 @@ html.admin-layout-shell .report-panel-header {
     gap: var(--s3);
 }
 
+html.admin-layout-shell .report-panel-title {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
 html.admin-layout-shell .report-panel-header h2 {
     margin: 0;
     color: var(--text);
