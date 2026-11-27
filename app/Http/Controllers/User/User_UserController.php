@@ -867,8 +867,10 @@ class User_UserController extends Controller
         ]);
     }
 
-    public function profile()
+    public function profile(Request $request)
     {
+        $user = $request->user();
+
         return view('user.profile.profile', [
             'profileLayout' => 'layouts.user',
             'profileTitle' => 'Profile | Side House',
@@ -880,6 +882,11 @@ class User_UserController extends Controller
             'profileScripts' => [],
             'profileSecurityView' => 'partials.profile.security.customer',
             'profileUpdateAction' => route('user.profile.update'),
+            'profilePasswordAction' => route('user.profile.password'),
+            'canChangePassword' => ! (
+                $user->role === 'admin'
+                && $request->session()->has(GuardSessionState::key('view_as', 'admin'))
+            ),
             'profilePageId' => 'profilePage',
             'canEditEmail' => true,
             'canEditUsername' => true,
@@ -893,8 +900,8 @@ class User_UserController extends Controller
             'deleteCancelLabel' => 'Keep my account',
             'deleteSubmitLabel' => 'Yes, delete account',
             'logoutDescription' => "You'll need to sign in again to access your account.",
-            'user' => auth()->user(),
-            'userName' => auth()->user()->name,
+            'user' => $user,
+            'userName' => $user->name,
         ]);
     }
 

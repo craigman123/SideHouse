@@ -161,6 +161,118 @@ document.addEventListener('DOMContentLoaded', () => {
         logoutForm.submit();
     });
 
+    const passwordModal = document.getElementById('profilePasswordModal');
+    const passwordTrigger = document.getElementById('profilePasswordButton');
+    const passwordForm = document.getElementById('profilePasswordForm');
+    const passwordSubmit = document.getElementById('profilePasswordSubmit');
+    const passwordClose = document.getElementById('profilePasswordModalClose');
+    const passwordCancel = document.getElementById('profilePasswordCancel');
+    const passwordFocusSelector = 'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+    let passwordReturnFocus = null;
+    let passwordPreviousOverflow = '';
+
+    function passwordFocusableElements() {
+        return Array.from(passwordModal?.querySelectorAll(passwordFocusSelector) || [])
+            .filter((element) => !element.hidden && element.getAttribute('aria-hidden') !== 'true' && element.getClientRects().length > 0);
+    }
+
+    function focusPasswordModal() {
+        const invalidField = passwordModal?.querySelector('[aria-invalid="true"]');
+        (invalidField || passwordModal?.querySelector('#profileCurrentPassword') || passwordFocusableElements()[0])?.focus();
+    }
+
+    function openPasswordModal() {
+        if (!passwordModal || passwordTrigger?.disabled || passwordModal.classList.contains('open')) return;
+        passwordReturnFocus = passwordTrigger;
+        passwordPreviousOverflow = contentScroller ? contentScroller.style.overflowY : '';
+        if (contentScroller) contentScroller.style.overflowY = 'hidden';
+        passwordModal.hidden = false;
+        passwordModal.classList.add('open');
+        passwordModal.setAttribute('aria-hidden', 'false');
+        focusPasswordModal();
+    }
+
+    function closePasswordModal() {
+        if (!passwordModal || !passwordModal.classList.contains('open')) return;
+        passwordModal.classList.remove('open');
+        passwordModal.hidden = true;
+        passwordModal.setAttribute('aria-hidden', 'true');
+        passwordModal.removeAttribute('aria-busy');
+        if (contentScroller) contentScroller.style.overflowY = passwordPreviousOverflow;
+        passwordForm?.reset();
+        passwordForm?.querySelectorAll('[data-password-visibility-toggle]').forEach((button) => {
+            const input = document.getElementById(button.getAttribute('aria-controls'));
+            if (input) input.type = 'password';
+            button.textContent = 'Show';
+            button.setAttribute('aria-pressed', 'false');
+            button.setAttribute('aria-label', `Show ${button.dataset.passwordLabel || 'password'}`);
+        });
+        passwordReturnFocus?.focus();
+        passwordReturnFocus = null;
+    }
+
+    passwordTrigger?.addEventListener('click', openPasswordModal);
+    passwordClose?.addEventListener('click', closePasswordModal);
+    passwordCancel?.addEventListener('click', closePasswordModal);
+    passwordModal?.addEventListener('click', (event) => {
+        if (event.target === passwordModal) closePasswordModal();
+    });
+    passwordModal?.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') {
+            event.preventDefault();
+            closePasswordModal();
+            return;
+        }
+        if (event.key !== 'Tab') return;
+
+        const items = passwordFocusableElements();
+        if (!items.length) {
+            event.preventDefault();
+            return;
+        }
+        const first = items[0];
+        const last = items[items.length - 1];
+        if (event.shiftKey && (document.activeElement === first || !passwordModal.contains(document.activeElement))) {
+            event.preventDefault();
+            last.focus();
+        } else if (!event.shiftKey && (document.activeElement === last || !passwordModal.contains(document.activeElement))) {
+            event.preventDefault();
+            first.focus();
+        }
+    });
+
+    passwordForm?.querySelectorAll('[data-password-visibility-toggle]').forEach((button) => {
+        const input = document.getElementById(button.getAttribute('aria-controls'));
+        if (!input) return;
+
+        button.dataset.passwordLabel = input.labels?.[0]?.textContent?.trim().toLowerCase() || 'password';
+        button.addEventListener('click', () => {
+            const showing = input.type === 'password';
+            input.type = showing ? 'text' : 'password';
+            button.textContent = showing ? 'Hide' : 'Show';
+            button.setAttribute('aria-pressed', String(showing));
+            button.setAttribute('aria-label', `${showing ? 'Hide' : 'Show'} ${button.dataset.passwordLabel}`);
+        });
+    });
+
+    let passwordSubmitting = false;
+    passwordForm?.addEventListener('submit', (event) => {
+        if (passwordSubmitting) {
+            event.preventDefault();
+            return;
+        }
+        passwordSubmitting = true;
+        passwordModal?.setAttribute('aria-busy', 'true');
+        if (passwordSubmit) passwordSubmit.disabled = true;
+    });
+
+    if (passwordModal?.classList.contains('open')) {
+        passwordReturnFocus = passwordTrigger;
+        passwordPreviousOverflow = contentScroller ? contentScroller.style.overflowY : '';
+        if (contentScroller) contentScroller.style.overflowY = 'hidden';
+        focusPasswordModal();
+    }
+
     const profileThemeSwitch = document.querySelector('[data-profile-theme-switch]');
     const sharedThemeToggle = document.querySelector('[data-theme-toggle]');
 

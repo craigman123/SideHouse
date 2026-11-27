@@ -185,6 +185,8 @@ class RoleScopedUrlRenderingTest extends TestCase
         $adminProfile = $this->signInAs($admin, 'admin')->get('/admin/profile')->assertOk();
         $adminProfile->assertViewIs('user.profile.profile')
             ->assertSee('data-profile-editable="true"', false)
+            ->assertSee('action="'.route('admin.profile.password').'"', false)
+            ->assertSee('autocomplete="current-password"', false)
             ->assertSee('action="'.route('admin.profile.mfa.recovery-codes').'"', false);
 
         $ownerCustomers = $this->signInAs($owner, 'owner')->get('/owner/customers')->assertOk();
@@ -200,6 +202,7 @@ class RoleScopedUrlRenderingTest extends TestCase
         $ownerProfile = $this->signInAs($owner, 'owner')->get('/owner/profile')->assertOk();
         $ownerProfile->assertViewIs('user.profile.profile')
             ->assertSee('data-profile-editable="true"', false)
+            ->assertSee('action="'.route('owner.profile.password').'"', false)
             ->assertSee('action="'.route('owner.profile.mfa.recovery-codes').'"', false);
 
         $staffCustomers = $this->signInAs($staff, 'staff')->get('/staff/customers')->assertOk();
@@ -211,6 +214,7 @@ class RoleScopedUrlRenderingTest extends TestCase
         $staffProfile->assertViewIs('user.profile.profile')
             ->assertSee('id="staffProfileForm"', false)
             ->assertSee('id="staffEmail"', false)
+            ->assertSee('action="'.route('staff.profile.password').'"', false)
             ->assertDontSee('id="username"', false)
             ->assertSee('action="'.route('staff.profile.mfa.recovery-codes').'"', false);
 
@@ -218,6 +222,7 @@ class RoleScopedUrlRenderingTest extends TestCase
         $customerPage = $this->signInAs($customer, 'customer')->get('/profile')->assertOk();
         $customerPage->assertViewIs('user.profile.profile')
             ->assertSee('data-profile-editable="true"', false)
+            ->assertSee('action="'.route('user.profile.password').'"', false)
             ->assertSee('Member', false)
             ->assertSee('action="'.route('logout').'"', false)
             ->assertSee('href="'.route('user.dashboard').'"', false)

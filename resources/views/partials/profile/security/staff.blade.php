@@ -6,7 +6,6 @@
     $passkeyAllowed = in_array('passkey', $mfaAllowedMethods, true);
     $currentMethod = $user->mfa_method ?? 'totp';
     $biometricsSelected = $passkeyAllowed && (!$totpAllowed || $currentMethod === 'passkey');
-    $passwordModalHasErrors = $errors->hasAny(['current_password', 'password', 'password_confirmation']);
 @endphp
 
 <div class="staff-profile-mfa-card">
@@ -33,7 +32,6 @@
             </div>
         </div>
     </div>
-
     @if ($user->hasMfaEnabled() && ($user->mfa_method ?? 'totp') === 'totp')
         <div class="staff-recovery-section">
             <h3>Recovery codes</h3>
@@ -64,53 +62,4 @@
             </form>
         </div>
     @endif
-</div>
-
-<section class="profile-section" aria-labelledby="staffPasswordRowTitle">
-    <div class="preference-row">
-        <div>
-            <h3 class="profile-section-title" id="staffPasswordRowTitle">Change password</h3>
-            <p class="preference-sub">Choose a new password for your staff account.</p>
-        </div>
-        <button type="button" class="btn btn-secondary" id="staffChangePasswordButton">Change password</button>
-    </div>
-</section>
-
-<div class="staff-profile-modal-overlay{{ $passwordModalHasErrors ? ' open' : '' }}" id="staffPasswordModal" role="dialog" aria-modal="true" aria-labelledby="staffPasswordModalTitle" aria-describedby="staffPasswordModalDescription" aria-hidden="{{ $passwordModalHasErrors ? 'false' : 'true' }}" @unless ($passwordModalHasErrors) hidden @endunless>
-    <section class="staff-profile-modal-card">
-        <header class="staff-profile-modal-header">
-            <h2 id="staffPasswordModalTitle">Change password</h2>
-            <button type="button" class="staff-profile-modal-close" id="staffPasswordModalClose" aria-label="Close change password dialog">&times;</button>
-        </header>
-        <p id="staffPasswordModalDescription">Enter your current password and choose a new one.</p>
-        <form id="staffPasswordForm" method="POST" action="{{ route('staff.profile.password') }}">
-            @csrf
-            @method('PUT')
-            <div class="profile-item">
-                <label for="staffCurrentPassword">Current password</label>
-                <input type="password" id="staffCurrentPassword" name="current_password" autocomplete="current-password" required aria-invalid="{{ $errors->has('current_password') ? 'true' : 'false' }}">
-                @error('current_password')
-                    <span class="field-error" role="alert">{{ $message }}</span>
-                @enderror
-            </div>
-            <div class="profile-item">
-                <label for="staffNewPassword">New password</label>
-                <input type="password" id="staffNewPassword" name="password" autocomplete="new-password" minlength="12" required aria-invalid="{{ $errors->has('password') ? 'true' : 'false' }}">
-                @error('password')
-                    <span class="field-error" role="alert">{{ $message }}</span>
-                @enderror
-            </div>
-            <div class="profile-item">
-                <label for="staffConfirmPassword">Confirm new password</label>
-                <input type="password" id="staffConfirmPassword" name="password_confirmation" autocomplete="new-password" minlength="12" required aria-invalid="{{ $errors->has('password_confirmation') ? 'true' : 'false' }}">
-                @error('password_confirmation')
-                    <span class="field-error" role="alert">{{ $message }}</span>
-                @enderror
-            </div>
-            <div class="staff-profile-modal-actions">
-                <button type="button" class="btn btn-quiet" id="staffPasswordModalCancel">Cancel</button>
-                <button type="submit" class="btn btn-primary">Update password</button>
-            </div>
-        </form>
-    </section>
 </div>

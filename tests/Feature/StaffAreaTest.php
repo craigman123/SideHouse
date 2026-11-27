@@ -79,7 +79,7 @@ class StaffAreaTest extends TestCase
             ->assertSee('aria-checked="false"', false)
             ->assertSee('aria-disabled="true"', false)
             ->assertSee('id="staffProfileEditButton"', false)
-            ->assertSee('id="staffPasswordModal"', false)
+            ->assertSee('id="profilePasswordModal"', false)
             ->assertDontSee('Pending setup')
             ->assertDontSee('Current method')
             ->assertDontSee('Allowed methods')
@@ -523,7 +523,7 @@ class StaffAreaTest extends TestCase
         ])->assertRedirect('/staff/profile')->assertSessionHasErrors('current_password');
 
         $profile = $this->get('/staff/profile')->assertOk();
-        $profile->assertSee('class="staff-profile-modal-overlay open"', false)
+        $profile->assertSee('class="modal-overlay wt-confirm-overlay open" id="profilePasswordModal"', false)
             ->assertSee('aria-hidden="false"', false)
             ->assertSee('aria-invalid="true"', false);
 

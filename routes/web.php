@@ -30,6 +30,7 @@ use App\Http\Controllers\Guest\GuestBookingLookupController;
 use App\Http\Controllers\Admin\MetricsController;
 use App\Http\Controllers\Admin\PrivilegedMfaController;
 use App\Http\Controllers\Guest\GuestCreditController;
+use App\Http\Controllers\ProfilePasswordController;
 
 Route::get('/guest/booking/latest', [GuestBookingLookupController::class, 'latest'])
     ->name('guest.booking.latest')
@@ -345,6 +346,9 @@ Route::middleware(['auth', 'admin', 'admin.mfa', 'throttle.admin-management:120,
     // added there so admins still get the MFA check (see Finding #2).
     Route::get('/admin/profile', [AdminProfileController::class, 'profile'])->middleware('owner.page.redirect')->name('admin.profile');
     Route::put('/admin/profile', [AdminProfileController::class, 'update'])->name('admin.profile.update');
+    Route::put('/admin/profile/password', [ProfilePasswordController::class, 'update'])
+        ->middleware('throttle:5,1,profile-password:')
+        ->name('admin.profile.password');
     Route::delete('/admin/profile', [AdminProfileController::class, 'destroyAccount'])->name('admin.profile.destroy');
     Route::post('/admin/profile/mfa/recovery-codes', [PrivilegedMfaController::class, 'regenerateRecoveryCodes'])
         ->middleware('throttle:5,1')
@@ -445,6 +449,9 @@ Route::middleware(['auth', 'admin.mfa', 'customer.only', 'customer.mfa', 'thrott
     Route::put('/profile', [User_UserController::class, 'updateProfile'])
         ->middleware(['throttle:10,1', 'admin.mfa'])
         ->name('user.profile.update');
+    Route::put('/profile/password', [ProfilePasswordController::class, 'update'])
+        ->middleware(['throttle:10,1', 'throttle:5,1,profile-password:'])
+        ->name('user.profile.password');
     Route::delete('/profile', [User_UserController::class, 'destroyAccount'])
         ->middleware(['throttle:5,1', 'admin.mfa'])
         ->name('user.profile.destroy');

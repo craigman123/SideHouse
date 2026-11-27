@@ -122,6 +122,12 @@ html.user-profile-page:not([data-theme="light"]) .wt-confirm-overlay {
 
 .user-profile-page .profile-section { margin-top: var(--s5); padding-top: var(--s4); border-top: 1px solid var(--border); }
 .user-profile-page .profile-section-title { margin: 0 0 var(--s3); color: var(--text); font-size: var(--font-size-h3); font-weight: var(--font-weight-h3); }
+.user-profile-page .profile-password-modal { width: min(420px, 100%); }
+.user-profile-page .profile-password-modal form { display: grid; gap: var(--s3); }
+.user-profile-page .password-field-control { display: flex; align-items: center; gap: var(--s2); min-width: 0; }
+.user-profile-page .password-field-control input { flex: 1 1 auto; min-width: 0; }
+.user-profile-page .password-visibility-toggle { box-sizing: border-box; flex: 0 0 auto; min-width: 44px; min-height: 44px; padding: var(--s1) var(--s2); border: 1px solid var(--border); border-radius: var(--r-md); background: var(--surface-2); color: var(--text); font-family: var(--font-family); font-size: var(--font-size-small); cursor: pointer; }
+.user-profile-page .password-visibility-toggle:hover { border-color: var(--brand); color: var(--brand-hover); }
 .user-profile-page .preference-row { display: flex; align-items: center; justify-content: space-between; gap: var(--s4); }
 .user-profile-page .preference-label { margin: 0 0 var(--s1); color: var(--text); font-weight: var(--font-weight-button); }
 .user-profile-page .preference-sub { margin: 0; color: var(--text-muted); font-size: var(--font-size-small); }

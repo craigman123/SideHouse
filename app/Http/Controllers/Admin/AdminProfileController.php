@@ -11,8 +11,10 @@ use Illuminate\Validation\Rule;
 
 class AdminProfileController extends Controller
 {
-    public function profile()
+    public function profile(Request $request)
     {
+        $user = $request->user();
+
         return view('user.profile.profile', [
             'profileLayout' => 'layouts.app',
             'profileTitle' => 'My Profile | Side House',
@@ -23,6 +25,11 @@ class AdminProfileController extends Controller
             'profileScripts' => [],
             'profileSecurityView' => 'partials.management.privileged-mfa',
             'profileUpdateAction' => route('admin.profile.update'),
+            'profilePasswordAction' => route('admin.profile.password'),
+            'canChangePassword' => ! (
+                $user->role === 'admin'
+                && $request->session()->has(GuardSessionState::key('view_as', 'admin'))
+            ),
             'profilePageId' => 'profilePage',
             'canEditEmail' => true,
             'canEditUsername' => true,
@@ -36,8 +43,8 @@ class AdminProfileController extends Controller
             'deleteCancelLabel' => 'Cancel',
             'deleteSubmitLabel' => 'Delete Account',
             'logoutDescription' => "You'll need to sign in again to access the admin dashboard.",
-            'user' => auth()->user(),
-            'userName' => auth()->user()->name,
+            'user' => $user,
+            'userName' => $user->name,
         ]);
     }
 

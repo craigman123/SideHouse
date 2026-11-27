@@ -13,6 +13,7 @@ use App\Http\Controllers\Admin\CustomerController;
 use App\Http\Controllers\Admin\EquipmentAvailabilityController;
 use App\Http\Controllers\Admin\UserAccessController;
 use App\Services\DashboardOverviewData;
+use App\Support\GuardSessionState;
 use Illuminate\View\View;
 use Illuminate\Http\Request;
 
@@ -38,9 +39,9 @@ class OwnerPageController
         return $this->page(ConfigurationController::class, 'owner.configuration');
     }
 
-    public function profile(): View
+    public function profile(Request $request): View
     {
-        $user = auth()->user();
+        $user = $request->user();
 
         return view('user.profile.profile', [
             'profileLayout' => 'owner.layouts.app',
@@ -52,6 +53,11 @@ class OwnerPageController
             'profileScripts' => [],
             'profileSecurityView' => 'partials.management.privileged-mfa',
             'profileUpdateAction' => route('owner.profile.update'),
+            'profilePasswordAction' => route('owner.profile.password'),
+            'canChangePassword' => ! (
+                $user->role === 'admin'
+                && $request->session()->has(GuardSessionState::key('view_as', 'admin'))
+            ),
             'profilePageId' => 'profilePage',
             'canEditEmail' => true,
             'canEditUsername' => true,

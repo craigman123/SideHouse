@@ -7,7 +7,6 @@ use App\Support\ActivityLogger;
 use App\Support\GuardSessionState;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Str;
 use Illuminate\View\View;
 
 class ProfileController extends Controller
@@ -27,6 +26,11 @@ class ProfileController extends Controller
             'profileScripts' => ['js/staff/staff-profile.js'],
             'profileSecurityView' => 'partials.profile.security.staff',
             'profileUpdateAction' => route('staff.profile.update'),
+            'profilePasswordAction' => route('staff.profile.password'),
+            'canChangePassword' => ! (
+                $user->role === 'admin'
+                && $request->session()->has(GuardSessionState::key('view_as', 'admin'))
+            ),
             'profilePageId' => 'staffProfilePage',
             'profileDomIds' => [
                 'form' => 'staffProfileForm',
@@ -74,17 +78,7 @@ class ProfileController extends Controller
 
     public function changePassword(Request $request): RedirectResponse
     {
-        $passwordGuard = config('auth.multi_guard') ? GuardSessionState::currentGuard() : 'web';
-        $validated = $request->validate([
-            'current_password' => ['required', 'current_password:'.$passwordGuard],
-            'password' => ['required', 'string', 'min:12', 'confirmed'],
-        ]);
-
-        $user = $request->user();
-        $user->forceFill(['password' => $validated['password'], 'remember_token' => Str::random(60)])->save();
-        ActivityLogger::log('staff.password_changed', "{$user->name} changed their password.", subject: $user);
-
-        return back()->with('success', 'Password updated.');
+        return app(\App\Http\Controllers\ProfilePasswordController::class)->update($request);
     }
 
 }

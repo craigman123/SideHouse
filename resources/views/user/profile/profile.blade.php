@@ -30,6 +30,7 @@
             'logoutCancel' => 'logoutModalCancel',
             'logoutConfirm' => 'logoutConfirmSubmit',
         ], $profileDomIds ?? []);
+        $passwordModalHasErrors = $errors->hasAny(['current_password', 'password', 'password_confirmation']);
     @endphp
     <div class="user-profile-page" id="{{ $profilePageId ?? 'profilePage' }}">
     <div
@@ -144,6 +145,16 @@
 
             <div class="profile-section">
                 <h3 class="profile-section-title">Security</h3>
+                <div class="preference-row password-change-row">
+                    <div>
+                        <p class="preference-label">Change password</p>
+                        <p class="preference-sub">Update the password used to sign in to your account.</p>
+                        @unless ($canChangePassword)
+                            <p class="field-state" id="profilePasswordDisabledReason">Password changes are unavailable while switched access is active.</p>
+                        @endunless
+                    </div>
+                    <button type="button" class="btn btn-secondary" id="profilePasswordButton" aria-haspopup="dialog" aria-controls="profilePasswordModal" @unless ($canChangePassword) disabled aria-describedby="profilePasswordDisabledReason" @endunless>Change password</button>
+                </div>
                 @include($profileSecurityView)
             </div>
 
@@ -177,6 +188,48 @@
                 <button type="button" class="btn btn-danger wt-confirm-accept btn-ghost-danger" id="{{ $profileDomIds['logoutConfirm'] }}">Log out</button>
             </div>
         </div>
+    </div>
+
+    <div class="modal-overlay wt-confirm-overlay{{ $passwordModalHasErrors ? ' open' : '' }}" id="profilePasswordModal" role="dialog" aria-modal="true" aria-labelledby="profilePasswordModalTitle" aria-describedby="profilePasswordModalDescription" aria-hidden="{{ $passwordModalHasErrors ? 'false' : 'true' }}" @unless ($passwordModalHasErrors) hidden @endunless>
+        <section class="wt-confirm-card profile-password-modal">
+            <header class="modal-header">
+                <h3 id="profilePasswordModalTitle">Change password</h3>
+                <button type="button" class="modal-close btn-ghost-danger" id="profilePasswordModalClose" aria-label="Close change password dialog">&times;</button>
+            </header>
+            <p class="modal-text" id="profilePasswordModalDescription">Enter your current password and choose a new one.</p>
+            <form method="POST" action="{{ $profilePasswordAction }}" id="profilePasswordForm">
+                @csrf
+                @method('PUT')
+                <div class="profile-item">
+                    <label for="profileCurrentPassword">Current password</label>
+                    <div class="password-field-control">
+                        <input type="password" id="profileCurrentPassword" name="current_password" autocomplete="current-password" required aria-invalid="{{ $errors->has('current_password') ? 'true' : 'false' }}">
+                        <button type="button" class="password-visibility-toggle" data-password-visibility-toggle aria-controls="profileCurrentPassword" aria-label="Show current password" aria-pressed="false">Show</button>
+                    </div>
+                    @error('current_password')<span class="field-error" role="alert">{{ $message }}</span>@enderror
+                </div>
+                <div class="profile-item">
+                    <label for="profileNewPassword">New password</label>
+                    <div class="password-field-control">
+                        <input type="password" id="profileNewPassword" name="password" autocomplete="new-password" minlength="12" required aria-invalid="{{ $errors->has('password') ? 'true' : 'false' }}">
+                        <button type="button" class="password-visibility-toggle" data-password-visibility-toggle aria-controls="profileNewPassword" aria-label="Show new password" aria-pressed="false">Show</button>
+                    </div>
+                    @error('password')<span class="field-error" role="alert">{{ $message }}</span>@enderror
+                </div>
+                <div class="profile-item">
+                    <label for="profilePasswordConfirmation">Confirm new password</label>
+                    <div class="password-field-control">
+                        <input type="password" id="profilePasswordConfirmation" name="password_confirmation" autocomplete="new-password" minlength="12" required aria-invalid="{{ $errors->has('password_confirmation') ? 'true' : 'false' }}">
+                        <button type="button" class="password-visibility-toggle" data-password-visibility-toggle aria-controls="profilePasswordConfirmation" aria-label="Show password confirmation" aria-pressed="false">Show</button>
+                    </div>
+                    @error('password_confirmation')<span class="field-error" role="alert">{{ $message }}</span>@enderror
+                </div>
+                <div class="profile-actions">
+                    <button type="button" class="btn btn-secondary" id="profilePasswordCancel">Cancel</button>
+                    <button type="submit" class="btn btn-primary" id="profilePasswordSubmit">Update password</button>
+                </div>
+            </form>
+        </section>
     </div>
 
     @if ($showDelete)
