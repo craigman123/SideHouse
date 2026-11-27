@@ -2,23 +2,23 @@
     <p class="overview-intro">A quick look at bookings and earnings at <strong>Side House</strong>.</p>
 
     <div class="card-grid">
-        <div class="card">
-            <p class="label">Total Income</p>
+        <div class="card has-card-icon">
+            <p class="label card-icon-label">Total Income<x-card-icon name="trending-up" /></p>
             <p class="value income">₱{{ number_format($totalIncome, 2) }}</p>
         </div>
 
-        <div class="card">
-            <p class="label">Today's Income</p>
+        <div class="card has-card-icon">
+            <p class="label card-icon-label">Today's Income<x-card-icon name="peso-coin" /></p>
             <p class="value income">₱{{ number_format($todayIncome, 2) }}</p>
         </div>
 
-        <div class="card">
-            <p class="label">Total Bookings</p>
+        <div class="card has-card-icon">
+            <p class="label card-icon-label">Total Bookings<x-card-icon name="calendar" /></p>
             <p class="value bookings">{{ $totalBookings }}</p>
         </div>
 
-        <div class="card">
-            <p class="label">Today's Bookings</p>
+        <div class="card has-card-icon">
+            <p class="label card-icon-label">Today's Bookings<x-card-icon name="calendar" /></p>
             <p class="value bookings">{{ $todayBookings }}</p>
         </div>
     </div>

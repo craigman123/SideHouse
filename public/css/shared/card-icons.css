@@ -30,6 +30,18 @@
     pointer-events: none;
 }
 
+.icon-chip--compact {
+    flex-basis: 20px;
+    width: 20px;
+    height: 20px;
+    border-radius: var(--r-sm);
+}
+
+.icon-chip--compact svg {
+    width: 14px;
+    height: 14px;
+}
+
 .card-icon-label {
     position: relative;
     padding-inline-end: calc(38px + var(--s2));

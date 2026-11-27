@@ -12,6 +12,7 @@
         'pie',
         'gauge',
         'people',
+        'user',
         'user-badge',
         'shield',
         'padel',

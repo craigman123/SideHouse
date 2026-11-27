@@ -122,6 +122,12 @@
         return node;
     }
 
+    function cardIcon(name, compact = false) {
+        const icon = window.SideHouseCardIcons.create(name);
+        if (compact) icon.classList.add('icon-chip--compact');
+        return icon;
+    }
+
     function toast(message, type = 'success') {
         const safe = String(message).replace(/[&<>"']/g, (char) => ({
             '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;',
@@ -178,10 +184,17 @@
         const counts = { owner: 0, admin: 0, staff: 0 };
         users.forEach((user) => { if (Object.prototype.hasOwnProperty.call(counts, user.role)) counts[user.role]++; });
         summary.replaceChildren();
-        ['owner', 'admin', 'staff'].forEach((role) => {
-            const item = element('span', `user-access-count user-access-count--${role}`);
-            item.append(element('strong', '', String(counts[role])));
-            item.append(document.createTextNode(` ${role}${counts[role] === 1 ? '' : 's'}`));
+        const total = counts.owner + counts.admin + counts.staff;
+        const items = [
+            { role: 'total', count: total, icon: 'people' },
+            { role: 'owner', count: counts.owner, icon: 'user-badge' },
+            { role: 'admin', count: counts.admin, icon: 'shield' },
+            { role: 'staff', count: counts.staff, icon: 'user' },
+        ];
+        items.forEach(({ role, count, icon }) => {
+            const item = element('span', `user-access-count user-access-count--${role} has-card-icon`);
+            item.append(cardIcon(icon, true), element('strong', '', String(count)));
+            item.append(document.createTextNode(` ${role}${role === 'total' || count === 1 ? '' : 's'}`));
             summary.append(item);
         });
         updateOwnerMessage();
@@ -480,10 +493,12 @@
     }
 
     function renderCard(user) {
-        const card = element('article', 'user-access-card');
+        const card = element('article', 'user-access-card has-card-icon');
         card.dataset.userId = String(user.id);
         const header = element('header', 'user-access-card-header');
-        header.append(personCell(user), roleBadge(user.role));
+        const person = personCell(user);
+        person.querySelector('.user-access-name-row').prepend(cardIcon('user-badge', true));
+        header.append(person, roleBadge(user.role));
         const cardLockedBadge = lockedBadge(user);
         if (cardLockedBadge) header.append(cardLockedBadge);
         const list = element('dl', 'user-access-card-details');

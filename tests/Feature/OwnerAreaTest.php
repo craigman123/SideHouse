@@ -90,6 +90,26 @@ class OwnerAreaTest extends TestCase
         $reports->assertDontSee('js/admin/admin-reports.js');
     }
 
+    public function test_owner_overview_and_reports_render_shared_financial_icon_chips(): void
+    {
+        $owner = $this->user('owner');
+        $overview = $this->signIn($owner)->get('/owner/dashboard')->assertOk();
+        $overview->assertSee('Total Income<span class="icon-chip" data-icon="trending-up"', false)
+            ->assertSee("Today's Income<span class=\"icon-chip\" data-icon=\"peso-coin\"", false)
+            ->assertSee('Total Bookings<span class="icon-chip" data-icon="calendar"', false)
+            ->assertSee("Today's Bookings<span class=\"icon-chip\" data-icon=\"calendar\"", false);
+
+        $reports = $this->get('/owner/reports')->assertOk();
+        $reports->assertSee('Total Income<span class="icon-chip" data-icon="trending-up"', false)
+            ->assertSee('This Month<span class="icon-chip" data-icon="peso-coin"', false)
+            ->assertSee('Today<span class="icon-chip" data-icon="peso-coin"', false)
+            ->assertSee('Paid Bookings<span class="icon-chip" data-icon="calendar-check"', false)
+            ->assertSee('Income Trend<span class="icon-chip" data-icon="bar-chart"', false)
+            ->assertSee('Income by Payment Method<span class="icon-chip" data-icon="wallet"', false)
+            ->assertSee('Income by Court<span class="icon-chip" data-icon="court"', false)
+            ->assertSee('Court Rental vs Equipment<span class="icon-chip" data-icon="court"', false);
+    }
+
     public function test_reports_system_capability_is_admin_only_and_owner_data_has_no_system_fields(): void
     {
         $owner = $this->user('owner');

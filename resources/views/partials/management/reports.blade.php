@@ -22,29 +22,29 @@
 
         {{-- Summary cards --}}
         <div class="reports-summary-grid" id="summaryGrid">
-            <div class="summary-card">
-                <span class="summary-card-label">Total Income</span>
+            <div class="summary-card has-card-icon">
+                <span class="summary-card-label card-icon-label">Total Income<x-card-icon name="trending-up" /></span>
                 <div class="summary-card-value-wrap">
                     <span class="summary-card-value" id="summaryTotalIncome">&#8369;0</span>
                     <span class="skeleton" aria-hidden="true"></span>
                 </div>
             </div>
-            <div class="summary-card">
-                <span class="summary-card-label">This Month</span>
+            <div class="summary-card has-card-icon">
+                <span class="summary-card-label card-icon-label">This Month<x-card-icon name="peso-coin" /></span>
                 <div class="summary-card-value-wrap">
                     <span class="summary-card-value" id="summaryMonthIncome">&#8369;0</span>
                     <span class="skeleton" aria-hidden="true"></span>
                 </div>
             </div>
-            <div class="summary-card">
-                <span class="summary-card-label">Today</span>
+            <div class="summary-card has-card-icon">
+                <span class="summary-card-label card-icon-label">Today<x-card-icon name="peso-coin" /></span>
                 <div class="summary-card-value-wrap">
                     <span class="summary-card-value" id="summaryTodayIncome">&#8369;0</span>
                     <span class="skeleton" aria-hidden="true"></span>
                 </div>
             </div>
-            <div class="summary-card">
-                <span class="summary-card-label">Paid Bookings</span>
+            <div class="summary-card has-card-icon">
+                <span class="summary-card-label card-icon-label">Paid Bookings<x-card-icon name="calendar-check" /></span>
                 <div class="summary-card-value-wrap">
                     <span class="summary-card-value" id="summaryPaidBookings">0</span>
                     <span class="skeleton" aria-hidden="true"></span>
@@ -53,9 +53,9 @@
         </div>
 
         {{-- Trend bar chart --}}
-        <div class="report-panel">
+        <div class="report-panel has-card-icon">
             <div class="report-panel-header">
-                <h2>Income Trend</h2>
+                <h2 class="card-icon-label">Income Trend<x-card-icon name="bar-chart" /></h2>
             </div>
             <div class="report-chart-wrap report-chart-wrap-wide">
                 <canvas id="trendChart" role="img" aria-label="Income trend over time"></canvas>
@@ -69,9 +69,9 @@
 
         {{-- Pie charts --}}
         <div class="report-panel-grid">
-            <div class="report-panel">
+            <div class="report-panel has-card-icon">
                 <div class="report-panel-header">
-                    <h2>Income by Payment Method</h2>
+                    <h2 class="card-icon-label">Income by Payment Method<x-card-icon name="wallet" /></h2>
                 </div>
                 <div class="report-chart-wrap">
                     <canvas id="paymentMethodChart" role="img" aria-label="Income by payment method"></canvas>
@@ -82,9 +82,9 @@
                 <p class="report-empty-note" id="paymentMethodEmpty" hidden>No paid bookings yet.</p>
             </div>
 
-            <div class="report-panel">
+            <div class="report-panel has-card-icon">
                 <div class="report-panel-header">
-                    <h2>Income by Court</h2>
+                    <h2 class="card-icon-label">Income by Court<x-card-icon name="court" /></h2>
                 </div>
                 <div class="report-chart-wrap">
                     <canvas id="courtChart" role="img" aria-label="Income by court"></canvas>
@@ -95,9 +95,9 @@
                 <p class="report-empty-note" id="courtEmpty" hidden>No paid bookings yet.</p>
             </div>
 
-            <div class="report-panel">
+            <div class="report-panel has-card-icon">
                 <div class="report-panel-header">
-                    <h2>Court Rental vs Equipment</h2>
+                    <h2 class="card-icon-label">Court Rental vs Equipment<x-card-icon name="court" /></h2>
                 </div>
                 <div class="report-chart-wrap">
                     <canvas id="splitChart" role="img" aria-label="Court rental income vs equipment rental income"></canvas>
