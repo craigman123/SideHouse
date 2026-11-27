@@ -17,6 +17,7 @@ function createFixture() {
         classList: { remove() {} },
         addEventListener(type, handler) { this.listeners[type] = handler; },
         setAttribute(name, value) { this.attributes[name] = value; },
+        removeAttribute(name) { delete this.attributes[name]; },
         querySelector(selector) { return this.queries?.[selector] || null; },
     });
 
@@ -71,7 +72,7 @@ test('an initialization error replaces the visible server-rendered skeleton with
     fixture.listeners.get('error')({ error });
 
     assert.equal(fixture.skeleton.hidden, true);
-    assert.equal(fixture.container.attributes['aria-busy'], 'false');
+    assert.equal(fixture.container.attributes['aria-busy'], undefined);
     assert.equal(fixture.errorState.hidden, false);
     assert.match(fixture.message.textContent, /Retry/);
     assert.equal(fixture.errors[0][1], error);

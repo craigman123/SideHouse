@@ -94,7 +94,7 @@ class RoleScopedUrlRenderingTest extends TestCase
         $this->assertSame([], $issues, implode(PHP_EOL, $issues));
     }
 
-    private function assertCalendarLoadingAndFeedbackMarkup(\Illuminate\Testing\TestResponse $response): void
+    private function assertCalendarLoadingAndFeedbackMarkup(\Illuminate\Testing\TestResponse $response, string $activeView): void
     {
         $response->assertSee('id="courtBoardRegion"', false)
             ->assertSee('id="courtBoardSkeleton"', false)
@@ -108,6 +108,7 @@ class RoleScopedUrlRenderingTest extends TestCase
             ->assertSee('data-calendar-skeleton="week"', false)
             ->assertSee('court-calendar-skeleton--month', false)
             ->assertSee('court-calendar-skeleton--week', false)
+            ->assertSee('bookings-board-watchdog.js', false)
             ->assertSee('No bookings on this day.', false)
             ->assertSee('No bookings this month.', false)
             ->assertSee('No bookings this week.', false);
@@ -115,10 +116,19 @@ class RoleScopedUrlRenderingTest extends TestCase
         foreach (['board', 'month', 'week'] as $view) {
             $response->assertSee('data-calendar-empty-state="'.$view.'"', false)
                 ->assertSee('data-calendar-error-state="'.$view.'"', false)
-                ->assertSee('data-calendar-retry="'.$view.'"', false);
+                ->assertSee('data-calendar-retry="'.$view.'"', false)
+                ->assertSee('data-calendar-loading-label="'.$view.'"', false)
+                ->assertSee('data-calendar-loading-status="'.$view.'"', false);
         }
 
         $html = $response->getContent();
+        $this->assertMatchesRegularExpression(
+            '/<div\b(?=[^>]*data-calendar-loader="'.$activeView.'")(?=[^>]*aria-busy="true")[^>]*>/',
+            $html,
+            "The active {$activeView} calendar must be announced as busy."
+        );
+        $this->assertStringContainsString('Loading bookings...', $html);
+        $this->assertStringContainsString('role="status" aria-live="polite" aria-atomic="true">Loading bookings...</span>', $html);
         foreach (['board', 'month', 'week'] as $view) {
             $this->assertDoesNotMatchRegularExpression(
                 '/<div\b(?=[^>]*\bdata-calendar-skeleton="'.$view.'")(?=[^>]*\shidden(?:\s|=|>))[^>]*>/',
@@ -131,8 +141,8 @@ class RoleScopedUrlRenderingTest extends TestCase
     public function test_role_pages_render_role_scoped_logout_api_and_navigation_urls(): void
     {
         $admin = $this->user('admin');
-        $adminPage = $this->signInAs($admin, 'admin')->get('/bookings?view=week')->assertOk();
-        $this->assertCalendarLoadingAndFeedbackMarkup($adminPage);
+        $adminPage = $this->signInAs($admin, 'admin')->get('/bookings?view=month')->assertOk();
+        $this->assertCalendarLoadingAndFeedbackMarkup($adminPage, 'month');
         $adminPage->assertSee('action="'.route('admin.logout').'"', false)
             ->assertSee('data-calendar-url="'.route('admin.bookings.calendar').'"', false)
             ->assertSee('data-walk-in-url="'.route('admin.bookings.walk-in.store').'"', false)
@@ -142,7 +152,7 @@ class RoleScopedUrlRenderingTest extends TestCase
 
         $owner = $this->user('owner');
         $ownerPage = $this->signInAs($owner, 'owner')->get('/owner/bookings?view=week')->assertOk();
-        $this->assertCalendarLoadingAndFeedbackMarkup($ownerPage);
+        $this->assertCalendarLoadingAndFeedbackMarkup($ownerPage, 'week');
         $ownerPage->assertSee('action="'.route('owner.logout').'"', false)
             ->assertSee('data-calendar-url="'.route('owner.bookings.calendar').'"', false)
             ->assertSee('data-walk-in-url="'.route('owner.bookings.walk-in.store').'"', false)
@@ -151,8 +161,8 @@ class RoleScopedUrlRenderingTest extends TestCase
             ->assertSee('href="'.route('owner.user-access').'"', false);
 
         $staff = $this->user('staff', ['bookings.view', 'customers.view', 'calendar_events.manage', 'bookings.create']);
-        $staffPage = $this->signInAs($staff, 'staff')->get('/staff/bookings?view=week')->assertOk();
-        $this->assertCalendarLoadingAndFeedbackMarkup($staffPage);
+        $staffPage = $this->signInAs($staff, 'staff')->get('/staff/bookings?view=board')->assertOk();
+        $this->assertCalendarLoadingAndFeedbackMarkup($staffPage, 'board');
         $staffPage->assertSee('action="'.route('staff.logout').'"', false)
             ->assertSee('data-calendar-url="'.route('staff.bookings.calendar').'"', false)
             ->assertSee('data-walk-in-url=""', false)

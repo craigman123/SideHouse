@@ -15,14 +15,16 @@
         const panel = bootstrapPanels[view];
         const container = panel.querySelector(`[data-calendar-loader="${view}"]`);
         const skeleton = panel.querySelector(`[data-calendar-skeleton="${view}"]`);
+        const label = container?.querySelector(`[data-calendar-loading-label="${view}"]`);
         const status = container?.querySelector('.court-calendar-loading-status');
         const errorState = workspace.querySelector(`[data-calendar-error-state="${view}"]`);
         if (!container || !skeleton || !errorState) return;
 
         console.error(`[bookings] ${view} calendar initialization failed`, reason);
         skeleton.hidden = true;
+        if (label) label.hidden = true;
         container.classList.remove('is-calendar-loading');
-        container.setAttribute('aria-busy', 'false');
+        container.removeAttribute('aria-busy');
         if (status) status.textContent = '';
         const message = errorState.querySelector('[data-calendar-error-message]');
         if (message) message.textContent = 'Calendar could not be initialized. Retry to reload the page.';
@@ -205,8 +207,9 @@
     const calendarLoadingStates = new Map();
     const addCalendarLoadingState = (view, container, skeleton, status) => {
         if (!container || !skeleton || !status) return;
+        const label = container.querySelector(`[data-calendar-loading-label="${view}"]`);
         calendarLoadingStates.set(view, {
-            view, container, skeleton, status, pending: 0, shownAt: 0,
+            view, container, skeleton, label, status, pending: 0, shownAt: 0,
             safetyTimer: null, hasRendered: false, generation: 0,
         });
     };
@@ -3646,7 +3649,9 @@
         state.hasRendered = false;
         if (state.safetyTimer) window.clearTimeout(state.safetyTimer);
         state.container.setAttribute('aria-busy', 'true');
-        state.status.textContent = 'Loading calendar…';
+        state.status.textContent = 'Loading bookings...';
+        if (state.label) state.label.hidden = false;
+        state.container.dataset.calendarRendered = 'false';
         if (bodyHeight) state.container.style.setProperty('--calendar-body-height', bodyHeight);
         if (gridWidth) state.container.style.setProperty('--calendar-grid-width', gridWidth);
 
@@ -3684,8 +3689,9 @@
         if (state.safetyTimer) window.clearTimeout(state.safetyTimer);
         state.safetyTimer = null;
         state.skeleton.hidden = true;
+        if (state.label) state.label.hidden = true;
         state.container.classList.remove('is-calendar-loading');
-        state.container.setAttribute('aria-busy', 'false');
+        state.container.removeAttribute('aria-busy');
         state.container.style.removeProperty('--calendar-body-height');
         state.container.style.removeProperty('--calendar-grid-width');
         state.status.textContent = '';
@@ -3694,6 +3700,7 @@
         const state = calendarLoadingStates.get(view);
         if (!state) return;
         state.hasRendered = true;
+        state.container.dataset.calendarRendered = 'true';
         if (state.pending) {
             if (state.safetyTimer) window.clearTimeout(state.safetyTimer);
             state.safetyTimer = null;
@@ -3899,4 +3906,5 @@
     if (initialView === 'month') void loadVisibleRangeThenRender('month', currentVisibleRange(), renderMonth);
     if (initialView === 'board') void loadVisibleRangeThenRender('board', currentVisibleRange(), renderBoard);
     schedulePoll();
+    workspace.dataset.calendarReady = 'true';
 })();

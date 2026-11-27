@@ -146,7 +146,7 @@
                     <span data-calendar-error-message></span>
                     <button type="button" class="btn-clear court-calendar-retry" data-calendar-retry="board">Retry</button>
                 </div>
-                <div id="courtBoardRegion" class="court-board-region" data-calendar-loader="board" aria-busy="{{ $initialBookingsView === 'board' ? 'true' : 'false' }}">
+                <div id="courtBoardRegion" class="court-board-region" data-calendar-loader="board" @if ($initialBookingsView === 'board') aria-busy="true" @endif>
                     <div id="courtBoardSkeleton" class="court-board court-board-skeleton" data-calendar-skeleton="board" aria-hidden="true">
                         @foreach ($courts as $court)
                             <section class="court-board-court court-board-skeleton-card">
@@ -161,7 +161,8 @@
                             </section>
                         @endforeach
                     </div>
-                    <span id="courtBoardLoadingStatus" class="visually-hidden court-calendar-loading-status" role="status" aria-atomic="true"></span>
+                    <span class="court-calendar-loading-label" data-calendar-loading-label="board" aria-hidden="true">Loading bookings...</span>
+                    <span id="courtBoardLoadingStatus" class="visually-hidden court-calendar-loading-status" data-calendar-loading-status="board" role="status" aria-live="polite" aria-atomic="true">Loading bookings...</span>
                     <div id="courtBoard" class="court-board" aria-live="polite"></div>
                 </div>
             </div>
@@ -192,7 +193,8 @@
                     <span data-calendar-error-message></span>
                     <button type="button" class="btn-clear court-calendar-retry" data-calendar-retry="month">Retry</button>
                 </div>
-                <div class="court-month-scroll" data-calendar-loader="month" aria-busy="{{ $initialBookingsView === 'month' ? 'true' : 'false' }}">
+                <div class="court-month-scroll" data-calendar-loader="month" @if ($initialBookingsView === 'month') aria-busy="true" @endif>
+                    <span class="court-calendar-loading-label" data-calendar-loading-label="month" aria-hidden="true">Loading bookings...</span>
                     <div class="court-calendar-skeleton court-calendar-skeleton--month" data-calendar-skeleton="month" aria-hidden="true">
                         <div class="court-calendar-skeleton-header">
                             <span class="court-calendar-skeleton-corner"></span>
@@ -205,7 +207,7 @@
                             </div>
                         </div>
                     </div>
-                    <span class="visually-hidden court-calendar-loading-status" role="status" aria-atomic="true"></span>
+                    <span class="visually-hidden court-calendar-loading-status" data-calendar-loading-status="month" role="status" aria-live="polite" aria-atomic="true">Loading bookings...</span>
                     <div id="courtMonthGrid" class="court-month-grid" aria-live="polite"></div>
                 </div>
                 @if (auth()->user() && app(\App\Services\UserAccessService::class)->allows(auth()->user(), 'calendar_events.manage') && $canManageWeeklyClosures)
@@ -237,7 +239,8 @@
                     <span data-calendar-error-message></span>
                     <button type="button" class="btn-clear court-calendar-retry" data-calendar-retry="week">Retry</button>
                 </div>
-                <div class="court-week-scroll court-month-scroll" data-calendar-loader="week" aria-busy="{{ $initialBookingsView === 'week' ? 'true' : 'false' }}">
+                <div class="court-week-scroll court-month-scroll" data-calendar-loader="week" @if ($initialBookingsView === 'week') aria-busy="true" @endif>
+                    <span class="court-calendar-loading-label" data-calendar-loading-label="week" aria-hidden="true">Loading bookings...</span>
                     <div class="court-calendar-skeleton court-calendar-skeleton--week" data-calendar-skeleton="week" aria-hidden="true">
                         <div class="court-calendar-skeleton-header">
                             <span class="court-calendar-skeleton-corner"></span>
@@ -251,7 +254,7 @@
                             </div>
                         </div>
                     </div>
-                    <span class="visually-hidden court-calendar-loading-status" role="status" aria-atomic="true"></span>
+                    <span class="visually-hidden court-calendar-loading-status" data-calendar-loading-status="week" role="status" aria-live="polite" aria-atomic="true">Loading bookings...</span>
                     <div id="courtWeekGrid" class="court-month-grid court-week-grid" aria-live="polite"></div>
                 </div>
                 @if (auth()->user() && app(\App\Services\UserAccessService::class)->allows(auth()->user(), 'calendar_events.manage') && $canManageWeeklyClosures)
@@ -438,5 +441,6 @@
     @endphp
     <script id="courtBoardData" type="application/json">{!! json_encode($courtBoardData, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) !!}</script>
     <script src="{{ asset('js/shared/booking-price-calculator.js') . '?v=' . filemtime(public_path('js/shared/booking-price-calculator.js')) }}" defer></script>
+    <script src="{{ asset('js/shared/bookings-board-watchdog.js') . '?v=' . filemtime(public_path('js/shared/bookings-board-watchdog.js')) }}" defer></script>
     <script src="{{ asset('js/shared/bookings-board.js') . '?v=' . filemtime(public_path('js/shared/bookings-board.js')) }}" defer></script>
 @endpush
