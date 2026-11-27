@@ -3702,15 +3702,16 @@
         hideCalendarSkeleton(view);
     };
     const loadVisibleRangeThenRender = async (view, range, render, { force = false } = {}) => {
-        clearCalendarError(view);
-        setCalendarEmpty(view, false);
-        const shouldFetch = force || !rangeIsCached(range.from, range.to);
         const loadingState = calendarLoadingStates.get(view);
         let finishLoading = null;
-        let loadingGeneration = null;
+        let loadingGeneration = loadingState?.generation ?? null;
+        let shouldFetch = false;
         let loaded = true;
 
         try {
+            clearCalendarError(view);
+            setCalendarEmpty(view, false);
+            shouldFetch = force || !rangeIsCached(range.from, range.to);
             if (loadingState) {
                 finishLoading = beginCalendarLoading(loadingState);
                 loadingGeneration = loadingState.generation;
