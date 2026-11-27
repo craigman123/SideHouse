@@ -100,6 +100,12 @@ class RoleScopedUrlRenderingTest extends TestCase
             ->assertSee('id="courtBoardSkeleton"', false)
             ->assertSee('id="courtMonthGrid"', false)
             ->assertSee('id="courtWeekGrid"', false)
+            ->assertSee('data-calendar-loader="board"', false)
+            ->assertSee('data-calendar-loader="month"', false)
+            ->assertSee('data-calendar-loader="week"', false)
+            ->assertSee('data-calendar-skeleton="board"', false)
+            ->assertSee('data-calendar-skeleton="month"', false)
+            ->assertSee('data-calendar-skeleton="week"', false)
             ->assertSee('court-calendar-skeleton--month', false)
             ->assertSee('court-calendar-skeleton--week', false)
             ->assertSee('No bookings on this day.', false)
@@ -110,6 +116,15 @@ class RoleScopedUrlRenderingTest extends TestCase
             $response->assertSee('data-calendar-empty-state="'.$view.'"', false)
                 ->assertSee('data-calendar-error-state="'.$view.'"', false)
                 ->assertSee('data-calendar-retry="'.$view.'"', false);
+        }
+
+        $html = $response->getContent();
+        foreach (['board', 'month', 'week'] as $view) {
+            $this->assertDoesNotMatchRegularExpression(
+                '/<div\b(?=[^>]*\bdata-calendar-skeleton="'.$view.'")(?=[^>]*\shidden(?:\s|=|>))[^>]*>/',
+                $html,
+                "The server-rendered {$view} skeleton must not be hidden."
+            );
         }
     }
 

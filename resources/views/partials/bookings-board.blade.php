@@ -146,8 +146,8 @@
                     <span data-calendar-error-message></span>
                     <button type="button" class="btn-clear court-calendar-retry" data-calendar-retry="board">Retry</button>
                 </div>
-                <div id="courtBoardRegion" class="court-board-region" aria-busy="false">
-                    <div id="courtBoardSkeleton" class="court-board court-board-skeleton" aria-hidden="true" hidden>
+                <div id="courtBoardRegion" class="court-board-region" data-calendar-loader="board" aria-busy="{{ $initialBookingsView === 'board' ? 'true' : 'false' }}">
+                    <div id="courtBoardSkeleton" class="court-board court-board-skeleton" data-calendar-skeleton="board" aria-hidden="true">
                         @foreach ($courts as $court)
                             <section class="court-board-court court-board-skeleton-card">
                                 <div class="court-board-court-heading">
@@ -192,8 +192,8 @@
                     <span data-calendar-error-message></span>
                     <button type="button" class="btn-clear court-calendar-retry" data-calendar-retry="month">Retry</button>
                 </div>
-                <div class="court-month-scroll" aria-busy="false">
-                    <div class="court-calendar-skeleton court-calendar-skeleton--month" aria-hidden="true" hidden>
+                <div class="court-month-scroll" data-calendar-loader="month" aria-busy="{{ $initialBookingsView === 'month' ? 'true' : 'false' }}">
+                    <div class="court-calendar-skeleton court-calendar-skeleton--month" data-calendar-skeleton="month" aria-hidden="true">
                         <div class="court-calendar-skeleton-header">
                             <span class="court-calendar-skeleton-corner"></span>
                             <span class="court-calendar-skeleton-month-days"></span>
@@ -237,8 +237,8 @@
                     <span data-calendar-error-message></span>
                     <button type="button" class="btn-clear court-calendar-retry" data-calendar-retry="week">Retry</button>
                 </div>
-                <div class="court-week-scroll court-month-scroll" aria-busy="false">
-                    <div class="court-calendar-skeleton court-calendar-skeleton--week" aria-hidden="true" hidden>
+                <div class="court-week-scroll court-month-scroll" data-calendar-loader="week" aria-busy="{{ $initialBookingsView === 'week' ? 'true' : 'false' }}">
+                    <div class="court-calendar-skeleton court-calendar-skeleton--week" data-calendar-skeleton="week" aria-hidden="true">
                         <div class="court-calendar-skeleton-header">
                             <span class="court-calendar-skeleton-corner"></span>
                             <span></span><span></span><span></span><span></span><span></span><span></span><span></span>

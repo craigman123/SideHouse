@@ -649,6 +649,7 @@ html[data-theme="light"] .admin-bookings-page .btn-filter {
     grid-template-columns: minmax(0, 1fr);
 }
 .admin-bookings-page .court-board-region > .court-board { grid-area: 1 / 1; width: 100%; }
+.admin-bookings-page .court-board-region > .court-board-skeleton { grid-area: 1 / 1; z-index: 1; width: 100%; }
 .admin-bookings-page .court-board-region.is-calendar-loading > #courtBoard { visibility: hidden; }
 .admin-bookings-page .court-board-skeleton { pointer-events: none; }
 .admin-bookings-page .court-board-skeleton[hidden] { display: none; }
