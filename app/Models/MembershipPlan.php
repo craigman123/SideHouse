@@ -13,14 +13,21 @@ class MembershipPlan extends Model
         'name',
         'description',
         'price',
+        'discount_type',
+        'discount_value',
         'discount_percent',
+        'players',
+        'expiry_date',
         'duration_days',
         'status',
     ];
 
     protected $casts = [
         'price'            => 'decimal:2',
+        'discount_value'   => 'decimal:2',
         'discount_percent' => 'integer',
+        'players'          => 'integer',
+        'expiry_date'      => 'date',
         'duration_days'    => 'integer',
     ];
 
