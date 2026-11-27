@@ -24,11 +24,7 @@ html.admin-layout-shell .admin-overview-page .card,
 html.admin-layout-shell .admin-overview-page .panel {
     min-width: 0;
     padding: var(--s4);
-    border: 1px solid transparent;
     border-radius: var(--r-lg);
-    background-image: linear-gradient(var(--surface), var(--surface)), var(--brand-grad);
-    background-origin: border-box;
-    background-clip: padding-box, border-box;
     color: var(--text);
     box-shadow: var(--shadow-card);
 }
