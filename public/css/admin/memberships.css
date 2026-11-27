@@ -8,8 +8,22 @@
 .memberships-header {
     display: flex;
     align-items: center;
-    justify-content: flex-end;
+    justify-content: space-between;
     gap: var(--s4);
+}
+
+.memberships-header-description {
+    flex: 1 1 auto;
+    min-width: 0;
+    margin: 0;
+    color: var(--text-muted);
+    font-size: var(--font-size-small);
+    line-height: var(--line-height-body);
+    overflow-wrap: anywhere;
+}
+
+.memberships-header .memberships-button {
+    flex: 0 0 auto;
 }
 
 .memberships-header h2 {
@@ -97,6 +111,31 @@
     background-clip: padding-box, border-box;
     color: var(--text);
     box-shadow: var(--shadow-card);
+}
+
+.membership-card--expiring-soon {
+    animation: membership-card-expiring-pulse 2.5s ease-in-out infinite;
+}
+
+@keyframes membership-card-expiring-pulse {
+    0%,
+    100% {
+        border-color: color-mix(in srgb, var(--warning) 84%, transparent);
+        box-shadow: var(--shadow-card), 0 0 8px color-mix(in srgb, var(--warning) 32%, transparent);
+    }
+
+    50% {
+        border-color: var(--warning);
+        box-shadow: var(--shadow-card), 0 0 12px color-mix(in srgb, var(--warning) 48%, transparent);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .membership-card--expiring-soon {
+        animation: none;
+        border-color: var(--warning);
+        box-shadow: var(--shadow-card), 0 0 12px color-mix(in srgb, var(--warning) 40%, transparent);
+    }
 }
 
 .membership-card-top-row {
@@ -453,13 +492,19 @@ html.owner-layout-shell .memberships-summary-box {
 }
 
 @media (max-width: 640px) {
+    .memberships-form-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 768px) {
     .memberships-header {
-        align-items: stretch;
+        align-items: flex-start;
         flex-direction: column;
     }
 
-    .memberships-form-grid {
-        grid-template-columns: 1fr;
+    .memberships-header .memberships-button {
+        align-self: flex-start;
     }
 }
 
