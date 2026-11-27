@@ -12,12 +12,22 @@ class MembershipPlanController extends Controller
 {
     public function adminIndex(): View
     {
-        return $this->index('layouts.app', 'admin.memberships.index', 'admin.memberships.store');
+        return $this->index(
+            'layouts.app',
+            'admin.memberships.index',
+            'admin.memberships.store',
+            'css/shared/dashboard-base.css'
+        );
     }
 
     public function ownerIndex(): View
     {
-        return $this->index('owner.layouts.app', 'owner.memberships.index', 'owner.memberships.store');
+        return $this->index(
+            'owner.layouts.app',
+            'owner.memberships.index',
+            'owner.memberships.store',
+            'css/owner/owner-base.css'
+        );
     }
 
     public function adminStore(StoreMembershipPlanRequest $request): RedirectResponse
@@ -30,12 +40,18 @@ class MembershipPlanController extends Controller
         return $this->store($request, 'owner.memberships.index');
     }
 
-    private function index(string $layout, string $indexRoute, string $storeRoute): View
+    private function index(
+        string $layout,
+        string $indexRoute,
+        string $storeRoute,
+        string $membershipModalStylesheet
+    ): View
     {
         return view('admin.memberships.index', [
             'membershipLayout' => $layout,
             'membershipIndexRoute' => $indexRoute,
             'membershipStoreRoute' => $storeRoute,
+            'membershipModalStylesheet' => $membershipModalStylesheet,
             'membershipPlans' => MembershipPlan::query()
                 ->orderByDesc('created_at')
                 ->orderByDesc('id')

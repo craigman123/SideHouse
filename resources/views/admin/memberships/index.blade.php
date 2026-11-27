@@ -4,6 +4,7 @@
 @section('page-title', 'Memberships')
 
 @push('styles')
+    <link rel="stylesheet" href="{{ asset($membershipModalStylesheet) }}?v={{ filemtime(public_path($membershipModalStylesheet)) }}">
     <link rel="stylesheet" href="{{ asset('css/admin/memberships.css') }}?v={{ filemtime(public_path('css/admin/memberships.css')) }}">
 @endpush
 
@@ -20,11 +21,10 @@
 @endphp
 
 @section('content')
-    <section class="memberships-page" aria-labelledby="membershipsHeading">
+    <section class="memberships-page" aria-label="Memberships">
         <div id="flash-data" data-success="{{ session('success') }}"></div>
 
         <header class="memberships-header">
-            <h2 id="membershipsHeading">Memberships</h2>
             <button type="button" class="memberships-button memberships-button-primary" id="openMembershipModal" aria-haspopup="dialog" aria-controls="membershipModal">
                 Add membership
             </button>

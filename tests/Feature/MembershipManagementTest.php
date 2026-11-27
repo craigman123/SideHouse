@@ -54,6 +54,28 @@ class MembershipManagementTest extends TestCase
         $this->assertContains($response->getStatusCode(), [302, 403, 404]);
     }
 
+    private function assertMembershipModalIsClosedAndAssetsAreIncluded(
+        TestResponse $response,
+        string $baseStylesheet
+    ): void {
+        $response
+            ->assertSee(asset($baseStylesheet).'?v='.filemtime(public_path($baseStylesheet)), false)
+            ->assertSee(
+                asset('css/admin/memberships.css').'?v='.filemtime(public_path('css/admin/memberships.css')),
+                false
+            )
+            ->assertSee(
+                asset('js/admin/memberships.js').'?v='.filemtime(public_path('js/admin/memberships.js')),
+                false
+            )
+            ->assertDontSee('<h2 id="membershipsHeading">Memberships</h2>', false);
+
+        $this->assertMatchesRegularExpression(
+            '/<div\b(?=[^>]*\bid="membershipModal")(?=[^>]*\baria-hidden="true")(?=[^>]*\shidden(?:\s|>))[^>]*>/',
+            $response->getContent()
+        );
+    }
+
     public function test_admin_and_owner_can_view_and_create_membership_plans(): void
     {
         $admin = $this->user('admin');
@@ -66,6 +88,10 @@ class MembershipManagementTest extends TestCase
             ->assertSee('role="dialog" aria-modal="true"', false)
             ->assertSee(route('admin.memberships.index'));
         $adminPage->assertSee('href="'.route('admin.memberships.index').'"', false);
+        $this->assertMembershipModalIsClosedAndAssetsAreIncluded(
+            $adminPage,
+            'css/shared/dashboard-base.css'
+        );
 
         $this->post(route('admin.memberships.store'), $this->validPlan('Admin Plan'))
             ->assertRedirect(route('admin.memberships.index'))
@@ -85,6 +111,10 @@ class MembershipManagementTest extends TestCase
             ->assertSee('Memberships')
             ->assertSee('Add membership')
             ->assertSee('href="'.route('owner.memberships.index').'"', false);
+        $this->assertMembershipModalIsClosedAndAssetsAreIncluded(
+            $ownerPage,
+            'css/owner/owner-base.css'
+        );
 
         $this->post(route('owner.memberships.store'), $this->validPlan('Owner Plan'))
             ->assertRedirect(route('owner.memberships.index'))
@@ -135,6 +165,12 @@ class MembershipManagementTest extends TestCase
             foreach ($expectedErrors as $field) {
                 $response->assertSessionHasErrors($field);
             }
+
+            $errorPage = $this->get(route('admin.memberships.index'))->assertOk();
+            $errorPage
+                ->assertSee('class="modal-overlay memberships-modal open"', false)
+                ->assertSee('aria-hidden="false"', false)
+                ->assertSee('role="alert"', false);
         }
 
         $this->assertSame(0, MembershipPlan::query()->count());
