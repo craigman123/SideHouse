@@ -10,7 +10,9 @@
     @endforeach
 @endpush
 
-@section('content')@include('partials.profile.shared-content')@endsection
+@section('content')
+        @include('partials.profile.shared-content')
+@endsection
 
 @push('scripts')
     <script src="{{ asset('js/user/profile.js') }}?v={{ filemtime(public_path('js/user/profile.js')) }}" defer></script>
