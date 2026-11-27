@@ -67,6 +67,33 @@ class ProfilePasswordTest extends TestCase
         }
     }
 
+    public function test_each_role_renders_the_shared_password_modal(): void
+    {
+        foreach (self::ROLE_ROUTES as $role => [$guard, $profileRoute, $passwordRoute]) {
+            $user = $this->user($role);
+
+            $response = $this->signInAs($user, $guard)
+                ->get(route($profileRoute, [], false))
+                ->assertOk()
+                ->assertViewIs('user.profile.profile')
+                ->assertSee('id="profilePasswordModal"', false)
+                ->assertSee('role="dialog" aria-modal="true"', false)
+                ->assertSee('aria-labelledby="profilePasswordModalTitle"', false)
+                ->assertSee('action="'.route($passwordRoute).'"', false)
+                ->assertSee('id="profileCurrentPassword" name="current_password" autocomplete="current-password"', false)
+                ->assertSee('id="profileNewPassword" name="password" autocomplete="new-password"', false)
+                ->assertSee('id="profilePasswordConfirmation" name="password_confirmation" autocomplete="new-password"', false)
+                ->assertSee('id="profilePasswordCancel"', false)
+                ->assertSee('id="profilePasswordSubmit"', false);
+
+            $this->assertSame(
+                3,
+                substr_count($response->getContent(), 'data-password-visibility-toggle'),
+                "{$role} profile should render one visibility toggle per password field."
+            );
+        }
+    }
+
     public function test_each_role_rejects_wrong_current_mismatched_weak_and_unchanged_passwords(): void
     {
         $invalidPayloads = [
