@@ -28,6 +28,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Maintenance\MaintenanceController;
 use App\Http\Controllers\Guest\GuestBookingLookupController;
 use App\Http\Controllers\Admin\MetricsController;
+use App\Http\Controllers\Admin\MembershipPlanController;
 use App\Http\Controllers\Admin\PrivilegedMfaController;
 use App\Http\Controllers\Guest\GuestCreditController;
 use App\Http\Controllers\ProfilePasswordController;
@@ -333,6 +334,11 @@ Route::middleware(['auth', 'admin', 'admin.mfa', 'throttle.admin-management:120,
 
     // Customers
     Route::get('/customers', [CustomerController::class, 'index'])->middleware('owner.page.redirect')->name('admin.customers.index');
+    Route::get('/memberships', [MembershipPlanController::class, 'adminIndex'])
+        ->name('admin.memberships.index');
+    Route::post('/memberships', [MembershipPlanController::class, 'adminStore'])
+        ->middleware('throttle:5,1,membership-plan-store')
+        ->name('admin.memberships.store');
     // Profile
     // NOTE: PUT/DELETE /profile used to be duplicated here as well as in
     // the USER ROUTES group below, using the same route names

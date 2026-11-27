@@ -9,6 +9,7 @@
             ['section' => 'Management', 'label' => 'Bookings', 'icon' => 'bookings', 'route' => 'owner.bookings'],
             ['section' => 'Management', 'label' => 'Courts', 'icon' => 'courts', 'route' => 'owner.courts'],
             ['section' => 'Management', 'label' => 'Configuration', 'icon' => 'configuration', 'route' => 'owner.configuration'],
+            ['section' => 'Management', 'label' => 'Memberships', 'icon' => 'customers', 'route' => 'owner.memberships.index', 'active' => 'owner.memberships.*'],
             ['section' => 'Management', 'label' => 'Profile', 'icon' => 'profile', 'route' => 'owner.profile'],
             ['section' => 'Management', 'label' => 'Equipment Availability', 'icon' => 'equipment', 'route' => 'owner.equipment'],
             ['section' => 'Users', 'label' => 'Customers', 'icon' => 'customers', 'route' => 'owner.customers'],

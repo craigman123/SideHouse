@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Owner\OwnerPageController;
 use App\Http\Controllers\Admin\PrivilegedMfaController;
+use App\Http\Controllers\Admin\MembershipPlanController;
 use App\Http\Controllers\ProfilePasswordController;
 use Illuminate\Support\Facades\Route;
 
@@ -14,6 +15,10 @@ Route::middleware(['auth', 'owner.only', 'admin.mfa', 'throttle.admin-management
         Route::get('/bookings', 'bookings')->name('bookings');
         Route::get('/courts', 'courts')->name('courts');
         Route::get('/configuration', 'configuration')->name('configuration');
+        Route::get('/memberships', [MembershipPlanController::class, 'ownerIndex'])->name('memberships.index');
+        Route::post('/memberships', [MembershipPlanController::class, 'ownerStore'])
+            ->middleware('throttle:5,1,membership-plan-store')
+            ->name('memberships.store');
         Route::get('/profile', 'profile')->name('profile');
         Route::put('/profile', 'updateProfile')->middleware('throttle.admin-management:10,1')->name('profile.update');
         Route::put('/profile/password', [ProfilePasswordController::class, 'update'])

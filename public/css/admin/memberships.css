@@ -1,0 +1,244 @@
+.memberships-page {
+    display: grid;
+    gap: var(--s4);
+    width: 100%;
+    color: var(--text);
+}
+
+.memberships-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--s4);
+}
+
+.memberships-header h2 {
+    margin: 0;
+    color: var(--text);
+    font-size: var(--font-size-h2);
+    font-weight: var(--font-weight-h2);
+}
+
+.memberships-button {
+    display: inline-flex;
+    min-height: 44px;
+    align-items: center;
+    justify-content: center;
+    padding: var(--s2) var(--s4);
+    border: 1px solid transparent;
+    border-radius: var(--r-md);
+    font: inherit;
+    font-size: var(--font-size-button);
+    font-weight: var(--font-weight-button);
+    cursor: pointer;
+    transition: background-color 160ms ease, border-color 160ms ease, transform 160ms ease;
+}
+
+.memberships-button:focus-visible,
+.memberships-modal-box :focus-visible,
+.memberships-table-scroll:focus-visible {
+    outline: 2px solid var(--brand-hover);
+    outline-offset: 3px;
+}
+
+.memberships-button-primary {
+    background: var(--brand);
+    color: var(--on-brand, var(--text));
+}
+
+.memberships-button-primary:hover:not(:disabled) {
+    background: var(--brand-hover);
+}
+
+.memberships-button-secondary {
+    border-color: var(--border);
+    background: var(--surface-2);
+    color: var(--text);
+}
+
+.memberships-button-secondary:hover:not(:disabled) {
+    border-color: var(--text-muted);
+}
+
+.memberships-button:disabled {
+    cursor: wait;
+    opacity: 0.7;
+}
+
+.memberships-table-wrap {
+    min-width: 0;
+    overflow: hidden;
+    border: 1px solid transparent;
+    border-radius: var(--r-lg);
+    background-image: linear-gradient(var(--surface), var(--surface)), var(--brand-grad);
+    background-origin: border-box;
+    background-clip: padding-box, border-box;
+    box-shadow: var(--shadow-card);
+}
+
+.memberships-empty {
+    margin: 0;
+    padding: var(--s6);
+    color: var(--text-muted);
+    text-align: center;
+}
+
+.memberships-table-scroll {
+    width: 100%;
+    overflow-x: auto;
+}
+
+.memberships-table {
+    width: 100%;
+    border-collapse: collapse;
+    color: var(--text);
+    text-align: left;
+}
+
+.memberships-table th,
+.memberships-table td {
+    padding: var(--s3) var(--s4);
+    border-bottom: 1px solid var(--border);
+    vertical-align: middle;
+}
+
+.memberships-table th {
+    color: var(--text-muted);
+    font-size: var(--font-size-small);
+    font-weight: var(--font-weight-button);
+}
+
+.memberships-table tbody tr:last-child td {
+    border-bottom: 0;
+}
+
+.memberships-money {
+    white-space: nowrap;
+}
+
+.memberships-modal {
+    z-index: 1200;
+}
+
+html.admin-layout-shell .memberships-modal-box,
+html.owner-layout-shell .memberships-modal-box {
+    width: min(100%, 720px);
+}
+
+.memberships-modal-box .modal-header h2 {
+    margin: 0;
+    color: var(--text);
+    font-size: var(--font-size-h3);
+    font-weight: var(--font-weight-h3);
+}
+
+.memberships-form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--s4);
+}
+
+.memberships-field {
+    display: grid;
+    align-content: start;
+    gap: var(--s2);
+    min-width: 0;
+}
+
+.memberships-field label {
+    color: var(--text);
+    font-size: var(--font-size-small);
+    font-weight: var(--font-weight-button);
+}
+
+.memberships-field :is(input, select, textarea) {
+    box-sizing: border-box;
+    width: 100%;
+    min-height: 44px;
+    padding: var(--s2) var(--s3);
+    border: 1px solid var(--border);
+    border-radius: var(--r-sm);
+    background: var(--surface-2);
+    color: var(--text);
+    font: inherit;
+}
+
+.memberships-field textarea {
+    min-height: 96px;
+    resize: vertical;
+}
+
+.memberships-field :is(input, select, textarea)[aria-invalid="true"] {
+    border-color: var(--danger);
+}
+
+.memberships-discount-fields {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--s3);
+}
+
+.memberships-discount-value {
+    position: relative;
+}
+
+.memberships-discount-value input {
+    padding-right: var(--s7);
+}
+
+.memberships-discount-value span {
+    position: absolute;
+    top: 50%;
+    right: var(--s3);
+    color: var(--text-muted);
+    transform: translateY(-50%);
+}
+
+.memberships-field-error {
+    color: var(--danger);
+    font-size: var(--font-size-small);
+}
+
+.memberships-form-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: var(--s3);
+    margin-top: var(--s5);
+}
+
+.memberships-page .toast-container {
+    position: fixed;
+    z-index: 1300;
+    right: var(--s4);
+    bottom: var(--s4);
+}
+
+@media (max-width: 640px) {
+    .memberships-header {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .memberships-form-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 420px) {
+    .memberships-modal .modal-box {
+        padding: var(--s4);
+    }
+
+    .memberships-discount-fields {
+        grid-template-columns: 1fr;
+    }
+
+    .memberships-form-actions {
+        flex-direction: column-reverse;
+    }
+
+    .memberships-form-actions .memberships-button {
+        width: 100%;
+    }
+}
