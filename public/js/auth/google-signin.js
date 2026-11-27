@@ -5,7 +5,89 @@ document.addEventListener('DOMContentLoaded', function () {
 
     var clientId = btnEl.dataset.googleClientId;
     var authUrl = btnEl.dataset.googleAuthUrl;
-    if (!clientId || !authUrl) return;
+    var authBox = btnEl.closest('.auth-box');
+    var errorMessage = authBox ? authBox.querySelector('.google-signin-error') : null;
+    var gsiScript = document.querySelector('script[src^="https://accounts.google.com/gsi/client"]');
+    var googleWaitTimer = null;
+    var googleInitializationStarted = false;
+    var googleLoadFailed = false;
+
+    function clearGoogleLoadWait() {
+        if (googleWaitTimer) {
+            clearInterval(googleWaitTimer);
+            googleWaitTimer = null;
+        }
+        if (gsiScript) {
+            gsiScript.removeEventListener('load', handleGoogleScriptLoad);
+            gsiScript.removeEventListener('error', handleGoogleScriptError);
+        }
+    }
+
+    function showGoogleLoadFailure(reason) {
+        if (googleLoadFailed) return;
+        googleLoadFailed = true;
+        clearGoogleLoadWait();
+        if (errorMessage) errorMessage.hidden = false;
+        console.error('Google sign-in could not be initialized:', reason);
+    }
+
+    function isGoogleIdentityServicesReady() {
+        return Boolean(window.google && window.google.accounts && window.google.accounts.id);
+    }
+
+    function initializeAndRenderGoogleButton() {
+        if (googleInitializationStarted || !isGoogleIdentityServicesReady()) return;
+        googleInitializationStarted = true;
+        clearGoogleLoadWait();
+
+        try {
+            window.google.accounts.id.initialize({
+                client_id: clientId,
+                callback: handleGoogleCredential,
+                auto_select: false,
+            });
+            window.google.accounts.id.renderButton(btnEl, {
+                type: 'icon',
+                theme: 'outline',
+                size: 'large',
+                shape: 'circle',
+            });
+        } catch (error) {
+            showGoogleLoadFailure(error);
+        }
+    }
+
+    function handleGoogleScriptLoad() {
+        initializeAndRenderGoogleButton();
+    }
+
+    function handleGoogleScriptError() {
+        showGoogleLoadFailure(new Error('Google Identity Services script failed to load.'));
+    }
+
+    if (!clientId || !authUrl) {
+        showGoogleLoadFailure(new Error('Google sign-in configuration is missing.'));
+        return;
+    }
+
+    if (gsiScript) {
+        gsiScript.addEventListener('load', handleGoogleScriptLoad);
+        gsiScript.addEventListener('error', handleGoogleScriptError);
+    }
+
+    if (isGoogleIdentityServicesReady()) {
+        initializeAndRenderGoogleButton();
+    } else {
+        var attempts = 0;
+        googleWaitTimer = setInterval(function () {
+            attempts += 1;
+            if (isGoogleIdentityServicesReady()) {
+                initializeAndRenderGoogleButton();
+            } else if (attempts >= 100) {
+                showGoogleLoadFailure(new Error('Google Identity Services did not load within 10 seconds.'));
+            }
+        }, 100);
+    }
 
     function getCookie(name) {
         var match = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)'));
@@ -157,32 +239,4 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
-    function render() {
-        window.google.accounts.id.initialize({
-            client_id: clientId,
-            callback: handleGoogleCredential,
-            auto_select: false,
-        });
-        window.google.accounts.id.renderButton(document.getElementById('googleSignInBtn'), {
-            type: 'icon',
-            theme: 'outline',
-            size: 'large',
-            shape: 'circle',
-        });
-    }
-
-    if (window.google && window.google.accounts && window.google.accounts.id) {
-        render();
-    } else {
-        var attempts = 0;
-        var wait = setInterval(function () {
-            attempts += 1;
-            if (window.google && window.google.accounts && window.google.accounts.id) {
-                clearInterval(wait);
-                render();
-            } else if (attempts > 40) {
-                clearInterval(wait);
-            }
-        }, 250);
-    }
 });

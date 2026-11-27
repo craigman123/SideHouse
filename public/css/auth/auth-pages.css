@@ -74,9 +74,8 @@ html[data-theme="light"] .auth-page .auth-bubble-layer > .bg-particle {
 }
 
 .auth-page .google-caption {
-    display: flex;
-    align-items: center;
-    gap: var(--s3);
+    display: flex;      
+    align-items: center;    
     margin: var(--s3) 0 var(--s2);
     color: var(--text-muted);
     font-size: var(--font-size-small);
@@ -84,8 +83,27 @@ html[data-theme="light"] .auth-page .auth-bubble-layer > .bg-particle {
     text-align: center;
 }
 
-.auth-page .google-caption::before,
-.auth-page .google-caption::after {
+.auth-page .google-signin-error {
+    margin: 0 0 var(--s2);
+    color: var(--text-muted);
+    font-size: var(--font-size-small);
+    text-align: center;
+}
+
+.auth-page .auth-divider {
+    display: flex;
+    align-items: center;
+    gap: var(--s3);
+    margin: var(--s4) 0;
+    color: var(--text-muted);
+    font-size: var(--font-size-small);
+    font-weight: var(--font-weight-button);
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+}
+
+.auth-page .auth-divider::before,
+.auth-page .auth-divider::after {
     content: '';
     flex: 1;
     height: 1px;
@@ -265,8 +283,6 @@ html[data-theme="light"] .auth-page .auth-bubble-layer > .bg-particle {
 }
 .auth-page .auth-footer a:hover,
 .auth-page .auth-footer-back a:hover { color: var(--brand-hover); }
-.auth-page .auth-divider { color: var(--text-muted); }
-
 .auth-page .toggle-password {
     border: 1px solid transparent;
     border-radius: var(--r-sm);

@@ -238,12 +238,23 @@ class MultiGuardAuthLanesTest extends TestCase
             ->assertSee('data-mfa-setup-init-url="'.route('mfa.setup.init').'"', false)
             ->assertSee('data-mfa-enable-url="'.route('mfa.enable').'"', false)
             ->assertSee('data-mfa-verify-url="'.route('mfa.verify').'"', false)
-            ->assertSee('<p class="google-caption">or continue with</p>', false)
+            ->assertSee('<p class="google-caption">Continue with Google</p>', false)
+            ->assertSee('Google sign-in couldn\'t load. Refresh the page.', false)
             ->assertSee('<div class="google-slot" role="group" aria-label="Sign in with Google">', false)
             ->assertSee('data-button-text="continue_with"', false)
-            ->assertDontSee('class="auth-divider"', false)
+            ->assertSee('<div class="auth-divider"><span>or</span></div>', false)
             ->assertSee('Register');
 
+        $loginHtml = $page->getContent();
+        $captionPosition = strpos($loginHtml, '<p class="google-caption">Continue with Google</p>');
+        $slotPosition = strpos($loginHtml, '<div class="google-slot"');
+        $dividerPosition = strpos($loginHtml, '<div class="auth-divider"><span>or</span></div>');
+        $formPosition = strpos($loginHtml, '<form');
+        $this->assertLessThan($slotPosition, $captionPosition);
+        $this->assertLessThan($dividerPosition, $slotPosition);
+        $this->assertLessThan($formPosition, $dividerPosition);
+        $this->assertMatchesRegularExpression('/href="[^"]*css\/auth\/auth-pages\.css\?v=\d+"/', $loginHtml);
+        $this->assertMatchesRegularExpression('/src="[^"]*js\/auth\/google-signin\.js\?v=\d+"/', $loginHtml);
         $this->assertSame(1, substr_count($page->getContent(), 'id="login-form"'));
         $this->assertSame(1, substr_count($page->getContent(), 'data-google-auth-url='));
         $this->assertSame(1, substr_count($page->getContent(), 'id="googleSignInBtn"'));
@@ -255,10 +266,21 @@ class MultiGuardAuthLanesTest extends TestCase
         }
 
         $register = $this->get('/register')->assertOk()
-            ->assertSee('<p class="google-caption">or sign up with</p>', false)
+            ->assertSee('<p class="google-caption">Sign up with Google</p>', false)
+            ->assertSee('Google sign-in couldn\'t load. Refresh the page.', false)
             ->assertSee('<div class="google-slot" role="group" aria-label="Sign in with Google">', false)
             ->assertSee('data-button-text="signup_with"', false)
-            ->assertDontSee('class="auth-divider"', false);
+            ->assertSee('<div class="auth-divider"><span>or</span></div>', false);
+        $registerHtml = $register->getContent();
+        $registerCaptionPosition = strpos($registerHtml, '<p class="google-caption">Sign up with Google</p>');
+        $registerSlotPosition = strpos($registerHtml, '<div class="google-slot"');
+        $registerDividerPosition = strpos($registerHtml, '<div class="auth-divider"><span>or</span></div>');
+        $registerFormPosition = strpos($registerHtml, '<form');
+        $this->assertLessThan($registerSlotPosition, $registerCaptionPosition);
+        $this->assertLessThan($registerDividerPosition, $registerSlotPosition);
+        $this->assertLessThan($registerFormPosition, $registerDividerPosition);
+        $this->assertMatchesRegularExpression('/href="[^"]*css\/auth\/auth-pages\.css\?v=\d+"/', $registerHtml);
+        $this->assertMatchesRegularExpression('/src="[^"]*js\/auth\/google-signin\.js\?v=\d+"/', $registerHtml);
         $this->assertSame(1, substr_count($register->getContent(), 'id="googleSignInBtn"'));
         $this->get('/admin/register')->assertNotFound();
         $this->post('/admin/register')->assertNotFound();

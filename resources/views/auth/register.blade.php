@@ -10,7 +10,7 @@
     <link rel="stylesheet" href="{{ asset('css/fonts.css') }}">
     <link rel="stylesheet" href="{{ asset('css/app.css') }}">
     <link rel="stylesheet" href="{{ asset('css/guest/theme-toggle.css') }}">
-    <link rel="stylesheet" href="{{ asset('css/auth/auth-pages.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/auth/auth-pages.css') }}?v={{ filemtime(public_path('css/auth/auth-pages.css')) }}">
     <link rel="icon" type="image/png" href="{{ asset('images/tab_icon.png') }}">
     <script src="{{ asset('js/app.js') }}" defer></script>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
@@ -34,7 +34,8 @@
             <h1>Create your <span class="auth-heading-accent">account</span></h1>
             <p class="subtitle">Create an account to manage bookings</p>
 
-            <p class="google-caption">or sign up with</p>
+            <p class="google-caption">Sign up with Google</p>
+            <p class="google-signin-error" role="status" hidden>Google sign-in couldn't load. Refresh the page.</p>
             <div class="google-signin-shell">
                 <div class="google-slot" role="group" aria-label="Sign in with Google">
                     <div
@@ -47,6 +48,7 @@
                 </div>
                 <span class="google-loading-status" aria-live="polite" aria-atomic="true"></span>
             </div>
+            <div class="auth-divider"><span>or</span></div>
 
             <form method="POST" action="{{ route('register.submit') }}">
                 @csrf
@@ -86,7 +88,7 @@
     </div>
 
     <script src="{{ asset('js/payment/register-form.js') }}" defer></script>
-    <script src="{{ asset('js/auth/google-signin.js') }}" defer></script>
+    <script src="{{ asset('js/auth/google-signin.js') }}?v={{ filemtime(public_path('js/auth/google-signin.js')) }}" defer></script>
 
     <div id="flashData"
         data-error="{{ $errors->any() ? $errors->first() : '' }}"

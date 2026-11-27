@@ -11,7 +11,7 @@
     <link rel="stylesheet" href="{{ asset('css/app.css') }}">
     <link rel="stylesheet" href="{{ asset('css/auth/mfa-modal.css') }}">
     <link rel="stylesheet" href="{{ asset('css/guest/theme-toggle.css') }}">
-    <link rel="stylesheet" href="{{ asset('css/auth/auth-pages.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/auth/auth-pages.css') }}?v={{ filemtime(public_path('css/auth/auth-pages.css')) }}">
     <link rel="icon" type="image/png" href="{{ asset('images/tab_icon.png') }}">
     <script src="{{ asset('js/app.js') }}" defer></script>
     <script src="{{ asset('js/auth/mfa-modal.js') }}" defer></script>
@@ -36,7 +36,8 @@
             <h1>Log in to your <span class="auth-heading-accent">account</span></h1>
             <p class="subtitle">{{ $loginLane === 'customer' ? 'Log in to manage customer bookings' : 'Log in to the '.ucfirst($loginLane).' dashboard' }}</p>
 
-            <p class="google-caption">or continue with</p>
+            <p class="google-caption">Continue with Google</p>
+            <p class="google-signin-error" role="status" hidden>Google sign-in couldn't load. Refresh the page.</p>
             <div class="google-signin-shell">
                 <div class="google-slot" role="group" aria-label="Sign in with Google">
                     <div
@@ -49,6 +50,7 @@
                 </div>
                 <span class="google-loading-status" aria-live="polite" aria-atomic="true"></span>
             </div>
+            <div class="auth-divider"><span>or</span></div>
 
             <form
                 method="POST"
@@ -136,7 +138,7 @@
         </div>
     </div>
 
-    <script src="{{ asset('js/auth/google-signin.js') }}" defer></script>
+    <script src="{{ asset('js/auth/google-signin.js') }}?v={{ filemtime(public_path('js/auth/google-signin.js')) }}" defer></script>
 
     <div id="flashData"
         data-error="{{ $errors->any() ? $errors->first() : '' }}"
