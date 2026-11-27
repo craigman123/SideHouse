@@ -30,42 +30,75 @@
             </button>
         </header>
 
-        <div class="memberships-table-wrap">
-            @if ($membershipPlans->isEmpty())
-                <p class="memberships-empty">No memberships have been created yet.</p>
-            @else
-                <div class="memberships-table-scroll">
-                    <table class="memberships-table">
-                        <thead>
-                            <tr>
-                                <th scope="col">Title</th>
-                                <th scope="col">Price</th>
-                                <th scope="col">Discount</th>
-                                <th scope="col">Players</th>
-                                <th scope="col">Expiry</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach ($membershipPlans as $membershipPlan)
-                                <tr>
-                                    <td>{{ $membershipPlan->name }}</td>
-                                    <td class="memberships-money">₱{{ number_format((float) $membershipPlan->price, 2) }}</td>
-                                    <td class="memberships-money">
-                                        @if ($membershipPlan->discount_type === 'percentage')
-                                            {{ number_format((float) $membershipPlan->discount_value, 2) }}%
-                                        @else
-                                            ₱{{ number_format((float) $membershipPlan->discount_value, 2) }}
+        @if ($membershipPlans->isEmpty())
+            <p class="memberships-empty">No memberships have been created yet.</p>
+        @else
+            <div class="memberships-grid">
+                @foreach ($membershipPlans as $membershipPlan)
+                    @php
+                        $currentMembersCount = (int) $membershipPlan->current_members_count;
+                    @endphp
+                    <article class="membership-card">
+                        <div class="membership-card-qr">
+                            <img
+                                src="data:image/svg+xml;base64,{{ base64_encode($membershipPlan->qr_svg) }}"
+                                alt="QR code for {{ $membershipPlan->name }}"
+                                width="256"
+                                height="256"
+                            >
+                        </div>
+
+                        <div class="membership-card-heading">
+                            <h2 class="membership-card-title">{{ $membershipPlan->name }}</h2>
+                            <p class="membership-card-description">{{ $membershipPlan->description ?: 'No description' }}</p>
+                        </div>
+
+                        <dl class="membership-card-details">
+                            <div>
+                                <dt>Price</dt>
+                                <dd>₱{{ number_format((float) $membershipPlan->price, 2) }}</dd>
+                            </div>
+                            <div>
+                                <dt>Discount</dt>
+                                <dd>
+                                    @if ($membershipPlan->discount_type === 'percentage')
+                                        {{ number_format((float) $membershipPlan->discount_value, 2) }}%
+                                    @else
+                                        <span>Fixed price:</span> ₱{{ number_format((float) $membershipPlan->discount_value, 2) }}
+                                    @endif
+                                </dd>
+                            </div>
+                            <div>
+                                <dt>Players</dt>
+                                <dd>{{ $membershipPlan->players }}</dd>
+                            </div>
+                            <div>
+                                <dt>Expiry</dt>
+                                <dd>{{ $membershipPlan->expiry_date?->format('M j, Y') ?? 'No expiry' }}</dd>
+                            </div>
+                        </dl>
+
+                        <section class="membership-card-members" aria-label="Membership members">
+                            <h3>Members <span>({{ $currentMembersCount }})</span></h3>
+                            @if ($currentMembersCount > 0)
+                                <ul>
+                                    @foreach ($membershipPlan->memberships as $membership)
+                                        @if ($membership->user)
+                                            <li>{{ $membership->user->name }}</li>
                                         @endif
-                                    </td>
-                                    <td>{{ $membershipPlan->players }}</td>
-                                    <td>{{ $membershipPlan->expiry_date?->format('M j, Y') ?? 'No expiry' }}</td>
-                                </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
-                </div>
-            @endif
-        </div>
+                                    @endforeach
+                                    @if ($currentMembersCount > $membershipPlan->memberships->count())
+                                        <li class="membership-card-more">+{{ $currentMembersCount - $membershipPlan->memberships->count() }} more</li>
+                                    @endif
+                                </ul>
+                            @else
+                                <p>No members yet</p>
+                            @endif
+                        </section>
+                    </article>
+                @endforeach
+            </div>
+        @endif
 
         <div class="modal-overlay memberships-modal{{ $membershipModalHasErrors ? ' open' : '' }}" id="membershipModal" role="presentation" aria-hidden="{{ $membershipModalHasErrors ? 'false' : 'true' }}" @unless ($membershipModalHasErrors) hidden @endunless>
             <section class="modal-box memberships-modal-box" role="dialog" aria-modal="true" aria-labelledby="membershipModalTitle">

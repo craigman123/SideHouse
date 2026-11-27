@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\Membership;
 use App\Models\MembershipPlan;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -70,6 +71,7 @@ class MembershipManagementTest extends TestCase
             )
             ->assertSee('id="membershipSummaryModal"', false)
             ->assertSee('id="membershipSummaryQr"', false)
+            ->assertDontSee('<table', false)
             ->assertSee('Summary')
             ->assertSee('id="membershipSummaryExpiry">No expiry</dd>', false)
             ->assertSee('Date created')
@@ -113,6 +115,19 @@ class MembershipManagementTest extends TestCase
         $this->assertSame(0, $adminPlan->discount_percent);
         $this->assertSame(4, $adminPlan->players);
 
+        $adminCards = $this->get(route('admin.memberships.index'))
+            ->assertOk()
+            ->assertSee('class="membership-card"', false)
+            ->assertSee('class="membership-card-qr"', false)
+            ->assertSee('data:image/svg+xml;base64,', false)
+            ->assertSee('Admin Plan')
+            ->assertSee('₱1,250.00')
+            ->assertSee('15.00%')
+            ->assertSee('Players')
+            ->assertSee($adminPlan->expiry_date->format('M j, Y'))
+            ->assertSee('No members yet');
+        $adminCards->assertDontSee('<table', false);
+
         $owner = $this->user('owner');
         $ownerPage = $this->signIn($owner)
             ->get(route('owner.memberships.index'))
@@ -132,6 +147,19 @@ class MembershipManagementTest extends TestCase
         $ownerPlan = MembershipPlan::query()->where('name', 'Owner Plan')->firstOrFail();
         $ownerPage->assertSee('Admin Plan');
         $this->assertSame('Owner Plan', $ownerPlan->name);
+
+        $this->get(route('owner.memberships.index'))
+            ->assertOk()
+            ->assertSee('class="membership-card"', false)
+            ->assertSee('class="membership-card-qr"', false)
+            ->assertSee('data:image/svg+xml;base64,', false)
+            ->assertSee('Owner Plan')
+            ->assertSee('₱1,250.00')
+            ->assertSee('15.00%')
+            ->assertSee('Players')
+            ->assertSee($ownerPlan->expiry_date->format('M j, Y'))
+            ->assertSee('No members yet')
+            ->assertDontSee('<table', false);
     }
 
     public function test_staff_and_customers_cannot_view_or_create_membership_plans(): void
@@ -202,20 +230,23 @@ class MembershipManagementTest extends TestCase
 
         $this->get(route('admin.memberships.index'))
             ->assertOk()
-            ->assertSee('No expiry');
+            ->assertSee('class="membership-card"', false)
+            ->assertSee('No expiry')
+            ->assertSee('No members yet');
     }
 
     public function test_admin_and_owner_can_prepare_a_receipt_summary_without_saving(): void
     {
         foreach ([
-            ['admin', 'admin.memberships.summary'],
-            ['owner', 'owner.memberships.summary'],
-        ] as [$role, $route]) {
+            ['admin', 'admin.memberships.summary', 'admin.memberships.store', 'admin.memberships.index'],
+            ['owner', 'owner.memberships.summary', 'owner.memberships.store', 'owner.memberships.index'],
+        ] as [$role, $summaryRoute, $storeRoute, $indexRoute]) {
             $plan = $this->validPlan(ucfirst($role).' Receipt Plan');
             unset($plan['expiry_date']);
+            $existingPlanCount = MembershipPlan::query()->count();
 
             $response = $this->signIn($this->user($role))
-                ->postJson(route($route), $plan)
+                ->postJson(route($summaryRoute), $plan)
                 ->assertOk()
                 ->assertJsonPath('membership.title', ucfirst($role).' Receipt Plan')
                 ->assertJsonPath('membership.description', $plan['description'])
@@ -227,8 +258,80 @@ class MembershipManagementTest extends TestCase
                 ->assertJsonPath('membership.created_at', now()->format('M j, Y'));
 
             $this->assertStringContainsString('<svg', $response->json('qr_svg'));
-            $this->assertSame(0, MembershipPlan::query()->count());
+            $this->assertSame($existingPlanCount, MembershipPlan::query()->count());
+
+            $this->post(route($storeRoute), $plan)
+                ->assertRedirect(route($indexRoute));
+            $cardResponse = $this->get(route($indexRoute))->assertOk();
+            $this->assertSame(1, preg_match(
+                '/<img\s+src="data:image\/svg\+xml;base64,([^"]+)"/',
+                $cardResponse->getContent(),
+                $matches
+            ));
+            $this->assertSame($response->json('qr_svg'), base64_decode($matches[1], true));
         }
+    }
+
+    public function test_membership_cards_show_current_members_with_a_capped_name_list(): void
+    {
+        $plan = $this->validPlan('Members Plan');
+        unset($plan['expiry_date']);
+        $this->signIn($this->user('owner'))
+            ->post(route('owner.memberships.store'), $plan)
+            ->assertRedirect(route('owner.memberships.index'));
+        $membershipPlan = MembershipPlan::query()->where('name', 'Members Plan')->firstOrFail();
+
+        for ($index = 1; $index <= 6; $index++) {
+            $member = $this->user('user');
+            $member->update([
+                'name' => "Holder {$index}",
+                'email' => "holder{$index}@example.test",
+                'phone_number' => "555000{$index}",
+            ]);
+
+            Membership::create([
+                'user_id' => $member->user_id,
+                'membership_plan_id' => $membershipPlan->id,
+                'start_date' => today()->subDays($index)->toDateString(),
+                'expiry_date' => today()->addMonth()->toDateString(),
+                'status' => 'active',
+            ]);
+        }
+
+        $expiredMember = $this->user('user');
+        $expiredMember->update(['name' => 'Expired Holder']);
+        Membership::create([
+            'user_id' => $expiredMember->user_id,
+            'membership_plan_id' => $membershipPlan->id,
+            'start_date' => today()->subMonths(2)->toDateString(),
+            'expiry_date' => today()->subDay()->toDateString(),
+            'status' => 'expired',
+        ]);
+
+        $page = $this->get(route('owner.memberships.index'))
+            ->assertOk()
+            ->assertSee('Members')
+            ->assertSee('(6)')
+            ->assertSee('Holder 1')
+            ->assertSee('Holder 2')
+            ->assertSee('Holder 3')
+            ->assertSee('Holder 4')
+            ->assertSee('+2 more')
+            ->assertDontSee('Holder 5')
+            ->assertDontSee('Holder 6')
+            ->assertDontSee('Expired Holder')
+            ->assertDontSee($member->email);
+
+        $page->assertDontSee('phone_number');
+
+        $this->signIn($this->user('admin'))
+            ->get(route('admin.memberships.index'))
+            ->assertOk()
+            ->assertSee('Holder 1')
+            ->assertSee('(6)')
+            ->assertSee('+2 more')
+            ->assertDontSee('Holder 5')
+            ->assertDontSee($member->email);
     }
 
     public function test_membership_summary_validates_before_generating_a_receipt(): void

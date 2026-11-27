@@ -65,15 +65,12 @@
     opacity: 0.7;
 }
 
-.memberships-table-wrap {
-    min-width: 0;
-    overflow: hidden;
-    border: 1px solid transparent;
-    border-radius: var(--r-lg);
-    background-image: linear-gradient(var(--surface), var(--surface)), var(--brand-grad);
-    background-origin: border-box;
-    background-clip: padding-box, border-box;
-    box-shadow: var(--shadow-card);
+.memberships-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-auto-rows: 1fr;
+    align-items: stretch;
+    gap: var(--s4);
 }
 
 .memberships-empty {
@@ -83,37 +80,120 @@
     text-align: center;
 }
 
-.memberships-table-scroll {
-    width: 100%;
-    overflow-x: auto;
-}
-
-.memberships-table {
-    width: 100%;
-    border-collapse: collapse;
+.membership-card {
+    display: flex;
+    box-sizing: border-box;
+    min-width: 0;
+    height: 100%;
+    flex-direction: column;
+    gap: var(--s4);
+    padding: var(--s4);
+    border: 1px solid transparent;
+    border-radius: var(--r-lg);
+    background-image: linear-gradient(var(--surface), var(--surface)), var(--brand-grad);
+    background-origin: border-box;
+    background-clip: padding-box, border-box;
     color: var(--text);
-    text-align: left;
+    box-shadow: var(--shadow-card);
 }
 
-.memberships-table th,
-.memberships-table td {
-    padding: var(--s3) var(--s4);
-    border-bottom: 1px solid var(--border);
-    vertical-align: middle;
+.membership-card-qr {
+    display: flex;
+    justify-content: center;
+    min-width: 0;
 }
 
-.memberships-table th {
+.membership-card-qr img {
+    display: block;
+    width: 208px;
+    max-width: 100%;
+    height: auto;
+    aspect-ratio: 1;
+    object-fit: contain;
+}
+
+.membership-card-heading {
+    display: grid;
+    gap: var(--s2);
+    min-width: 0;
+}
+
+.membership-card-title {
+    margin: 0;
+    color: var(--text);
+    font-size: var(--font-size-h3);
+    font-weight: var(--font-weight-h3);
+    overflow-wrap: anywhere;
+}
+
+.membership-card-description {
+    display: -webkit-box;
+    margin: 0;
+    overflow: hidden;
     color: var(--text-muted);
+    font-size: var(--font-size-body);
+    line-height: var(--line-height-body);
+    overflow-wrap: anywhere;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+}
+
+.membership-card-details {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--s3);
+    margin: 0;
+}
+
+.membership-card-details div {
+    min-width: 0;
+}
+
+.membership-card-details dt {
+    color: var(--text-muted);
+    font-size: var(--font-size-small);
+}
+
+.membership-card-details dd {
+    margin: var(--s1) 0 0;
+    color: var(--text);
+    font-weight: var(--font-weight-button);
+    overflow-wrap: anywhere;
+}
+
+.membership-card-members {
+    margin-top: auto;
+    padding-top: var(--s3);
+    border-top: 1px solid var(--border);
+}
+
+.membership-card-members h3 {
+    margin: 0 0 var(--s2);
+    color: var(--text);
     font-size: var(--font-size-small);
     font-weight: var(--font-weight-button);
 }
 
-.memberships-table tbody tr:last-child td {
-    border-bottom: 0;
+.membership-card-members h3 span,
+.membership-card-more {
+    color: var(--text-muted);
 }
 
-.memberships-money {
-    white-space: nowrap;
+.membership-card-members ul {
+    display: grid;
+    gap: var(--s1);
+    margin: 0;
+    padding-left: var(--s5);
+}
+
+.membership-card-members li {
+    color: var(--text);
+    overflow-wrap: anywhere;
+}
+
+.membership-card-members p {
+    margin: 0;
+    color: var(--text-muted);
 }
 
 .memberships-modal {
@@ -317,12 +397,26 @@ html.owner-layout-shell .memberships-summary-box {
     }
 }
 
+@media (max-width: 1024px) {
+    .memberships-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
 @media (max-width: 420px) {
     .memberships-modal .modal-box {
         padding: var(--s4);
     }
 
     .memberships-discount-fields {
+        grid-template-columns: 1fr;
+    }
+
+    .memberships-grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .membership-card-details {
         grid-template-columns: 1fr;
     }
 

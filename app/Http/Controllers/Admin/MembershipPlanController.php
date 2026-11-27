@@ -8,6 +8,7 @@ use App\Models\MembershipPlan;
 use App\Support\QrCodeGenerator;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Collection;
 use Illuminate\View\View;
 
 class MembershipPlanController extends Controller
@@ -68,11 +69,46 @@ class MembershipPlanController extends Controller
             'membershipStoreRoute' => $storeRoute,
             'membershipSummaryRoute' => $summaryRoute,
             'membershipModalStylesheet' => $membershipModalStylesheet,
-            'membershipPlans' => MembershipPlan::query()
-                ->orderByDesc('created_at')
-                ->orderByDesc('id')
-                ->get(),
+            'membershipPlans' => $this->membershipPlans(),
         ]);
+    }
+
+    private function membershipPlans(): Collection
+    {
+        $today = today()->toDateString();
+
+        return MembershipPlan::query()
+            ->withCount(['memberships as current_members_count' => function ($query) use ($today) {
+                $query->where('status', 'active')
+                    ->where('expiry_date', '>=', $today)
+                    ->whereHas('user');
+            }])
+            ->with(['memberships' => function ($query) use ($today) {
+                $query->select(['id', 'membership_plan_id', 'user_id', 'start_date', 'expiry_date', 'status'])
+                    ->where('status', 'active')
+                    ->where('expiry_date', '>=', $today)
+                    ->whereHas('user')
+                    ->with('user:user_id,name')
+                    ->orderByDesc('start_date')
+                    ->orderByDesc('id')
+                    ->limit(4);
+            }])
+            ->orderByDesc('created_at')
+            ->orderByDesc('id')
+            ->get()
+            ->map(function (MembershipPlan $membershipPlan) {
+                $membershipPlan->setAttribute('qr_svg', QrCodeGenerator::svg($this->qrPayload([
+                    'title' => $membershipPlan->name,
+                    'description' => $membershipPlan->description ?? '',
+                    'price' => $membershipPlan->price,
+                    'discount_type' => $membershipPlan->discount_type,
+                    'discount_value' => $membershipPlan->discount_value,
+                    'players' => $membershipPlan->players,
+                    'expiry_date' => $membershipPlan->expiry_date?->toDateString(),
+                ]), 256));
+
+                return $membershipPlan;
+            });
     }
 
     private function summary(StoreMembershipPlanRequest $request): JsonResponse
@@ -89,7 +125,16 @@ class MembershipPlanController extends Controller
             'expiry_date' => $expiryDate,
             'created_at' => now()->format('M j, Y'),
         ];
-        $qrPayload = json_encode([
+
+        return response()->json([
+            'membership' => $membership,
+            'qr_svg' => QrCodeGenerator::svg($this->qrPayload($membership), 256),
+        ]);
+    }
+
+    private function qrPayload(array $membership): string
+    {
+        return json_encode([
             'title' => $membership['title'],
             'description' => $membership['description'],
             'price' => $membership['price'],
@@ -98,11 +143,6 @@ class MembershipPlanController extends Controller
             'players' => $membership['players'],
             'expiry_date' => $membership['expiry_date'],
         ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
-
-        return response()->json([
-            'membership' => $membership,
-            'qr_svg' => QrCodeGenerator::svg($qrPayload, 256),
-        ]);
     }
 
     private function store(StoreMembershipPlanRequest $request, string $indexRoute): RedirectResponse
