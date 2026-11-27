@@ -13,7 +13,7 @@
     <link rel="stylesheet" href="{{ asset('css/auth/auth-pages.css') }}">
     <link rel="icon" type="image/png" href="{{ asset('images/tab_icon.png') }}">
     <script src="{{ asset('js/app.js') }}" defer></script>
-    <script src="{{ asset('js/shared/google-button-renderer.js') }}" defer></script>
+    <script src="{{ asset('js/shared/google-button-renderer.js') }}?v={{ filemtime(public_path('js/shared/google-button-renderer.js')) }}" defer></script>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 <body class="auth-page">

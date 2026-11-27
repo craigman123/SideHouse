@@ -76,7 +76,7 @@ html[data-theme="light"] .auth-page .auth-bubble-layer > .bg-particle {
     margin: 0 auto var(--s1);
 }
 
-.auth-page .google-btn-wrap { width: 100%; min-height: 44px; margin: 0; }
+.auth-page .google-btn-wrap { width: 100%; min-height: var(--google-button-height, 40px); margin: 0; }
 
 .auth-page .google-loading-status {
     position: absolute;

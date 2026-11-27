@@ -12,6 +12,20 @@
         renderers.delete(container);
     }
 
+    function syncButtonClip(container) {
+        const iframe = container.querySelector('iframe');
+        if (!iframe) return;
+
+        const style = global.getComputedStyle(iframe);
+        const height = iframe.getBoundingClientRect().height
+            + (Number.parseFloat(style.marginTop) || 0)
+            + (Number.parseFloat(style.marginBottom) || 0);
+        if (!Number.isFinite(height) || height <= 0) return;
+
+        container.style.setProperty('--google-button-height', `${height}px`);
+        container.style.setProperty('--google-button-radius', `${height / 2}px`);
+    }
+
     function render(container, draw, options) {
         dispose(container);
         container.classList.add('google-signin-responsive');
@@ -22,11 +36,13 @@
         let resizeTimer = 0;
         let resizeObserver = null;
         let themeObserver = null;
+        let buttonObserver = null;
 
         function stop() {
             if (resizeTimer) global.clearTimeout(resizeTimer);
             resizeObserver?.disconnect();
             themeObserver?.disconnect();
+            buttonObserver?.disconnect();
             global.removeEventListener('resize', schedule);
             global.removeEventListener('orientationchange', schedule);
         }
@@ -54,6 +70,7 @@
             rendered = true;
             container.replaceChildren();
             draw(width, scheme);
+            syncButtonClip(container);
             if (isFirstRender) options?.onReady?.();
         }
 
@@ -73,6 +90,9 @@
                 attributes: true,
                 attributeFilter: ['data-theme'],
             });
+
+            buttonObserver = new global.MutationObserver(() => syncButtonClip(container));
+            buttonObserver.observe(container, { childList: true, subtree: true });
         }
 
         global.addEventListener('resize', schedule, { passive: true });

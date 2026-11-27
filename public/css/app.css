@@ -329,7 +329,7 @@ html:not(.admin-layout-shell) body .content {
 .google-btn-wrap {
     display: flex;
     justify-content: center;
-    min-height: 44px;
+    min-height: var(--google-button-height, 40px);
     margin-bottom: 4px;
     opacity: 1;
     transition: opacity 0.15s ease;
@@ -347,8 +347,11 @@ html:not(.admin-layout-shell) body .content {
     justify-content: center;
     width: min(100%, 400px);
     min-width: min(100%, 200px);
-    min-height: 44px;
+    height: var(--google-button-height, 40px);
+    min-height: var(--google-button-height, 40px);
     margin-inline: auto;
+    overflow: hidden;
+    border-radius: var(--google-button-radius, 20px);
 }
 
 .google-signin-responsive[hidden] {
@@ -358,7 +361,7 @@ html:not(.admin-layout-shell) body .content {
 .google-signin-responsive:focus-within {
     outline: 2px solid var(--brand);
     outline-offset: 3px;
-    border-radius: var(--r-pill);
+    border-radius: var(--google-button-radius, 20px);
 }
 
 @media (prefers-reduced-motion: reduce) {
