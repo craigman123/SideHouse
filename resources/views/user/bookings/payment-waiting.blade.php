@@ -9,6 +9,7 @@
     <link rel="stylesheet" href="{{ asset('css/tokens.css') }}">
     <link rel="stylesheet" href="{{ asset('css/fonts.css') }}">
     <link rel="stylesheet" href="{{ asset('css/app.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/shared/card-icons.css') . '?v=' . filemtime(public_path('css/shared/card-icons.css')) }}">
     <link rel="stylesheet" href="{{ asset('css/guest/payment-waiting.css') }}">
     <link rel="stylesheet" href="{{ asset('css/guest/payment-waiting-modal.css') }}">
     <link rel="stylesheet" href="{{ asset('css/guest/theme-toggle.css') }}">
@@ -17,6 +18,7 @@
     <link rel="icon" type="image/png" href="{{ asset('images/tab_icon.png') }}">
 </head>
 <body class="wt-body user-booking-waiting-page">
+    @include('partials.card-icon-sprite')
     @include('partials.guest.theme-toggle', ['placement' => 'corner'])
 
     <div class="wt-toast-container" id="toastContainer"></div>
@@ -57,9 +59,9 @@
             <p>Scan the QR code below with any GCash, Maya, or InstaPay-enabled bank app to complete payment.</p>
         </div>
 
-        <div class="wt-card panel gcash-wait-body">
+        <div class="wt-card panel gcash-wait-body has-card-icon">
             <div class="wt-section">
-                <p class="wt-section-label">Scan to Pay — QR Ph</p>
+                <p class="wt-section-label card-icon-label">Scan to Pay — QR Ph<x-card-icon name="wallet" /></p>
                 <p class="payment-qr-instructions">Scan with GCash, Maya, or any QR Ph-enabled banking app. The amount is already filled in.</p>
                 <div
                     class="payment-qr-panel"
@@ -86,7 +88,7 @@
             </div>
 
             <div class="wt-section">
-                <p class="wt-section-label">Booking Summary</p>
+                <p class="wt-section-label card-icon-label">Booking Summary<x-card-icon name="calendar" /></p>
                 @foreach ($siblingBookings as $b)
                     <div class="wt-line gcash-wait-amount">
                         <span>

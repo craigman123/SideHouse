@@ -1,0 +1,190 @@
+.card-icon-sprite {
+    position: absolute;
+    width: 0;
+    height: 0;
+    overflow: hidden;
+    pointer-events: none;
+}
+
+.icon-chip {
+    box-sizing: border-box;
+    display: inline-grid;
+    flex: 0 0 38px;
+    place-items: center;
+    width: 38px;
+    height: 38px;
+    border-radius: var(--r-md);
+    background: color-mix(in srgb, var(--brand) 14%, transparent);
+    color: var(--brand);
+}
+
+.icon-chip svg {
+    display: block;
+    width: 22px;
+    height: 22px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    pointer-events: none;
+}
+
+.card-icon-label {
+    position: relative;
+    padding-inline-end: calc(38px + var(--s2));
+}
+
+.card-icon-label > .icon-chip {
+    position: absolute;
+    inset-inline-end: 0;
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+.has-card-icon:focus-visible,
+.has-card-icon:focus-within {
+    outline: 2px solid var(--brand);
+    outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+    .has-card-icon:hover .icon-chip,
+    .has-card-icon:focus-visible .icon-chip,
+    .has-card-icon:focus-within .icon-chip {
+        transform: translateY(-2px) scale(1.05);
+    }
+
+    .has-card-icon:hover .card-icon-label > .icon-chip,
+    .has-card-icon:focus-visible .card-icon-label > .icon-chip,
+    .has-card-icon:focus-within .card-icon-label > .icon-chip {
+        transform: translateY(-50%) translateY(-2px) scale(1.05);
+    }
+
+    .has-card-icon:hover [data-icon="calendar"] svg,
+    .has-card-icon:focus-within [data-icon="calendar"] svg,
+    .has-card-icon:hover [data-icon="calendar-check"] svg,
+    .has-card-icon:focus-within [data-icon="calendar-check"] svg,
+    .has-card-icon:hover [data-icon="calendar-x"] svg,
+    .has-card-icon:focus-within [data-icon="calendar-x"] svg {
+        animation: card-icon-calendar 220ms ease-out;
+    }
+
+    .has-card-icon:hover [data-icon="clock"] svg,
+    .has-card-icon:focus-within [data-icon="clock"] svg {
+        animation: card-icon-clock 220ms ease-out;
+    }
+
+    .has-card-icon:hover [data-icon="bar-chart"] svg,
+    .has-card-icon:focus-within [data-icon="bar-chart"] svg,
+    .has-card-icon:hover [data-icon="trending-up"] svg,
+    .has-card-icon:focus-within [data-icon="trending-up"] svg {
+        animation: card-icon-pop 220ms ease-out;
+    }
+
+    .has-card-icon:hover [data-icon="peso-coin"] svg,
+    .has-card-icon:focus-within [data-icon="peso-coin"] svg,
+    .has-card-icon:hover [data-icon="wallet"] svg,
+    .has-card-icon:focus-within [data-icon="wallet"] svg {
+        animation: card-icon-bob 220ms ease-out;
+    }
+
+    .has-card-icon:hover [data-icon="padel"] svg,
+    .has-card-icon:focus-within [data-icon="padel"] svg {
+        animation: card-icon-padel 220ms ease-out;
+    }
+
+    .has-card-icon:hover [data-icon="bag"] svg,
+    .has-card-icon:focus-within [data-icon="bag"] svg {
+        animation: card-icon-bag 220ms ease-out;
+    }
+
+    .has-card-icon:hover [data-icon="people"] svg,
+    .has-card-icon:focus-within [data-icon="people"] svg {
+        animation: card-icon-people 220ms ease-out;
+    }
+
+    .has-card-icon:hover [data-icon="gauge"] svg,
+    .has-card-icon:focus-within [data-icon="gauge"] svg {
+        animation: card-icon-gauge 220ms ease-out;
+    }
+
+    .has-card-icon:hover [data-icon="court"] svg,
+    .has-card-icon:focus-within [data-icon="court"] svg,
+    .has-card-icon:hover [data-icon="pie"] svg,
+    .has-card-icon:focus-within [data-icon="pie"] svg,
+    .has-card-icon:hover [data-icon="user-badge"] svg,
+    .has-card-icon:focus-within [data-icon="user-badge"] svg,
+    .has-card-icon:hover [data-icon="shield"] svg,
+    .has-card-icon:focus-within [data-icon="shield"] svg,
+    .has-card-icon:hover [data-icon="receipt"] svg,
+    .has-card-icon:focus-within [data-icon="receipt"] svg,
+    .has-card-icon:hover [data-icon="database"] svg,
+    .has-card-icon:focus-within [data-icon="database"] svg,
+    .has-card-icon:hover [data-icon="alert"] svg,
+    .has-card-icon:focus-within [data-icon="alert"] svg,
+    .has-card-icon:hover [data-icon="hourglass"] svg,
+    .has-card-icon:focus-within [data-icon="hourglass"] svg {
+        animation: card-icon-nudge 220ms ease-out;
+    }
+
+    a.has-card-icon:active .icon-chip,
+    button.has-card-icon:active .icon-chip {
+        animation: card-icon-press 180ms ease-out;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .icon-chip,
+    .icon-chip svg {
+        transition: none;
+        animation: none;
+    }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+    .icon-chip {
+        transition: transform 180ms ease, opacity 180ms ease;
+    }
+
+    @keyframes card-icon-calendar {
+        45% { transform: rotate(-7deg); }
+    }
+
+    @keyframes card-icon-clock {
+        50% { transform: rotate(7deg); }
+    }
+
+    @keyframes card-icon-pop {
+        55% { transform: scale(1.12); }
+    }
+
+    @keyframes card-icon-bob {
+        50% { transform: translateY(-2px); }
+    }
+
+    @keyframes card-icon-padel {
+        50% { transform: rotate(12deg); }
+    }
+
+    @keyframes card-icon-bag {
+        45% { transform: translateY(-2px); }
+    }
+
+    @keyframes card-icon-people {
+        50% { transform: translateX(1px); }
+    }
+
+    @keyframes card-icon-gauge {
+        50% { transform: rotate(-6deg); }
+    }
+
+    @keyframes card-icon-nudge {
+        50% { transform: scale(1.06); }
+    }
+
+    @keyframes card-icon-press {
+        0%, 100% { transform: scale(1); }
+        45% { transform: scale(.95); }
+    }
+}

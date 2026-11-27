@@ -9,11 +9,13 @@
     <link rel="stylesheet" href="{{ asset('css/tokens.css') }}">
     <link rel="stylesheet" href="{{ asset('css/fonts.css') }}">
     <link rel="stylesheet" href="{{ asset('css/app.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/shared/card-icons.css') . '?v=' . filemtime(public_path('css/shared/card-icons.css')) }}">
     <link rel="stylesheet" href="{{ asset('css/guest/payment-receipt.css') }}">
     <link rel="stylesheet" href="{{ asset('css/guest/theme-toggle.css') }}">
     <link rel="stylesheet" href="{{ asset('css/shared/page-glow.css') }}">
 </head>
 <body class="receipt-body">
+    @include('partials.card-icon-sprite')
     @include('partials.guest.theme-toggle', ['placement' => 'corner'])
 
     <div class="bg-particle"></div>
@@ -25,7 +27,7 @@
     <div class="bg-particle"></div>
     <div class="bg-particle"></div>
 
-    <div class="card">
+    <div class="card has-card-icon">
 
         <div class="header">
             <span class="brand">SideHouse</span>
@@ -62,7 +64,7 @@
         </div>
 
         @if ($paymentReference->given_used > 0 || $paymentReference->reserved_used > 0)
-        <p class="section-label">Credits used</p>
+        <p class="section-label card-icon-label">Credits used<x-card-icon name="wallet" /></p>
         <div class="details">
             <table>
                 @if ($paymentReference->given_used > 0)
@@ -81,7 +83,7 @@
         </div>
         @endif
 
-        <p class="section-label">Bookings</p>
+        <p class="section-label card-icon-label">Bookings<x-card-icon name="calendar" /></p>
 
         <table class="bookings">
             <tr>

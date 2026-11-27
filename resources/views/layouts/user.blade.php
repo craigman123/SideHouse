@@ -14,6 +14,7 @@
     <link rel="stylesheet" href="{{ asset('css/tokens.css') }}">
     <link rel="stylesheet" href="{{ asset('css/fonts.css') }}">
     <link rel="stylesheet" href="{{ asset('css/app.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/shared/card-icons.css') . '?v=' . filemtime(public_path('css/shared/card-icons.css')) }}">
     <link rel="stylesheet" href="{{ asset('css/user/user-navbar.css') }}">
     <link rel="stylesheet" href="{{ asset('css/user/sidebar-collapse.css') }}">
     <link rel="stylesheet" href="{{ asset('css/shared/switch-access.css') . '?v=' . filemtime(public_path('css/shared/switch-access.css')) }}">
@@ -22,6 +23,7 @@
     <link rel="stylesheet" href="{{ asset('css/guest/theme-toggle.css') }}">
     <link rel="icon" type="image/png" href="{{ asset('images/tab_icon.png') }}">
     <script src="{{ asset('js/app.js') }}" defer></script>
+    <script src="{{ asset('js/shared/card-icons.js') . '?v=' . filemtime(public_path('js/shared/card-icons.js')) }}" defer></script>
     <script src="{{ asset('js/shared/switch-access.js') . '?v=' . filemtime(public_path('js/shared/switch-access.js')) }}" defer></script>
     @push('scripts')
         <script src="{{ asset('js/user/user-shell.js') }}" defer></script>
@@ -29,6 +31,7 @@
     @stack('styles')
 </head>
 <body>
+    @include('partials.card-icon-sprite')
 
     <aside class="sidebar" id="userSidebar">
         <div class="sidebar-logo">

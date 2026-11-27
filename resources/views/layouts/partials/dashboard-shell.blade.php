@@ -12,10 +12,12 @@
     <link rel="stylesheet" href="{{ asset('css/tokens.css') . '?v=' . filemtime(public_path('css/tokens.css')) }}">
     <link rel="stylesheet" href="{{ asset('css/fonts.css') . '?v=' . filemtime(public_path('css/fonts.css')) }}">
     <link rel="stylesheet" href="{{ asset('css/app.css') . '?v=' . filemtime(public_path('css/app.css')) }}">
+    <link rel="stylesheet" href="{{ asset('css/shared/card-icons.css') . '?v=' . filemtime(public_path('css/shared/card-icons.css')) }}">
     <link rel="stylesheet" href="{{ asset('css/auth/mfa-modal.css') . '?v=' . filemtime(public_path('css/auth/mfa-modal.css')) }}">
     <link rel="stylesheet" href="{{ asset('css/guest/theme-toggle.css') . '?v=' . filemtime(public_path('css/guest/theme-toggle.css')) }}">
     <link rel="icon" type="image/png" href="{{ asset('images/tab_icon.png') . '?v=' . filemtime(public_path('images/tab_icon.png')) }}">
     <script src="{{ asset('js/app.js') . '?v=' . filemtime(public_path('js/app.js')) }}" defer></script>
+    <script src="{{ asset('js/shared/card-icons.js') . '?v=' . filemtime(public_path('js/shared/card-icons.js')) }}" defer></script>
     <script src="{{ asset('js/config/back-guard.js') . '?v=' . filemtime(public_path('js/config/back-guard.js')) }}" defer></script>
     @stack('styles')
     <link rel="stylesheet" href="{{ asset('css/shared/dashboard-shell.css') . '?v=' . filemtime(public_path('css/shared/dashboard-shell.css')) }}">
@@ -24,6 +26,7 @@
     <script src="{{ asset('js/shared/switch-access.js') . '?v=' . filemtime(public_path('js/shared/switch-access.js')) }}" defer></script>
 </head>
 <body>
+    @include('partials.card-icon-sprite')
     <svg class="dashboard-shell-icons" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" hidden>
         <symbol id="shell-icon-overview" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></symbol>
         <symbol id="shell-icon-bookings" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M16 2v4M8 2v4M3 10h18M8 15l2 2 5-5"/></symbol>

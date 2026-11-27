@@ -193,8 +193,8 @@
                     <p class="booking-deep-link-notice" id="bookingDeepLinkNotice" role="status" aria-live="polite" hidden></p>
                     <div class="time-slot-list" id="timeSlotGrid"></div>
 
-                    <aside class="booking-selection-summary user-booking-selection" aria-live="polite">
-                        <p class="booking-selection-summary-title">Your selection</p>
+                    <aside class="booking-selection-summary user-booking-selection has-card-icon" aria-live="polite">
+                        <p class="booking-selection-summary-title card-icon-label">Your selection<x-card-icon name="calendar" /></p>
                         <p><span>Court</span><strong class="selection-court">Choose a court</strong></p>
                         <p><span>Date &amp; time</span><strong class="selection-date-time">Choose a date and time</strong></p>
                         <p><span>Equipment</span><strong class="selection-equipment">None selected</strong></p>
@@ -231,8 +231,8 @@
                         <p class="loading-text">Loading equipment…</p>
                     </div>
                 </div>
-                <aside class="booking-selection-summary user-booking-selection" aria-live="polite">
-                    <p class="booking-selection-summary-title">Your selection</p>
+                <aside class="booking-selection-summary user-booking-selection has-card-icon" aria-live="polite">
+                    <p class="booking-selection-summary-title card-icon-label">Your selection<x-card-icon name="calendar" /></p>
                     <p><span>Court</span><strong class="selection-court">Choose a court</strong></p>
                     <p><span>Date &amp; time</span><strong class="selection-date-time">Choose a date and time</strong></p>
                     <p><span>Equipment</span><strong class="selection-equipment">None selected</strong></p>
@@ -289,8 +289,8 @@
                      book.js once it reads the credit balance from #courtGrid's
                      data attributes. --}}
                 @if (!empty($creditBalance) && $creditBalance['total'] > 0)
-                <div class="booking-section user-credit-section" id="userCreditSection">
-                    <p class="booking-section-label">Credits</p>
+                <div class="booking-section user-credit-section has-card-icon" id="userCreditSection">
+                    <p class="booking-section-label card-icon-label">Credits<x-card-icon name="wallet" /></p>
                     <div class="guest-credit-payment" id="guestCreditPayment">
                         <div class="guest-credit-content">
                             <label class="guest-credit-use">
@@ -314,14 +314,14 @@
                 </div>
                 @endif
 
-                <div class="booking-summary" id="bookingSummary">
-                    <p class="booking-summary-title">Final Review</p>
+                <div class="booking-summary has-card-icon" id="bookingSummary">
+                    <p class="booking-summary-title card-icon-label">Final Review<x-card-icon name="receipt" /></p>
                     <p><span id="summaryDate"></span><span class="summary-date-time-separator"> &middot; </span><span id="summaryTime"></span></p>
                     <p id="summaryEquipmentRow" hidden>Equipment: <strong id="summaryEquipment"></strong></p>
                     <p>Payment: <strong id="summaryPayment">QR Ph</strong></p>
                 </div>
-                <aside class="booking-selection-summary user-booking-selection" aria-live="polite">
-                    <p class="booking-selection-summary-title">Your selection</p>
+                <aside class="booking-selection-summary user-booking-selection has-card-icon" aria-live="polite">
+                    <p class="booking-selection-summary-title card-icon-label">Your selection<x-card-icon name="calendar" /></p>
                     <p><span>Court</span><strong class="selection-court">Choose a court</strong></p>
                     <p><span>Date &amp; time</span><strong class="selection-date-time">Choose a date and time</strong></p>
                     <p><span>Equipment</span><strong class="selection-equipment">None selected</strong></p>

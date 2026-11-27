@@ -128,7 +128,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         article.dataset.suggestionKey = suggestion.key;
 
         const heading = document.createElement('h2');
-        heading.textContent = suggestion.title;
+        if (suggestion.type === 'open_play') {
+            heading.classList.add('user-lumi-popover-has-icon');
+            heading.append(window.SideHouseCardIcons.create('padel'), document.createTextNode(suggestion.title));
+        } else {
+            heading.textContent = suggestion.title;
+        }
         const message = document.createElement('p');
         message.textContent = suggestion.message;
         const details = document.createElement('div');
@@ -146,7 +151,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         article.dataset.suggestionKey = suggestion.key;
 
         const heading = document.createElement('h3');
-        heading.textContent = suggestion.title;
+        if (suggestion.type === 'open_play') {
+            heading.classList.add('user-lumi-popover-has-icon');
+            heading.append(window.SideHouseCardIcons.create('padel'), document.createTextNode(suggestion.title));
+        } else {
+            heading.textContent = suggestion.title;
+        }
         const details = document.createElement('div');
         details.className = 'user-lumi-popover-details';
         appendDetails(details, suggestion, true);

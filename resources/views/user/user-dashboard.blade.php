@@ -11,14 +11,14 @@
 
 @section('content')
 
-    <section class="hero-next-game"
+    <section class="hero-next-game has-card-icon"
         @if ($nextBooking)
             data-booking-id="{{ $nextBooking->id }}"
             data-booking="Court {{ $nextBooking->court_id }} &middot; {{ \Carbon\Carbon::parse($nextBooking->date)->format('D j M') }}, {{ \Carbon\Carbon::parse($nextBooking->start_time)->format('g:i A') }}"
         @endif
     >
         <div class="hero-info">
-            <span class="hero-eyebrow">Your next game</span>
+            <span class="hero-eyebrow card-icon-label">Your next game<x-card-icon name="calendar" /></span>
             @if ($nextBooking)
                 <h2>Court {{ $nextBooking->court_id }} &middot; {{ $nextBooking->status === 'paid' ? 'Confirmed' : ucfirst($nextBooking->status) }}</h2>
                 <p class="hero-meta">
@@ -120,23 +120,23 @@
     </section>
 
     <div class="card-grid">
-        <div class="card">
-            <p class="label">Upcoming Bookings</p>
+        <div class="card has-card-icon">
+            <p class="label card-icon-label">Upcoming Bookings<x-card-icon name="calendar" /></p>
             <p class="value bookings">{{ $upcomingBookings->count() }}</p>
         </div>
-        <div class="card">
-            <p class="label">Hours Played This Month</p>
+        <div class="card has-card-icon">
+            <p class="label card-icon-label">Hours Played This Month<x-card-icon name="clock" /></p>
             <p class="value income">{{ number_format($recentBookings->whereBetween('date', [now()->startOfMonth(), now()->endOfMonth()])->count() * 1, 1) }}</p>
         </div>
-        <div class="card">
-            <p class="label">Favorite Court</p>
+        <div class="card has-card-icon">
+            <p class="label card-icon-label">Favorite Court<x-card-icon name="court" /></p>
             <p class="value bookings">
                 {{ $recentBookings->groupBy('court_id')->sortByDesc(fn($g) => $g->count())->keys()->first() ? 'Court ' . $recentBookings->groupBy('court_id')->sortByDesc(fn($g) => $g->count())->keys()->first() : '—' }}
             </p>
         </div>
         {{-- Credits card — balance comes from the View composer via $layoutCreditBalance --}}
-        <div class="card card-credits">
-            <p class="label">My Credits</p>
+        <div class="card card-credits has-card-icon">
+            <p class="label card-icon-label">My Credits<x-card-icon name="wallet" /></p>
             <p class="value income">₱{{ number_format($layoutCreditBalance['total'] ?? 0) }}</p>
             <div class="card-credits-breakdown">
                 <span>
@@ -152,8 +152,8 @@
         </div>
     </div>
 
-    <div class="panel">
-        <h2>Available Courts</h2><span class="count-badge">{{ $courts->count() }} Court(s) Available</span>
+    <div class="panel has-card-icon">
+        <h2 class="card-icon-label">Available Courts<x-card-icon name="court" /></h2><span class="count-badge">{{ $courts->count() }} Court(s) Available</span>
         <div class="court-grid">
             @forelse ($courts as $court)
                 <a href="{{ route('book.index', ['court' => $court->id]) }}" class="court-card court-card-link">

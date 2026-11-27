@@ -1287,9 +1287,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const qty = equipmentSelection[item.id] || 0;
 
         const card = document.createElement('div');
-        card.className = 'equipment-card' + (qty > 0 ? ' has-qty' : '');
+        card.className = 'equipment-card has-card-icon' + (qty > 0 ? ' has-qty' : '');
 
         const info = document.createElement('div');
+        info.className = 'equipment-card-info';
 
         const nameEl = document.createElement('p');
         nameEl.className = 'equipment-card-name';
@@ -1299,6 +1300,7 @@ document.addEventListener('DOMContentLoaded', () => {
         metaEl.className = 'equipment-card-meta' + (item.available === 0 ? ' equipment-sold-out' : '');
         metaEl.textContent = `₱${Number(item.price).toLocaleString()} each · ${item.available === 0 ? 'Sold out for this time' : `${item.available} available`}`;
 
+        info.appendChild(window.SideHouseCardIcons.create('bag'));
         info.appendChild(nameEl);
         info.appendChild(metaEl);
 

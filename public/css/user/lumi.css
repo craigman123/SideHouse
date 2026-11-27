@@ -76,6 +76,18 @@
     height: 26px;
 }
 
+.lumi-suggestion-icon .icon-chip {
+    width: 26px;
+    height: 26px;
+    flex-basis: 26px;
+    border-radius: var(--r-sm);
+}
+
+.lumi-suggestion-icon .icon-chip svg {
+    width: 20px;
+    height: 20px;
+}
+
 .lumi-suggestion-content {
     min-width: 0;
 }

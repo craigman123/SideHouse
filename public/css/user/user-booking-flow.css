@@ -56,6 +56,33 @@
     color: var(--text);
 }
 
+.user-book-court-page .user-equipment-grid .equipment-card-info {
+    display: grid;
+    grid-template-columns: 38px minmax(0, 1fr);
+    grid-template-rows: auto auto;
+    align-items: center;
+    column-gap: var(--s2);
+}
+
+.user-book-court-page .user-equipment-grid .equipment-card-info > .icon-chip {
+    grid-column: 1;
+    grid-row: 1 / span 2;
+}
+
+.user-book-court-page .user-equipment-grid .equipment-card-name,
+.user-book-court-page .user-equipment-grid .equipment-card-meta {
+    grid-column: 2;
+    min-width: 0;
+}
+
+.user-book-court-page .user-equipment-grid .equipment-card-name {
+    align-self: end;
+}
+
+.user-book-court-page .user-equipment-grid .equipment-card-meta {
+    align-self: start;
+}
+
 .user-book-court-page .user-booking-selection-title,
 .user-book-court-page .user-booking-selection .booking-selection-summary-title {
     margin: 0 0 var(--s2);

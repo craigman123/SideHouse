@@ -1129,6 +1129,25 @@ svg {
     font-size: var(--font-size-h3);
 }
 
+.user-lumi-popover h2.user-lumi-popover-has-icon,
+.user-lumi-popover h3.user-lumi-popover-has-icon {
+    display: flex;
+    align-items: center;
+    gap: var(--s2);
+}
+
+.user-lumi-popover .user-lumi-popover-has-icon .icon-chip {
+    width: 26px;
+    height: 26px;
+    flex-basis: 26px;
+    border-radius: var(--r-sm);
+}
+
+.user-lumi-popover .user-lumi-popover-has-icon .icon-chip svg {
+    width: 20px;
+    height: 20px;
+}
+
 .user-lumi-popover-primary p,
 .user-lumi-popover-secondary p {
     margin: var(--s2) 0;
