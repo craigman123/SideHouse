@@ -149,7 +149,7 @@ html, body {
 
 .topbar {
     background-color: var(--surface);
-    padding: 16px 24px;
+    padding: var(--s3) var(--s4);
     display: flex;
     justify-content: space-between;
     align-items: center;

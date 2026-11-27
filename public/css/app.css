@@ -130,8 +130,11 @@ body {
 }
 
 .topbar .date {
+    display: flex;
     font-size: 14px;
-    color: #8b949e;
+    color: var(--text-muted);
+    align-items: center;
+    gap: var(--s1);
 }
 
 html:not(.admin-layout-shell) body .content {
