@@ -42,7 +42,7 @@
     const renderOpenPlay = (session) => {
         const hasSession = Boolean(session);
         const canOpenBookings = hasSession && Boolean(page.dataset.bookingsUrl);
-        const pane = element(canOpenBookings ? 'a' : 'section', 'panel staff-overview-card staff-open-play-card');
+        const pane = element(canOpenBookings ? 'a' : 'section', 'panel staff-overview-card staff-open-play-card has-card-icon');
 
         if (canOpenBookings) {
             const url = new URL(page.dataset.bookingsUrl, window.location.origin);
@@ -56,7 +56,9 @@
         if (session?.is_today) pane.classList.add('is-today');
 
         const header = element('header', 'dashboard-panel-header staff-open-play-header');
-        header.append(element('h2', '', 'Open play'));
+        const title = element('h2', 'card-icon-label', 'Open play');
+        title.append(window.SideHouseCardIcons.create('padel'));
+        header.append(title);
 
         if (hasSession) {
             const statusLabels = { active: 'Active', upcoming: 'Upcoming', soon: 'Soon' };

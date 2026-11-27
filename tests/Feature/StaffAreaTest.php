@@ -132,6 +132,18 @@ class StaffAreaTest extends TestCase
         $this->assertStringNotContainsString('dashboard-shell-logout', $sidebarMatch[0]);
     }
 
+    public function test_staff_overview_renders_shared_icon_chips_for_each_pane(): void
+    {
+        $dashboard = $this->signInStaff($this->staff())->get('/staff/dashboard')->assertOk();
+
+        $dashboard->assertSee("Today's bookings<span class=\"icon-chip\" data-icon=\"calendar\"", false)
+            ->assertSee('Courts in use<span class="icon-chip" data-icon="gauge"', false)
+            ->assertSee('Court status<span class="icon-chip" data-icon="court"', false)
+            ->assertSee('Next up<span class="icon-chip" data-icon="calendar"', false)
+            ->assertSee('Open play<span class="icon-chip" data-icon="padel"', false)
+            ->assertSee('Equipment prep<span class="icon-chip" data-icon="bag"', false);
+    }
+
     public function test_staff_overview_count_and_lists_exclude_cancelled_and_expired_bookings(): void
     {
         $staff = $this->staff();
