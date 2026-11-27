@@ -152,7 +152,7 @@ html.user-profile-page:not([data-theme="light"]) .wt-confirm-overlay {
 }
 .user-profile-page .switch-disabled { opacity: 1; cursor: pointer; }
 .user-profile-page .switch-slider { position: absolute; inset: var(--s2) 0; border: 1px solid var(--text-muted); border-radius: var(--r-pill); background: var(--surface-2); transition: background-color 160ms ease, border-color 160ms ease; }
-.user-profile-page .switch-slider::before { position: absolute; top: 50%; left: calc(var(--s1) - var(--s3)); width: var(--s4); height: var(--s4); border-radius: var(--r-pill); background: var(--text-muted); content: ''; transform: translateY(-50%); transition: transform 160ms ease, background-color 160ms ease; }
+.user-profile-page .switch-slider::before { position: absolute; top: 50%; left: var(--s1); width: var(--s4); height: var(--s4); border-radius: var(--r-pill); background: var(--text-muted); content: ''; transform: translateY(-50%); transition: transform 160ms ease, background-color 160ms ease; }
 .user-profile-page .switch[aria-checked="true"] .switch-slider { border-color: var(--brand); background: var(--brand); }
 .user-profile-page .switch[aria-checked="true"] .switch-slider::before { background: var(--bg); transform: translate(calc(var(--s6) + var(--s2)), -50%); }
 
