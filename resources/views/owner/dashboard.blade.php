@@ -5,6 +5,7 @@
 
 @push('styles')
     <link rel="stylesheet" href="{{ asset('css/owner/owner-overview.css') . '?v=' . filemtime(public_path('css/owner/owner-overview.css')) }}">
+    <link rel="stylesheet" href="{{ asset('css/shared/overview-border.css') . '?v=' . filemtime(public_path('css/shared/overview-border.css')) }}">
 @endpush
 
 @section('content')
