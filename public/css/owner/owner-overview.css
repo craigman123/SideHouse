@@ -24,9 +24,11 @@ html.owner-layout-shell .admin-overview-page .card,
 html.owner-layout-shell .admin-overview-page .panel {
     min-width: 0;
     padding: var(--s4);
-    border: 1px solid var(--text-muted);
+    border: 1px solid transparent;
     border-radius: var(--r-md);
-    background: var(--surface);
+    background-image: linear-gradient(var(--surface), var(--surface)), var(--brand-grad);
+    background-origin: border-box;
+    background-clip: padding-box, border-box;
     color: var(--text);
 }
 
@@ -37,7 +39,6 @@ html.owner-layout-shell .admin-overview-page .card {
     justify-content: space-between;
     border: 1px solid transparent;
     border-radius: var(--r-lg);
-    background: linear-gradient(var(--surface), var(--surface)) padding-box, linear-gradient(135deg, var(--brand), var(--brand-hover)) border-box;
 }
 
 html.owner-layout-shell .admin-overview-page .card .label {
