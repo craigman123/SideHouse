@@ -34,7 +34,7 @@
         <div class="auth-box">
             <img src="{{ asset('images/logo.png') }}" alt="Side House" style="width: 100%; max-width: 260px; display: block; margin: 0 auto 10px;">
             <h1>Log in to your <span class="auth-heading-accent">account</span></h1>
-            <p class="subtitle">{{ $loginLane === 'customer' ? 'Log in to manage customer bookings' : 'Log in to the '.ucfirst($loginLane).' dashboard' }}</p>
+            <p class="subtitle">{{ $loginLane === 'customer' ? 'Log in to manage your bookings' : 'Log in to the '.ucfirst($loginLane).' dashboard' }}</p>
 
             <p class="google-caption">Continue with Google</p>
             <p class="google-signin-error" role="status" hidden>Google sign-in couldn't load. Refresh the page.</p>

@@ -75,7 +75,8 @@ html[data-theme="light"] .auth-page .auth-bubble-layer > .bg-particle {
 
 .auth-page .google-caption {
     display: flex;      
-    align-items: center;    
+    align-items: center; 
+    justify-content: center;   
     margin: var(--s3) 0 var(--s2);
     color: var(--text-muted);
     font-size: var(--font-size-small);
