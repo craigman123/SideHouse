@@ -14,7 +14,6 @@
     <link rel="stylesheet" href="{{ asset('css/auth/auth-pages.css') }}">
     <link rel="icon" type="image/png" href="{{ asset('images/tab_icon.png') }}">
     <script src="{{ asset('js/app.js') }}" defer></script>
-    <script src="{{ asset('js/shared/google-button-renderer.js') }}?v={{ filemtime(public_path('js/shared/google-button-renderer.js')) }}" defer></script>
     <script src="{{ asset('js/auth/mfa-modal.js') }}" defer></script>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
@@ -37,23 +36,19 @@
             <h1>Log in to your <span class="auth-heading-accent">account</span></h1>
             <p class="subtitle">{{ $loginLane === 'customer' ? 'Log in to manage customer bookings' : 'Log in to the '.ucfirst($loginLane).' dashboard' }}</p>
 
+            <p class="google-caption">or continue with</p>
             <div class="google-signin-shell">
-                <div
-                    id="googleSignInBtn"
-                    class="google-btn-wrap"
-                    data-google-client-id="{{ config('services.google.client_id') }}"
-                    data-google-auth-url="{{ $googleAuthUrl }}"
-                    data-redirect-fallback="{{ $loginHomeUrl }}"
-                    data-button-text="continue_with"
-                ></div>
+                <div class="google-slot" role="group" aria-label="Sign in with Google">
+                    <div
+                        id="googleSignInBtn"
+                        data-google-client-id="{{ config('services.google.client_id') }}"
+                        data-google-auth-url="{{ $googleAuthUrl }}"
+                        data-redirect-fallback="{{ $loginHomeUrl }}"
+                        data-button-text="continue_with"
+                    ></div>
+                </div>
                 <span class="google-loading-status" aria-live="polite" aria-atomic="true"></span>
-                <span class="google-loading-visual" aria-hidden="true" hidden>
-                    <span class="google-loading-spinner"></span>
-                    <span>Logging in...</span>
-                </span>
             </div>
-
-            <div class="auth-divider"><span>or</span></div>
 
             <form
                 method="POST"

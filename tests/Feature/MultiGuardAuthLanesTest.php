@@ -238,10 +238,15 @@ class MultiGuardAuthLanesTest extends TestCase
             ->assertSee('data-mfa-setup-init-url="'.route('mfa.setup.init').'"', false)
             ->assertSee('data-mfa-enable-url="'.route('mfa.enable').'"', false)
             ->assertSee('data-mfa-verify-url="'.route('mfa.verify').'"', false)
+            ->assertSee('<p class="google-caption">or continue with</p>', false)
+            ->assertSee('<div class="google-slot" role="group" aria-label="Sign in with Google">', false)
+            ->assertSee('data-button-text="continue_with"', false)
+            ->assertDontSee('class="auth-divider"', false)
             ->assertSee('Register');
 
         $this->assertSame(1, substr_count($page->getContent(), 'id="login-form"'));
         $this->assertSame(1, substr_count($page->getContent(), 'data-google-auth-url='));
+        $this->assertSame(1, substr_count($page->getContent(), 'id="googleSignInBtn"'));
 
         foreach (['admin', 'owner', 'staff'] as $role) {
             $this->get('/'.$role.'/login')->assertRedirect(route('login'));
@@ -249,7 +254,12 @@ class MultiGuardAuthLanesTest extends TestCase
             $this->post('/'.$role.'/auth/google')->assertNotFound();
         }
 
-        $this->get('/register')->assertOk();
+        $register = $this->get('/register')->assertOk()
+            ->assertSee('<p class="google-caption">or sign up with</p>', false)
+            ->assertSee('<div class="google-slot" role="group" aria-label="Sign in with Google">', false)
+            ->assertSee('data-button-text="signup_with"', false)
+            ->assertDontSee('class="auth-divider"', false);
+        $this->assertSame(1, substr_count($register->getContent(), 'id="googleSignInBtn"'));
         $this->get('/admin/register')->assertNotFound();
         $this->post('/admin/register')->assertNotFound();
     }

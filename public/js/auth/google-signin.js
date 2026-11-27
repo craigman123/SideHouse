@@ -1,7 +1,7 @@
 document.addEventListener('DOMContentLoaded', function () {
     var btnEl = document.getElementById('googleSignInBtn');
     if (!btnEl) return;
-    var loadingShell = btnEl.parentElement;
+    var loadingShell = btnEl.closest('.google-signin-shell') || btnEl.parentElement;
 
     var clientId = btnEl.dataset.googleClientId;
     var authUrl = btnEl.dataset.googleAuthUrl;
@@ -51,9 +51,7 @@ document.addEventListener('DOMContentLoaded', function () {
         btnEl.setAttribute('aria-disabled', 'true');
         btnEl.setAttribute('aria-busy', 'true');
         var status = loadingShell.querySelector('.google-loading-status');
-        var visual = loadingShell.querySelector('.google-loading-visual');
         if (status) status.textContent = 'Logging in...';
-        if (visual) visual.hidden = false;
     }
 
     function resetGoogleLoading() {
@@ -66,9 +64,7 @@ document.addEventListener('DOMContentLoaded', function () {
         loadingShell.classList.remove('google-btn-wrap-loading');
         btnEl.removeAttribute('aria-busy');
         var status = loadingShell.querySelector('.google-loading-status');
-        var visual = loadingShell.querySelector('.google-loading-visual');
         if (status) status.textContent = '';
-        if (visual) visual.hidden = true;
         if (googleLockedSubmit && authSubmitBtn) authSubmitBtn.disabled = submitWasDisabled;
         googleLockedSubmit = false;
         unlockGoogleButton();
@@ -167,15 +163,11 @@ document.addEventListener('DOMContentLoaded', function () {
             callback: handleGoogleCredential,
             auto_select: false,
         });
-        window.GoogleButtonRenderer.render(btnEl, function (width) {
-            window.google.accounts.id.renderButton(btnEl, {
-                type: 'standard',
-                theme: 'filled_black',
-                size: 'large',
-                text: btnEl.dataset.buttonText || 'continue_with',
-                shape: 'pill',
-                width: width,
-            });
+        window.google.accounts.id.renderButton(document.getElementById('googleSignInBtn'), {
+            type: 'icon',
+            theme: 'outline',
+            size: 'large',
+            shape: 'circle',
         });
     }
 
