@@ -1,7 +1,4 @@
-html.admin-layout-shell .admin-overview-page .card,
-html.admin-layout-shell .admin-overview-page .panel,
-html.owner-layout-shell .admin-overview-page .card,
-html.owner-layout-shell .admin-overview-page .panel {
+html.admin-layout-shell .admin-overview-page .overview-gradient-border {
     border: 1px solid transparent;
     background-image: linear-gradient(var(--surface), var(--surface)), var(--brand-grad);
     background-origin: border-box;
