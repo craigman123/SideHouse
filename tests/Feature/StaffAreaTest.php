@@ -72,7 +72,7 @@ class StaffAreaTest extends TestCase
 
         $profile = $this->signInStaff($staff)->get('/staff/profile')->assertOk();
         $profile->assertSee('user/profile.css')->assertSee('shared/dashboard-base.css')->assertDontSee('css/admin/');
-        $profile->assertSee('staff-profile.css')->assertSee('staff-profile.js')
+        $profile->assertSee('staff-profile.css')->assertSee('js/user/profile.js')->assertDontSee('staff-profile.js')
             ->assertSee('Change password')
             ->assertSee('Coming soon')
             ->assertSee('role="switch"', false)

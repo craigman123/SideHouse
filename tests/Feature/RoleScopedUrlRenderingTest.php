@@ -138,6 +138,15 @@ class RoleScopedUrlRenderingTest extends TestCase
         }
     }
 
+    private function assertSharedProfileContent(\Illuminate\Testing\TestResponse $response, string $layout): void
+    {
+        $response->assertViewIs('user.profile.profile')
+            ->assertViewHas('profileLayout', $layout)
+            ->assertSee('Edit Profile')
+            ->assertSee('Preferences')
+            ->assertSee('Security');
+    }
+
     public function test_role_pages_render_role_scoped_logout_api_and_navigation_urls(): void
     {
         $admin = $this->user('admin');
@@ -183,6 +192,7 @@ class RoleScopedUrlRenderingTest extends TestCase
             ->assertSee('data-mfa-owner-approve-url-template="'.route('admin.users.mfa.owner-approve', ['user' => '__USER__', 'requestId' => '__REQUEST__']).'"', false);
         $admin->forceFill(['mfa_enabled' => true, 'mfa_secret' => 'ADMINSECRET'])->save();
         $adminProfile = $this->signInAs($admin, 'admin')->get('/admin/profile')->assertOk();
+        $this->assertSharedProfileContent($adminProfile, 'layouts.app');
         $adminProfile->assertViewIs('user.profile.profile')
             ->assertSee('data-profile-editable="true"', false)
             ->assertSee('action="'.route('admin.profile.password').'"', false)
@@ -200,6 +210,7 @@ class RoleScopedUrlRenderingTest extends TestCase
             ->assertSee('data-update-url-template="'.route('owner.users.update', ['user' => '__USER__']).'"', false);
         $owner->forceFill(['mfa_enabled' => true, 'mfa_secret' => 'OWNERSECRET'])->save();
         $ownerProfile = $this->signInAs($owner, 'owner')->get('/owner/profile')->assertOk();
+        $this->assertSharedProfileContent($ownerProfile, 'owner.layouts.app');
         $ownerProfile->assertViewIs('user.profile.profile')
             ->assertSee('data-profile-editable="true"', false)
             ->assertSee('action="'.route('owner.profile.password').'"', false)
@@ -211,6 +222,7 @@ class RoleScopedUrlRenderingTest extends TestCase
             ->assertSee('data-credit-store-url=""', false);
         $staff->forceFill(['mfa_enabled' => true, 'mfa_secret' => 'STAFFSECRET'])->save();
         $staffProfile = $this->signInAs($staff, 'staff')->get('/staff/profile')->assertOk();
+        $this->assertSharedProfileContent($staffProfile, 'staff.layouts.app');
         $staffProfile->assertViewIs('user.profile.profile')
             ->assertSee('id="staffProfileForm"', false)
             ->assertSee('id="staffEmail"', false)
@@ -220,6 +232,7 @@ class RoleScopedUrlRenderingTest extends TestCase
 
         $customer = $this->user('user');
         $customerPage = $this->signInAs($customer, 'customer')->get('/profile')->assertOk();
+        $this->assertSharedProfileContent($customerPage, 'layouts.user');
         $customerPage->assertViewIs('user.profile.profile')
             ->assertSee('data-profile-editable="true"', false)
             ->assertSee('action="'.route('user.profile.password').'"', false)

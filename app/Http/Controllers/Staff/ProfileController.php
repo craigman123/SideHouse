@@ -23,7 +23,7 @@ class ProfileController extends Controller
                 'css/staff/staff-profile.css',
                 'css/user/profile.css',
             ],
-            'profileScripts' => ['js/staff/staff-profile.js'],
+            'profileScripts' => [],
             'profileSecurityView' => 'partials.profile.security.staff',
             'profileUpdateAction' => route('staff.profile.update'),
             'profilePasswordAction' => route('staff.profile.password'),
